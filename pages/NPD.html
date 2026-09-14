@@ -1,0 +1,155 @@
+<style>
+  /* ===== NPD (Direction A — merged from prototype) ===== */
+  .npd-scope { font-family:'Kanit',sans-serif; color:#1a1d20; }
+  .npd-scope .mono { font-family:'JetBrains Mono',monospace; }
+  .npd-scope .sec-head { background:var(--pc-dark,#1a1d20); color:#fff; font-weight:700; font-size:.8rem; letter-spacing:.5px; padding:8px 14px; border-radius:8px 8px 0 0; text-transform:uppercase; }
+  .npd-scope .form-control:focus, .npd-scope .form-select:focus { border-color:#ffffff !important; box-shadow:none; }
+  .npd-scope .item-card { border:2px solid #000; border-radius:14px; overflow:hidden; }
+  .npd-scope .recipe-tbl th { background:var(--pc-yellow,#2e934a); color:#000; font-size:.72rem; text-align:center; padding:6px; white-space:nowrap; }
+  .npd-scope .recipe-tbl td { padding:3px; vertical-align:middle; }
+  .npd-scope .char-count { font-size:10px; }
+  .npd-scope .npd-tab { background:none; border:none; border-bottom:3px solid transparent; padding:10px 4px; font-weight:700; font-size:.98rem; color:#7a7a7a; cursor:pointer; transition:.15s; }
+  .npd-scope .npd-tab:hover { color:#2e934a; }
+  .npd-scope .npd-tab.active { color:#2e934a; border-bottom-color:#2e934a; }
+  /* subset visuals */
+  .npd-scope .subset-card { border:2px dashed #b9a44e; border-radius:12px; background:#fffdf4; }
+  .npd-scope .subset-head { background:#fff5d6; border-bottom:2px dashed #b9a44e; border-radius:10px 10px 0 0; }
+  .npd-scope .ss-badge { font-family:'JetBrains Mono',monospace; font-weight:700; background:var(--pc-dark,#1a1d20); color:#ffffff; padding:2px 8px; border-radius:6px; font-size:.78rem; }
+  .npd-scope .powder-tbl th { background:#e8f6ee; color:#0b4d2c; font-size:.7rem; text-align:center; padding:6px; white-space:nowrap; }
+  .npd-scope .powder-tbl td { padding:3px; vertical-align:middle; }
+  .npd-scope .ghost-btn { border:2px dashed #b9a44e; background:#fffdf4; color:#7a5b00; font-weight:700; border-radius:10px; }
+  .npd-scope .ghost-btn:hover { background:#fff5d6; }
+  .npd-scope .hint { font-size:.72rem; color:#8a939b; }
+  .npd-scope .it-field { background:#eef1f4 !important; color:#6c757d !important; cursor:not-allowed; border-color:#d4d9de !important; }
+  .npd-scope .it-tag { display:inline-block; font-size:.58rem; font-weight:700; background:#0dcaf0; color:#063b46; padding:0 5px; border-radius:6px; margin-left:4px; vertical-align:middle; letter-spacing:.5px; }
+  .npd-scope .sale-pill { display:inline-flex; align-items:center; gap:6px; border:2px solid #000; border-radius:10px; padding:5px 11px; cursor:pointer; background:#fff; font-weight:600; font-size:.8rem; user-select:none; }
+  .npd-scope .sale-pill input { width:16px; height:16px; accent-color:#2e934a; margin:0; cursor:pointer; }
+  .npd-scope .sale-pill.on { background:#e8f6ee; border-color:#2e934a; }
+  .npd-scope .rm-ch { display:inline-flex; align-items:center; gap:4px; border:1px solid #c2c8ce; border-radius:14px; padding:1px 8px; font-size:.7rem; cursor:pointer; background:#fff; user-select:none; white-space:nowrap; }
+  .npd-scope .rm-ch input { width:13px; height:13px; accent-color:#2e934a; margin:0; cursor:pointer; }
+  .npd-scope .rm-ch.on { background:#fff3cd; border-color:#e0c25a; font-weight:700; }
+  .npd-scope .req:after { content:" *"; color:#dc3545; }
+  .npd-scope .cc-resv { display:inline-block; font-size:.6rem; font-weight:700; background:#fff3cd; color:#7a5b00; border:1px solid #e0c25a; border-radius:6px; padding:0 5px; white-space:nowrap; flex:none; }
+  .npd-scope .cc-resv.ok { background:#e8f6ee; color:#0b6b3a; border-color:#bfe3cd; }
+  .npd-scope .cc-field { display:flex; align-items:center; gap:5px; }
+  .npd-scope .cc-field > input { flex:1 1 auto; min-width:0; }
+</style>
+
+<div class="container-fluid p-4 npd-scope" style="background-color:#f4f6f9; min-height:100vh;" data-screen-label="NPD">
+
+  <!-- header card -->
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width:10px;height:55px;background:var(--pc-yellow,#2e934a);margin-right:15px;border-radius:5px;"></div>
+      <div>
+        <h3 class="fw-bold m-0" style="font-family:'Montserrat',sans-serif; text-transform:uppercase;"><i class="fas fa-flask me-2 text-warning"></i> NPD — แจ้งขึ้นสินค้าใหม่</h3>
+        <small style="opacity:.8;">พัฒนาสินค้าใหม่ (NPD) · ฟอร์มสำหรับ RD แจ้ง IT ขึ้นปุ่มใน Backoffice</small>
+      </div>
+    </div>
+    <div class="text-end small" style="opacity:.85;">
+      <div><b>Department:</b> Marketing</div>
+      <div><b>Brand:</b> Potato Corner</div>
+    </div>
+  </div>
+
+  <!-- ===== NEW PRODUCT TAB ===== -->
+  <div id="tabNew">
+    <div class="bg-white rounded-3 shadow-sm border mb-3">
+      <div class="sec-head"><i class="fas fa-circle-info me-2 text-warning"></i>ข้อมูลทั่วไป (Project)</div>
+      <div class="p-3">
+        <div class="row g-3">
+          <div class="col-md-4"><label class="small fw-bold text-uppercase mb-1 req">ชื่อชุดสินค้า / Project</label><input id="npProject" type="text" class="form-control border-dark" placeholder="เช่น New Item - Chicken Joint"></div>
+          <div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">วันที่เริ่ม</label><input id="npStart" type="date" class="form-control border-dark"></div>
+          <div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">วันที่สิ้นสุด</label><input id="npEnd" type="date" class="form-control border-dark"></div>
+          <div class="col-md-2"><label class="small fw-bold text-uppercase mb-1">RD ผู้แจ้ง</label><input id="npRd" type="text" class="form-control border-dark" value="RD"></div>
+          <div class="col-md-12"><label class="small fw-bold text-uppercase mb-1 req">สาขาที่ร่วมรายการ</label>
+            <div class="d-flex align-items-center gap-2">
+              <div id="npStoreLabel" class="form-control border-dark d-flex align-items-center" style="min-height:38px;background:#fbfdff;"><i class="fas fa-store me-1 text-success"></i>ทุกสาขา (ALL STORES)</div>
+              <button class="btn btn-dark fw-bold text-nowrap" type="button" onclick="RD.openStoreModal()"><i class="fas fa-list text-warning me-1"></i>เลือกสาขา</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-3 shadow-sm border mb-3">
+      <div class="sec-head d-flex justify-content-between align-items-center"><span>SUBSET สูตรผงสินค้าใหม่ <span style="font-weight:400;font-size:.7rem;color:#9aa3ab;text-transform:none">(ใส่หรือไม่ใส่ก็ได้ — เครื่องดื่ม / topping ที่ไม่มีผง ข้ามได้)</span></span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">SS Code / CMPOS = IT กรอก</span></div>
+      <div class="p-3" id="subsetSection"></div>
+    </div>
+
+    <div class="bg-white rounded-3 shadow-sm border mb-3" style="border-color:#1a1d20!important">
+      <div class="sec-head d-flex justify-content-between align-items-center"><span><i class="fas fa-tags me-2 text-warning"></i>หมวดสินค้า (ใช้กับทุกปุ่มสินค้า)</span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">Category Code = ดึงจากฐานข้อมูล (เลือกหมวด)</span></div>
+      <div class="p-3">
+        <div class="row g-3">
+          <div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Department</label><select id="npDept" class="form-select border-dark" onchange="RD.deptPick(this.value)"></select></div>
+          <div class="col-md-4"><label class="small fw-bold text-uppercase mb-1 req">Product Category</label><div class="d-flex gap-2"><select id="npCategory" class="form-select border-dark" onchange="RD.catPick(this.value)"></select><button class="btn btn-dark btn-sm fw-bold text-nowrap" type="button" onclick="RD.addCategory()"><i class="fas fa-plus me-1"></i>เพิ่มหมวด</button></div></div>
+          <div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Category Code (CMPOS) <span class="it-tag" style="background:#6c757d">AUTO</span></label><input id="npCateCode" class="form-control it-field mono" readonly title="ดึงอัตโนมัติเมื่อเลือกหมวด / รันตามช่วงแผนก" placeholder="— IT —"></div>
+        </div>
+        <div class="hint mt-2">หมวดนี้จะใช้กับทุกปุ่มสินค้าในรายการ NPD นี้</div>
+      </div>
+    </div>
+
+    <div class="fw-bold text-uppercase mb-2" style="font-size:.85rem;color:#1a1d20"><i class="fas fa-box-open me-2 text-warning"></i>ปุ่มสินค้า (มีได้หลายปุ่ม)</div>
+    <div id="productList"></div>
+
+    <button class="btn btn-outline-dark fw-bold w-100 mb-4" onclick="RD.addProduct()"><i class="fas fa-plus-circle me-2"></i>เพิ่มสินค้าใหม่</button>
+
+    <div class="text-center mb-5 d-flex flex-wrap justify-content-center gap-2">
+      <button class="btn btn-outline-dark shadow-sm px-4 py-3 fw-bold" style="min-width:200px;font-size:1.05rem;border-radius:12px;" onclick="RD.saveDraft()">
+        <i class="fas fa-save me-2"></i>บันทึกร่าง
+      </button>
+      <button class="btn btn-warning shadow px-5 py-3 fw-bold border border-dark text-dark" style="min-width:340px;font-size:1.15rem;border-radius:12px;" onclick="RD.submit('new')">
+        ส่งให้ IT ขึ้นปุ่ม <i class="fas fa-paper-plane ms-2"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== SELECT STORES modal ===== -->
+  <div class="modal fade" id="storeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="border:none;border-radius:14px;overflow:hidden;">
+        <div class="modal-header text-white" style="background:var(--pc-dark,#1a1d20);">
+          <h5 class="modal-title fw-bold" style="font-family:'Montserrat',sans-serif;letter-spacing:.5px;"><i class="fas fa-store text-warning me-2"></i>SELECT STORES</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="background:#f4f6f9;">
+          <div class="p-3 mb-3 rounded-3" style="background:#fff;border:1px solid #e6e9ee;">
+            <div class="d-flex align-items-end gap-2" style="max-width:520px">
+              <div class="flex-grow-1"><label class="hint fw-bold text-uppercase">Type</label>
+                <select id="stType" class="form-select form-select-sm border-dark fw-bold" onchange="RD.storeRows()">
+                  <option>Shop Master</option>
+                  <option>Shop Group</option>
+                  <option>Shop Class</option>
+                  <option>Shop Type</option>
+                </select></div>
+              <button class="btn btn-warning btn-sm border border-dark" type="button" onclick="RD.storeRows()"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+            <div class="input-group input-group-sm" style="max-width:340px"><span class="input-group-text">Search:</span><input id="stSearch" type="text" class="form-control" oninput="RD.storeRows()"></div>
+            <span id="stCount" class="badge bg-dark px-3 py-2">เลือกแล้ว: 0</span>
+          </div>
+          <div class="bg-white rounded-3 border" style="overflow:hidden;">
+            <div style="max-height:340px;overflow:auto;">
+              <table class="table table-sm table-hover align-middle m-0" style="font-size:.85rem">
+                <thead style="position:sticky;top:0;z-index:1;background:#2f6dab;color:#fff;"><tr><th style="width:54px" class="text-center"><label class="d-inline-flex align-items-center gap-1" style="cursor:pointer;font-size:.66rem;font-weight:700" title="เลือกทั้งหมดที่แสดง"><input type="checkbox" id="stAll" class="form-check-input m-0" onclick="RD.storeToggleAll(this.checked)">All</label></th><th id="stColCode">Group Code</th><th id="stColD1">Group Des1</th><th id="stColD2">Qty.</th></tr></thead>
+                <tbody id="stBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-white d-flex justify-content-end gap-2">
+          <button class="btn btn-outline-danger fw-bold" onclick="RD.storeClear()">CLEAR ALL</button>
+          <button class="btn btn-dark fw-bold px-4" onclick="RD.storeApply()"><i class="fas fa-check me-1"></i>APPLY SELECTION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="rmList"></datalist>
+  <datalist id="catNameList"></datalist>
+  <datalist id="unitDatalist"></datalist>
+  <datalist id="spoonList"></datalist>
+</div>
+
+<script src="js/npd-redesign.js"></script>

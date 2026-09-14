@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สรุปทรัพย์สิน — แจ้งบัญชี (Asset Disposal)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="data/device-change-cases.js"></script>
+<style>
+  :root{ --dark:#1a1d20; --yellow:#2e934a; --green:#2e934a; --soft:#f6f8fa; --mut:#6b7280; --line:#e6e9ee; --amber:#fff4d6; --amberT:#8a6d00; --red:#fdecec; --redT:#c0392b; --greenBg:#eafaf1; --greenT:#1d7a4d; --blue:#e8eefb; --blueT:#2c4a82; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:#eef1f5; color:#1a1d20; margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:22px 18px 70px; }
+  .head{ background:var(--dark); border-radius:18px; padding:22px 26px; color:#fff; display:flex; align-items:center; gap:18px; flex-wrap:wrap; box-shadow:0 14px 36px rgba(0,0,0,.12); }
+  .head .icon{ width:50px; height:50px; border-radius:13px; background:var(--yellow); color:var(--dark); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex:none; }
+  .head h1{ margin:0; font-size:1.35rem; font-weight:800; }
+  .head .sub{ color:#aab2bd; font-size:.85rem; margin-top:3px; }
+  .head .exp{ margin-left:auto; }
+  .chips{ display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 6px; }
+  .chip{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 15px; display:flex; align-items:center; gap:9px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+  .chip .num{ font-size:1.35rem; font-weight:800; font-family:'JetBrains Mono',monospace; line-height:1; }
+  .chip .lbl{ font-size:.74rem; color:var(--mut); font-weight:500; line-height:1.2; }
+  .chip.amber .num{ color:var(--amberT); } .chip.blue .num{ color:var(--blueT); } .chip.green .num{ color:var(--greenT); }
+  .tabs{ display:flex; gap:8px; margin:10px 0 4px; flex-wrap:wrap; }
+  .tab{ border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:7px 14px; cursor:pointer; font-weight:600; font-size:.84rem; }
+  .tab.on{ background:var(--dark); color:#fff; border-color:var(--dark); }
+  .list{ display:flex; flex-direction:column; gap:11px; margin-top:14px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:13px; padding:14px 17px; box-shadow:0 3px 12px rgba(0,0,0,.05); display:flex; gap:14px; align-items:flex-start; }
+  .card .badge{ width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex:none; background:var(--red); color:var(--redT); }
+  .card .body{ flex:1; min-width:0; }
+  .card .ttl{ font-weight:700; font-size:1rem; } .card .ttl .shop{ font-family:'JetBrains Mono',monospace; }
+  .card .meta{ font-size:.82rem; color:var(--mut); margin-top:3px; line-height:1.55; }
+  .pill{ font-size:.7rem; font-weight:700; padding:2px 9px; border-radius:999px; display:inline-block; }
+  .pl-wait{ background:var(--amber); color:var(--amberT); } .pl-acc{ background:var(--blue); color:var(--blueT); } .pl-done{ background:var(--greenBg); color:var(--greenT); }
+  .dis{ font-weight:700; }
+  .card .act{ display:flex; flex-direction:column; gap:7px; align-items:flex-end; flex:none; }
+  .btn{ font-family:'Kanit',sans-serif; font-size:.8rem; font-weight:600; border:none; border-radius:9px; padding:7px 13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .btn-a{ background:var(--amber); color:var(--amberT); } .btn-b{ background:var(--blue); color:var(--blueT); } .btn-g{ background:var(--green); color:#fff; } .btn-o{ background:#fff; border:1.3px solid var(--line); color:#5b636c; }
+  .done-pill{ font-size:.78rem; font-weight:700; color:var(--greenT); display:inline-flex; align-items:center; gap:6px; }
+  .empty{ text-align:center; color:#aab0b8; padding:44px; background:#fff; border-radius:13px; border:1px dashed var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="icon"><i class="fas fa-clipboard-list"></i></div>
+    <div style="flex:1;min-width:200px">
+      <h1>สรุปทรัพย์สิน — แจ้งบัญชี</h1>
+      <div class="sub">เครื่องที่ปลด/เปลี่ยน (Renovate · ชำรุด · ปิดสาขา) → สาขายืนยันการจัดการ (ส่งกลับ/ทำลายซากหน้าสาขา) → แจ้งบัญชีตัดทรัพย์สิน</div>
+    </div>
+    <div class="exp"><button class="btn btn-o" onclick="AS.exportCsv()"><i class="fas fa-file-export"></i> Export แจ้งบัญชี</button></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="list" id="list"></div>
+</div>
+<script>
+window.initAssetSummary = function(){ AS.boot(); };
+var AS = (function(){
+  var KEY='pc_asset_disposal'; var TAB='all';
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  var DISP={ destroy:'ทำลายหน้าสาขา', scrap:'ขายซาก', stock:'เข้าคลัง HO', branch:'ย้ายไปสาขาอื่น', return:'ส่งกลับ HO' };
+  var REASON={ broken:'เครื่องชำรุด', renovate:'Renovate', renovate_new:'Renovate (เปลี่ยนเครื่อง)', relocate_out:'Relocate', close:'ปิดสาขา', movein:'รับเครื่องย้าย', transfer:'โอนบริษัท' };
+  // สถานะ: wait=รอสาขายืนยัน · acc=รอแจ้งบัญชี · done=แจ้งบัญชีแล้ว
+  function statusOf(d){ if(d.accountingNotified) return 'done'; if(d.branchConfirm) return 'acc'; return 'wait'; }
+
+  function seedIfEmpty(){
+    var q=lsGet(KEY,null);
+    if(Array.isArray(q)) return q;
+    q=[]; // demo seed จาก device-change cases (ถ้ามี)
+    (window.PC_DEVICE_CHANGE_CASES||[]).forEach(function(c){
+      q.unshift({ id:'DISP-'+c.shop+'-'+Math.random().toString(36).slice(2,6), shop:c.shop, shopName:c.name, device:{brand:'Toshiba',model:'4852-E70',serial:'OLD-'+c.shop}, reason:'broken', disposition:(c.source==='IT'?'scrap':'stock'), toBranch:'', branchConfirm:false, accountingNotified:false, at:Date.now() });
+    });
+    lsSet(KEY,q); return q;
+  }
+  function load(){ return seedIfEmpty(); }
+
+  function chips(q){
+    var w=0,a=0,d=0; q.forEach(function(x){ var s=statusOf(x); if(s==='wait')w++; else if(s==='acc')a++; else d++; });
+    document.getElementById('chips').innerHTML=[['amber',w,'รอสาขายืนยัน'],['blue',a,'รอแจ้งบัญชี'],['green',d,'แจ้งบัญชีแล้ว'],['',q.length,'ทั้งหมด']]
+      .map(function(c){ return '<div class="chip '+c[0]+'"><div class="num">'+c[1]+'</div><div class="lbl">'+c[2]+'</div></div>'; }).join('');
+  }
+  function render(){
+    var q=load(); chips(q);
+    var tabs=[['all','ทั้งหมด'],['wait','รอสาขายืนยัน'],['acc','รอแจ้งบัญชี'],['done','แจ้งบัญชีแล้ว']];
+    document.getElementById('tabs').innerHTML=tabs.map(function(t){ return '<div class="tab '+(TAB===t[0]?'on':'')+'" onclick="AS.tab(\''+t[0]+'\')">'+t[1]+'</div>'; }).join('');
+    var show=q.filter(function(x){ return TAB==='all'||statusOf(x)===TAB; });
+    if(!show.length){ document.getElementById('list').innerHTML='<div class="empty"><i class="fas fa-box-open" style="font-size:2rem;opacity:.4"></i><div style="margin-top:10px">— ไม่มีรายการ —</div></div>'; return; }
+    document.getElementById('list').innerHTML=show.map(function(d){
+      var s=statusOf(d); var dev=(d.device&&((d.device.brand||'')+' '+(d.device.model||'')).trim())||'—'; var sn=(d.device&&d.device.serial)||'—';
+      var act;
+      if(s==='wait') act='<button class="btn btn-a" onclick="AS.branchConfirm(\''+d.id+'\')"><i class="fas fa-clipboard-check"></i> สาขายืนยันการจัดการ</button>';
+      else if(s==='acc'){ var wf=(d.disposition==='destroy'||d.disposition==='scrap'); act='<button class="btn btn-g" onclick="AS.notifyAcc(\''+d.id+'\')"><i class="fas fa-'+(wf?'calculator':'box-archive')+'"></i> '+(wf?'แจ้งบัญชี (ตัดทรัพย์สิน)':(d.disposition==='branch'?'ยืนยันปลายทางรับ + ปิดงาน':'เข้าคลัง/ส่งกลับ + ปิดงาน'))+'</button>'; }
+      else act='<span class="done-pill"><i class="fas fa-circle-check"></i> แจ้งบัญชีแล้ว</span>';
+      var pillCls=s==='wait'?'pl-wait':s==='acc'?'pl-acc':'pl-done';
+      var pillTxt=s==='wait'?'รอสาขายืนยัน':s==='acc'?'รอแจ้งบัญชี':'แจ้งบัญชีแล้ว';
+      return '<div class="card"><div class="badge"><i class="fas fa-cash-register"></i></div>'
+        +'<div class="body"><div class="ttl"><span class="shop">'+esc(d.shop)+'</span> · '+esc(d.shopName||'')+'</div>'
+        +'<div class="meta">เครื่อง: <b>'+esc(dev)+'</b> · S/N <span class="mono">'+esc(sn)+'</span><br>'
+        +'เหตุ: '+esc(REASON[d.reason]||d.reason||'-')+' · จัดการ: <span class="dis">'+esc(DISP[d.disposition]||d.disposition||'-')+'</span>'+(d.toBranch?' → '+esc(d.toBranch):'')
+        +(d.branchNote?'<br>บันทึกสาขา: '+esc(d.branchNote):'')+' · <span class="pill '+pillCls+'">'+pillTxt+'</span></div></div>'
+        +'<div class="act">'+act+'</div></div>';
+    }).join('');
+  }
+  function branchConfirm(id){
+    var q=load(); var d=q.find(function(x){return x.id===id;}); if(!d) return;
+    var atSite=(d.disposition==='destroy'||d.disposition==='scrap');
+    Swal.fire({ title:'สาขายืนยันการจัดการเครื่องเก่า', width:520,
+      html:'<div style="text-align:left;font-size:13.5px"><div style="background:#fff7e6;border:1px solid #f4e2a0;border-radius:8px;padding:9px 12px;margin-bottom:11px;font-size:13px;color:#8a6d00"><b>'+esc(d.shop)+'</b> · '+esc(d.shopName||'')+'<br>วิธีจัดการ: <b>'+esc(DISP[d.disposition]||d.disposition)+'</b></div>'
+        +'<label style="font-weight:600;display:block;margin-bottom:5px;font-size:12.5px">สาขาดำเนินการแบบ</label>'
+        +'<select id="bc_how" class="swal2-input" style="margin:0;width:100%"><option value="ส่งกลับ HO">ส่งกลับสำนักงานใหญ่</option><option value="ทำลายซากหน้าสาขา"'+(atSite?' selected':'')+'>ทำลายซากหน้าสาขา</option></select>'
+        +'<div style="font-weight:600;margin:10px 0 4px;font-size:12.5px"><i class="fas fa-camera"></i> แนบรูปหลักฐาน (เครื่อง/ใบส่งของ)</div><input type="file" id="bc_img" accept="image/*,.pdf" class="swal2-file">'
+        +'<label style="font-weight:600;display:block;margin:8px 0 4px;font-size:12.5px">หมายเหตุ</label><input id="bc_note" class="swal2-input" style="margin:0;width:100%" placeholder="เช่น ส่งกลับ KEX เลขพัสดุ..."></div>',
+      showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ var img=document.getElementById('bc_img'); var imgName=(img&&img.files&&img.files.length)?img.files[0].name:''; return { how:document.getElementById('bc_how').value, note:(document.getElementById('bc_note').value||'').trim(), img:imgName }; } })
+    .then(function(r){ if(!r.isConfirmed) return; d.branchConfirm=true; d.branchHow=r.value.how; d.branchNote=(r.value.how)+(r.value.note?(' · '+r.value.note):'')+(r.value.img?(' · 📎'+r.value.img):''); d.branchAt=Date.now(); lsSet(KEY,q);
+      Swal.fire({icon:'success',title:'สาขายืนยันแล้ว',html:'<span style="font-size:13px">รอแจ้งบัญชีตัดทรัพย์สิน</span>',confirmButtonColor:'#2e934a',timer:2000}); render(); });
+  }
+  function notifyAcc(id){
+    var q=load(); var d=q.find(function(x){return x.id===id;}); if(!d) return;
+    Swal.fire({title:'แจ้งบัญชีตัดทรัพย์สิน?',html:'<b>'+esc(d.shop)+'</b> · '+esc((d.device&&d.device.serial)||'')+'<br><span style="font-size:12px;color:#8a9099">ส่งข้อมูลให้ฝ่ายบัญชีตัดออกจากทะเบียนทรัพย์สิน</span>',icon:'question',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'แจ้งบัญชี'})
+    .then(function(r){ if(!r.isConfirmed) return; d.accountingNotified=true; d.accAt=Date.now(); lsSet(KEY,q); Swal.fire({icon:'success',title:'แจ้งบัญชีแล้ว',timer:1600,showConfirmButton:false}); render(); });
+  }
+  function exportCsv(){
+    var q=load(); var rows=[['Shop','ชื่อสาขา','เครื่อง','Serial','เหตุ','วิธีจัดการ','สาขายืนยัน','สถานะ']];
+    q.forEach(function(d){ rows.push([d.shop,d.shopName||'',(d.device&&((d.device.brand||'')+' '+(d.device.model||'')).trim())||'',(d.device&&d.device.serial)||'',REASON[d.reason]||d.reason||'',DISP[d.disposition]||d.disposition||'',d.branchNote||'',statusOf(d)==='done'?'แจ้งบัญชีแล้ว':statusOf(d)==='acc'?'รอแจ้งบัญชี':'รอสาขายืนยัน']); });
+    var csv='\uFEFF'+rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='Asset_Disposal_แจ้งบัญชี.csv'; a.click();
+  }
+  function boot(){ render(); }
+  function tab(t){ TAB=t; render(); }
+  return { boot:boot, render:render, tab:tab, branchConfirm:branchConfirm, notifyAcc:notifyAcc, exportCsv:exportCsv };
+})();
+if(!window.__asShell){ document.addEventListener('DOMContentLoaded', AS.boot); if(document.readyState!=='loading') AS.boot(); }
+</script>
+</body>
+</html>

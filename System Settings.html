@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าระบบ — Potato Corner</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:#2e934a; color:#fff; padding:14px 22px; display:flex; align-items:center; gap:14px; flex:none; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.15rem; margin:0; letter-spacing:.4px; text-transform:uppercase; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .sub{ opacity:.6; font-size:.84rem; }
+
+  .shell{ flex:1; display:flex; min-height:0; }
+  .side{ width:268px; background:#fff; border-right:1px solid #e2e6ea; padding:16px 12px; flex:none; overflow:auto; }
+  .side .grp{ font-size:.68rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9aa1aa; margin:12px 10px 7px; }
+  .navi{ display:flex; align-items:center; gap:12px; padding:12px 13px; border-radius:12px; cursor:pointer; color:#3a4150; font-weight:600; font-size:.95rem; margin-bottom:3px; }
+  .navi:hover{ background:#f3f5f8; }
+  .navi.on{ background:#f3fbf6; color:var(--pc-green); }
+  .navi .ic{ width:34px; height:34px; border-radius:9px; background:#f1f4f7; display:flex; align-items:center; justify-content:center; flex:none; font-size:.95rem; color:#6b7280; }
+  .navi.on .ic{ background:var(--pc-green); color:#fff; }
+  .navi .tx{ flex:1; }
+  .navi .tx small{ display:block; font-weight:400; font-size:.74rem; color:#9aa1aa; margin-top:1px; }
+  .navi.on .tx small{ color:#5fa982; }
+
+  .content{ flex:1; min-width:0; position:relative; background:var(--bg); }
+  .pane{ position:absolute; inset:0; display:none; }
+  .pane.on{ display:block; }
+  .pane iframe{ width:100%; height:100%; border:0; display:block; }
+  .pane.scroll{ overflow:auto; }
+
+  /* templates pane */
+  .tpl-wrap{ max-width:1000px; margin:0 auto; padding:26px 24px 70px; }
+  .tpl-head{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.2rem; text-transform:uppercase; letter-spacing:.4px; }
+  .tpl-head i{ color:var(--pc-green); margin-right:9px; }
+  .tpl-sub{ color:#6b7280; font-size:.9rem; margin:4px 0 18px; }
+  .legend{ background:#fff; border:1px solid #e7eaee; border-radius:13px; padding:13px 16px; margin-bottom:20px; }
+  .legend .l-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; margin-bottom:9px; }
+  .legend .toks{ display:flex; flex-wrap:wrap; gap:7px; }
+  .tok{ font-family:'JetBrains Mono',monospace; font-size:.8rem; background:#fff5e0; color:#9a6700; border:1px solid #f3d99a; border-radius:6px; padding:2px 7px; }
+  .tcard{ background:#fff; border:1px solid #e7eaee; border-radius:15px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:16px; overflow:hidden; }
+  .tc-hd{ padding:14px 18px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:11px; flex-wrap:wrap; }
+  .tc-nm{ font-weight:700; font-size:1.05rem; flex:1; }
+  .tc-key{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#aab0b8; }
+  .badge-ch{ font-size:.74rem; font-weight:700; border-radius:7px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; }
+  .badge-ch.mail{ background:#eaf4ee; color:#9a6700; } .badge-ch.chat{ background:#eef4ff; color:#2f5fb3; } .badge-ch.line{ background:#eafaef; color:#06934a; }
+  .badge-ch.off{ background:#f1f4f7; color:#b6bcc4; }
+  .tc-body{ padding:15px 18px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .tc-blk .b-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+  .tc-blk .b-lbl.mail i{ color:#c9870a; } .tc-blk .b-lbl.chat i{ color:#2f5fb3; }
+  .tc-subj{ font-weight:700; font-size:.92rem; margin-bottom:6px; }
+  .tc-text{ background:#f6f8fa; border:1px solid #eef1f4; border-radius:10px; padding:11px 13px; font-size:.9rem; line-height:1.6; color:#3a4047; }
+  .tc-to{ font-size:.78rem; color:#9aa1aa; margin-top:8px; }
+  .tpl-in{ width:100%; border:1.5px solid #d8dde2; border-radius:9px; padding:9px 11px; font-family:inherit; font-size:.9rem; font-weight:600; margin-bottom:8px; }
+  .tpl-in:focus,.tpl-ta:focus{ outline:none; border-color:var(--pc-green); }
+  .tpl-ta{ width:100%; border:1.5px solid #d8dde2; border-radius:9px; padding:9px 11px; font-family:inherit; font-size:.88rem; line-height:1.5; resize:vertical; }
+  .tpl-prev{ background:#f6f8fa; border:1px dashed #e2e6ea; border-radius:9px; padding:9px 11px; font-size:.84rem; line-height:1.55; color:#5a616b; margin-top:7px; }
+  .tpl-savebar{ position:sticky; bottom:0; background:rgba(238,241,244,.94); backdrop-filter:blur(4px); padding:14px 0 4px; display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+  .btn-save-tpl{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:12px 24px; font-family:inherit; font-weight:700; cursor:pointer; }
+  .btn-save-tpl:hover{ background:#00632f; }
+  .btn-reset-tpl{ background:#fff; color:#6b7280; border:1.5px solid #d8dde2; border-radius:12px; padding:12px 18px; font-family:inherit; font-weight:600; cursor:pointer; }
+  .btn-reset-tpl:hover{ border-color:#b6bcc4; }
+  .legend .tok{ cursor:pointer; }
+  @media(max-width:820px){ .tc-body{ grid-template-columns:1fr; } .side{ width:210px; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+<div class="topbar">
+  <h1><i class="fas fa-sliders"></i>ตั้งค่าระบบ</h1>
+  <div class="sub">รวมการตั้งค่าทุกส่วนไว้ที่เดียว</div>
+</div>
+
+<div class="shell">
+  <nav class="side" id="side"></nav>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+const TABS=[
+  { id:'report',   label:'ระบบแจ้งปัญหาสาขา', sub:'วิธียืนยันตัวตนตอนแจ้ง',  ic:'fa-flag',       src:'Report Settings.html' },
+  { id:'buttons',  label:'ปุ่มแจ้งปัญหา',     sub:'ตั้งค่าปุ่ม + ปลายทาง Ticket', ic:'fa-bars-staggered', src:'Report Buttons.html' },
+  { id:'master',   label:'ข้อมูลหลัก (Master)', sub:'สาขา / ประเภทโปร / แพลตฟอร์ม / Subset', ic:'fa-database', src:'Master Settings.html' },
+  { id:'users',    label:'ผู้ใช้ & รหัสแคชเชียร์', sub:'User Code / รหัสผ่าน', ic:'fa-users-gear', src:'User Management.html' },
+  { id:'notify',   label:'การแจ้งเตือน',     sub:'Email / Team Chat / LINE', ic:'fa-bell',       src:'Notification Settings.html' },
+  { id:'codelock', label:'ล็อกแจ้งเพิ่มโค้ด', sub:'lead time (IT ตั้ง)', ic:'fa-lock', src:'Code Lock Settings.html' },
+  { id:'templates',label:'เทมเพลตแจ้งเตือน',  sub:'ทุกระบบงาน',             ic:'fa-file-lines', src:null },
+];
+const GROUPS=[
+  { name:'ระบบแจ้งปัญหา POS', ids:['report','buttons','users'] },
+  { name:'ข้อมูลหลัก', ids:['master'] },
+  { name:'การแจ้งเตือน',      ids:['notify','templates','codelock'] },
+];
+
+/* ---- notification templates (tokens in {…}) ---- */
+const DEFAULT_EVENTS={
+  report_general:        { label:'แจ้งปัญหาปุ่ม POS (ทั่วไป)',   dept:'Information Technology', channels:{email:true,chat:false,line:false} },
+  report_price_platform: { label:'ราคาแพลตฟอร์มเดลิเวอรีไม่ตรง', dept:'Marketing',             channels:{email:false,chat:true,line:false} },
+  proposal_submitted:    { label:'ส่งโปรโมชันเสนออนุมัติ',       dept:'Operation',             channels:{email:true,chat:false,line:false} },
+  proposal_approved:     { label:'โปรโมชันได้รับการอนุมัติ',     dept:'Operation',             channels:{email:true,chat:false,line:false} },
+  proposal_rejected:     { label:'โปรโมชันถูกตีกลับ',         dept:'Operation',             channels:{email:true,chat:false,line:false} },
+  promo_cancelled:       { label:'ยกเลิกโปรโมชัน',           dept:'Operation / Marketing', channels:{email:true,chat:true,line:false} },
+  promo_extended:        { label:'ขยาย/ต่ออายุโปรโมชัน',     dept:'Operation / Marketing', channels:{email:true,chat:true,line:false} },
+  promo_reduced:         { label:'ลดระยะเวลา/สาขาโปร',     dept:'Operation',             channels:{email:true,chat:false,line:false} },
+  promo_ending:          { label:'โปรใกล้หมดอายุ (เตือน)',  dept:'Operation',             channels:{email:false,chat:true,line:false} },
+  npd_new:               { label:'แจ้งสินค้าใหม่ (NPD)',        dept:'NPD / R&D',             channels:{email:true,chat:false,line:false} },
+  npd_approved:          { label:'อนุมัติสินค้าใหม่ (NPD)',    dept:'NPD / R&D',             channels:{email:true,chat:false,line:false} },
+  npd_rejected:          { label:'ตีกลับสินค้าใหม่ (NPD)',    dept:'NPD / R&D',             channels:{email:true,chat:false,line:false} },
+  it_settlement:         { label:'งานตั้งค่า POS (IT Settlement)',dept:'Information Technology',channels:{email:true,chat:false,line:false} },
+  it_settlement_done:    { label:'ตั้งค่า POS / ขึ้นปุ่มเสร็จ',dept:'Information Technology / Operation',channels:{email:true,chat:false,line:false} },
+  coupon_issued:         { label:'ออกคูปอง / Voucher',          dept:'Accounting',            channels:{email:true,chat:false,line:false} },
+  code_add_request:      { label:'แจ้งเพิ่มโค้ดเข้าระบบ (MKT→IT)', dept:'Information Technology', channels:{email:true,chat:true,line:false} },
+  code_add_done:         { label:'เพิ่มโค้ดในระบบเสร็จ (IT→MKT)', dept:'Marketing', channels:{email:true,chat:true,line:false} },
+  code_remove_request:   { label:'แจ้งลบโค้ดออกจากระบบ (MKT→IT)', dept:'Information Technology', channels:{email:true,chat:true,line:false} },
+  code_remove_done:      { label:'ลบโค้ดออกจากระบบเสร็จ (IT→MKT)', dept:'Marketing', channels:{email:true,chat:true,line:false} },
+  code_not_found:        { label:'โค้ดใช้ไม่ได้ที่ POS (สาขา→IT)', dept:'Information Technology', channels:{email:true,chat:true,line:false} },
+};
+const TEMPLATES={
+  report_general:        { subject:'[Potato Corner] แจ้งปัญหาปุ่ม POS — {branch}',
+    body:'สาขา {branch} แจ้งปัญหาปุ่ม {item} ({code})\nปัญหา: {issues}\nรายละเอียด: {detail}\nผู้แจ้ง: {reporter} · {date}',
+    msg:'🔧 {branch} แจ้งปัญหาปุ่ม {item} ({code}) — {issues} · ผู้แจ้ง {reporter}' },
+  report_price_platform: { subject:'[Potato Corner] ราคาแอปเดลิเวอรีไม่ตรง — {item}',
+    body:'ปุ่ม {item} ราคาบน {platforms} = ฿{appPrice} (ควรเป็น ฿{correctPrice})\nราคาบน POS ตรงแล้ว\nสาขา {branch} · ผู้แจ้ง {reporter}',
+    msg:'🛵 ราคาแอปไม่ตรง — {item}: {platforms} ฿{appPrice} (ควร ฿{correctPrice}) · POS ตรง · {branch}' },
+  proposal_submitted:    { subject:'[Potato Corner] โปรโมชันรออนุมัติ — {campaign}',
+    body:'โปรโมชัน “{campaign}” ({promoType}) ถูกส่งเข้าเสนออนุมัติแล้ว\nโปรดตรวจสอบและอนุมัติ',
+    msg:'📝 โปรใหม่รออนุมัติ: “{campaign}” ({promoType})' },
+  proposal_approved:     { subject:'[Potato Corner] อนุมัติโปรโมชันแล้ว — {campaign}',
+    body:'โปรโมชัน “{campaign}” ได้รับการอนุมัติเมื่อ {date}\nพร้อมส่งต่อให้ IT ตั้งค่า POS',
+    msg:'✅ อนุมัติแล้ว: “{campaign}” — ส่งต่อ IT ตั้งค่า POS' },
+  npd_new:               { subject:'[Potato Corner] สินค้าใหม่ (NPD) — {item}',
+    body:'มีสินค้าใหม่ {code} “{item}” รอตรวจสอบสูตรผง/Subset\nผู้แจ้ง: {reporter}',
+    msg:'🆕 สินค้าใหม่ {code} “{item}” รอตรวจสูตรผง/Subset' },
+  proposal_rejected:     { subject:'[Potato Corner] โปรโมชันถูกตีกลับ — {campaign}',
+    body:'โปรโมชัน “{campaign}” ถูกตีกลับ\nเหตุผล: {reason}\nโปรดแก้ไขและส่งใหม่',
+    msg:'↩️ ตีกลับ: “{campaign}” — {reason}' },
+  promo_cancelled:       { subject:'[Potato Corner] ⛔ ยกเลิกโปรโมชัน — {campaign}',
+    body:'โปรโมชัน “{campaign}” ({promoType}) ถูกยกเลิก มีผล {date}\nเหตุผล: {reason}\nสาขา/ทีมที่เกี่ยวข้องโปรดนำปุ่มออกจาก POS',
+    msg:'🚫 ยกเลิกโปร: “{campaign}” มีผล {date} · {reason} — นำปุ่มออกจาก POS' },
+  promo_extended:        { subject:'[Potato Corner] ขยาย/ต่ออายุโปรโมชัน — {campaign}',
+    body:'โปรโมชัน “{campaign}” ขยายเวลาจาก {oldEnd} → {newEnd}\nปุ่มบน POS ยังใช้ต่อได้ถึงวันที่ใหม่',
+    msg:'📅 ขยายโปร: “{campaign}” ถึง {newEnd} (เดิม {oldEnd})' },
+  promo_reduced:         { subject:'[Potato Corner] ลดระยะเวลา/สาขา — {campaign}',
+    body:'โปรโมชัน “{campaign}” ปรับลด: สิ้นสุดเร็วขึ้นเป็น {newEnd}\nรายละเอียด: {detail}',
+    msg:'✂️ ลดโปร: “{campaign}” สิ้นสุด {newEnd}' },
+  promo_ending:          { subject:'[Potato Corner] ⏳ โปรใกล้หมดอายุ — {campaign}',
+    body:'โปรโมชัน “{campaign}” จะสิ้นสุด {end}\nเตรียมนำปุ่มออกจาก POS เมื่อหมดเวลา',
+    msg:'⏳ ใกล้หมด: “{campaign}” สิ้นสุด {end}' },
+  npd_approved:          { subject:'[Potato Corner] ✅ อนุมัติสินค้าใหม่ — {item}',
+    body:'สินค้าใหม่ {code} “{item}” ได้รับการอนุมัติ พร้อมส่งต่อ IT ตั้งค่า POS',
+    msg:'✅ อนุมัติ NPD: {code} “{item}”' },
+  npd_rejected:          { subject:'[Potato Corner] ↩️ ตีกลับสินค้าใหม่ — {item}',
+    body:'สินค้าใหม่ “{item}” ถูกตีกลับ\nเหตุผล: {reason}',
+    msg:'↩️ ตีกลับ NPD: “{item}” — {reason}' },
+  it_settlement:         { subject:'[Potato Corner] งานตั้งค่า POS เข้าคิว — {campaign}',
+    body:'งานตั้งค่า POS ของ “{campaign}” เข้าคิว IT Settlement\nรอออกรหัสและขึ้นปุ่ม',
+    msg:'⚙️ งานตั้งค่า POS เข้าคิว: “{campaign}” — รอออกรหัส/ขึ้นปุ่ม' },
+  it_settlement_done:    { subject:'[Potato Corner] ⚙️✅ ขึ้นปุ่มเสร็จ — {campaign}',
+    body:'ตั้งค่า/ขึ้นปุ่มของ “{campaign}” เสร็จแล้ว พร้อมใช้งานบน POS',
+    msg:'⚙️✅ ขึ้นปุ่มเสร็จ: “{campaign}” พร้อมใช้บน POS' },
+  it_settlement:         { subject:'[Potato Corner] งานตั้งค่า POS เข้าคิว — {campaign}',
+    body:'งานตั้งค่า POS ของ “{campaign}” เข้าคิว IT Settlement\nรอออกรหัสและขึ้นปุ่ม',
+    msg:'⚙️ งานตั้งค่า POS เข้าคิว: “{campaign}” — รอออกรหัส/ขึ้นปุ่ม' },
+  coupon_issued:         { subject:'[Potato Corner] ออก Voucher — {campaign}',
+    body:'ออก Voucher “{campaign}” แล้ว รอทีมบัญชีตรวจสอบ\nวันที่ {date}',
+    msg:'🎟️ ออก Voucher “{campaign}” — รอบัญชีตรวจสอบ' },
+  code_add_request:      { subject:'[Potato Corner] ➕ แจ้งเพิ่มโค้ด — {campaign}',
+    body:'MKT แจ้งเพิ่มโค้ด {count} โค้ดเข้าระบบ\nแคมเปญ “{campaign}” · ปุ่ม {item}\nประเภท {type} (ProStatus={proStatus}) · หมดอายุ {proExpire}\nเริ่มใช้ {startDate} · ผู้แจ้ง {reporter}\nIT โหลดไฟล์ไปอัป Backoffice ได้เลย',
+    msg:'➕ เพิ่มโค้ด {count} — “{campaign}” ({type}) เริ่ม {startDate} · รอ IT อัป Backoffice' },
+  code_add_done:         { subject:'[Potato Corner] ✅ เพิ่มโค้ดเสร็จ — {campaign}',
+    body:'IT เพิ่มโค้ด {count} โค้ดของ “{campaign}” เข้าระบบเรียบร้อย\nพร้อมใช้งานตั้งแต่ {startDate}',
+    msg:'✅ เพิ่มโค้ดเสร็จ: “{campaign}” {count} โค้ด — พร้อมใช้ {startDate}' },
+  code_remove_request:   { subject:'[Potato Corner] 🗑️ แจ้งลบโค้ด — {campaign}',
+    body:'MKT แจ้งลบโค้ด {count} โค้ดของ “{campaign}” (ยังไม่ redeem)\nข้าม {skipped} โค้ดที่ redeem แล้ว\nผู้แจ้ง {reporter} · {date}',
+    msg:'🗑️ ลบโค้ด {count} — “{campaign}” (ข้าม redeem {skipped})' },
+  code_remove_done:      { subject:'[Potato Corner] ✅ ลบโค้ดเสร็จ — {campaign}',
+    body:'IT ลบโค้ด {count} โค้ดของ “{campaign}” ออกจากระบบเรียบร้อย',
+    msg:'✅ ลบโค้ดเสร็จ: “{campaign}” {count} โค้ด' },
+  code_not_found:        { subject:'[Potato Corner] ⚠️ โค้ดใช้ไม่ได้ที่ POS — {campaign}',
+    body:'สาขา {branch} แจ้งโค้ด {code} ใช้ไม่ได้ที่ POS\nแคมเปญ “{campaign}” · ปุ่ม {item}\nรายละเอียด {detail} · ผู้แจ้ง {reporter} · {date}',
+    msg:'⚠️ โค้ด {code} ใช้ไม่ได้ที่ POS — “{campaign}” · {branch}' },
+};
+const TOKENS=['{branch}','{item}','{code}','{issues}','{detail}','{platforms}','{appPrice}','{correctPrice}','{campaign}','{promoType}','{type}','{proStatus}','{count}','{startDate}','{proExpire}','{skipped}','{reporter}','{date}','{start}','{end}','{oldEnd}','{newEnd}','{reason}'];
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function tok(s){ return esc(s).replace(/\n/g,'<br>').replace(/\{(\w+)\}/g,'<span class="tok">{$1}</span>'); }
+function notifyCfg(){ try{ const s=JSON.parse(localStorage.getItem('pc_notify_settings')); if(s&&s.events) return s; }catch(e){} return null; }
+const TPL_KEY='pc_notify_templates';
+let TPLW={};
+function tplOverrides(){ try{ return JSON.parse(localStorage.getItem(TPL_KEY))||{}; }catch(e){ return {}; } }
+function tplEffective(k){ const ov=tplOverrides()[k]||{}; const base=TEMPLATES[k]||{subject:'',body:'',msg:''}; return { subject: ov.subject!=null?ov.subject:base.subject, body: ov.body!=null?ov.body:base.body, msg: ov.msg!=null?ov.msg:base.msg }; }
+function tplEdit(k,f,val){ (TPLW[k]||(TPLW[k]={}))[f]=val; const prev=document.getElementById('prev_'+f+'_'+k); if(prev) prev.innerHTML=tok(val); }
+function saveTpl(){ localStorage.setItem(TPL_KEY, JSON.stringify(TPLW)); Swal.fire({icon:'success',title:'บันทึกเทมเพลตแล้ว',html:'ข้อความแจ้งเตือนถูกบันทึก — ใช้กับการส่งจริงทุกช่องทาง',confirmButtonColor:'#2e934a',timer:1500,showConfirmButton:false}); }
+function resetTpl(){ Swal.fire({icon:'warning',title:'คืนค่าเริ่มต้น?',text:'เทมเพลตทั้งหมดจะกลับเป็นข้อความมาตรฐาน',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'คืนค่า',cancelButtonText:'ยกเลิก'}).then(r=>{ if(r.isConfirmed){ localStorage.setItem(TPL_KEY,'{}'); renderTemplates(); } }); }
+
+function renderSide(){
+  const side=document.getElementById('side');
+  side.innerHTML = GROUPS.map(g=>`<div class="grp">${g.name}</div>`+
+    g.ids.map(id=>{ const t=TABS.find(x=>x.id===id); return `<div class="navi" data-id="${id}" onclick="go('${id}')"><span class="ic"><i class="fas ${t.ic}"></i></span><span class="tx">${t.label}<small>${t.sub}</small></span></div>`; }).join('')
+  ).join('');
+}
+function buildPanes(){
+  const c=document.getElementById('content');
+  c.innerHTML = TABS.map(t=> t.src
+    ? `<div class="pane" data-id="${t.id}"><iframe data-src="${t.src}" title="${t.label}"></iframe></div>`
+    : `<div class="pane scroll" data-id="${t.id}"><div class="tpl-wrap" id="tplWrap"></div></div>`
+  ).join('');
+}
+let loaded={};
+function go(id){
+  localStorage.setItem('pc_settings_tab', id);
+  document.querySelectorAll('.navi').forEach(n=>n.classList.toggle('on', n.dataset.id===id));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on', p.dataset.id===id));
+  const pane=document.querySelector(`.pane[data-id="${id}"]`);
+  const frame=pane.querySelector('iframe');
+  if(frame && !loaded[id]){ frame.src=frame.dataset.src; loaded[id]=true; }
+  if(id==='templates') renderTemplates();
+}
+function renderTemplates(){
+  const cfg=notifyCfg();
+  const order=['report_general','report_price_platform','proposal_submitted','proposal_approved','proposal_rejected','promo_cancelled','promo_extended','promo_reduced','promo_ending','npd_new','npd_approved','npd_rejected','it_settlement','it_settlement_done','coupon_issued'];
+  const cfgE = cfg ? cfg.events : {};
+  const events = {}; order.forEach(k=>{ events[k] = cfgE[k] || DEFAULT_EVENTS[k]; });
+  const deptLabel=k=>{ if(cfg && cfg.events[k]){ const arr=cfg.events[k].depts||(cfg.events[k].dept?[cfg.events[k].dept]:[]); return arr.map(dk=>{ const d=cfg.depts&&cfg.depts[dk]; return d?d.label:dk; }).join(' / ')||'-'; } return DEFAULT_EVENTS[k]?DEFAULT_EVENTS[k].dept:''; };
+  const cards=order.filter(k=>events[k]).map(k=>{
+    const ev=events[k]; const ch=ev.channels||{email:true,chat:false,line:false};
+    const T=tplEffective(k); TPLW[k]={subject:T.subject,body:T.body,msg:T.msg};
+    const badge=(on,cls,ic,lb)=>`<span class="badge-ch ${on?cls:'off'}"><i class="${cls==='line'?'fab':'fas'} ${ic}"></i>${lb}${on?'':' (ปิด)'}</span>`;
+    const chatShown = ch.chat||ch.line;
+    return `<div class="tcard">
+      <div class="tc-hd">
+        <span class="tc-nm">${esc(ev.label)}</span>
+        <span class="tc-key">${k}</span>
+        ${badge(ch.email,'mail','fa-envelope','Email')}
+        ${badge(ch.chat,'chat','fa-comments','Team Chat')}
+        ${badge(ch.line,'line','fa-line','LINE')}
+      </div>
+      <div class="tc-body">
+        <div class="tc-blk">
+          <div class="b-lbl mail"><i class="fas fa-envelope"></i>เทมเพลตอีเมล</div>
+          <input class="tpl-in" value="${esc(T.subject).replace(/"/g,'&quot;')}" oninput="tplEdit('${k}','subject',this.value)" placeholder="หัวข้ออีเมล">
+          <textarea class="tpl-ta" rows="4" oninput="tplEdit('${k}','body',this.value)" placeholder="เนื้อหาอีเมล">${esc(T.body)}</textarea>
+          <div class="tpl-prev" id="prev_body_${k}">${tok(T.body)}</div>
+          <div class="tc-to">ถึง: ทีม ${esc(deptLabel(k))}</div>
+        </div>
+        <div class="tc-blk">
+          <div class="b-lbl chat"><i class="fas fa-comments"></i>เทมเพลต Chat / LINE</div>
+          <textarea class="tpl-ta" rows="4" oninput="tplEdit('${k}','msg',this.value)" placeholder="ข้อความแชท">${esc(T.msg)}</textarea>
+          <div class="tpl-prev" id="prev_msg_${k}">${tok(T.msg)}</div>
+          <div class="tc-to">${chatShown?('@mention ทีม '+esc(deptLabel(k))):'— ช่องแชท/LINE ปิดอยู่ —'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('tplWrap').innerHTML = `
+    <div class="tpl-head"><i class="fas fa-file-lines"></i>เทมเพลตแจ้งเตือนทุกระบบงาน</div>
+    <div class="tpl-sub">แก้ข้อความได้เอง · <span class="mono">{…}</span> คือตัวแปรที่ระบบเติมค่าจริงตอนส่ง · ช่องทาง/แผนกตามที่ตั้งไว้ในหน้า “การแจ้งเตือน”</div>
+    <div class="legend"><div class="l-lbl">ตัวแปรที่ใช้ได้ (คลิกเพื่อคัดลอก)</div><div class="toks">${TOKENS.map(t=>`<span class="tok" onclick="copyTok('${t}')" title="คลิกเพื่อคัดลอก">${t}</span>`).join('')}</div></div>
+    ${cards}
+    <div class="tpl-savebar"><button class="btn-reset-tpl" onclick="resetTpl()"><i class="fas fa-rotate-left me-1"></i>คืนค่าเริ่มต้น</button><button class="btn-save-tpl" onclick="saveTpl()"><i class="fas fa-check me-1"></i>บันทึกเทมเพลต</button></div>`;
+}
+function copyTok(t){ navigator.clipboard&&navigator.clipboard.writeText(t); }
+
+renderSide(); buildPanes();
+go(localStorage.getItem('pc_settings_tab')||'report');
+</script>
+</body>
+</html>

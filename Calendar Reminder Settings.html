@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าแจ้งเตือนเข้าปฏิทิน — Outlook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:96px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:#2e934a; color:#fff; padding:15px 20px; display:flex; align-items:center; gap:13px; position:sticky; top:0; z-index:20; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.3px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .ms{ margin-left:auto; font-size:.78rem; opacity:.8; }
+  .wrap{ max-width:760px; margin:0 auto; padding:22px 18px 0; }
+
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); padding:18px 20px; margin-bottom:16px; }
+  .card h2{ font-size:1.02rem; font-weight:700; margin:0 0 4px; display:flex; align-items:center; gap:9px; }
+  .card h2 i{ color:var(--pc-green); }
+  .card .sub{ color:#8a9099; font-size:.85rem; margin:0 0 14px; line-height:1.5; }
+  .intro{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:13px 17px; font-size:.88rem; color:#5a616b; line-height:1.55; margin-bottom:16px; display:flex; gap:11px; align-items:flex-start; }
+  .intro i{ color:var(--blue); font-size:1.1rem; margin-top:2px; }
+  .intro b{ color:var(--pc-black); }
+
+  .row{ display:flex; align-items:center; gap:13px; }
+  .grow{ flex:1; }
+  .ttl{ font-weight:600; font-size:.96rem; }
+  .desc{ font-size:.8rem; color:#8a9099; margin-top:2px; line-height:1.4; }
+
+  .sw{ position:relative; width:46px; height:27px; flex:none; cursor:pointer; }
+  .sw input{ position:absolute; opacity:0; width:0; height:0; }
+  .sw .tr{ position:absolute; inset:0; background:#cfd5db; border-radius:999px; transition:.15s; }
+  .sw .kn{ position:absolute; top:3px; left:3px; width:21px; height:21px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .sw input:checked ~ .tr{ background:var(--pc-green); }
+  .sw input:checked ~ .kn{ transform:translateX(19px); }
+
+  .method{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:560px){ .method{ grid-template-columns:1fr; } }
+  .mopt{ border:2px solid #dde2e7; border-radius:14px; padding:14px 15px; cursor:pointer; transition:.12s; }
+  .mopt:hover{ border-color:#b6bcc4; }
+  .mopt.on{ border-color:var(--pc-green); background:#f3fbf6; }
+  .mopt .mh{ display:flex; align-items:center; gap:9px; font-weight:700; font-size:.96rem; }
+  .mopt .mh .ic{ width:32px; height:32px; border-radius:9px; background:#eef1f4; color:#5a616b; display:flex; align-items:center; justify-content:center; }
+  .mopt.on .mh .ic{ background:var(--pc-green); color:#fff; }
+  .mopt .md{ font-size:.8rem; color:#6b7280; margin-top:8px; line-height:1.45; }
+  .tagok{ font-size:.7rem; font-weight:700; border-radius:6px; padding:2px 8px; }
+  .tagok.any{ background:#eafaf1; color:#1d7a4d; } .tagok.corp{ background:#eaf4ee; color:#9a6700; }
+
+  .m365{ margin-top:14px; border:1px solid #e7eaee; border-radius:12px; padding:13px 15px; background:#fafbfc; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .m365 .st{ font-size:.82rem; font-weight:700; border-radius:8px; padding:5px 11px; }
+  .m365 .st.no{ background:#fdecec; color:#c0392b; } .m365 .st.yes{ background:#eafaf1; color:#1d7a4d; }
+  .inp{ border:1.5px solid #dde2e7; border-radius:10px; padding:9px 12px; font-family:inherit; font-size:.9rem; }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .btn{ border:0; border-radius:10px; font-family:inherit; font-weight:700; font-size:.86rem; padding:9px 15px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .btn-d{ background:var(--pc-black); color:#fff; } .btn-o{ background:#fff; border:1.5px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-g{ background:var(--pc-green); color:#fff; }
+
+  .evrow{ display:flex; align-items:center; gap:13px; padding:11px 0; border-top:1px solid #f1f4f7; }
+  .evrow:first-child{ border-top:0; }
+  .evrow .eic{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex:none; color:#fff; }
+  .evrow .es{ font-size:.78rem; color:#8a9099; margin-top:2px; }
+
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ border:1.5px solid #dde2e7; background:#fff; color:#5a616b; border-radius:999px; padding:7px 14px; font-family:inherit; font-weight:600; font-size:.86rem; cursor:pointer; }
+  .chip:hover{ border-color:#b6bcc4; }
+  .chip.on{ background:var(--pc-green); color:#fff; border-color:var(--pc-green); }
+  .timefld{ display:flex; align-items:center; gap:11px; margin-top:14px; }
+
+  .testbox{ background:#f6f8fa; border:1px solid #e7eaee; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .testbox .t{ flex:1; min-width:200px; font-size:.86rem; color:#5a616b; line-height:1.45; }
+
+  .ccol{ flex:none; }
+  .ccol input{ width:34px; height:30px; border:1.5px solid #dde2e7; border-radius:8px; padding:2px; background:#fff; cursor:pointer; }
+  .savebar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:13px 18px; box-shadow:0 -4px 20px rgba(0,0,0,.06); z-index:30; }
+  .savebar .inner{ max-width:760px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .btn-save{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:12px 24px; font-weight:700; font-size:1rem; cursor:pointer; }
+  /* savebar: strip removed — float just the button */
+  .savebar{ background:transparent!important; border-top:none!important; box-shadow:none!important; padding:0!important; pointer-events:none!important; }
+  .savebar .inner{ justify-content:flex-end!important; pointer-events:none!important; }
+  .savebar .inner > div{ display:none!important; }
+  .savebar .btn-save{ pointer-events:auto!important; margin:14px 18px!important; box-shadow:0 6px 20px rgba(0,0,0,.22)!important; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:26px; }
+  .dim{ opacity:.45; pointer-events:none; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><i class="fas fa-calendar-check"></i>แจ้งเตือนเข้าปฏิทิน</h1>
+  </div>
+
+  <div class="wrap">
+    <div class="intro"><i class="fas fa-circle-info"></i><div><b>ICS (.ics)</b> ใช้ได้กับ <b>ทุกอีเมล/ทุกปฏิทิน</b> (Outlook · Google Calendar · Apple) · เชื่อม <b>อัตโนมัติ</b>ได้กับ <b>Microsoft 365 (Outlook)</b> หรือ <b>Google Workspace (Gmail)</b> — ลง event ให้เองในปฏิทินพนักงาน เฉพาะ<b>อีเมลบริษัท</b> (ต้องให้ IT เชื่อมก่อน)</div></div>
+
+    <div class="card">
+      <div class="row"><div class="grow"><div class="ttl">เปิดแจ้งเตือนเข้าปฏิทิน</div><div class="desc">ส่งวันสำคัญของโปรโมชัน/โค้ด เข้าปฏิทินพร้อมตั้งเตือนล่วงหน้า</div></div>
+        <label class="sw"><input type="checkbox" id="enabled" onchange="ST.enabled=this.checked;saveTmp();render()"><span class="tr"></span><span class="kn"></span></label>
+      </div>
+    </div>
+
+    <div id="body"></div>
+
+    <div class="demo-note">— ตั้งค่ามีผลจริง (บันทึก + ซิงค์ทุกเครื่อง: pc_calendar_settings) · เหตุการณ์ที่เปิดจะมีปุ่ม "เพิ่มเข้าปฏิทิน (.ics)" ในการแจ้งเตือน (กระดิ่ง) พร้อมเตือนล่วงหน้าตามที่ตั้ง —</div>
+  </div>
+
+  <div class="savebar"><div class="inner">
+    <div style="font-size:.84rem;color:#6b7280"><i class="fas fa-circle-info me-1" style="color:#aab0b8"></i> เปลี่ยนค่าแล้วกดบันทึก</div>
+    <button class="btn-save" onclick="save()"><i class="fas fa-check me-1"></i>บันทึกการตั้งค่า</button>
+  </div></div>
+
+<script>
+const KEY='pc_calendar_settings';
+const EVENTS=[
+  {k:'promo_start', label:'โปรโมชันเริ่ม',            icon:'fa-play',            color:'#2e934a', sample:'โปร “Rainy Day Cheese Fries” เริ่มขายวันนี้'},
+  {k:'promo_end',   label:'โปรโมชันหมดเขต',          icon:'fa-flag-checkered',  color:'#c0392b', sample:'โปร “Cheese Lover Combo” หมดเขต · นำปุ่มออกจาก POS'},
+  {k:'promo_change',label:'โปรเปลี่ยนแปลง (ขยาย/ลด/ยกเลิก)', icon:'fa-calendar-plus', color:'#2f7fb3', sample:'โปร “Mega Monday” ขยายเวลาถึง 15 ก.ค.'},
+  {k:'code_expire', label:'โค้ดหมดอายุ (ProExpire)', icon:'fa-hourglass-end',   color:'#c9870a', sample:'โค้ดชุด PAYDAY · ProExpire 31 ธ.ค. 2026'},
+  {k:'code_start',  label:'วันเริ่มใช้โค้ด',          icon:'fa-calendar-day',    color:'#2f5fb3', sample:'โค้ด “Payday Voucher” เริ่มใช้ได้'},
+  {k:'npd_launch',  label:'สินค้าใหม่ (NPD) เปิดตัว',  icon:'fa-flask',           color:'#0f766e', sample:'“Truffle Fries” เปิดตัว · เริ่มขาย'},
+  {k:'rd_due',      label:'งานสติ๊กเกอร์/อุปกรณ์ครบกำหนด', icon:'fa-receipt', color:'#b03048', sample:'เปิดสาขา “Central Salaya” · ลงเลขสติ๊กเกอร์'},
+  {k:'settle_due',  label:'กำหนดปิดงาน Settlement', icon:'fa-check-double', color:'#9a6700', sample:'ปิดงานตั้งค่าโปร POS เดือน มิ.ย.'},
+  {k:'member_expire',label:'บัตรสมาชิกหมดอายุ', icon:'fa-id-card', color:'#7a3aa8', sample:'บัตร Gold ชุด PCG · หมดอายุ 31 ธ.ค. 2026'},
+  {k:'ticket_sla',  label:'Ticket ด่วน / ครบ SLA',   icon:'fa-bolt',            color:'#c0392b', sample:'Ticket BVT-1006 ครบกำหนด SLA 4 ชม.'},
+];
+const LEADS=[{v:7,l:'7 วัน'},{v:3,l:'3 วัน'},{v:1,l:'1 วัน'},{v:0,l:'วันนั้น'}];
+const DEFAULT={ enabled:true, method:'ics', corpDomain:'potatocornerth.com', connected:{m365:false,google:false},
+  events:{ promo_start:true, promo_end:true, promo_change:true, code_expire:true, code_start:false, npd_launch:false, rd_due:false, settle_due:false, member_expire:false, ticket_sla:false }, colors:{}, leads:[3,1], time:'09:00' };
+const PROVIDERS={ m365:{name:'Microsoft 365', icon:'fab fa-microsoft', scope:'Calendars.ReadWrite'}, google:{name:'Google Workspace', icon:'fab fa-google', scope:'calendar.events'} };
+function load(){ let m; try{ const s=JSON.parse(localStorage.getItem(KEY)); m=(s&&s.events)?Object.assign(JSON.parse(JSON.stringify(DEFAULT)),s):JSON.parse(JSON.stringify(DEFAULT)); }catch(e){ m=JSON.parse(JSON.stringify(DEFAULT)); }
+  m.colors=m.colors||{}; m.connected=m.connected||{m365:false,google:false}; EVENTS.forEach(e=>{ if(!m.colors[e.k]) m.colors[e.k]=e.color; }); return m; }
+let ST=load();
+function saveTmp(){}
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function render(){
+  document.getElementById('enabled').checked=ST.enabled;
+  const body=document.getElementById('body');
+  body.className=ST.enabled?'':'dim';
+  body.innerHTML=`
+    <div class="card">
+      <h2><i class="fas fa-paper-plane"></i>วิธีส่งเข้าปฏิทิน</h2>
+      <div class="method">
+        <div class="mopt ${ST.method==='ics'?'on':''}" onclick="setMethod('ics')">
+          <div class="mh"><span class="ic"><i class="fas fa-file-arrow-down"></i></span>ไฟล์ ICS (.ics) <span class="tagok any" style="margin-left:auto">ทุกอีเมล</span></div>
+          <div class="md">โหลด/แนบไฟล์ → กดเปิดเข้า Outlook · Google Calendar · Apple พร้อมเตือนล่วงหน้า · ไม่ต้องเชื่อมระบบ</div>
+        </div>
+        <div class="mopt ${ST.method==='m365'?'on':''}" onclick="setMethod('m365')">
+          <div class="mh"><span class="ic"><i class="fab fa-microsoft"></i></span>Microsoft 365 <span class="tagok corp" style="margin-left:auto">เมลบริษัท</span></div>
+          <div class="md">ลง event ในปฏิทิน Outlook พนักงานอัตโนมัติ · เชื่อม Graph API</div>
+        </div>
+        <div class="mopt ${ST.method==='google'?'on':''}" onclick="setMethod('google')">
+          <div class="mh"><span class="ic"><i class="fab fa-google"></i></span>Google Workspace <span class="tagok corp" style="margin-left:auto">เมลบริษัท</span></div>
+          <div class="md">ลง event ใน Google Calendar (Gmail บริษัท) อัตโนมัติ · เชื่อม Calendar API</div>
+        </div>
+      </div>
+      ${(ST.method==='m365'||ST.method==='google')?`<div class="m365">
+        <span class="st ${ST.connected[ST.method]?'yes':'no'}"><i class="fas ${ST.connected[ST.method]?'fa-circle-check':'fa-plug-circle-xmark'} me-1"></i>${ST.connected[ST.method]?'เชื่อมต่อแล้ว':'ยังไม่เชื่อมต่อ'}</span>
+        <span style="font-size:.84rem;color:#5a616b">โดเมนบริษัท</span>
+        <input class="inp mono" style="width:200px" value="${esc(ST.corpDomain)}" oninput="ST.corpDomain=this.value">
+        <button class="btn ${ST.connected[ST.method]?'btn-o':'btn-d'}" style="margin-left:auto" onclick="toggleConn()"><i class="${PROVIDERS[ST.method].icon}"></i>${ST.connected[ST.method]?'ตัดการเชื่อมต่อ':'เชื่อม '+PROVIDERS[ST.method].name}</button>
+      </div>`:''}
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-list-check"></i>เหตุการณ์ที่จะลงปฏิทิน</h2>
+      <p class="sub">เลือกว่าอะไรบ้างที่จะถูกสร้างเป็นนัดในปฏิทิน (ดึงวันจากข้อมูลโปรโมชัน/โค้ด/Ticket อัตโนมัติ)</p>
+      ${EVENTS.map(e=>`<div class="evrow">
+        <span class="eic" style="background:${ST.colors[e.k]||e.color}"><i class="fas ${e.icon}"></i></span>
+        <div class="grow"><div class="ttl">${esc(e.label)}</div><div class="es"><i class="fas fa-calendar me-1"></i>ตัวอย่าง: ${esc(e.sample)}</div></div>
+        <label class="ccol" title="สีในปฏิทิน"><input type="color" value="${ST.colors[e.k]||e.color}" oninput="ST.colors['${e.k}']=this.value;render()"></label>
+        <label class="sw"><input type="checkbox" ${ST.events[e.k]?'checked':''} onchange="ST.events['${e.k}']=this.checked"><span class="tr"></span><span class="kn"></span></label>
+      </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-bell"></i>เตือนล่วงหน้า</h2>
+      <p class="sub">ตั้งให้ปฏิทินเด้งเตือนก่อนถึงวัน (เลือกได้หลายช่วง)</p>
+      <div class="chips">${LEADS.map(l=>`<button class="chip ${ST.leads.includes(l.v)?'on':''}" onclick="toggleLead(${l.v})">${l.v>0?'ก่อน ':''}${l.l}</button>`).join('')}${ST.leads.filter(v=>!LEADS.some(l=>l.v===v)).map(v=>`<button class="chip on" onclick="toggleLead(${v})">ก่อน ${v} วัน <i class="fas fa-xmark"></i></button>`).join('')}<span class="chip" style="cursor:default;border-style:dashed;color:#8a9099;display:inline-flex;align-items:center;gap:6px">+ กำหนดเอง <input id="leadCustom" type="number" min="1" max="90" style="width:50px;border:0;border-bottom:1.5px solid #cfd5db;font-family:inherit;font-size:.86rem;text-align:center;outline:none;background:transparent" placeholder="วัน" onkeydown="if(event.key==='Enter')addCustomLead()"> <i class="fas fa-plus" style="cursor:pointer;color:#2e934a" onclick="addCustomLead()"></i></span></div>
+      <div class="timefld"><span style="font-size:.9rem;font-weight:600">เวลาที่เตือน</span><input class="inp" type="time" value="${esc(ST.time)}" oninput="ST.time=this.value"><span style="font-size:.82rem;color:#8a9099">น. (ของวันที่เตือน)</span></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-flask"></i>ทดสอบ</h2>
+      <div class="testbox">
+        <div class="t">ลองสร้างนัด “โค้ดหมดอายุ” — เปิดด้วย Outlook (.ics) หรือเพิ่มเข้า Google Calendar ได้เลย</div>
+        <button class="btn btn-o" onclick="downloadICS()"><i class="fas fa-download"></i>โหลด .ics (Outlook/Apple)</button>
+        <button class="btn btn-o" onclick="openGoogle()"><i class="fab fa-google"></i>เพิ่มเข้า Google Calendar</button>
+      </div>
+    </div>`;
+}
+function setMethod(m){ ST.method=m; render(); }
+function toggleConn(){ const p=ST.method; if(ST.connected[p]){ ST.connected[p]=false; render(); return; }
+  Swal.fire({ title:'เชื่อม '+PROVIDERS[p].name, html:`<div style="text-align:left;font-size:14px">ระบบจะขอสิทธิ์ <b class="mono">${PROVIDERS[p].scope}</b> ของโดเมน <b>${esc(ST.corpDomain)}</b><br><span style="color:#8a9099;font-size:13px">(ตัวอย่าง — ของจริงต้องให้ IT/Admin อนุมัติ)</span></div>`, icon:'info', showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'อนุมัติ + เชื่อม', cancelButtonText:'ยกเลิก' })
+    .then(r=>{ if(r.isConfirmed){ ST.connected[p]=true; render(); Swal.fire({icon:'success',title:'เชื่อม '+PROVIDERS[p].name+' แล้ว',timer:1400,showConfirmButton:false}); } }); }
+function toggleLead(v){ const i=ST.leads.indexOf(v); if(i>=0) ST.leads.splice(i,1); else ST.leads.push(v); ST.leads.sort((a,b)=>b-a); render(); }
+function addCustomLead(){ const el=document.getElementById('leadCustom'); const v=parseInt(el&&el.value,10); if(!v||v<1) return; if(!ST.leads.includes(v)){ ST.leads.push(v); ST.leads.sort((a,b)=>b-a); } render(); }
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function icsDate(d){ return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z'; }
+function buildICS(ev){
+  const start=new Date(ev.date+'T'+(ev.time||'09:00')+':00');
+  const end=new Date(start.getTime()+30*60000);
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Potato Corner//Promotion//TH','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    'UID:pc-'+Date.now()+'@promo','DTSTAMP:'+icsDate(new Date()),'DTSTART:'+icsDate(start),'DTEND:'+icsDate(end),
+    'SUMMARY:'+ev.title,'DESCRIPTION:'+String(ev.desc||'').replace(/\n/g,'\\n')];
+  (ev.leads||[]).filter(x=>x>0).forEach(d=>{ lines.push('BEGIN:VALARM','TRIGGER:-P'+d+'D','ACTION:DISPLAY','DESCRIPTION:'+ev.title,'END:VALARM'); });
+  lines.push('END:VEVENT','END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function openGoogle(){
+  const text=encodeURIComponent('[Potato Corner] โค้ด Cheese Lover Combo หมดอายุ');
+  const det=encodeURIComponent('โค้ดชุด CLC10001x · ProExpire 2026-10-01 · เตรียมนำปุ่มออกจาก POS');
+  window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text='+text+'&dates=20261001T020000Z/20261001T023000Z&details='+det,'_blank');
+}
+function downloadICS(){
+  const ics=buildICS({ title:'[Potato Corner] โค้ด “Cheese Lover Combo” หมดอายุ', date:'2026-10-01', time:ST.time||'09:00', leads:ST.leads,
+    desc:'โค้ดชุด CLC10001x · ProExpire 2026-10-01\\nเตรียมนำปุ่มออกจาก POS และแจ้งทีมการตลาด/RD' });
+  const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='promo-reminder.ics'; document.body.appendChild(a); a.click(); a.remove();
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(ST));
+  const onEv=EVENTS.filter(e=>ST.events[e.k]).length;
+  Swal.fire({ icon:'success', title:'บันทึกแล้ว', html:`วิธี: <b>${ST.method==='ics'?'ICS (.ics)':'Microsoft 365'}</b> · ${onEv} เหตุการณ์ · เตือน ${ST.leads.length} ช่วง`, confirmButtonColor:'#2e934a' }); }
+
+render();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

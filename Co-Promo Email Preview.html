@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตัวอย่างอีเมลแจ้งเตือน (ธีมสีบริษัท Rocks)</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e7ebef;font-family:'Kanit',sans-serif;color:#1a1d20}
+.top{background:#eb2c39;color:#fff;padding:20px 26px}
+.top h1{margin:0;font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.3rem}
+.top .s{opacity:.9;font-size:.85rem;margin-top:3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:24px;max-width:1320px;margin:0 auto}
+.col h2{font-family:'Montserrat',sans-serif;font-size:.9rem;letter-spacing:.5px;text-transform:uppercase;color:#c81e29;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.chatbox{background:#fff;border:1px solid #dfe4e9;border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:.9rem;line-height:1.55;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.chatbox .tag{display:inline-block;background:#fdeaec;color:#c81e29;font-weight:700;font-size:.72rem;border-radius:20px;padding:3px 11px;margin-bottom:8px}
+.frame{border:1px solid #dfe4e9;border-radius:12px;overflow:hidden;background:#fff}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><h1>ตัวอย่างอีเมลแจ้งเตือน — ธีมสีบริษัท Rocks (#eb2c39)</h1><div class="s">ทุกอีเมลแจ้งเตือนในระบบใช้ header สีแดง Rocks · ตัวอักษรขาว · Team Chat = ข้อความสั้น</div></div>
+<div class="grid">
+  <div class="col">
+    <h2>① MKT แจ้ง Co-Promotion → ACC/IT</h2>
+    <div class="chatbox"><div class="tag">💬 Team Chat (สั้น)</div><div id="chat1"></div></div>
+    <div class="frame" id="mail1"></div>
+  </div>
+  <div class="col">
+    <h2>② IT ยืนยัน Interface ERP → ลูปเดิม</h2>
+    <div class="chatbox"><div class="tag">💬 Team Chat (สั้น)</div><div id="chat2"></div></div>
+    <div class="frame" id="mail2"></div>
+  </div>
+  <div class="col">
+    <h2>③ ขยาย/ต่ออายุโปรโมชั่น</h2>
+    <div class="frame" id="mail3"></div>
+  </div>
+  <div class="col">
+    <h2>④ ลดระยะเวลาโปรโมชั่น</h2>
+    <div class="frame" id="mail4"></div>
+  </div>
+  <div class="col">
+    <h2>⑤ ยกเลิกโปรโมชั่น</h2>
+    <div class="frame" id="mail5"></div>
+  </div>
+</div>
+<script src="js/email-templates.js"></script>
+<script>
+var co={ code:'BD105 / 1073311', name:'Samsung ส่วนลดแทนเงินสด 15 บาท', campaign:'Samsung Galaxy Payday', promoType:'Bill Discount', brand:'Samsung Galaxy', billing:'บริษัท ไทยซัมซุง อิเลคโทรนิคส์ จำกัด', payment:'Advance', cond:'วางบิลทุกสิ้นเดือน · เครดิต 30 วัน', priceInc:'16.05', priceExc:'15.0000', so:'SO-2026-0421', quota:'5,000', period:'2026-07-01 → 2026-07-31', detail:'ลูกค้าที่ซื้อ Samsung Galaxy รับส่วนลดแทนเงินสด 15 บาท ที่ Potato Corner ทุกสาขา', remark:'เรียกเก็บ Samsung รายเดือนตาม SO', by:'Wanvisa (IT)' };
+var pc={ campaign:'Cheese Avalanche Combo', type:'Price Promotion', by:'Wanvisa (MKT)', when:'21 ก.ค. 2026', oldEnd:'2026-07-31', newEnd:'2026-08-31', reason:'ยอดขายดี ต่ออายุตามคำขอทีมขาย' };
+document.getElementById('chat1').textContent='Co-Promotion ใหม่: BD105 · Samsung ส่วนลดแทนเงินสด 15 บาท · Brand Samsung Galaxy · เรียกเก็บ บ.ไทยซัมซุงฯ — รอ IT เชื่อม ERP';
+document.getElementById('chat2').textContent='Interface ERP เสร็จ: BD105 · Samsung ส่วนลดแทนเงินสด 15 บาท — ACC ตั้งค่าเรียกเก็บได้ · โดย Wanvisa (IT)';
+document.getElementById('mail1').innerHTML=PC_EmailTpl.build('copro','copro_submitted',co);
+document.getElementById('mail2').innerHTML=PC_EmailTpl.build('copro','copro_interfaced',co);
+document.getElementById('mail3').innerHTML=PC_EmailTpl.build('promo_change','EXTENDED',pc);
+document.getElementById('mail4').innerHTML=PC_EmailTpl.build('promo_change','REDUCED',Object.assign({},pc,{oldEnd:'2026-08-31',newEnd:'2026-07-20',reason:'ปรับตามงบส่งเสริมการขาย'}));
+document.getElementById('mail5').innerHTML=PC_EmailTpl.build('promo_change','CANCELLED',Object.assign({},pc,{reason:'ยกเลิกตามนโยบายบริษัท'}));
+</script>
+</body>
+</html>

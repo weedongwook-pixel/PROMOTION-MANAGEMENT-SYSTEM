@@ -1,0 +1,1825 @@
+<style>
+  .it-scope .it-tab { background:none; border:none; border-bottom:3px solid transparent; padding:10px 4px; margin-bottom:-2px; font-weight:700; font-size:.92rem; color:#7a7a7a; cursor:pointer; white-space:nowrap; transition:color .15s, border-color .15s; }
+  .it-scope .it-tab:hover { color:#2e934a; }
+  .it-scope .it-tab.active { color:#2e934a; border-bottom-color:#2e934a; }
+  .it-scope .ring-active { outline: 3px solid #1a1d20; outline-offset: 0; }
+  .it-scope .ring-active::after { content: "▼ กำลังกรอง"; position: absolute; top: 6px; right: 10px; font-size: .55rem; font-weight: 700; color: #1a1d20; }
+  .it-scope .progress { background: #e9ecef; }
+</style>
+
+<div class="p-4 it-scope" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div class="d-flex justify-content-between align-items-center mb-3 px-1 pt-1 pb-2">
+    <div>
+      <h3 class="fw-bold m-0" style="font-family:'Montserrat',sans-serif; font-size:1.8rem; font-weight:800; letter-spacing:.2px; line-height:1.1; color:#1a1d20;"><i class="fas fa-check-double text-success me-2"></i>IT Settlement</h3>
+      <p class="m-0 fw-bold" style="font-size:.9rem; margin-top:4px; color:#8a9099;">ศูนย์รวมงานตั้งค่าโปรโมชั่นบน POS — ดึงงานค้างทุกเดือนมาเคลียร์ในที่เดียว</p>
+    </div>
+    <div id="itHeadStat" class="text-end"></div>
+  </div>
+
+  <!-- status tabs -->
+  <div class="it-tabbar d-flex gap-4 mb-3" id="itTabs" style="border-bottom:2px solid #e0e0e0; overflow-x:auto;">
+    <button class="it-tab" data-tab="NEW" onclick="window.itSetTab('NEW')"><i class="fas fa-circle-plus me-1"></i>New</button>
+    <button class="it-tab" data-tab="EDITED" onclick="window.itSetTab('EDITED')"><i class="fas fa-pen me-1"></i>Edited</button>
+    <button class="it-tab" data-tab="CHANGED" onclick="window.itSetTab('CHANGED')"><i class="fas fa-calendar-days me-1"></i>Extended / Reduced</button>
+    <button class="it-tab" data-tab="CANCELLED" onclick="window.itSetTab('CANCELLED')"><i class="fas fa-ban me-1"></i>Cancelled</button>
+    <button class="it-tab active" data-tab="ALL" onclick="window.itSetTab('ALL')"><i class="fas fa-list me-1"></i>All</button>
+    <button class="it-tab" data-tab="NPD" onclick="window.itSetTab('NPD')"><i class="fas fa-flask me-1"></i>สินค้าใหม่ (NPD)</button>
+    <button class="it-tab" data-tab="FLAVOR" onclick="window.itSetTab('FLAVOR')"><i class="fas fa-mortar-pestle me-1"></i>เพิ่มผงรสชาติ</button>
+    <button class="it-tab" data-tab="ABBR" onclick="window.itSetTab('ABBR')"><i class="fas fa-font me-1"></i>เปลี่ยนตัวย่อ <span id="itAbbrDot" class="badge bg-danger ms-1" style="display:none;font-size:.62rem">0</span></button>
+  </div>
+
+  <!-- filter toolbar — งานไหลเข้าอัตโนมัติ · month filter ชิดขวาสุด -->
+  <div id="itPromoToolbar" class="bg-white p-3 rounded-3 shadow-sm border mb-3 d-flex flex-wrap gap-3 align-items-center">
+    <div id="itResultInfo" class="fw-bold text-muted small"></div>
+    <div class="position-relative">
+      <i class="fas fa-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:.82rem"></i>
+      <input type="text" id="itCampSearch" class="form-control form-control-sm fw-bold" style="width:230px;padding-left:32px" placeholder="ค้นหาชื่อแคมเปญ / ชื่อปุ่ม / โค้ด..." oninput="window.itApplyFilters()">
+    </div>
+    <select id="itTypeFilter" class="form-select form-select-sm fw-bold" style="width:165px" onchange="window.itApplyFilters()" title="กรองตามประเภทงานที่มาจากฟอร์ม">
+      <option value="ALL">ทุกประเภทงาน</option>
+      <option value="ITEM SET">Item Set</option>
+      <option value="COUPON">Coupon</option>
+      <option value="BILL">Bill Discount</option>
+      <option value="VOUCHER">Voucher</option>
+    </select>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <label class="small fw-bold text-muted mb-0 text-nowrap"><i class="fas fa-filter me-1"></i>FILTER เดือน</label>
+      <input type="month" id="filterMonthIT" class="form-control fw-bold border-secondary" style="width: 168px;" onchange="window.loadITTasks()">
+      <label class="small fw-bold text-muted mb-0 text-nowrap"><i class="fas fa-calendar-day me-1"></i>วันที่</label>
+      <input type="date" id="filterDateIT" class="form-control fw-bold border-secondary" style="width: 160px;" onchange="window.loadITTasks()" title="กรองเฉพาะโปรที่ใช้งานอยู่ในวันที่เลือก (อยู่ในช่วงวันเริ่ม–สิ้นสุด) — ใช้ร่วมกับตัวกรองเดือนได้">
+      <select id="itDateMode" class="form-select fw-bold border-secondary" style="width:148px;" onchange="window.loadITTasks()" title="โหมดของตัวกรองวันที่"><option value="ACTIVE">ใช้งานวันที่เลือก</option><option value="START">วันที่เริ่ม</option><option value="END">วันที่สิ้นสุด</option></select>
+      <button type="button" id="itDateClear" class="btn btn-outline-secondary btn-sm" style="display:none" onclick="window.itClearDate()" title="ล้างวันที่"><i class="fas fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <div id="itLoading" class="text-center p-5" style="display:none;">
+    <div class="spinner-grow text-warning" role="status"></div>
+    <p class="mt-2 fw-bold text-muted">Loading...</p>
+  </div>
+
+  <div id="itEmpty" class="text-center p-5 bg-white rounded-3 shadow-sm border" style="display:none;">
+    <img src="assets/brand/mascot.png" alt="mascot" style="width:96px;height:96px;object-fit:contain;margin-bottom:14px;" class="d-inline-block">
+    <h5 class="fw-bold text-muted">ไม่มีงานค้างในมุมมองนี้</h5>
+    <p class="text-muted small">ทุกแคมเปญถูกตั้งค่าเรียบร้อยแล้ว 🎉</p>
+  </div>
+
+  <div id="campaignGroupContainer"></div>
+  <div id="itNpdTab" style="display:none;"></div>
+  <div id="itFlvTab" style="display:none;"></div>
+  <div id="itAbbrTab" style="display:none;"></div>
+</div>
+
+<datalist id="listCode"></datalist>
+<datalist id="listNameEN"></datalist>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+  var currentTasks = [];
+  var itTab = 'ALL';
+  var itemMasterMap = {};
+
+  function itClassify(t) {
+    if (t.rejectReason && String(t.rejectReason).trim()) return 'EDITED';
+    const chg = String(t.changeStatus || '').toUpperCase();
+    if (chg === 'CANCELLED') return 'CANCELLED';
+    if (chg === 'EXTENDED' || chg === 'REDUCED') return 'CHANGED';
+    return 'NEW';
+  }
+  /* ค้นหาชื่อแคมเปญ + กรองประเภทงาน — re-render จากชุด task เต็มที่ cache ไว้ (toolbar ไม่ถูก re-render จึงไม่เสีย focus) */
+  window.itApplyFilters = function () { try { window.renderGroupedTasks(window.__itAllTasks || []); } catch (e) {} };
+  window.itSetTab = function (tab) {
+    itTab = tab;
+    document.querySelectorAll('#itTabs .it-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tab));
+    var isNpd = tab === 'NPD', isFlv = tab === 'FLAVOR', isAbbr = tab === 'ABBR', special = isNpd || isFlv || isAbbr;
+    var tb = document.getElementById('itPromoToolbar'); if (tb) tb.style.display = special ? 'none' : '';
+    var cg = document.getElementById('campaignGroupContainer'); if (cg) cg.style.display = special ? 'none' : '';
+    var ne = document.getElementById('itEmpty'); if (ne && special) ne.style.display = 'none';
+    var npdBox = document.getElementById('itNpdTab'); if (npdBox) npdBox.style.display = isNpd ? 'block' : 'none';
+    var flvBox = document.getElementById('itFlvTab'); if (flvBox) flvBox.style.display = isFlv ? 'block' : 'none';
+    var abBox = document.getElementById('itAbbrTab'); if (abBox) abBox.style.display = isAbbr ? 'block' : 'none';
+    if (isNpd) { window.loadItNpd(); return; }
+    if (isFlv) { window.loadItFlv(); return; }
+    if (isAbbr) { window.renderItAbbr(); return; }
+    if (currentTasks && currentTasks.length) window.renderGroupedTasks(currentTasks);
+    else window.loadITTasks();
+  };
+
+  /* ===== คิวคำขอเปลี่ยนตัวย่อ (RD ยื่น → IT ยืนยัน) ===== */
+  window.renderItAbbr = function () {
+    var box = document.getElementById('itAbbrTab'); if (!box) return;
+    if (!window.PC_Abbr || !window.PC_Abbr.reqList) { box.innerHTML = '<div class="alert alert-warning">โมดูลเปลี่ยนตัวย่อยังไม่โหลด</div>'; return; }
+    var all = window.PC_Abbr.reqList();
+    var pend = all.filter(function (r) { return String(r.status).toUpperCase() === 'PENDING'; });
+    var dot = document.getElementById('itAbbrDot');
+    if (dot) { dot.textContent = pend.length; dot.style.display = pend.length ? '' : 'none'; }
+    if (!all.length) { box.innerHTML = '<div class="text-center p-5 bg-white rounded-3 shadow-sm border"><i class="fas fa-font fa-2x text-muted mb-2 d-block"></i><span class="fw-bold text-muted">ยังไม่มีคำขอเปลี่ยนตัวย่อ</span></div>'; return; }
+    var card = function (r) {
+      var st = String(r.status).toUpperCase();
+      var stB = st === 'PENDING' ? '<span class="badge bg-warning text-dark">รอยืนยัน</span>'
+        : st === 'DONE' ? '<span class="badge bg-success">เปลี่ยนแล้ว</span>' : '<span class="badge bg-danger">ตีกลับ</span>';
+      var c = r.counts || {};
+      var mergeable = (st === 'PENDING') ? all.filter(function (x) { return x.id !== r.id && String(x.status).toUpperCase() === 'PENDING' && String(x.newA).toUpperCase() === String(r.newA).toUpperCase(); }) : [];
+      return '<div class="card mb-3 border-0 shadow-sm" style="border-radius:13px;overflow:hidden">' +
+        '<div class="card-header bg-dark text-white py-3 px-4 d-flex align-items-center gap-3 flex-wrap">' +
+          '<span class="fw-bold" style="font-family:JetBrains Mono,monospace;color:#ffc107">' + itEsc(r.id) + '</span>' +
+          '<span class="fw-bold" style="font-family:JetBrains Mono,monospace;font-size:1.05rem">' + itEsc(((window.PC_Abbr && PC_Abbr.reqOlds) ? PC_Abbr.reqOlds(r) : [r.oldA]).join(' + ')) + ' <i class="fas fa-arrow-right mx-1" style="font-size:.8rem;opacity:.6"></i> ' + itEsc(r.newA) + '</span>' +
+          ((r.mergedFrom || []).length ? '<span class="badge" style="background:#eef4ff;color:#1b4b8f;border:1px solid #b9cdf0">ยุบรวม ' + ((r.mergedFrom || []).length + 1) + ' คำขอ</span>' : '') +
+          '<span class="small opacity-75 flex-grow-1">ยื่นโดย ' + itEsc(r.by || '-') + ' · ' + itEsc(String(r.at).slice(0, 10)) + '</span>' + stB + '</div>' +
+        '<div class="p-4">' +
+          (r.reason ? '<div class="small mb-2"><b>เหตุผล:</b> ' + itEsc(r.reason) + '</div>' : '') +
+          '<div class="d-flex gap-2 flex-wrap mb-3">' +
+            '<span class="badge bg-light text-dark border">ชุดผง ' + (c.subsets || 0) + '</span>' +
+            '<span class="badge bg-light text-dark border">ชื่อสินค้า ' + (c.items || 0) + '</span>' +
+            '<span class="badge bg-light text-dark border">ชื่อครัวปุ่มโปร ' + (c.kitchen || 0) + '</span>' +
+            (r.withShortName ? '<span class="badge bg-light text-dark border">ชื่อปุ่ม ' + (c.shortName || 0) + '</span>' : '') +
+            (c.rowItems ? '<span class="badge" style="background:#eef4ff;color:#1b4b8f;border:1px solid #b9cdf0">ชื่อสินค้าในงานที่ยังไม่ปิด ' + c.rowItems + '</span>' : '') +
+            (c.newProducts ? '<span class="badge bg-light text-dark border">สินค้าที่ IT สร้างไว้ ' + c.newProducts + '</span>' : '') +
+            '<span class="badge bg-primary">รวม ' + (c.total || 0) + ' รายการ</span>' +
+            (r.includeLive ? '<span class="badge" style="background:#fff4e5;color:#8a5a00;border:1px solid #e0a800">เปลี่ยนโปรที่ขึ้น POS แล้วด้วย</span>' : '<span class="badge bg-light text-dark border">เฉพาะของใหม่</span>') +
+          '</div>' +
+          ((r.warnings || []).length ? '<div class="alert alert-warning py-2 px-3 small mb-3">' + r.warnings.map(itEsc).join('<br>') + '</div>' : '') +
+          (r.rejectNote ? '<div class="alert alert-danger py-2 px-3 small mb-3">เหตุผลตีกลับ: ' + itEsc(r.rejectNote) + '</div>' : '') +
+          (st === 'PENDING'
+            ? '<div class="d-flex gap-2 flex-wrap">' +
+                '<button class="btn btn-outline-dark fw-bold" onclick="window.itAbbrPreview(&#39;' + itJsArg(r.id) + '&#39;)"><i class="fas fa-magnifying-glass me-1"></i>ดูรายการที่จะเปลี่ยน</button>' +
+                '<button class="btn btn-success fw-bold px-4" onclick="window.itAbbrApprove(&#39;' + itJsArg(r.id) + '&#39;)"><i class="fas fa-check me-1"></i>ยืนยันเปลี่ยนทั้งระบบ</button>' +
+                '<button class="btn btn-outline-danger fw-bold" onclick="window.itAbbrReject(&#39;' + itJsArg(r.id) + '&#39;)"><i class="fas fa-rotate-left me-1"></i>ตีกลับ</button>' +
+                (mergeable.length ? '<button class="btn btn-outline-primary fw-bold" onclick="window.itAbbrMerge(&#39;' + itJsArg(r.id) + '&#39;)"><i class="fas fa-object-group me-1"></i>ยุบรวมกับใบปลายทางเดียวกัน (' + mergeable.length + ')</button>' : '') + '</div>'
+            : '<div class="d-flex align-items-center gap-3 flex-wrap"><div class="small text-muted flex-grow-1">' + (st === 'DONE' ? 'ดำเนินการโดย ' + itEsc(r.doneBy || '-') + ' · ' + itEsc(String(r.doneAt || '').slice(0, 10)) + ' — ย้อนกลับได้ที่หน้าข้อมูลหลัก (สินค้า) → เปลี่ยนตัวย่อ → ประวัติ' : 'ตีกลับโดย ' + itEsc(r.doneBy || '-')) + '</div>' +
+                '<button class="btn btn-sm btn-outline-secondary fw-bold" onclick="window.itAbbrDelete(&#39;' + itJsArg(r.id) + '&#39;)"><i class="fas fa-trash me-1"></i>ลบคำขอนี้</button></div>') +
+        '</div></div>';
+    };
+    box.innerHTML = '<div class="mb-3 small text-muted"><i class="fas fa-circle-info me-1"></i>คำขอจาก RD — กดยืนยันแล้วระบบจะเปลี่ยนตัวย่อให้ทุกที่พร้อมกัน (ชุดผง · ชื่อบิลครัว · ชื่อปุ่ม POS · ชื่อครัวของปุ่มโปร)</div>' + all.map(card).join('');
+  };
+  /* ยุบใบคำขอที่ปลายทางเดียวกันเข้าเป็นใบเดียว (ตัวย่อสะกดสลับ เช่น CFS / SCF → CFSQ) */
+  window.itAbbrMerge = function (id) {
+    var all = window.PC_Abbr.reqList();
+    var me = all.filter(function (x) { return x.id === id; })[0]; if (!me) return;
+    var others = all.filter(function (x) { return x.id !== id && String(x.status).toUpperCase() === 'PENDING' && String(x.newA).toUpperCase() === String(me.newA).toUpperCase(); });
+    if (!others.length) { Swal.fire({ icon: 'info', title: 'ไม่มีใบที่ยุบรวมได้', text: 'ต้องเป็นใบที่รอยืนยันและตัวย่อปลายทางเดียวกัน' }); return; }
+    var listHtml = others.map(function (x) { return '<div style="text-align:left">• <b>' + itEsc(x.id) + '</b> ' + itEsc(x.oldA) + ' → ' + itEsc(x.newA) + ' (' + ((x.counts || {}).total || 0) + ' รายการ)</div>'; }).join('');
+    Swal.fire({ icon: 'question', title: 'ยุบรวมเข้าใบ ' + itEsc(id) + '?', html: 'จะรวมใบเหล่านี้เข้าด้วยกัน แล้วกดยืนยันครั้งเดียวจบ:' + listHtml + '<div class="small text-muted mt-2">รายการที่ตัดออกของแต่ละใบจะถูกรวมไว้ด้วย</div>', showCancelButton: true, confirmButtonText: 'ยุบรวม', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#0d6efd' })
+      .then(function (a) {
+        if (!a.isConfirmed) return;
+        var msgs = [];
+        others.forEach(function (x) { var res = window.PC_Abbr.reqMerge(id, x.id); msgs.push(res.message); });
+        Swal.fire({ icon: 'success', title: 'ยุบรวมแล้ว', html: msgs.map(itEsc).join('<br>') });
+        window.renderItAbbr && window.renderItAbbr();
+      });
+  };
+  window.itAbbrDelete = function (id) {
+    Swal.fire({ title: 'ลบคำขอนี้ออกจากรายการ?', text: 'ใช้เก็บกวาดใบที่ตีกลับแล้ว/ใบทดสอบ — ไม่กระทบข้อมูลสินค้า', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก' })
+      .then(function (a) {
+        if (!a.isConfirmed) return;
+        var res = window.PC_Abbr.reqDelete(id);
+        Swal.fire({ icon: res.status === 'success' ? 'success' : 'error', title: res.message, timer: 1400, showConfirmButton: false });
+        window.renderItAbbr && window.renderItAbbr();
+      });
+  };
+  window.itAbbrPreview = function (id) {
+    var r = window.PC_Abbr.reqList().filter(function (x) { return x.id === id; })[0];
+    if (!r) { Swal.fire({ icon: 'info', title: 'ไม่พบคำขอนี้ในเครื่องนี้', html: 'คำขอ <b>' + itEsc(id) + '</b> ถูกยื่นจากเครื่องอื่นและยังไม่ซิงค์มา<br><span class="small text-muted">กดรีเฟรชหน้าหนึ่งครั้ง หรือให้ผู้ยื่นเปิดหน้าค้างไว้เพื่อให้ข้อมูลส่งขึ้นคลาวด์</span>', confirmButtonColor: '#6c757d' }).then(function(){ window.renderItAbbr && window.renderItAbbr(); }); return; }
+    /* เปิดเป็นหน้าตารางเต็ม (ค้นหา/กรอง/คัดลอก Item Code + คำใหม่ได้ทุกช่อง) */
+    window.__abbrReqId = r.id;
+    try { localStorage.setItem('pc_abbr_page_req', r.id); } catch (e) {}
+    if (typeof window.loadPage === 'function') window.loadPage('AbbrPreview');
+    else Swal.fire({ icon: 'error', title: 'เปิดหน้าไม่ได้', text: 'กดรีเฟรชหน้าหนึ่งครั้งแล้วลองอีกครั้ง', confirmButtonColor: '#6c757d' });
+  };
+  window.itAbbrApprove = function (id) {
+    Swal.fire({ title: 'ยืนยันเปลี่ยนตัวย่อ?', text: 'ระบบจะเปลี่ยนให้ทุกที่พร้อมกัน (ย้อนกลับได้ที่หน้าข้อมูลหลัก)', icon: 'warning', showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยังไม่ทำ' })
+      .then(function (a) {
+        if (!a.isConfirmed) return;
+        var res = window.PC_Abbr.reqApprove(id);
+        Swal.fire({ icon: res.status === 'success' ? 'success' : 'error', title: res.status === 'success' ? 'เปลี่ยนตัวย่อแล้ว' : 'ไม่สำเร็จ', text: res.message, confirmButtonColor: '#2e934a' })
+          .then(function () { window.renderItAbbr(); });
+      });
+  };
+  window.itAbbrReject = function (id) {
+    Swal.fire({ title: 'ตีกลับคำขอ', input: 'textarea', inputLabel: 'เหตุผล', inputPlaceholder: 'เช่น ตัวย่อใหม่ชนกับสินค้าอื่น', icon: 'warning', showCancelButton: true, confirmButtonColor: '#c0392b', confirmButtonText: 'ตีกลับ', cancelButtonText: 'ยกเลิก' })
+      .then(function (a) {
+        if (!a.isConfirmed) return;
+        var res = window.PC_Abbr.reqReject(id, a.value || '');
+        Swal.fire({ icon: 'success', title: 'ตีกลับแล้ว', text: res.message, confirmButtonColor: '#2e934a' }).then(function () { window.renderItAbbr(); });
+      });
+  };
+
+  window.initIT_Settlement = function() {
+    var _f=document.getElementById('filterMonthIT'); if(_f) _f.value='';
+    var _fd=document.getElementById('filterDateIT'); if(_fd) _fd.value=''; var _fdc=document.getElementById('itDateClear'); if(_fdc) _fdc.style.display='none';
+    var _fdm=document.getElementById('itDateMode'); if(_fdm) _fdm.value='ACTIVE';
+    itTab='ALL';
+    window.loadITDashboard();
+    var _t=0;
+    (function _go(){ _t++;
+      if(document.getElementById('campaignGroupContainer')){ window.loadITTasks(); }
+      else if(_t<25){ setTimeout(_go,120); }
+    })();
+  };
+
+  /* ===== NPD — งานสินค้าใหม่ไหลเข้า IT (กรอกโค้ด + ขึ้นปุ่ม) ===== */
+  var itNpdData = [];
+  function itNpdStat(t, v, cls, ic) {
+    return '<div class="col"><div class="p-3 rounded-3 ' + cls + ' d-flex justify-content-between align-items-center h-100"><div><div class="fw-bold" style="font-size:1.6rem;line-height:1">' + v + '</div><small class="fw-bold text-uppercase" style="font-size:.65rem">' + t + '</small></div><i class="fas ' + ic + ' fa-2x opacity-50"></i></div></div>';
+  }
+  function itEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+  /* FX-P70 — ชื่อแคมเปคนที่มี " หรือ ' (เช่น Welcome Freshy 69) ทำให้ attribute ขาด
+     → หาการ์ดงานด้วย querySelector ไม่เจอ (กดบันทึกไม่ได้) และตัวตรวจโค้ดเทียบ ignore พลาด → เตือน "โค้ดซ้ำ" กับตัวเอง
+     → ค้นการ์ดจากค่า attribute จริง ไม่ผ่าน CSS selector */
+  window.itCardOf = function(campName, month){
+    var want = String(campName==null?'':campName), wm = String(month==null?'':month);
+    var list = document.querySelectorAll('.card[data-campaign]');
+    for (var i=0;i<list.length;i++){
+      if (String(list[i].getAttribute('data-campaign')) !== want) continue;
+      if (wm && String(list[i].getAttribute('data-month')) !== wm) continue;
+      return list[i];
+    }
+    if (wm) return window.itCardOf(campName, '');
+    return null;
+  };
+  /* safe JS string argument inside a double-quoted HTML attribute (campaign names may contain ' or ") */
+  function itJsArg(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  /* tag for auto-reserve fields (data-cc-where) — identify the NPD job in the code-counter log; safe for a double-quoted attribute */
+  function itCcWhere(){ var e = window._itEdit || {}; return String(e.project || e.id || 'NPD').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+  /* ===== Draft (ฉบับร่าง) + คืนเลขจอง เมื่อย้อนกลับ — ใช้กับฟอร์ม "สินค้าใหม่ (NPD)" และ "เพิ่มผง" ===== */
+  function itDraftKey(kind, id){ return 'pc_it_' + kind + '_draft_' + id; }
+  function itHasDraft(kind, id){ try { return !!localStorage.getItem(itDraftKey(kind, id)); } catch(e){ return false; } }
+  function itClearDraft(kind, id){ try { localStorage.removeItem(itDraftKey(kind, id)); } catch(e){} }
+  /* dialog ถาม “เก็บร่าง / ทิ้งข้อมูล / อยู่ต่อ” — ใช้ร่วมทั้งสองฟอร์ม */
+  function itDraftBack(onDraft, onDiscard){
+    Swal.fire({
+      title: 'ออกจากฟอร์ม?',
+      html: 'ต้องการเก็บงานนี้เป็น <b>ฉบับร่าง</b> ไว้ทำต่อหรือไม่?<br><small class="text-muted">เลือก “ทิ้งข้อมูล” = เลขโค้ดที่จองไว้ (ยังไม่บันทึก) จะถูกคืนเข้าระบบ</small>',
+      icon: 'question', showDenyButton: true, showCancelButton: true, reverseButtons: true,
+      confirmButtonText: '<i class="fas fa-save me-1"></i>เก็บร่างไว้',
+      denyButtonText: '<i class="fas fa-trash me-1"></i>ทิ้งข้อมูล',
+      cancelButtonText: 'อยู่ต่อ',
+      confirmButtonColor: '#198754', denyButtonColor: '#dc3545'
+    }).then(function (r) { if (r.isConfirmed) onDraft(); else if (r.isDenied) onDiscard(); });
+  }
+  /* คืนเลขที่ระบบจองให้ (RESERVED) ทั้งหมด — confirmed/พิมพ์เองจะไม่ถูกแตะ */
+  function itReturnAllReserved(e){
+    if (!e) return;
+    (e.subsets || []).forEach(function (s) { itReturnCode(s.ssCode, 'ss'); (s.powders || []).forEach(function (w) { itReturnCode(w.cmpos, 'item'); }); });
+    (e.items || []).forEach(function (it) { itReturnCode(it.code, 'item'); });
+  }
+  function itReturnAllReservedFlv(e){
+    if (!e) return;
+    (e.groups || []).forEach(function (g) { itReturnCode(g.ssCode, 'ss'); (g.flavors || []).forEach(function (f) { itReturnCode(f.cmpos, 'item'); }); });
+  }
+  /* ===== ฟอร์มกรอกโปร (settlement) — ยืนยันโค้ดตอนบันทึก + คืนโค้ดที่จองแต่ยังไม่บันทึกเมื่อออก/รีเฟรชฟอร์ม ===== */
+  function itConfirmIfReserved(code, campName){
+    try {
+      if (!window.PC_COUNTER || !PC_COUNTER.entryOf || !String(code || '').trim()) return;
+      var ent = PC_COUNTER.entryOf(String(code).trim());
+      if (!ent || ent.status !== 'RESERVED') return;
+      /* กันยืนยันโค้ดที่ "จองไว้ให้แคมเปญอื่น" — เดิมยืนยันทับได้เงียบ ๆ (เช่น P3577 ของ Baby Potato set
+         ถูก confirm ใต้ LM - BOGO FF) → เลขของงานตัวเองยังค้าง RESERVED แล้วถูกตัวคืนอัตโนมัติเก็บกลับ */
+      var w = String(ent.where || '').trim();
+      if (w && campName && w !== String(campName).trim()) {
+        try { PC_COUNTER.note(ent.code, ent.type, 'ข้ามการยืนยัน — เลขนี้จองไว้ให้ "' + w + '" แต่ถูกกรอกในงาน "' + campName + '"'); } catch (e2) {}
+        return;
+      }
+      PC_COUNTER.confirm(ent.code, ent.type, { campaign: campName });
+    } catch (e) {}
+  }
+  function itReturnUnsavedSettlementCodes(){
+    try {
+      if (!window.PC_COUNTER) return;
+      var box = document.getElementById('campaignGroupContainer'); if (!box) return;
+      box.querySelectorAll('[data-cc-reserve][data-cc-code]').forEach(function (el) {
+        var code = el.getAttribute('data-cc-code') || (el.value || '').trim();
+        var type = el.getAttribute('data-cc-reserve');
+        if (code && type) PC_COUNTER.returnCode(code, type, { from: 'IT Settlement (ออกจากฟอร์มยังไม่บันทึก)' }); // คืนเฉพาะ RESERVED — confirmed ไม่ถูกแตะ
+      });
+    } catch (e) {}
+  }
+  if (!window.__itSettlePagehide) { window.__itSettlePagehide = true; }
+  window.itReturnUnsavedSettlementCodes = itReturnUnsavedSettlementCodes;
+  /* จองถาวร: ไม่คืนเลขอัตโนมัติตอนออกจากหน้า/สลับแท็บแล้ว — เลขที่จองต่องาน "ล็อกถาวร"
+     จนกว่าจะบันทึก(confirm) หรืองานถูกลบจริง (ลบงาน=คืนเลขเข้า pool recycle). กันเลขเปลี่ยน/เผาทิ้ง */
+  window.disposeIT_Settlement = function () {};
+  /* IT ดาวน์โหลดไฟล์ Backoffice (ProID/ProStatus/ProExpire) ที่แปลงจากไฟล์โค้ดที่ MKT แนบมา */
+  window.itDownloadBackoffice = function (campaign, button) {
+    if (!window.PC_CodeConvert) { Swal.fire('ผิดพลาด', 'โมดูลแปลงไฟล์ยังไม่พร้อม', 'error'); return; }
+    Swal.fire({ title: 'กำลังสร้างไฟล์ Backoffice...', allowOutsideClick: false, didOpen: function(){ Swal.showLoading(); } });
+    var _p;
+    if (button) {
+      // อ่าน Code Promotion ล่าสุดจากช่องในตาราง (ถ้า IT เพิ่งกรอก) → ใช้ตั้งชื่อไฟล์ codePromo_ชื่อปุ่ม
+      var _pc = '';
+      try {
+        var _rows = document.querySelectorAll('tr.it-row-item');
+        for (var _i = 0; _i < _rows.length; _i++) {
+          if (_rows[_i].getAttribute('data-short-name') === button) {
+            var _inp = _rows[_i].querySelector('.f-code'); if (_inp) _pc = (_inp.value || '').trim();
+            break;
+          }
+        }
+      } catch (e) {}
+      _p = PC_CodeConvert.downloadBackofficeForButton(campaign, button, { promoCode: _pc });
+    } else {
+      // ทั้งแคมเปญ → แยกไฟล์รายปุ่ม (ชื่อไฟล์ codePromo_ชื่อปุ่ม) · เก็บ codePromo ปัจจุบันของแต่ละปุ่มจากตาราง
+      var _map = {};
+      try {
+        var _rows2 = document.querySelectorAll('tr.it-row-item');
+        for (var _j = 0; _j < _rows2.length; _j++) {
+          var _sn = _rows2[_j].getAttribute('data-short-name'); if (!_sn || _map[_sn] != null) continue;
+          var _in2 = _rows2[_j].querySelector('.f-code'); if (_in2 && (_in2.value || '').trim()) _map[_sn] = (_in2.value || '').trim();
+        }
+      } catch (e) {}
+      _p = PC_CodeConvert.downloadAllBackofficeForCampaign(campaign, _map);
+    }
+    _p
+      .then(function (n) { Swal.fire({ icon: 'success', title: 'ดาวน์โหลดแล้ว', html: 'ไฟล์ Backoffice <b>' + Number(n).toLocaleString() + '</b> โค้ด (ProID/ProStatus/ProExpire)' + (button ? ' — ปุ่ม <b>' + String(button).replace(/</g,'&lt;') + '</b>' : ' — แยกไฟล์รายปุ่ม') + '<br><span style="font-size:13px;color:#555">กด "บันทึก & ปิดงาน" เพื่อให้สาขาค้นเจอโค้ด</span>', timer: 2800, showConfirmButton: false }); })
+      .catch(function (e) { Swal.fire('ผิดพลาด', String(e && e.message || e), 'error'); });
+  };
+  window.loadItNpd = function () {
+    var box = document.getElementById('itNpdTab');
+    box.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-warning"></div></div>';
+    google.script.run.withSuccessHandler(function (d) { itNpdData = d || []; window.renderItNpd(); }).withFailureHandler(function (e) { console.error(e); box.innerHTML = '<div class="text-danger p-4">' + e + '</div>'; }).getNPDList();
+  };
+  window.renderItNpd = function () {
+    var box = document.getElementById('itNpdTab');
+    if (!itNpdData.length) { box.innerHTML = '<div class="text-center p-5 bg-white rounded-3 shadow-sm border"><i class="fas fa-flask fa-2x text-muted mb-2 d-block"></i><span class="fw-bold text-muted">ยังไม่มีรายการแจ้งขึ้นสินค้าใหม่</span></div>'; return; }
+    var waiting = itNpdData.filter(function (n) { return (n.itStatus || '') !== 'COMPLETE'; }).length;
+    var done = itNpdData.length - waiting;
+    var cards = '<div class="row gx-3 mb-3">' +
+      itNpdStat('รอ IT ขึ้นปุ่ม', waiting, 'bg-warning text-dark', 'fa-clock') +
+      itNpdStat('IT ขึ้นปุ่มเสร็จ', done, 'bg-success text-white', 'fa-check-double') +
+      itNpdStat('ทั้งหมด', itNpdData.length, 'bg-dark text-white', 'fa-flask') + '</div>';
+    var rows = itNpdData.map(function (n) {
+      var itDone = (n.itStatus || '') === 'COMPLETE';
+      var itemNames = (n.items || []).map(function (i) { return itEsc(i.name); }).join(', ');
+      return '<tr>' +
+        '<td class="text-start ps-3"><div class="fw-bold">' + n.id + (itHasDraft('npd', n.id) ? ' <span class="badge bg-warning text-dark" style="font-size:.62rem"><i class="fas fa-pen-nib me-1"></i>ฉบับร่าง</span>' : '') + '</div><small class="text-muted">' + itEsc(n.project || '') + '</small></td>' +
+        '<td class="text-start"><span class="badge bg-light text-dark border">' + (n.items || []).length + ' รายการ</span> <small class="text-muted d-block">' + itemNames + '</small></td>' +
+        '<td class="small">' + (n.start || '') + ' – ' + (n.end || '') + '</td>' +
+        itStatusCells(n) +
+        '<td class="text-center"><button class="btn btn-sm ' + (itDone ? 'btn-outline-dark' : 'btn-warning text-dark border border-dark') + ' fw-bold" onclick="window.itNpdFill(\'' + n.id + '\')"><i class="fas fa-keyboard me-1"></i>' + (itDone ? 'แก้โค้ด' : 'กรอกโค้ด / ขึ้นปุ่ม') + '</button></td>' +
+        '</tr>';
+    }).join('');
+    box.innerHTML = cards + '<div class="bg-white rounded-3 shadow-sm border" style="overflow:hidden;"><div class="table-responsive"><table class="table table-hover align-middle m-0"><thead class="table-dark"><tr><th class="text-start ps-3">เลขที่ / Project</th><th class="text-start">สินค้า</th><th>ช่วงเวลา</th><th>IT</th><th>OP</th><th>จัดการ</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  };
+  window.itNpdFill = function (id) { window.itNpdOpen(id); };
+
+  /* shared IT / OP status — two separate columns */
+  function itStatusCells(n) {
+    var itDone = (n.itStatus || '') === 'COMPLETE';
+    var it = itDone ? '<span class="badge bg-success">IT เสร็จ</span>' : '<span class="badge bg-warning text-dark">รอ IT</span>';
+    var op = n.status === 'CONFIRMED' ? '<span class="badge bg-info text-dark">OP ยืนยัน</span>' : (n.status === 'REJECTED' ? '<span class="badge bg-danger">OP ตีกลับ</span>' : '<span class="badge bg-light text-dark border">รอ OP</span>');
+    return '<td>' + it + '</td><td>' + op + '</td>';
+  }
+
+  /* ===== FLAVOR (add-powder) submissions — separate tab/list ===== */
+  var itFlvData = [];
+  window.loadItFlv = function () {
+    var box = document.getElementById('itFlvTab');
+    box.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-warning"></div></div>';
+    google.script.run.withSuccessHandler(function (d) { itFlvData = d || []; window.renderItFlvList(); }).withFailureHandler(function (e) { console.error(e); box.innerHTML = '<div class="text-danger p-4">' + e + '</div>'; }).getFlavorList();
+  };
+  window.renderItFlvList = function () {
+    var box = document.getElementById('itFlvTab');
+    if (!itFlvData.length) { box.innerHTML = '<div class="text-center p-5 bg-white rounded-3 shadow-sm border"><i class="fas fa-mortar-pestle fa-2x text-muted mb-2 d-block"></i><span class="fw-bold text-muted">ยังไม่มีรายการเพิ่มผงรสชาติ</span></div>'; return; }
+    var waiting = itFlvData.filter(function (n) { return (n.itStatus || '') !== 'COMPLETE'; }).length;
+    var done = itFlvData.length - waiting;
+    var cards = '<div class="row gx-3 mb-3">' +
+      itNpdStat('รอ IT ขึ้นปุ่ม', waiting, 'bg-warning text-dark', 'fa-clock') +
+      itNpdStat('IT ขึ้นปุ่มเสร็จ', done, 'bg-success text-white', 'fa-check-double') +
+      itNpdStat('ทั้งหมด', itFlvData.length, 'bg-dark text-white', 'fa-mortar-pestle') + '</div>';
+    var rows = itFlvData.map(function (n) {
+      var itDone = (n.itStatus || '') === 'COMPLETE';
+      var nPow = (n.groups || []).reduce(function (a, g) { return a + (g.flavors || []).length; }, 0);
+      return '<tr>' +
+        '<td class="text-start ps-3"><div class="fw-bold">' + n.id + (itHasDraft('flv', n.id) ? ' <span class="badge bg-warning text-dark" style="font-size:.62rem"><i class="fas fa-pen-nib me-1"></i>ฉบับร่าง</span>' : '') + '</div><small class="text-muted">' + itEsc(n.project || '') + '</small></td>' +
+        '<td class="text-start"><span class="badge bg-light text-dark border">' + (n.groups || []).length + ' กลุ่ม</span> <small class="text-muted d-block">' + nPow + ' ผงรสชาติ</small></td>' +
+        '<td class="small">' + (n.start || '') + ' – ' + (n.end || '') + '</td>' +
+        itStatusCells(n) +
+        '<td class="text-center"><button class="btn btn-sm ' + (itDone ? 'btn-outline-dark' : 'btn-warning text-dark border border-dark') + ' fw-bold" onclick="window.itFlvOpen(\'' + n.id + '\')"><i class="fas fa-keyboard me-1"></i>' + (itDone ? 'แก้โค้ด' : 'กรอกโค้ด / ขึ้นปุ่ม') + '</button></td>' +
+        '</tr>';
+    }).join('');
+    box.innerHTML = cards + '<div class="bg-white rounded-3 shadow-sm border" style="overflow:hidden;"><div class="table-responsive"><table class="table table-hover align-middle m-0"><thead class="table-dark"><tr><th class="text-start ps-3">เลขที่ / Project</th><th class="text-start">ผงรสชาติ</th><th>ช่วงเวลา</th><th>IT</th><th>OP</th><th>จัดการ</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  };
+
+  /* ===== IT opens the full NPD form — FULLY EDITABLE — then saves + COMPLETE ===== */
+  /* FX-P88 — หน่วยจาก RD เป็นภาษาไทย ("กรัม" / "ชิ้น") แต่ลิสต์เดิมมีแค่อังกฤษ → ค่าไม่ตรง option ดรอปดาวน์เลยว่าง = หน่วยหายทั้งตารางผงและ Raw Material
+     แก้: เพิ่มหน่วยไทย + ถ้าค่าที่ส่งมาไม่อยู่ในลิสต์ ให้แทรก option ของค่านั้นเข้าไปเสมอ (ไม่ทำข้อมูลหายอีก) */
+  var IT_UNITS = ['กรัม', 'ชิ้น', 'G', 'kg', 'ml', 'ลิตร', 'pcs', 'ซอง', 'ถุง', 'แผ่น', 'ขวด', 'กล่อง', 'สูตร', 'ช้อน'];
+  function itUnitSel(sel, oninput) {
+    sel = String(sel == null ? '' : sel).trim();
+    var list = IT_UNITS.slice();
+    if (sel && list.indexOf(sel) === -1) list.unshift(sel);   /* ค่าเดิมที่ไม่รู้จัก = คงไว้ ไม่ทิ้ง */
+    return '<select class="form-select form-select-sm border-secondary" onchange="' + oninput + '">' + [''].concat(list).map(function (u) { return '<option value="' + itEsc(u) + '"' + (u === sel ? ' selected' : '') + '>' + (itEsc(u) || '--') + '</option>'; }).join('') + '</select>';
+  }
+  window.itNpdOpen = function (id) {
+    var n = itNpdData.find(function (x) { return x.id === id; }); if (!n) return;
+    window._itEditId = id;
+    var draftRaw = null; try { draftRaw = localStorage.getItem(itDraftKey('npd', id)); } catch (e) {}
+    if (draftRaw) {
+      Swal.fire({ title: 'พบฉบับร่าง', html: 'งานนี้มีฉบับร่างที่ค้างไว้<br>ต้องการทำต่อจากร่าง หรือเริ่มใหม่?', icon: 'info', showCancelButton: true, confirmButtonText: '<i class="fas fa-pen-nib me-1"></i>ทำต่อจากร่าง', cancelButtonText: 'เริ่มใหม่ (ทิ้งร่าง)', confirmButtonColor: '#198754' }).then(function (r) {
+        if (r.isConfirmed) { try { window._itEdit = JSON.parse(draftRaw); } catch (e) { window._itEdit = JSON.parse(JSON.stringify(n)); } }
+        else { itClearDraft('npd', id); window._itEdit = JSON.parse(JSON.stringify(n)); }
+        window.renderItEdit();
+      });
+      return;
+    }
+    window._itEdit = JSON.parse(JSON.stringify(n));
+    window.renderItEdit();
+  };
+  window.itNpdBack = function () {
+    var e = window._itEdit, id = window._itEditId;
+    if (!e) { window.loadItNpd(); return; }
+    itDraftBack(
+      function () { try { localStorage.setItem(itDraftKey('npd', id), JSON.stringify(e)); } catch (x) {} window.loadItNpd(); },
+      function () { itReturnAllReserved(e); itClearDraft('npd', id); window.loadItNpd(); }
+    );
+  };
+  function itNormalizeChannels(e){ if(!e) return; var MAP={'take away':'Take-Away','take-away':'Take-Away','takeaway':'Take-Away','grab':'Grab','lineman':'Lineman','shopeefood':'ShopeeFood','shopee food':'ShopeeFood','robinhood':'Robinhood','gokoo':'Gokoo'}; var fix=function(c){ var k=String(c||'').toLowerCase().trim(); return MAP[k]||c; }; (e.items||[]).forEach(function(it){ it.saleModes=(it.saleModes||it.channels||[]).map(fix); (it.recipes||[]).forEach(function(r){ r.channels=(r.channels||[]).map(fix); }); }); }
+  window.renderItEdit = function () {
+    var e = window._itEdit; if (!e) return;
+    itNormalizeChannels(e);
+    var box = document.getElementById('itNpdTab');
+    var hdr = '<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">' +
+      '<button class="btn btn-outline-dark fw-bold" onclick="window.itNpdBack()"><i class="fas fa-arrow-left me-1"></i>ย้อนกลับ</button>' +
+      '<span class="fw-bold">' + e.id + ' · <span class="text-success">แก้ไขได้ทั้งหมด</span></span>' +
+      '<button class="btn btn-success fw-bold px-4" onclick="window.itNpdSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+    var info = '<div class="bg-white rounded-3 shadow-sm border mb-3"><div class="px-3 py-2 fw-bold text-white" style="background:var(--pc-dark,#1a1d20);border-radius:8px 8px 0 0;font-size:.8rem"><i class="fas fa-circle-info me-2 text-warning"></i>ข้อมูลทั่วไป</div><div class="p-3"><div class="row g-2">' +
+      '<div class="col-md-4"><label class="small fw-bold text-uppercase">Project</label><input class="form-control form-control-sm border-dark" value="' + itEsc(e.project || '') + '" oninput="window.itESet(\'project\',this.value)"></div>' +
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase">เริ่ม</label><input type="date" class="form-control form-control-sm border-dark" value="' + itEsc(e.start || '') + '" oninput="window.itESet(\'start\',this.value)"></div>' +
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase">สิ้นสุด</label><input type="date" class="form-control form-control-sm border-dark" value="' + itEsc(e.end || '') + '" oninput="window.itESet(\'end\',this.value)"></div>' +
+      '<div class="col-md-8"><label class="small fw-bold text-uppercase">สาขาที่ร่วม</label><input class="form-control form-control-sm border-dark" value="' + itEsc(e.store || '') + '" oninput="window.itESet(\'store\',this.value)"></div>' +
+      '<div class="col-md-4"><label class="small fw-bold text-uppercase">RD ผู้แจ้ง</label><input class="form-control form-control-sm" readonly style="background:#eef1f4" value="' + itEsc(e.rd || '') + '"></div>' +
+      '</div></div></div>';
+    var subPool = '<div class="bg-white rounded-3 shadow-sm border mb-3"><div class="px-3 py-2 fw-bold text-white d-flex justify-content-between" style="background:var(--pc-dark,#1a1d20);border-radius:8px 8px 0 0;font-size:.8rem"><span><i class="fas fa-layer-group me-2 text-warning"></i>คลัง Subset (ใช้ร่วมทุกสินค้า)</span><span class="text-warning" style="font-weight:400">IT กรอก SS Code / CMPOS</span></div><div class="p-3">' +
+      (e.subsets || []).map(function (s, si) { return itEditSubset(s, si); }).join('') +
+      '<button class="btn btn-sm btn-dark fw-bold" onclick="window.itAddSubset()"><i class="fas fa-folder-plus me-1"></i>เพิ่ม Subset</button></div></div>';
+    var items = (e.items || []).map(function (it, i) { return itEditItem(it, i); }).join('');
+    box.innerHTML = hdr + info + subPool + items +
+      '<button class="btn btn-outline-dark fw-bold w-100 mb-3" onclick="window.itAddItem()"><i class="fas fa-plus-circle me-2"></i>เพิ่มปุ่มสินค้า</button>' +
+      '<div class="text-center mb-5"><button class="btn btn-success shadow fw-bold px-5 py-2" onclick="window.itNpdSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+  };
+  /* ===== Subset pool editor (shared central pool) ===== */
+  function itEditSubset(s, si) {
+    var pw = (s.powders || []).map(function (w, wi) {
+      return '<tr>' +
+        '<td class="text-center">' + (wi + 1) + '</td>' +
+        '<td><div class="input-group input-group-sm" style="width:126px;flex-wrap:nowrap"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-cat="103" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(w.cmpos || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'cmpos\',this.value)" placeholder="CMPOS"><button class="btn btn-outline-info px-1" type="button" title="คัดลอก CMPOS (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
+        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.eng || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'eng\',this.value)"></td>' +
+        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.th || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'th\',this.value)"></td>' +
+        '<td><div class="input-group input-group-sm" style="width:112px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary mono" value="' + itEsc(w.code || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'code\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกรหัส RM" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
+        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.desc || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'desc\',this.value)"></td>' +
+        '<td style="width:96px"><div class="input-group input-group-sm" style="flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary text-center" value="' + itEsc(w.qty || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'qty\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกจำนวน" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
+        '<td style="width:74px">' + itUnitSel(w.unit || '', "window.itPow(" + si + "," + wi + ",'unit',this.value)") + '</td>' +
+        '<td><input class="form-control form-control-sm border-secondary" style="width:110px" value="' + itEsc(w.spoon || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'spoon\',this.value)"></td>' +
+        '<td style="width:84px"><div class="input-group input-group-sm"><span class="input-group-text px-1">฿</span><input class="form-control border-secondary text-center" value="' + itEsc(w.price || 0) + '" oninput="window.itPow(' + si + ',' + wi + ',\'price\',this.value)"></div></td>' +
+        '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="window.itDelPow(' + si + ',' + wi + ')"></i></td></tr>';
+    }).join('');
+    return '<div class="border rounded-3 p-2 mb-2" style="background:#fffdf4;border-color:#b9a44e!important">' +
+      '<div class="row g-2 mb-1 align-items-end">' +
+      '<div class="col-md-2"><label class="small fw-bold text-info">SS Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="ss" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(s.ssCode || '') + '" oninput="window.itSub(' + si + ',\'ssCode\',this.value)" placeholder="SS0031"><button class="btn btn-outline-info" type="button" title="คัดลอก SS Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
+      '<div class="col-md-5"><label class="small fw-bold">Subset Name</label><input class="form-control form-control-sm border-dark" value="' + itEsc(s.name || '') + '" oninput="window.itSub(' + si + ',\'name\',this.value)"></div>' +
+      '<div class="col-md-4"><label class="small fw-bold">Subset Name 2 <span class="text-muted" style="font-size:.66rem">· ตัวย่อผงบน POS</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(s.name2 || '') + '" oninput="window.itSub(' + si + ',\'name2\',this.value)"></div>' +
+      '<div class="col-md-1 d-flex align-items-end"><button class="btn btn-sm btn-outline-danger" onclick="window.itDelSub(' + si + ')"><i class="fas fa-trash"></i></button></div>' +
+      '</div>' +
+      '<table class="table table-sm mb-1" style="font-size:.76rem"><thead><tr class="table-light"><th style="width:30px">No</th><th>CMPOS</th><th>ENG Name</th><th>TH Name</th><th>Code RM</th><th>Description</th><th class="text-center">Qty</th><th class="text-center">Unit</th><th>Spoon</th><th class="text-center">Price</th><th style="width:28px"></th></tr></thead><tbody>' + pw + '</tbody></table>' +
+      '<button class="btn btn-sm btn-dark fw-bold" onclick="window.itAddPow(' + si + ')"><i class="fas fa-plus me-1"></i>เพิ่มผง</button></div>';
+  }
+  var IT_CHANNELS = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  var IT_DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  function itEditItem(it, i) {
+    it.saleModes = it.saleModes || []; it.prices = it.prices || {}; it.formulas = it.formulas || [];
+    var sm = it.saleModes;
+    var salePills = IT_CHANNELS.map(function (ch) {
+      var on = sm.indexOf(ch) !== -1, dlv = IT_DLV.indexOf(ch) !== -1;
+      return '<label class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 me-1 mb-1" style="cursor:pointer;border:1px solid ' + (on ? '#198754' : '#ccc') + ';background:' + (on ? '#e8f6ee' : '#fff') + ';font-size:.78rem"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="window.itSaleMode(' + i + ',\'' + ch + '\')">' + ch + (dlv ? ' <span class="text-muted">DLV</span>' : '') + '</label>';
+    }).join('');
+    var rec = (it.recipes || []).map(function (r, ri) {
+      r.channels = r.channels || [];
+      var chCell = sm.length ? sm.map(function (ch) {
+        var on = r.channels.indexOf(ch) !== -1;
+        return '<label class="badge me-1 mb-1" style="cursor:pointer;font-weight:500;background:' + (on ? '#0d6efd' : '#e9ecef') + ';color:' + (on ? '#fff' : '#666') + '"><input type="checkbox" class="d-none" ' + (on ? 'checked' : '') + ' onchange="window.itRecCh(' + i + ',' + ri + ',\'' + ch + '\')">' + ch + '</label>';
+      }).join('') : '<span class="text-muted small">— ติ๊ก Sale Mode —</span>';
+      return '<tr><td class="text-center">' + (ri + 1) + '</td>' +
+        '<td><div class="input-group input-group-sm" style="width:118px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary mono" value="' + itEsc(r.code || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'code\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกรหัสสินค้า" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
+        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(r.desc || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'desc\',this.value)"></td>' +
+        '<td style="width:64px"><input class="form-control form-control-sm border-secondary text-center" value="' + itEsc(r.qty || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'qty\',this.value)"></td>' +
+        '<td style="width:80px">' + itUnitSel(r.unit || '', "window.itRec(" + i + "," + ri + ",'unit',this.value)") + '</td>' +
+        '<td><div class="d-flex flex-wrap">' + chCell + '</div></td>' +
+        '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="window.itDelRec(' + i + ',' + ri + ')"></i></td></tr>';
+    }).join('');
+    // price block
+    var priceInputs = '';
+    if (sm.indexOf('Take-Away') !== -1) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Take Away</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceTakeaway || '') + '" oninput="window.itItem(' + i + ',\'priceTakeaway\',this.value)"></div></div>';
+    var dlvCh = sm.filter(function (c) { return IT_DLV.indexOf(c) !== -1; });
+    if (dlvCh.length) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Delivery</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceDelivery || '') + '" oninput="window.itItem(' + i + ',\'priceDelivery\',this.value)"></div></div>';
+    var splitInputs = dlvCh.map(function (ch) {
+      var val = (it.prices[ch] != null && it.prices[ch] !== '') ? it.prices[ch] : '';
+      return '<div style="min-width:118px"><label class="small fw-bold">' + ch + ' <span class="text-muted">DLV</span></label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-secondary text-center" placeholder="' + itEsc(it.priceDelivery || '') + '" value="' + itEsc(val) + '" oninput="window.itPrice(' + i + ',\'' + ch + '\',this.value)"></div></div>';
+    }).join('');
+    var priceBlock = sm.length ? ('<div class="d-flex flex-wrap gap-3 mb-1">' + priceInputs + '</div>' + (dlvCh.length ? '<div class="p-2 rounded mb-2" style="background:#f4f6f9;border:1px dashed #c2c8ce"><div class="small fw-bold mb-1"><i class="fas fa-truck me-1"></i>ราคาแยกราย Delivery (ไม่ใส่ = ใช้ราคา Delivery ด้านบน)</div><div class="d-flex flex-wrap gap-2">' + splitInputs + '</div></div>' : '')) : '<div class="text-muted small mb-2">— ติ๊ก Sale Mode ก่อน —</div>';
+    // formulas
+    /* ดรอปดาวน์ Subset = ชุดในใบนี้ + คลัง Subset กลาง (เหมือนหน้ากรอก RD) — กันเคสสูตรผงอ้าง SS ที่ไม่ได้สร้างในใบ (เช่น SS0001) แล้วหน้า IT หาไม่เจอ */
+    var subOpts = function (sel) {
+      var seen = {}, inDoc = [], inDb = [];
+      (window._itEdit.subsets || []).forEach(function (s) {
+        var v = s.ssCode || s.name || 'Subset'; if (seen[v]) return; seen[v] = 1;
+        var isSel = (String(s.ssCode || '') === String(sel) || String(s.name || '') === String(sel));
+        inDoc.push('<option value="' + itEsc(v) + '"' + (isSel ? ' selected' : '') + '>' + itEsc((s.ssCode ? s.ssCode + ' · ' : '') + (s.name || 'Subset')) + '</option>');
+      });
+      try {
+        (window.PC_SUBSET_MASTER || []).forEach(function (s) {
+          var v = s.ssCode || ''; if (!v || seen[v]) return; seen[v] = 1;
+          inDb.push('<option value="' + itEsc(v) + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + itEsc(v + ' · ' + (s.name || '')) + '</option>');
+        });
+      } catch (e) {}
+      if (sel && !seen[sel]) inDoc.unshift('<option value="' + itEsc(sel) + '" selected>' + itEsc(sel) + '</option>');
+      return '<option value="">— เลือก Subset —</option>' +
+        (inDoc.length ? '<optgroup label="ชุดในใบนี้">' + inDoc.join('') + '</optgroup>' : '') +
+        (inDb.length ? '<optgroup label="คลัง Subset กลาง">' + inDb.join('') + '</optgroup>' : '');
+    };
+    var fml = (it.formulas || []).map(function (f, fi) {
+      var s = (window._itEdit.subsets || []).find(function (x) { return String(x.ssCode || '') === String(f.ss || '') || String(x.name || '') === String(f.ss || ''); });
+      if (!s && f.ss) { try { var _d = (window.PC_SUBSET_MASTER || []).find(function (x) { return String(x.ssCode) === String(f.ss); }); if (_d) s = { ssCode: _d.ssCode, name: _d.name, powders: [] }; } catch (e) {} }
+      var max = (s && (s.powders || []).length) ? s.powders.length : 99;
+      return '<div class="d-flex gap-2 align-items-center mb-2 flex-wrap"><span class="badge bg-dark">#' + (fi + 1) + '</span>' +
+        '<span class="badge bg-secondary">' + itEsc(s ? (s.ssCode || '— SS —') : '—') + '</span>' +
+        '<select class="form-select form-select-sm border-dark" style="max-width:240px" onchange="window.itFml(' + i + ',' + fi + ',\'ss\',this.value)">' + subOpts(f.ss) + '</select>' +
+        '<span class="small">เลือกได้</span><input type="number" min="1" max="' + max + '" class="form-control form-control-sm border-dark text-center" style="width:64px" value="' + itEsc(f.choose || 1) + '" oninput="window.itFml(' + i + ',' + fi + ',\'choose\',this.value)"><span class="small">ผง</span>' +
+        '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" onclick="window.itDelFml(' + i + ',' + fi + ')"></i></div>';
+    }).join('') || '<div class="text-muted small mb-1">ยังไม่มีสูตรผง</div>';
+    return '<div class="border rounded-3 mb-3" style="border-color:#000!important;overflow:hidden">' +
+      '<div class="px-3 py-2 fw-bold d-flex justify-content-between" style="background:var(--pc-yellow,#2e934a);border-bottom:2px solid #000"><span><i class="fas fa-box-open me-2"></i>ปุ่มสินค้า #' + (i + 1) + '</span><i class="fas fa-trash-alt text-danger" style="cursor:pointer" onclick="window.itDelItem(' + i + ')"></i></div>' +
+      '<div class="p-3">' +
+        '<div class="row g-2 mb-2">' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.category || '') + '" oninput="window.itItem(' + i + ',\'category\',this.value)"></div>' +
+        '</div>' +
+        '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode</div><div class="mb-2">' + salePills + '</div>' +
+        '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price</div>' + priceBlock +
+        '<div class="fw-bold small text-uppercase mt-1 mb-1"><i class="fas fa-list-ol me-1 text-success"></i>Raw Material — ผูกกับช่องทางขาย</div>' +
+        '<table class="table table-sm border mb-1" style="font-size:.8rem"><thead class="table-light"><tr><th class="text-center" style="width:36px">No</th><th>Item Code</th><th>Description</th><th class="text-center">Qty</th><th class="text-center">Unit</th><th>ช่องทาง</th><th style="width:30px"></th></tr></thead><tbody>' + rec + '</tbody></table>' +
+        '<button class="btn btn-sm btn-dark fw-bold mb-2" onclick="window.itAddRec(' + i + ')"><i class="fas fa-plus me-1"></i>Raw Material</button>' +
+        '<div class="fw-bold small text-uppercase mt-1 mb-1"><i class="fas fa-flask me-1 text-success"></i>สูตรผง (Powder Formula) — อ้างอิงคลัง Subset</div>' +
+        '<div class="p-2 rounded" style="background:#eef7f1;border:1px solid #bfe3cd">' + fml +
+        '<button class="btn btn-sm btn-success fw-bold" onclick="window.itAddFml(' + i + ')"><i class="fas fa-plus me-1"></i>เพิ่มสูตรผง</button></div>' +
+      '</div></div>';
+  }
+  window.itCopyCode = function (btn) {
+    var inp = btn.parentElement.querySelector('input'); if (!inp) return;
+    var v = String(inp.value || '').trim();
+    if (!v) { if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'ยังไม่มีเลขให้คัดลอก', timer: 1400, showConfirmButton: false }); return; }
+    var done = function () { var ic = btn.querySelector('i'); if (ic) { var old = ic.className; ic.className = 'fas fa-check'; btn.classList.add('btn-success'); btn.classList.remove('btn-outline-info'); setTimeout(function () { ic.className = old; btn.classList.remove('btn-success'); btn.classList.add('btn-outline-info'); }, 1200); } if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'คัดลอก ' + v + ' แล้ว', timer: 1200, showConfirmButton: false }); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(v).then(done, function () { inp.select(); document.execCommand('copy'); done(); }); return; } } catch (e) {}
+    try { inp.select(); document.execCommand('copy'); done(); } catch (e) {}
+  };
+  window.itESet = function (k, v) { window._itEdit[k] = v; };
+  window.itItem = function (i, k, v) { window._itEdit.items[i][k] = v; };
+  window.itNameCount = function (el, limit) { limit = limit || 20; var c = el.parentElement.querySelector('.char-count'); if (c) { var n = el.value.length, over = n > limit; c.textContent = n + '/' + limit + (over ? ' • เกิน ' + limit + ' ตัว' : ''); c.className = 'char-count text-end ' + (over ? 'text-danger fw-bold' : 'text-muted'); c.style.fontSize = '.72rem'; } };
+  window.itRec = function (i, ri, k, v) { window._itEdit.items[i].recipes[ri][k] = v; };
+  window.itPrice = function (i, ch, v) { var it = window._itEdit.items[i]; it.prices = it.prices || {}; it.prices[ch] = v; };
+  window.itSaleMode = function (i, ch) {
+    var it = window._itEdit.items[i]; it.saleModes = it.saleModes || [];
+    var idx = it.saleModes.indexOf(ch);
+    if (idx === -1) { it.saleModes.push(ch); (it.recipes || []).forEach(function (r) { r.channels = r.channels || []; if (r.channels.indexOf(ch) === -1) r.channels.push(ch); }); }
+    else { it.saleModes.splice(idx, 1); (it.recipes || []).forEach(function (r) { r.channels = (r.channels || []).filter(function (c) { return c !== ch; }); }); }
+    window.renderItEdit();
+  };
+  window.itRecCh = function (i, ri, ch) {
+    var r = window._itEdit.items[i].recipes[ri]; r.channels = r.channels || [];
+    var idx = r.channels.indexOf(ch); if (idx === -1) r.channels.push(ch); else r.channels.splice(idx, 1);
+    window.renderItEdit();
+  };
+  /* subset pool handlers */
+  window.itSub = function (si, k, v) { window._itEdit.subsets[si][k] = v; if (k === 'name') window.renderItEdit(); };
+  window.itPow = function (si, wi, k, v) { window._itEdit.subsets[si].powders[wi][k] = v; };
+  window.itAddSubset = function () { (window._itEdit.subsets = window._itEdit.subsets || []).push({ ssCode: '', name: '', cat: '', powders: [] }); window.renderItEdit(); };
+  /* return an auto-reserved code back to the counter when its row is deleted (RESERVED only —
+     confirmed/manually-typed codes are left untouched). Keeps numbers from leaking when RD/IT
+     adds a field, lets it reserve, then deletes it. */
+  function itReturnCode(code, type) { try { if (window.PC_COUNTER && String(code || '').trim()) PC_COUNTER.returnCode(String(code).trim(), type, { from: 'IT NPD (ลบช่อง)' }); } catch (e) {} }
+  window.itDelSub = function (si) { var s = window._itEdit.subsets[si]; if (s) { itReturnCode(s.ssCode, 'ss'); (s.powders || []).forEach(function (w) { itReturnCode(w.cmpos, 'item'); }); } window._itEdit.subsets.splice(si, 1); window.renderItEdit(); };
+  window.itAddPow = function (si) { var s = window._itEdit.subsets[si]; (s.powders = s.powders || []).push({ cmpos: '', eng: '', th: '', code: '', desc: '', qty: '', unit: 'กรัม', spoon: '', price: 0 }); window.renderItEdit(); };
+  window.itDelPow = function (si, wi) { var w = window._itEdit.subsets[si] && window._itEdit.subsets[si].powders[wi]; if (w) itReturnCode(w.cmpos, 'item'); window._itEdit.subsets[si].powders.splice(wi, 1); window.renderItEdit(); };
+  /* formula handlers */
+  window.itFml = function (i, fi, k, v) { window._itEdit.items[i].formulas[fi][k] = v; if (k === 'ss') window.renderItEdit(); };
+  window.itAddFml = function (i) { var it = window._itEdit.items[i]; (it.formulas = it.formulas || []).push({ ss: '', choose: 1 }); window.renderItEdit(); };
+  window.itDelFml = function (i, fi) { window._itEdit.items[i].formulas.splice(fi, 1); window.renderItEdit(); };
+  window.itAddItem = function () { window._itEdit.items.push({ name: '', th: '', category: '', code: '', saleModes: [], priceTakeaway: '', priceDelivery: '', prices: {}, recipes: [{ code: '', desc: '', qty: '', unit: 'กรัม', channels: [] }], formulas: [] }); window.renderItEdit(); };
+  window.itDelItem = function (i) { var it = window._itEdit.items[i]; if (it) itReturnCode(it.code, 'item'); window._itEdit.items.splice(i, 1); window.renderItEdit(); };
+  window.itAddRec = function (i) { var it = window._itEdit.items[i]; (it.recipes = it.recipes || []).push({ code: '', desc: '', qty: '', unit: 'กรัม', channels: (it.saleModes || []).slice() }); window.renderItEdit(); };
+  window.itDelRec = function (i, ri) { window._itEdit.items[i].recipes.splice(ri, 1); window.renderItEdit(); };
+  window.itNpdSave = function () {
+    var e = window._itEdit, id = window._itEditId;
+    if (!(e.items || []).length) { Swal.fire('ไม่มีสินค้า', 'ต้องมีปุ่มสินค้าอย่างน้อย 1 รายการ', 'warning'); return; }
+    var missItem = (e.items || []).some(function (it) { return !String(it.code || '').trim(); });
+    if (missItem) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก Item Code ให้ครบทุกปุ่มสินค้า', 'warning'); return; }
+    var missSub = (e.subsets || []).some(function (s) { return !String(s.ssCode || '').trim(); });
+    if (missSub) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก SS Code ให้ครบทุก Subset', 'warning'); return; }
+    /* lock (CONFIRM) any auto-reserved SS / Item / CMPOS codes \u2014 confirm() ignores
+       codes that were typed manually (not reserved), so this is safe either way */
+    try {
+      if (window.PC_COUNTER) {
+        var _ccWhere = e.project || e.id || 'NPD';
+        (e.subsets || []).forEach(function (s) {
+          if (String(s.ssCode || '').trim()) PC_COUNTER.confirm(String(s.ssCode).trim(), 'ss', { campaign: _ccWhere });
+          (s.powders || []).forEach(function (w) { if (String(w.cmpos || '').trim()) PC_COUNTER.confirm(String(w.cmpos).trim(), 'item', { campaign: _ccWhere }); });
+        });
+        (e.items || []).forEach(function (it) { if (String(it.code || '').trim()) PC_COUNTER.confirm(String(it.code).trim(), 'item', { campaign: _ccWhere }); });
+      }
+    } catch (ccErr) {}
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    google.script.run.withSuccessHandler(function () {
+      itClearDraft('npd', id);
+      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ', timer: 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
+    }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, e);
+  };
+
+  /* ===== IT opens a FLAVOR (add-powder) submission — fill CMPOS / SS Code — then COMPLETE ===== */
+  function itFlvCcWhere(){ var e = window._itFlv || {}; return String(e.project || e.id || 'FLV').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+  /* harvest current DOM values of the flavor form into a data object (used by save + draft) */
+  function itFlvHarvest(){
+    var box = document.getElementById('itFlvTab'); if (!box) return null;
+    var origGroups = (window._itFlv && window._itFlv.groups) || [];
+    var groups = [].map.call(box.querySelectorAll('.flv-grp'), function (g, gi) {
+      var ssv = (g.querySelector('.flv-ss').value || '').trim();
+      var o = origGroups.filter(function (x) { return String(x.ssCode || '') === ssv; })[0] || origGroups[gi];
+      return {
+        ssCode: ssv,
+        name: (g.querySelector('.flv-name').value || '').trim(),
+        saleModes: (o && Array.isArray(o.saleModes)) ? o.saleModes.slice() : undefined,
+        flavors: [].map.call(g.querySelectorAll('.flv-row'), function (r) {
+          var v = function (s) { var el = r.querySelector(s); return el ? el.value.trim() : ''; };
+          return { cmpos: v('.f-cmpos'), eng: v('.f-eng'), code: v('.f-code'), desc: v('.f-desc'), qty: v('.f-qty'), unit: v('.f-unit'), spoon: v('.f-spoon'), price: v('.f-price') };
+        })
+      };
+    });
+    return Object.assign({}, window._itFlv, {
+      project: (document.getElementById('itFlvProject').value || '').trim(),
+      start: document.getElementById('itFlvStart').value,
+      end: document.getElementById('itFlvEnd').value,
+      groups: groups
+    });
+  }
+  window.itFlvBack = function () {
+    var data = itFlvHarvest(), id = window._itFlvId;
+    if (!data) { window.loadItFlv(); return; }
+    itDraftBack(
+      function () { try { localStorage.setItem(itDraftKey('flv', id), JSON.stringify(data)); } catch (x) {} window.loadItFlv(); },
+      function () { itReturnAllReservedFlv(data); itClearDraft('flv', id); window.loadItFlv(); }
+    );
+  };
+  window.itFlvOpen = function (id) {
+    window._itFlvId = id;
+    var base = itFlvData.find(function (x) { return x.id === id; }) || {};
+    var draftRaw = null; try { draftRaw = localStorage.getItem(itDraftKey('flv', id)); } catch (e) {}
+    if (draftRaw) {
+      Swal.fire({ title: 'พบฉบับร่าง', html: 'งานนี้มีฉบับร่างที่ค้างไว้<br>ต้องการทำต่อจากร่าง หรือเริ่มใหม่?', icon: 'info', showCancelButton: true, confirmButtonText: '<i class="fas fa-pen-nib me-1"></i>ทำต่อจากร่าง', cancelButtonText: 'เริ่มใหม่ (ทิ้งร่าง)', confirmButtonColor: '#198754' }).then(function (r) {
+        if (r.isConfirmed) { try { window._itFlv = JSON.parse(draftRaw); } catch (e) { window._itFlv = JSON.parse(JSON.stringify(base)); } }
+        else { itClearDraft('flv', id); window._itFlv = JSON.parse(JSON.stringify(base)); }
+        window.renderItFlv();
+      });
+      return;
+    }
+    window._itFlv = JSON.parse(JSON.stringify(base));
+    window.renderItFlv();
+  };
+  window.renderItFlv = function () {
+    var e = window._itFlv; if (!e) return;
+    var box = document.getElementById('itFlvTab');
+    var hdr = '<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">' +
+      '<button class="btn btn-outline-dark fw-bold" onclick="window.itFlvBack()"><i class="fas fa-arrow-left me-1"></i>ย้อนกลับ</button>' +
+      '<span class="fw-bold">' + e.id + ' · <span class="badge bg-info text-dark">เพิ่มผงรสชาติ</span></span>' +
+      '<button class="btn btn-success fw-bold px-4" onclick="window.itFlvSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+    var info = '<div class="bg-white rounded-3 shadow-sm border mb-3"><div class="px-3 py-2 fw-bold text-white" style="background:var(--pc-dark,#1a1d20);border-radius:8px 8px 0 0;font-size:.8rem"><i class="fas fa-circle-info me-1 text-warning"></i>ข้อมูลทั่วไป</div><div class="p-3"><div class="row g-2">' +
+      '<div class="col-md-5"><label class="small fw-bold text-uppercase">Project</label><input id="itFlvProject" class="form-control form-control-sm border-dark" value="' + itEsc(e.project || '') + '"></div>' +
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase">เริ่ม</label><input id="itFlvStart" type="date" class="form-control form-control-sm border-dark" value="' + itEsc(e.start || '') + '"></div>' +
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase">สิ้นสุด</label><input id="itFlvEnd" type="date" class="form-control form-control-sm border-dark" value="' + itEsc(e.end || '') + '"></div>' +
+      '<div class="col-md-3"><label class="small fw-bold text-uppercase">RD ผู้แจ้ง</label><input class="form-control form-control-sm" readonly style="background:#eef1f4" value="' + itEsc(e.rd || '') + '"></div>' +
+      '</div></div></div>';
+    var groups = (e.groups || []).map(function (g, gi) {
+      var rows = (g.flavors || []).map(function (f, fi) {
+        return '<tr class="flv-row">' +
+          '<td class="text-center fw-bold">' + (fi + 1) + '</td>' +
+          '<td><div class="input-group input-group-sm" style="width:130px;flex-wrap:nowrap"><input class="form-control form-control-sm border-warning f-cmpos" data-cc-reserve="item" data-cc-cat="103" data-cc-where="' + itFlvCcWhere() + '" style="background:#fff8e1" value="' + itEsc(f.cmpos || '') + '" placeholder="IT"><button class="btn btn-outline-secondary" type="button" title="คัดลอก" onclick="window.itCopyVal(this,\'.f-cmpos\')" style="border-color:#cfd6dd;padding:2px 7px"><i class="fas fa-copy" style="font-size:.72rem"></i></button></div></td>' +
+          '<td><div class="input-group input-group-sm" style="flex-wrap:nowrap;min-width:190px"><input class="form-control form-control-sm border-secondary f-eng" value="' + itEsc(f.eng || '') + '"><button class="btn btn-outline-secondary" type="button" title="คัดลอก" onclick="window.itCopyVal(this,\'.f-eng\')" style="border-color:#cfd6dd;padding:2px 7px"><i class="fas fa-copy" style="font-size:.72rem"></i></button></div></td>' +
+          '<td><div class="input-group input-group-sm" style="width:124px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary f-code" value="' + itEsc(f.code || '') + '"><button class="btn btn-outline-secondary" type="button" title="คัดลอก" onclick="window.itCopyVal(this,\'.f-code\')" style="border-color:#cfd6dd;padding:2px 7px"><i class="fas fa-copy" style="font-size:.72rem"></i></button></div></td>' +
+          '<td><input class="form-control form-control-sm border-secondary f-desc" value="' + itEsc(f.desc || '') + '"></td>' +
+          '<td><div class="input-group input-group-sm" style="width:104px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary text-center f-qty" value="' + itEsc(f.qty || '') + '"><button class="btn btn-outline-secondary" type="button" title="คัดลอก" onclick="window.itCopyVal(this,\'.f-qty\')" style="border-color:#cfd6dd;padding:2px 7px"><i class="fas fa-copy" style="font-size:.72rem"></i></button></div></td>' +
+          '<td><input class="form-control form-control-sm border-secondary text-center f-unit" style="width:64px" value="' + itEsc(f.unit || '') + '"></td>' +
+          '<td><input class="form-control form-control-sm border-secondary f-spoon" style="min-width:120px" value="' + itEsc(f.spoon || '') + '"></td>' +
+          '<td><input class="form-control form-control-sm border-secondary text-center f-price" style="width:64px" value="' + itEsc(f.price != null ? f.price : '') + '"></td>' +
+          '<td class="text-center"><button class="btn btn-sm btn-outline-dark" type="button" title="คัดลอกทั้งแถว (SS · CMPOS · ENG · RM · Qty · หน่วย · ช้อน)" onclick="window.itCopyRow(this)" style="padding:2px 8px"><i class="fas fa-clone" style="font-size:.74rem"></i></button></td>' +
+          '</tr>';
+      }).join('');
+      return '<div class="bg-white rounded-3 shadow-sm border mb-3 flv-grp" data-gi="' + gi + '"><div class="px-3 py-2 d-flex flex-wrap gap-2 align-items-center" style="background:#fff5d6;border-bottom:2px dashed #b9a44e">' +
+        '<span class="fw-bold"><i class="fas fa-mortar-pestle me-1"></i>Subset #' + (gi + 1) + '</span>' +
+        '<label class="small fw-bold ms-2">SS Code <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></label><input class="form-control form-control-sm border-warning flv-ss" data-cc-reserve="ss" data-cc-where="' + itFlvCcWhere() + '" style="width:120px;background:#fff8e1" value="' + itEsc(g.ssCode || '') + '" placeholder="SSxxxx"><button class="btn btn-sm btn-outline-secondary ms-1" type="button" title="คัดลอก SS Code" onclick="window.itCopyVal(this,\'.flv-ss\')" style="padding:2px 8px"><i class="fas fa-copy" style="font-size:.72rem"></i></button>' +
+        '<label class="small fw-bold ms-2">ชื่อ Subset</label><input class="form-control form-control-sm border-dark flv-name" style="min-width:200px" value="' + itEsc(g.name || '') + '"></div>' +
+        '<div class="p-2"><table class="table table-sm align-middle m-0" style="font-size:.78rem"><thead><tr class="table-light"><th style="width:30px">No</th><th>CMPOS <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th><th>ENG Name</th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:44px">คัดลอก</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+    }).join('') || '<div class="text-center text-muted p-4">ไม่มีกลุ่มผงรสชาติ</div>';
+    box.innerHTML = hdr + info + groups +
+      '<div class="text-center mb-5 d-flex gap-2 justify-content-center flex-wrap">' +
+      '<button class="btn btn-outline-dark fw-bold px-4 py-2" onclick="window.itCopyAllFlv()"><i class="fas fa-clipboard-list me-1"></i>คัดลอกทั้งเอกสาร (วางลง Excel)</button>' +
+      '<button class="btn btn-success shadow fw-bold px-5 py-2" onclick="window.itFlvSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+  };
+  /* คัดลอกค่าในช่อง (ปุ่มไอคอนข้างช่องกรอก) — IT ต้องเอาไปวางในระบบหลังบ้าน */
+  window.itCopyVal = function (btn, sel) {
+    var host = btn.closest('.input-group') || btn.parentElement;
+    var el = sel ? (btn.closest('tr') || btn.closest('.flv-grp') || document).querySelector(sel) : (host && host.querySelector('input'));
+    var v = el ? String(el.value || '').trim() : '';
+    if (!v) { if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'ยังไม่มีค่าให้คัดลอก', showConfirmButton: false, timer: 1400 }); return; }
+    var done = function () {
+      var i = btn.querySelector('i'); if (!i) return;
+      var old = i.className; i.className = 'fas fa-check'; btn.style.color = '#2e934a';
+      setTimeout(function () { i.className = old; btn.style.color = ''; }, 1100);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(done, done);
+    else { try { el.select(); document.execCommand('copy'); done(); } catch (e) {} }
+  };
+  /* คัดลอกทั้งแถว (คั่นด้วย TAB → วางลง Excel ได้ทันที) */
+  window.itCopyRow = function (btn) {
+    var tr = btn.closest('tr'); if (!tr) return;
+    var grp = btn.closest('.flv-grp');
+    var ss = grp ? (grp.querySelector('.flv-ss') || {}).value || '' : '';
+    var g = function (s) { var el = tr.querySelector(s); return el ? String(el.value || '').trim() : ''; };
+    var v = [ss, g('.f-cmpos'), g('.f-eng'), g('.f-code'), g('.f-qty'), g('.f-unit'), g('.f-spoon')].join('\t');
+    if (navigator.clipboard) navigator.clipboard.writeText(v);
+    if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'คัดลอกทั้งแถวแล้ว (วางลง Excel ได้)', showConfirmButton: false, timer: 1600 });
+  };
+  /* คัดลอกทุกแถวของเอกสาร (มีหัวตาราง) */
+  window.itCopyAllFlv = function () {
+    var out = [['SS Code', 'CMPOS', 'ชื่อ (ENG)', 'รหัส RM', 'จำนวน (Qty)', 'หน่วย', 'ขนาดช้อน'].join('\t')];
+    [].forEach.call(document.querySelectorAll('#itFlvTab .flv-grp'), function (grp) {
+      var ss = (grp.querySelector('.flv-ss') || {}).value || '';
+      [].forEach.call(grp.querySelectorAll('.flv-row'), function (tr) {
+        var g = function (s) { var el = tr.querySelector(s); return el ? String(el.value || '').trim() : ''; };
+        out.push([ss, g('.f-cmpos'), g('.f-eng'), g('.f-code'), g('.f-qty'), g('.f-unit'), g('.f-spoon')].join('\t'));
+      });
+    });
+    if (navigator.clipboard) navigator.clipboard.writeText(out.join('\n'));
+    if (window.Swal) Swal.fire({ icon: 'success', title: 'คัดลอกทั้งเอกสารแล้ว', text: (out.length - 1) + ' แถว — วางลง Excel ได้เลย', confirmButtonColor: '#2e934a' });
+  };
+
+  window.itFlvSave = function () {
+    var data = itFlvHarvest(); if (!data) return;
+    /* lock (CONFIRM) auto-reserved SS / CMPOS codes — confirm() ignores manually-typed codes */
+    try {
+      if (window.PC_COUNTER) {
+        var _w = data.project || window._itFlvId || 'FLV';
+        (data.groups || []).forEach(function (g) {
+          if (String(g.ssCode || '').trim()) PC_COUNTER.confirm(String(g.ssCode).trim(), 'ss', { campaign: _w });
+          (g.flavors || []).forEach(function (f) { if (String(f.cmpos || '').trim()) PC_COUNTER.confirm(String(f.cmpos).trim(), 'item', { campaign: _w }); });
+        });
+      }
+    } catch (ccErr) {}
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    google.script.run.withSuccessHandler(function () {
+      itClearDraft('flv', window._itFlvId);
+      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกผงรสชาติ + ส่งต่อให้ OP ตรวจสอบ', timer: 1500, showConfirmButton: false }).then(function () { window.loadItFlv(); });
+    }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateFlavor(window._itFlvId, data);
+  };
+
+  window._itNpdFillOld = function (id) {
+    var n = itNpdData.find(function (x) { return x.id === id; }); if (!n) return;
+    var itemsHtml = (n.items || []).map(function (it, idx) {
+      var subTxt = (it.subsets && it.subsets.length) ? (it.subsets.map(function(s){ return (s.name||'Subset')+' ('+((s.powders||[]).length)+' ผง)'; }).join(', ')) : '—';
+      return '<div class="border rounded-3 p-2 mb-2 text-start"><div class="fw-bold mb-1"><i class="fas fa-box-open me-1 text-warning"></i>' + itEsc(it.name || '-') + ' <span class="text-muted small">' + itEsc(it.category || '') + ' · ฿' + itEsc(it.price||'') + '</span></div>' +
+        '<div class="text-muted" style="font-size:.72rem"><i class="fas fa-mortar-pestle me-1"></i>Subset: ' + itEsc(subTxt) + '</div>' +
+        '<div class="row g-2 mt-1">' +
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase">Item Code</label><input class="form-control form-control-sm border-dark itc-code" data-cg="item" data-i="' + idx + '" value="' + itEsc(it.code || '') + '" placeholder="108005"></div>' +
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase">CMPOS</label><input class="form-control form-control-sm border-dark itc-cmpos" data-cg="cmpos" data-i="' + idx + '" value="' + itEsc(it.cmpos || '') + '" placeholder="104210"></div>' +
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase">SS Code</label><input class="form-control form-control-sm border-dark itc-ss" data-cg="ss" data-cc-reserve="ss" data-cc-where="' + itEsc(id) + '" data-i="' + idx + '" value="' + itEsc(it.ssCode || '') + '" placeholder="SS0031"></div>' +
+        '</div></div>';
+    }).join('');
+    Swal.fire({
+      title: '<span style="font-size:1rem">IT กรอกโค้ด — ' + id + '</span>', width: 700,
+      html: '<div class="text-muted small mb-2 text-start">กรอก <b>Item Code / CMPOS / SS Code</b> ให้แต่ละสินค้า แล้วกด "ขึ้นปุ่มเสร็จ" เพื่อส่งต่อให้ OP ตรวจ</div>' + itemsHtml,
+      showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: '<i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ', cancelButtonText: 'ปิด',
+      preConfirm: function () {
+        var codes = [];
+        document.querySelectorAll('#swal2-html-container .itc-code').forEach(function (el) { var i = +el.dataset.i; codes[i] = codes[i] || {}; codes[i].code = el.value.trim(); });
+        document.querySelectorAll('#swal2-html-container .itc-cmpos').forEach(function (el) { var i = +el.dataset.i; codes[i] = codes[i] || {}; codes[i].cmpos = el.value.trim(); });
+        document.querySelectorAll('#swal2-html-container .itc-ss').forEach(function (el) { var i = +el.dataset.i; codes[i] = codes[i] || {}; codes[i].ssCode = el.value.trim(); });
+        var missing = codes.some(function (c) { return !c.code || !c.cmpos || !c.ssCode; });
+        if (missing) { Swal.showValidationMessage('⚠ กรุณากรอก Item Code / CMPOS / SS Code ให้ครบทุกสินค้า'); return false; }
+        return codes;
+      }
+    }).then(function (r) {
+      if (!r.isConfirmed) return;
+      Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      google.script.run.withSuccessHandler(function () {
+        Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'ส่งต่อให้ OP ตรวจสอบ', timer: 1500, showConfirmButton: false }).then(function () { window.loadItNpd(); });
+      }).withFailureHandler(function (e) { Swal.fire('Error', String(e), 'error'); }).setNpdItStatus(id, r.value, 'COMPLETE');
+    });
+  };
+
+  /* ---- populate month filter + header status (dashboard cards removed) ---- */
+  window.loadITDashboard = function() {
+    google.script.run.withSuccessHandler(function(d) {
+      d = d || { totalPending: 0, byMonth: [] };
+      const headStat = document.getElementById('itHeadStat');
+      if (headStat) {
+        headStat.innerHTML = d.totalPending > 0
+          ? `<span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="fas fa-bolt me-1"></i> ค้าง ${d.totalPending} งาน</span>`
+          : `<span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-check me-1"></i> เคลียร์หมดแล้ว</span>`;
+      }
+    }).getITWorkSummary();
+  };
+
+  window.itClearDate = function(){ var d=document.getElementById('filterDateIT'); if(d) d.value=''; var m=document.getElementById('itDateMode'); if(m) m.value='ACTIVE'; window.loadITTasks(); };
+  window.applyMonthFilter = function(month) {
+    const sel = document.getElementById('filterMonthIT');
+    if (sel) sel.value = month;
+    window.loadITTasks();
+  };
+
+  window.toggleCodeDone = function(btn){
+    var input = btn.previousElementSibling;
+    if(!input) return;
+    var done = btn.getAttribute('data-done') === '1';
+    if(done){
+      btn.setAttribute('data-done','0');
+      input.removeAttribute('readonly');
+      input.style.backgroundColor = '';
+      btn.classList.remove('btn-success'); btn.classList.add('btn-warning');
+      btn.innerHTML = '<i class="fas fa-check"></i>';
+      btn.title = 'กดเมื่อกรอกเสร็จ — กดอีกครั้งเพื่อแก้ไข';
+      var _cpOff = btn.nextElementSibling; if(_cpOff && _cpOff.classList.contains('f-code-copy')) _cpOff.style.display = 'none';
+    } else {
+      if(!(input.value||'').trim()){ Swal.fire('','กรอก Code Promotion ก่อน','warning'); return; }
+      btn.setAttribute('data-done','1');
+      input.setAttribute('readonly','readonly');
+      input.style.backgroundColor = '#eef1f4';
+      btn.classList.remove('btn-warning'); btn.classList.add('btn-success');
+      btn.innerHTML = '<i class="fas fa-pen"></i>';
+      btn.title = 'เสร็จแล้ว — กดเพื่อแก้ไข';
+      var _cpOn = btn.nextElementSibling; if(_cpOn && _cpOn.classList.contains('f-code-copy')) _cpOn.style.display = '';
+    }
+  };
+
+  window.generateAutoCode = function(inputEl) {
+    inputEl.classList.add('is-valid');
+    google.script.run
+      .withSuccessHandler(function(nextCode) { inputEl.value = nextCode; inputEl.classList.remove('is-valid'); })
+      .withFailureHandler(function(err) { Swal.fire('Error', 'ไม่สามารถรันเลขได้: ' + err, 'error'); })
+      .getNextPromoCode(0);
+  };
+
+  window.loadITTasks = function() {
+    const container = document.getElementById('campaignGroupContainer');
+    const loadingEl = document.getElementById('itLoading');
+    const emptyEl = document.getElementById('itEmpty');
+    if (!container || !loadingEl || !emptyEl) return; // page no longer mounted
+    const month = document.getElementById('filterMonthIT') ? document.getElementById('filterMonthIT').value : 'ALL';
+    container.innerHTML = '';
+    emptyEl.style.display = 'none';
+    loadingEl.style.display = 'block';
+
+    google.script.run.withSuccessHandler(function(tasks) {
+      if (!document.getElementById('campaignGroupContainer')) return; // navigated away
+      document.getElementById('itLoading').style.display = 'none';
+      currentTasks = tasks || [];
+      // date filter (ควบคู่กับตัวกรองเดือน) — เก็บเฉพาะโปรที่ใช้งานอยู่ในวันที่เลือก (start ≤ วันที่ ≤ end)
+      (function(){
+        var _dsel=document.getElementById('filterDateIT'), _dclr=document.getElementById('itDateClear');
+        var _dval=_dsel?(_dsel.value||'').trim():'';
+        if(_dclr) _dclr.style.display=_dval?'':'none';
+        /* FX-P54 — โหมดของตัวกรองวันที่: ใช้งานวันนั้น (เดิม) / เริ่มวันนั้น / จบวันนั้น */
+        var _dm=(document.getElementById('itDateMode')||{}).value||'ACTIVE';
+        if(_dval) currentTasks=currentTasks.filter(function(t){ var st=String(t.startDate||'').slice(0,10), en=String(t.endDate||'').slice(0,10); if(_dm==='START') return st===_dval; if(_dm==='END') return en===_dval; if(st&&_dval<st) return false; if(en&&_dval>en) return false; return true; });
+      })();
+      window.loadITDashboard();
+      const info = document.getElementById('itResultInfo');
+      if (!currentTasks.length) {
+        document.getElementById('itEmpty').style.display = 'block';
+        if (info) info.innerHTML = '';
+        return;
+      }
+      // count distinct campaigns & buttons
+      const camps = new Set(), btns = new Set();
+      currentTasks.forEach(t => { camps.add(t.campaign + '||' + t.month); btns.add(t.campaign + '||' + t.month + '||' + t.shortName); });
+      if (info) info.innerHTML = `<span class="fw-bold text-dark">${camps.size}</span> <span class="text-muted small">แคมเปญ</span> · <span class="fw-bold text-dark">${btns.size}</span> <span class="text-muted small">ปุ่ม</span> · <span class="fw-bold text-warning">${currentTasks.length}</span> <span class="text-muted small">รายการสินค้า</span>`;
+      window.initItemMaster(currentTasks);
+      window.renderGroupedTasks(currentTasks);
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('itLoading').style.display = 'none';
+      Swal.fire('Error', 'ไม่สามารถดึงข้อมูลได้: ' + err, 'error');
+    })
+    .getITTasks(month);
+  };
+
+  window.initItemMaster = function(tasks) {
+    const codes = new Set(), names = new Set();
+    itemMasterMap = {};
+    tasks.forEach(t => {
+      if (t.itemCode && t.itemCode !== 'N/A') {
+        codes.add(t.itemCode); names.add(t.itemNameEN); itemMasterMap[t.itemCode] = t.itemNameEN;
+      }
+    });
+    document.getElementById('listCode').innerHTML = Array.from(codes).map(c => `<option value="${c}">`).join('');
+    document.getElementById('listNameEN').innerHTML = Array.from(names).map(n => `<option value="${n}">`).join('');
+  };
+
+  function changeBadge(chg) {
+    if (chg === 'EXTENDED') return '<span class="badge bg-info text-dark px-2 py-1"><i class="fas fa-calendar-plus me-1"></i>EXTENDED</span>';
+    if (chg === 'REDUCED') return '<span class="badge bg-danger px-2 py-1"><i class="fas fa-calendar-minus me-1"></i>REDUCED</span>';
+    if (chg === 'CANCELLED') return '<span class="badge bg-dark px-2 py-1"><i class="fas fa-ban me-1"></i>CANCELLED</span>';
+    return '';
+  }
+
+  window.itCheckCode = function(inp){
+    try{
+      if(!inp || !window.PC_API || !PC_API.checkCode) return;
+      var td=inp.closest('td'); var old=td&&td.querySelector('.f-code-dup'); if(old) old.remove();
+      inp.classList.remove('is-invalid','border-danger');
+      var v=(inp.value||'').trim(); if(!v) return;
+      var tr=inp.closest('tr'); var ptEl=tr&&tr.querySelector('.f-type'); var pt=String(ptEl?ptEl.value:'').toUpperCase();
+      var type = pt.indexOf('COUPON')>=0?'coupon' : pt.indexOf('BILL')>=0?'bill' : pt.indexOf('VOUCHER')>=0?'voucher' : 'promo';
+      var card=inp.closest('.card'); var camp=card?card.getAttribute('data-campaign'):'';
+      var r=PC_API.checkCode(type, v, camp);
+      if(r && r.status==='dup'){
+        inp.classList.add('is-invalid','border-danger');
+        if(td){ var s=document.createElement('div'); s.className='f-code-dup'; s.style.cssText='font-size:.6rem;color:#c0392b;font-weight:700;margin-top:2px;line-height:1.2'; s.innerHTML='<i class="fas fa-triangle-exclamation me-1"></i>โค้ดซ้ำ: '+String(r.where||'มีในระบบ'); td.appendChild(s); }
+      }
+    }catch(e){}
+  };
+  window.itCopyNear = function(btn, cls){ try{ var g=btn.closest('.input-group'); var i=g&&g.querySelector('.'+cls); if(!i)return; var t=String(i.value==null?'':i.value); function flash(){ var o=btn.innerHTML; btn.innerHTML='<i class="fas fa-check"></i>'; setTimeout(function(){ btn.innerHTML=o; },900); } function fb(){ try{ var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }catch(e){} } if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(flash, function(){ fb(); flash(); }); } else { fb(); flash(); } }catch(e){} };
+  window.renderGroupedTasks = function(tasks) {
+    // จองถาวร: ไม่คืน+จองใหม่ตอน re-render — เลขจองล็อกต่อช่องผ่าน findReservedFor (กันเลขเปลี่ยน)
+    window.__itAllTasks = tasks; // cache ชุดเต็มไว้ให้ itApplyFilters (ค้นหา/กรอง) เรียกซ้ำ
+    if (!window.__itCancelAsked) { window.__itCancelAsked = true; setTimeout(function () { try { window.itAskCancelJobs(tasks); } catch (e) {} }, 600); }
+    // filter by active status tab (classify by each campaign group's first task)
+    const _itQ = (document.getElementById('itCampSearch') ? document.getElementById('itCampSearch').value : '').toLowerCase().trim();
+    const _itTF = (document.getElementById('itTypeFilter') ? document.getElementById('itTypeFilter').value : 'ALL');
+    let filtered = (itTab === 'ALL') ? tasks.slice() : tasks.filter(t => itClassify(t) === itTab);
+    if (_itQ) {
+      /* ค้นหาได้ทั้งชื่อแคมเปญ · ชื่อปุ่ม (Short Name) · ชื่อครัว · โค้ด — เจอปุ่มใดปุ่มหนึ่งให้โชว์ทั้งการ์ดแคมเปญ */
+      var _itHitCamp = {};
+      filtered.forEach(function (t) {
+        var blob = [t.campaign, t.shortName, t.kitchen, t.codePromotion, t.codeItemSet, t.itemPromotion, t.itemNameEN, t.itemCode].filter(Boolean).join(' ').toLowerCase();
+        if (blob.indexOf(_itQ) >= 0) _itHitCamp[String(t.campaign || '') + '||' + String(t.month || '')] = 1;
+      });
+      filtered = filtered.filter(function (t) { return _itHitCamp[String(t.campaign || '') + '||' + String(t.month || '')]; });
+    }
+    if (_itTF !== 'ALL') filtered = filtered.filter(t => String(t.promoType || t.typePromotion || '').toUpperCase().includes(_itTF));
+    const groups = filtered.reduce((acc, obj) => {
+      const key = `${obj.campaign}||${obj.month}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(obj);
+      return acc;
+    }, {});
+
+    const container = document.getElementById('campaignGroupContainer');
+    let html = '';
+
+    for (const groupKey in groups) {
+      const campTasks = groups[groupKey];
+      const first = campTasks[0];
+      const campName = first.campaign || "Unknown";
+      const month = first.month;
+      const chg = (first.changeStatus || '').toUpperCase();
+      let lastShortName = "";
+      // parse OP per-button reject details: "▸ shortName [issues]\n   detail"
+      const badButtons = {};
+      if (first.rejectReason) {
+        String(first.rejectReason).split('▸').forEach(seg => {
+          seg = seg.replace(/^\s+/, ''); if (!seg.trim()) return;
+          const nl = seg.indexOf('\n');
+          const firstLine = (nl === -1 ? seg : seg.slice(0, nl)).trim();
+          const detail = (nl === -1 ? '' : seg.slice(nl + 1)).trim();
+          // greedy up to the LAST [..] so shortNames containing brackets (e.g. Set[149]) stay intact
+          const m = firstLine.match(/^(.*)\[([^\]]*)\]\s*$/);
+          if (m) badButtons[m[1].trim()] = { issues: m[2].trim(), detail };
+        });
+      }
+      window.__itBadButtons = window.__itBadButtons || {};
+      window.__itBadButtons[campName + '||' + month] = badButtons;
+
+      const everLive = campTasks.some(x => x.everLive);   // เคยขึ้นปุ่มบน POS แล้วหรือยัง
+      const cancelBar = chg !== 'CANCELLED' ? '' : (everLive
+        ? `<div class="px-4 py-3" style="background:#fff4e5;border-bottom:3px solid #e08600">
+             <div class="d-flex align-items-start gap-2">
+               <i class="fas fa-triangle-exclamation text-warning fa-lg mt-1"></i>
+               <div class="small">
+                 <b class="text-dark">REMARK — โปรนี้เคยขึ้นปุ่มบน POS แล้ว</b>
+                 <div class="text-muted">ยกเลิกได้ แต่ <b>ลบออกจากระบบไม่ได้</b> และ <b>คืนโค้ดไม่ได้</b> (เลขถูกใช้งานจริงไปแล้ว) — ให้ปิดการขายและคงปุ่มไว้ในระบบเพื่อการตรวจสอบย้อนหลัง</div>
+                 ${first.cancelReason ? '<div class="mt-1 text-dark">เหตุผลจาก MKT: <b>' + itEsc(first.cancelReason) + '</b></div>' : ''}
+               </div>
+             </div>
+           </div>`
+        : `<div class="px-4 py-3" style="background:#eaf6ee;border-bottom:3px solid #2e934a">
+             <div class="d-flex align-items-start gap-2">
+               <i class="fas fa-circle-info text-success fa-lg mt-1"></i>
+               <div class="small">
+                 <b class="text-dark">REMARK — ยังไม่เคยขึ้นปุ่มบน POS</b>
+                 <div class="text-muted">ให้ <b>ลบออกจากเว็บนี้</b> แล้วระบบจะ <b>คืนโค้ดกลับคลัง</b> ให้ใช้ซ้ำได้</div>
+                 ${first.cancelReason ? '<div class="mt-1 text-dark">เหตุผลจาก MKT: <b>' + itEsc(first.cancelReason) + '</b></div>' : ''}
+               </div>
+             </div>
+           </div>`);
+      html += `
+        <div class="card mb-5 border-0 shadow-sm" style="border-radius: 15px; overflow: hidden;" data-campaign="${itEsc(campName)}" data-month="${itEsc(month)}" data-everlive="${everLive ? '1' : '0'}">`;
+      html += cancelBar ? '' : '';
+      html += `
+          ${cancelBar}
+          <div class="card-header bg-dark text-white py-3 px-4">
+            <div class="row align-items-center g-2">
+              <div class="col-md-2">
+                <span class="text-warning small d-block mb-1 opacity-75"><i class="fas fa-tag me-1"></i>Campaign Name</span>
+                <h6 class="fw-bold m-0 text-uppercase" style="white-space: normal; line-height: 1.4;">${campName}</h6>
+                <div class="mt-1">${(window.PC_voucherTag ? PC_voucherTag(first) : '')}${(itClassify(first) === 'NEW') ? '<span class="badge bg-primary px-2 py-1">NEW</span>' : ''}${first.rejectReason ? `<span class="badge bg-danger px-2 py-1 ms-1" style="cursor:pointer;" onclick="window.showRejectReason('${(first.rejectReason||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')"><i class="fas fa-rotate-left me-1"></i>Rejected</span>` : ''}${chg ? `<span class="ms-1">${changeBadge(chg)}</span>` : ''}</div>
+              </div>
+              <div class="col-md-2 border-start border-secondary ps-3">
+                <span class="text-warning small d-block mb-1 opacity-75"><i class="far fa-calendar-alt me-1"></i> Date </span>
+                <span class="small">${first.startDate || '-'} - ${first.endDate || '-'}</span>
+                ${chg ? `<div class="mt-1">${changeBadge(chg)}</div>` : ''}
+              </div>
+              <div class="col-md-2 border-start border-secondary ps-3">
+                <span class="text-warning small d-block mb-1 opacity-75"><i class="fas fa-map-marker-alt me-1"></i> Target Stores</span>
+                <button class="btn btn-sm btn-outline-warning fw-bold px-3" onclick="window.showStores('${itJsArg(campName)}')"><i class="fas fa-store me-1"></i> VIEW STORES</button>
+              </div>
+              <div class="col-md-2 border-start border-secondary ps-3">
+                <div class="text-warning small mb-1 opacity-75">Conditions</div>
+                <div class="fw-bold small cursor-pointer" onclick="window.showDetail(${first.rowIdx},'${month}')" style="cursor:pointer;">
+                  <i class="fas fa-sticky-note text-info me-1"></i> Terms &amp; Conditions
+                </div>
+              </div>
+              <div class="col-md-1 border-start border-secondary ps-3 text-nowrap">
+                <div class="text-warning small mb-1 opacity-75">Sale Mode</div>
+                <span class="badge bg-warning text-dark fw-bold" style="white-space: normal; word-wrap: break-word; display: block; line-height: 1.2; padding: 5px; border-radius: 10px; text-align: left;">${(first.saleMode || 'ALL').toUpperCase()}</span>
+              </div>
+              <div class="col-md-2 border-start border-secondary ps-3">
+                <div class="text-warning small mb-1 opacity-75">ให้ปุ่มขึ้นที่หมวด (POS)</div>
+                <input type="text" class="form-control form-control-sm f-cate-remark border-0 bg-light fw-bold" placeholder="ประเภท Item Set..." value="${(function(){ var _pt=String(first.promoType||first.typePromotion||'').toUpperCase(); var _isV=_pt.indexOf('VOUCHER')>=0||_pt.indexOf('E-COUPON')>=0||_pt.indexOf('COUPON')>=0||String(first.proposalKind||'').toLowerCase()==='ecoupon'; if(first.cateRemark) return first.cateRemark; if(_isV){ var _allMode=campTasks.every(function(t){ var c=String(t.itemCode||'').trim(); return !c||/^ALL/i.test(c); }); return _allMode?'สินค้าที่ร่วมรายการ':'เฉพาะสินค้าที่กำหนดเท่านั้น'; } try{ for(var _i=0;_i<campTasks.length;_i++){ var _ic=String(campTasks[_i].itemCode||'').trim(); if(!_ic||/^ALL/i.test(_ic)) continue; var _m=(window.PC_ITEM_MASTER||[]).find(function(x){return String(x.itemCode)===_ic;}); if(_m&&_m.category) return _m.category; } }catch(e){} return (_pt.indexOf('ITEM SET')>=0)?'':'Standard-Exclude Non'; })()}" oninput="window.itSyncCateOnRemark&&window.itSyncCateOnRemark(this)" style="font-size: 0.75rem; height: 28px;">
+              </div>
+              <div class="col-md-1 text-end">
+                <button class="btn btn-outline-danger border-0" title="ลบออกจากการแสดงผล" onclick="window.deleteCampaign('${itJsArg(campName)}','${itJsArg(month)}')"><i class="fas fa-trash-alt fa-lg"></i></button>
+              </div>
+            </div>
+          </div>
+
+          ${first.extendCodeNote ? `<div class="px-4 py-2 d-flex align-items-start gap-2" style="background:#fff8e1;border-bottom:1px solid #f0d98a"><i class="fas fa-note-sticky text-warning mt-1"></i><span style="font-size:.85rem;line-height:1.4"><b>Noted (MKT → IT):</b> ${String(first.extendCodeNote).replace(/</g,'&lt;')}</span></div>` : ''}
+          <div class="px-4 py-2 d-flex align-items-center gap-2 flex-wrap" style="background:#fffdf5;border-bottom:1px solid #f0d98a">
+            <span class="fw-bold text-uppercase" style="font-size:.72rem;color:#9a6700;white-space:nowrap"><i class="fas fa-bullhorn me-1"></i>ป้ายหมายเหตุเด่น (โชว์บนการ์ดสาขา)</span>
+            <input type="text" class="form-control form-control-sm f-branch-note" style="max-width:440px;font-size:.8rem" placeholder="พิมพ์ข้อความเน้นให้สาขาเห็นชัด — เว้นว่าง = ไม่โชว์ป้าย" value="${(first.branchNote||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="window.itBranchNotePrev(this)">
+            <span class="it-bnote-prev">${first.branchNote ? '<span style="display:inline-block;background:#d5420c;color:#fff;font-weight:800;font-size:.72rem;padding:3px 10px;border-radius:6px"><i class="fas fa-tag me-1"></i>'+itEsc(first.branchNote)+'</span>' : '<span class="text-muted" style="font-size:.72rem">— ยังไม่มีป้าย —</span>'}</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle m-0" style="font-size: 0.82rem; table-layout: fixed; min-width: 1600px;">
+                <thead style="background-color: #ffffff;">
+                  <tr class="text-center text-dark fw-bold">
+                    <th style="width: 150px;" class="py-3">Type Promo</th>
+                    <th style="width: 160px;">Code Promotion <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th> <th style="width: 130px;">Code Item Set <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th>
+                    <th style="width: 210px;">Kitchen Name</th>
+                    <th style="width: 150px;">Short Name</th>
+                    <th style="width: 110px;">Item Code</th>
+                    <th>Item Name EN</th>
+                    <th style="width: 60px;">Qty</th>
+                    <th style="width: 100px;">Gross</th>
+                    <th style="width: 90px;">Discount</th>
+                    <th style="width: 100px;">Net Price</th>
+                    <th style="width: 60px;">File</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${campTasks.map(it => {
+                    /* บรรทัดแรกของปุ่ม = แถวที่มีชื่อปุ่มใหม่ · แถวสินค้าที่ไม่มีชื่อปุ่ม (ว่าง) ถือเป็นลูกของปุ่มก่อนหน้า
+                       เดิมชื่อปุ่มว่างถูกนับเป็นปุ่มใหม่ → Code Promotion โชว์ซ้ำทุกแถว */
+                    const _snRaw = String(it.shortName == null ? '' : it.shortName).trim();
+                    const isHeader = _snRaw !== '' && _snRaw !== lastShortName;
+                    if (_snRaw !== '') lastShortName = _snRaw;
+                    const isCoupon = (it.promoType || "").toUpperCase().trim() === 'COUPON';
+                    // Type Promo — เลือกได้ (dropdown) · default = ที่กรอกมา · ไม่มีในลิสต์ = prepend
+                    const _TYPE_OPTS = ['Item Set','Price Promotion','Item Coupon','Bill Discount','Voucher','E-Voucher','Coupon'];
+                    /* FX-P85 — ค่าว่าง = ดรอปดาวน์เด้งไปตัวแรก "Item Set" เอง → ระบบบังคับ Code Item Set/Kitchen ผิดใบ
+                       ไม่มีค่ามา ให้เดาจากโค้ดที่ถืออยู่ (IC=Item Coupon · BD=Bill Discount · VC=Voucher) · ไม่รู้จริง ๆ = Price Promotion */
+                    /* FX-P86 — งานจากฟอร์ม Item Set: Type Promo มาจากช่อง "ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด"
+                       Promotion set / Combo / Value set → Price Promotion (โค้ด P + Item Set 107/105/106)
+                       E-Voucher → E-Voucher (โค้ด IC + Item Set 109) */
+                    const _isCateName = String(it.cateRemark || it.cate || it.postCate || '');
+                    const _isEvCate = /e[-\s]?voucher/i.test(_isCateName);
+                    let _curType = it.typeSel || (/item\s*set/i.test(String(it.promoType||'')) ? (_isEvCate ? 'E-Voucher' : 'Price Promotion') : it.promoType) || '';
+                    if (!String(_curType).trim()) {
+                      const _pc0 = String(it.promoCode || '').trim().toUpperCase();
+                      _curType = /^IC/.test(_pc0) ? 'Item Coupon'
+                               : /^BD/.test(_pc0) ? 'Bill Discount'
+                               : /^VC/.test(_pc0) ? 'Voucher'
+                               : 'Price Promotion';
+                    }
+                    let _typeList = _TYPE_OPTS.slice();
+                    if (_curType && _typeList.indexOf(_curType) === -1) _typeList.unshift(_curType);
+                    const _typeOptsHtml = _typeList.map(t => `<option ${t===_curType?'selected':''}>${t}</option>`).join('');
+                    // Code Promotion autorun — ขึ้นกับ Type Promo: online ต้อง run โค้ดจริง · Normal/Offline เก็บ label เดิม
+                    const _ptU = (it.promoType || '').toUpperCase();
+                    const _typeStr = ((it.typeSel || '') + ' ' + (it.promoType || '')).toUpperCase();
+                    const _bcRaw = String(it.builderCode||'').trim();   // Code Item Set ที่หน้า POS Button Setup จอง+เซฟไว้ (codeItemSet)
+                    const _isIS = _ptU.indexOf('ITEM SET') >= 0 || _typeStr.indexOf('PRICE') >= 0 || !!it._wasItemSet || /^10[5-9]/.test(String(it.itemPromo||'')) || /^10[5-9]/.test(_bcRaw) || (!!it.posReady && !!_bcRaw);   // Item Set + Price Promotion (ระบบนี้ Price Promotion = โครงปุ่ม Item Set บน POS · map ITEM SET→'Price Promotion') · จับ builderCode 105-109 ด้วย ไม่งั้นรหัส Item Set หาย/แก้ไม่ได้
+                    const _isOnline = /ONLINE/.test(_ptU) || String(it.promoCode || '').toUpperCase() === 'ONLINE';
+                    // ประเภทโค้ดตาม cate ที่เลือกจากฟอร์ม (Type Promo) — เช็ค E-Voucher/Coupon/Bill/Voucher ก่อน item-set default
+                    // Promotion set/Combo/Value set (Item Set ปกติ)/Price → P · E-Voucher → VC · Item Coupon → IC · Bill → BD
+                    let _ccType = '';
+                    if (/E[-\s]?VOUCHER/.test(_typeStr)) _ccType = 'coupon';          // E-Voucher (Item Set หมวด) → IC (Item Coupon)
+                    else if (/E[-\s]?COUPON/.test(_typeStr)) _ccType = 'voucher';      // E-Coupon (Voucher Proposal) → VC (Voucher)
+                    else if (_typeStr.indexOf('COUPON') >= 0) _ccType = 'coupon';       // Item Coupon → IC
+                    else if (_typeStr.indexOf('BILL') >= 0) _ccType = 'bill';           // Bill Discount → BD
+                    else if (_typeStr.indexOf('VOUCHER') >= 0) _ccType = 'voucher';     // Voucher → VC
+                    else if (_isIS) _ccType = 'promo';                                  // Item Set (Promotion set/Combo/Value set) → P (+ Code Item Set 107)
+                    else if (_typeStr.indexOf('PRICE') >= 0) _ccType = 'promo';         // Price Promotion → P
+                    // ป้าย "มาจากหน้าจองเลข" — จับเฉพาะโค้ด "ประเภทเดียวกัน" (Code Promotion = promo เท่านั้น · ห้ามเอาเลข itemset/bill/voucher มาใส่ช่องนี้)
+                    let _fromCounter = false, _ccCode = '';
+                    try { if (isHeader && window.PC_COUNTER && _ccType) {
+                      const _PCx = window.PC_COUNTER;
+                      let _ce = null;
+                      const _byCode = _PCx.entryOf && _PCx.entryOf(it.promoCode);
+                      if (_byCode && _byCode.status === 'CONFIRMED' && _byCode.type === _ccType) _ce = _byCode;
+                      if (!_ce && _PCx.list) {
+                        const _hits = _PCx.list({ status: 'CONFIRMED' }).filter(e => e.type === _ccType && String(e.where || '').trim() === String(campName).trim());
+                        if (_hits.length) _ce = _hits[0];
+                      }
+                      if (_ce && _ce.status === 'CONFIRMED') { _fromCounter = true; _ccCode = _ce.code; }
+                    } } catch (e) {}
+                    // คงโค้ดเดิมไว้ถ้ามีโค้ดจริงอยู่แล้ว (เช่น โปรที่ "ขยายเวลา" — codePromotion เดิมต้องไม่เปลี่ยน · ไม่ autorun เลขใหม่ทับ)
+                    const _pcRaw = String(it.promoCode || '').trim();
+                    const _isPlaceholderCode = _pcRaw === '' || /^(ONLINE|NORMAL|OFFLINE)$/i.test(_pcRaw);
+                    const _chg = String(it.changeStatus || '').toUpperCase();
+                    const _isChange = _chg === 'EXTENDED' || _chg === 'REDUCED' || _chg === 'CANCELLED';   // งานแก้ไข = เด้งมาเตือนให้ IT ไปแก้ในระบบจริง · ห้ามจองโค้ดใหม่
+                    const _keepExisting = isHeader && !_fromCounter && (!_isPlaceholderCode || _isChange);   // มีโค้ดจริงแล้ว หรือเป็นงาน ลด/ขยาย/ยกเลิก → ใช้โค้ดเดิม ไม่ autorun
+                    const _preset = _fromCounter || _keepExisting;
+                    const _presetCode = _fromCounter ? _ccCode : _pcRaw;
+                    const _ccKey = (String(campName)+'|'+String(it.shortName||'')+'|'+String(month||'')).replace(/[^A-Za-z0-9]+/g,'_');
+                    const _fcodeAttr = isHeader ? (_preset ? `data-cg-ignore='${campName}'` : (_ccType ? `id="itccf-${_ccType}-${_ccKey}" data-cc-reserve="${_ccType}" data-cc-where='${campName}' data-cg-ignore='${campName}'` : `data-cg="promo" data-cg-ignore='${campName}'`)) : '';
+                    const _fcodeVal = isHeader ? (_preset ? _presetCode : (_ccType ? '' : (it.promoCode || ''))) : '';
+                    // ช่อง File: ถ้าแคมเปญนี้มีโค้ดที่ MKT แนบมา (แกะเข้าระบบแล้ว) → ปุ่มดาวน์โหลดไฟล์ Backoffice (ProID/ProStatus/ProExpire) ตาม format ของฟอร์ม · ไม่มีโค้ดแต่มีไฟล์แนบดิบ → คลิปเปิดดู
+                    const _itCodeCnt = (isHeader && window.PC_CodeConvert) ? (function(){ try { return PC_CodeConvert.codeCountForButton(campName, it.shortName); } catch(e){ return 0; } })() : 0;
+                    const fileHtml = !isHeader ? ""
+                        : (_itCodeCnt > 0
+                            ? `<button class="btn btn-sm btn-success px-2 py-1" title="ดาวน์โหลดไฟล์ Backoffice ปุ่มนี้ (${_itCodeCnt.toLocaleString()} โค้ด · ชื่อไฟล์ = CodePromo_ชื่อปุ่ม)" onclick="window.itDownloadBackoffice('${itJsArg(campName)}','${(it.shortName||'').replace(/'/g,"\\'")}')"><i class="fas fa-file-arrow-down"></i></button>`
+                            : (it.fileUrl && it.fileUrl.trim() !== ""
+                                ? `<a href="javascript:void(0)" onclick="window.pcOpenAttach('${it.fileUrl}')" class="text-info" title="เปิดไฟล์แนบ"><i class="fas fa-paperclip fa-lg"></i></a>`
+                                : `<span class="text-muted">-</span>`));
+                    // Code Item Set / Kitchen ใช้เฉพาะ Item Set · Coupon/Bill/Voucher ไม่มี (ส่วนลดมาจากฟอร์ม)
+                    const isItemSet = _isIS;
+                    // Code Item Set จองเลขตามหมวด (postCate/cateRemark): Promotion set→107 · Combo→105 · Value set→106 · E-Voucher→109
+                    const _isCate = (function(){ var s=String(first.cateRemark||first.cate||first.postCate||'').toLowerCase(); if(/combo/.test(s)) return '105'; if(/value\s*set/.test(s)) return '106'; if(/e[-\s]?voucher/.test(s)) return '109'; return '107'; })();   /* FX-P78 — หมวดอยู่ที่ cate ก็ได้ (เดิมอ่านแค่ cateRemark → E-Voucher ได้เลข 107 ผิดหมวด) */
+                    // ค่ารหัส Item Set ที่จะโชว์ = เลขที่ POS Button Setup จองไว้ก่อน (itemPromo/builderCode)
+                    // ถ้ายังไม่มี → จอง/อ่านจาก "ตัวนับกลาง" ด้วย identity เดียวกับหน้า POS Button Setup
+                    // (where='ItemSet Builder', field=camp|shortName) → แคมเปญ/ปุ่มเดียวกัน 2 หน้าได้ "เลขเดียวกันเสมอ"
+                    // READ-ONLY: อ่านเลขที่หน้า POS Button Setup จองไว้เท่านั้น — ไม่จองเลขใหม่เอง (กันสร้างเลขซ้ำ/กระโดดตอน re-render)
+                    // จับคู่ด้วยชื่อปุ่ม (short name) แบบไม่สนช่องว่าง/tab → ทน field ที่ต่างกันเล็กน้อยระหว่าง 2 หน้า
+                    const _sharedIS = (isItemSet && !(String(it.itemPromo||'').trim() || _bcRaw) && isHeader && window.PC_COUNTER) ? (function(){
+                      try{ var C=window.PC_COUNTER; var sn=String(it.shortName||'').replace(/\s+/g,''); if(!sn||!C.list) return '';
+                        var hits=C.list({status:'RESERVED'}).filter(function(e){ return String(e.where||'')==='ItemSet Builder' && String(e.field||'').replace(/\s+/g,'').endsWith('|'+sn); });
+                        if(hits.length){ hits.sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); }); return hits[0].code; }
+                        return '';
+                      }catch(_e){ return ''; }
+                    })() : '';
+                    const _isVal = String(it.itemPromo||'').trim() || _bcRaw || _sharedIS;
+                    const _isAttr = (_isCate === '107')
+                      ? `id="itccf-itemset-${_ccKey}" data-cc-reserve="itemset" data-cc-where='${campName}'`
+                      : `id="itccf-item-${_isCate}-${_ccKey}" data-cc-reserve="item" data-cc-cat="${_isCate}" data-cc-where='${campName}'`;
+                    const naAttr = 'disabled title="ไม่ใช้กับโปรประเภทนี้ — เฉพาะ Item Set" style="background-color:#f1f3f5; color:#adb5bd; border:none; text-align:center;"';
+                    return `
+                      <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-row-idx="${it.rowIdx}" data-short-name="${it.shortName}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-change-status="${_chg}">
+                        <td>${isHeader ? `<select class="form-select form-select-sm f-type text-center" title="เลือกประเภทโปรโมชั่น" onchange="window.itSyncCateOnType&&window.itSyncCateOnType(this)">${_typeOptsHtml}</select>` : `<input type="text" class="form-control form-control-sm f-type text-center" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}${(isHeader && badButtons[it.shortName]) ? `<span class="badge bg-danger mt-1 d-block" style="cursor:pointer;font-size:.6rem;" onclick="window.itBtnReject('${itJsArg(campName)}','${month}','${(it.shortName||'').replace(/'/g,"\\'")}')"><i class="fas fa-triangle-exclamation me-1"></i>ไม่ถูกต้อง </span>` : ''}</td>
+                        <td>
+                          <div class="input-group input-group-sm">
+                            <input type="text" class="form-control f-code border-warning fw-bold text-center" ${_fcodeAttr} value="${_fcodeVal}" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'');window.itCheckCode&&window.itCheckCode(this)" ${!isHeader ? 'disabled style="background-color:#e9ecef; color:transparent; border:none;"' : ''}>
+                            ${isHeader ? `<button class="btn btn-warning f-code-done" type="button" data-done="0" title="กดเมื่อกรอกเสร็จ — กดอีกครั้งเพื่อแก้ไข" onclick="window.toggleCodeDone(this)"><i class="fas fa-check"></i></button><button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion" style="display:none" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>` : ''}
+                          </div>
+                          ${(isHeader && _fromCounter) ? `<span class="badge bg-info text-dark mt-1 d-block" style="font-size:.6rem;font-weight:700" title="โค้ดนี้ถูกจอง+ยืนยันที่หน้าโค้ดกลางแล้ว — IT แค่ตรวจ+บันทึก"><i class="fas fa-bookmark me-1"></i>จองจากหน้าโค้ดกลาง</span>` : ''}
+                        </td>
+                        <td>${!isHeader
+                          ? `<input type="text" class="form-control form-control-sm f-itempromo text-center" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
+                          : (isItemSet
+                              ? ((_isVal || _isChange)
+                                  ? `<input type="text" class="form-control form-control-sm f-itempromo text-center mono" value="${_isVal || ''}" readonly title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม ห้ามจองใหม่' : 'Code Item Set — จองที่หน้า POS Button Setup แล้ว (เลขเดียวกันทั้ง 2 หน้า)'}" style="background-color:#eef1f4">`
+                                  : `<input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_isAttr} value="" placeholder="ยังไม่ตั้งที่ Builder" title="ต้องตั้ง/ยืนยัน Code Item Set ที่หน้า Item Set Builder & Powder-Formula ก่อน จึงจะปิดงานได้ (รหัสต้องตรงกัน)" style="background-color:#fff3f3"><span class="badge bg-warning text-dark mt-1 d-block" style="font-size:.56rem;font-weight:700" title="ไปที่หน้า Item Set Builder & Powder-Formula เพื่อตั้ง/ยืนยันรหัส 107 ก่อน"><i class="fas fa-triangle-exclamation me-1"></i>รอตั้งรหัสที่ Item Set Builder</span>`)
+                              : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`)}</td>
+                        <td>${!isHeader
+                          ? `<input type="text" class="form-control form-control-sm f-kitchen" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
+                          : (isItemSet
+                              ? `<input type="text" class="form-control form-control-sm f-kitchen" value="${it.kitchenName || ''}">`
+                              : `<input type="text" class="form-control form-control-sm f-kitchen" value="—" ${naAttr}>`)}</td>
+                        <td>${isHeader ? `<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm f-short" value="${it.shortName || ''}"><button class="btn btn-outline-secondary" type="button" title="คัดลอก Short Name" onclick="window.itCopyNear(this,'f-short')"><i class="fas fa-copy"></i></button></div>` : `<input type="text" class="form-control form-control-sm f-short" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}</td>
+                        <td><input type="text" class="form-control form-control-sm f-itemcode text-center fw-bold text-primary" list="listCode" value="${it.itemCode || ''}" oninput="window.syncItem(this, 'code')"></td>
+                        <td><input type="text" class="form-control form-control-sm f-itemname" list="listNameEN" value="${it.itemNameEN || ''}" oninput="window.syncItem(this, 'name')"></td>
+                        <td><input type="number" class="form-control form-control-sm text-center f-qty fw-bold px-1" value="${it.qty || ''}"></td>
+                        <td><input type="text" class="form-control form-control-sm text-end f-gross px-1" value="${it.price || ''}" oninput="window.calcRow(this)"></td>
+                        <td><input type="text" class="form-control form-control-sm text-end f-disc text-danger px-1" value="${it.discount || ''}" oninput="window.calcRow(this)"></td>
+                        <td>${(isHeader || isCoupon) ? `<div class="input-group input-group-sm"><input type="number" class="form-control form-control-sm text-end f-net bg-light fw-bold px-1" value="${it.netPrice || ''}" readonly><button class="btn btn-outline-secondary" type="button" title="คัดลอก Net Price" onclick="window.itCopyNear(this,'f-net')"><i class="fas fa-copy"></i></button></div>` : `<input type="number" class="form-control form-control-sm text-end f-net bg-light fw-bold px-1" value="" readonly style="background-color:#e9ecef !important; color:transparent; border:none;">`}</td>
+                        <td class="text-center">${fileHtml}</td>
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          ${(function(){
+            var aoItems=[], ss='';
+            campTasks.forEach(function(it){ if(it.addonSubset) ss=it.addonSubset; if(it.addons){ try{ var a=JSON.parse(it.addons); if(a&&a.length) a.forEach(function(x){ aoItems.push(x); }); }catch(e){} } });
+            if(!aoItems.length) return '';
+            var seen={}, uniq=[]; aoItems.forEach(function(x){ var k=String(x.code||x.name); if(!seen[k]){seen[k]=1;uniq.push(x);} });
+            var chips=uniq.map(function(x){ return '<span class="badge bg-white text-dark border me-1 mb-1" style="font-size:.72rem;font-weight:600">'+(x.code||'')+' · '+(x.name||'')+((x.price!=null&&x.price!=='')?(' · <span class="text-success">+฿'+x.price+'</span>'):'')+'</span>'; }).join('');
+            var act = ss
+              ? '<span class="badge bg-success py-2 px-3"><i class="fas fa-circle-check me-1"></i>สร้าง Subset แล้ว · '+ss+'</span>'
+              : '<button class="btn btn-dark fw-bold" onclick="window.itCreateAddonSubset(\'' + itJsArg(campName) + '\',\'' + itJsArg(month) + '\')"><i class="fas fa-layer-group me-1"></i>สร้าง Subset จาก Add on</button>';
+            return '<div class="px-4 py-3 border-top" style="background:#eef9f1"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><div><div class="fw-bold small text-uppercase mb-1"><i class="fas fa-mug-hot me-1 text-success"></i>Add on (MKT กรอกมา) — IT ต้องสร้าง Subset</div><div>'+chips+'</div></div>'+act+'</div></div>';
+          })()}
+          <div class="card-footer bg-white py-2 px-4 d-flex justify-content-between align-items-center border-top">
+            <small class="text-muted"><i class="fas fa-circle-info me-1"></i> Item Set: กรอก Code Item Set + Kitchen · Coupon/Bill/Voucher: กรอกแค่ Code Promotion (ส่วนลด/ชื่อปุ่มมาจากฟอร์ม) แล้วกดบันทึกเพื่อปิดงาน</small>
+            <div class="d-flex gap-2 align-items-center">
+              ${chg === 'CANCELLED'
+                ? (everLive
+                  ? `<button class="btn btn-warning fw-bold px-4 text-dark" onclick="window.itKeepCancelled('${itJsArg(campName)}', '${itJsArg(month)}')">
+                <i class="fas fa-box-archive me-2"></i> ปิดการขาย — คงไว้ในระบบ (คืนโค้ดไม่ได้)
+              </button>`
+                  : `<button class="btn btn-danger fw-bold px-4" onclick="window.itRemoveCancelled('${itJsArg(campName)}', '${itJsArg(month)}')">
+                <i class="fas fa-trash-can me-2"></i> ลบออกจากเว็บ + คืนโค้ด
+              </button>`)
+                : `<button class="btn btn-success fw-bold px-4" onclick="window.saveCampaign('${itJsArg(campName)}', '${itJsArg(month)}')">
+                <i class="fas fa-save me-2"></i> บันทึก & ปิดงาน
+              </button>`}
+            </div>
+          </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+    // เช็ค+แก้อัตโนมัติ: หมวด Item Set (E-Voucher/Combo/Value set) ต้องตรงกับ Type Promo ของแต่ละแถว
+    // ป้องกันเคส Type=Price Promotion แต่หมวดยังเป็น E-Voucher (จองเลขผิดซีรีส์ 109 แทน 107)
+    try { container.querySelectorAll('.card').forEach(function (card) { window.itSyncCateCard && window.itSyncCateCard(card, { silent: true }); }); } catch (e) {}
+    /* โชว์เลขจองทันทีตอน render — งานใหม่ (item set / coupon / bill / voucher) จองเลขครั้งเดียวต่อปุ่ม
+       แล้วขึ้นป้าย "⏳ รอ IT ยืนยันเลข" · งานขยาย/ลด/ยกเลิก ไม่มี data-cc-reserve จึงไม่ถูกจอง (ใช้โค้ดเดิม) */
+    try { if (window.PC_COUNTER && PC_COUNTER.autoReserveIn) PC_COUNTER.autoReserveIn(container); } catch (e) {}
+    /* safety net: ปุ่ม Item Set ที่มี Code Item Set จอง (data-builder-code) แต่ช่องรหัสว่าง → เติมให้ตรงกับที่ POS Button Setup จองไว้ (กัน race ตอน render/sync) */
+    try {
+      container.querySelectorAll('tr.it-row-item[data-builder-code]').forEach(function (tr) {
+        var bc = (tr.getAttribute('data-builder-code') || '').trim();
+        if (!bc) return;
+        var inp = tr.querySelector('input.f-itempromo');
+        if (inp && !inp.disabled && !(inp.value || '').trim()) {
+          inp.value = bc; inp.readOnly = true; inp.style.backgroundColor = '#eef1f4';
+          var badge = inp.parentNode && inp.parentNode.querySelector('.badge'); if (badge) badge.style.display = 'none';
+        }
+      });
+    } catch (e) {}
+  };
+  // ---- \u0e01\u0e31\u0e19\u0e2b\u0e21\u0e27\u0e14 Item Set \u0e01\u0e31\u0e1a Type Promo \u0e40\u0e1e\u0e35\u0e49\u0e22\u0e19\u0e01\u0e31\u0e19 (\u0e40\u0e0a\u0e48\u0e19 Type=Price Promotion \u0e41\u0e15\u0e48\u0e2b\u0e21\u0e27\u0e14=E-Voucher \u2192 \u0e08\u0e2d\u0e07\u0e40\u0e25\u0e02\u0e0b\u0e35\u0e23\u0e35\u0e2a\u0e4c 109 \u0e41\u0e17\u0e19 107) ----
+  window.itWantsVoucherType = function (typeVal) {
+    var t = String(typeVal || '').toUpperCase();
+    if (t.indexOf('PRICE') >= 0 || t.indexOf('ITEM SET') >= 0) return false;
+    return /E-VOUCHER|ITEM COUPON|VOUCHER|BILL DISCOUNT|COUPON/.test(t);
+  };
+  window.itSyncCateCard = function (card, opts) {
+    opts = opts || {};
+    var remarkInp = card && card.querySelector('.f-cate-remark'); if (!remarkInp) return;
+    var remark = (remarkInp.value || '').trim();
+    var known = /^(combo|value\s*set|promotion\s*set|e[-\s]?voucher)$/i.test(remark);
+    if (!known) return; // \u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e2d\u0e34\u0e2a\u0e23\u0e30 (\u0e40\u0e0a\u0e48\u0e19 "Standard-Exclude Non") \u2014 \u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e04\u0e48\u0e32 postCate \u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e2a\u0e34\u0e07\u0e04\u0e4c
+    var isEVremark = /e[-\s]?voucher/i.test(remark);
+    var fixed = false;
+    card.querySelectorAll('.it-row-item').forEach(function (tr) {
+      var sel = tr.querySelector('.f-type'); if (!sel || sel.disabled) return;
+      var wantsEV = window.itWantsVoucherType(sel.value);
+      if (wantsEV === isEVremark) return;
+      fixed = true;
+      var fld = tr.querySelector('.f-itempromo');
+      if (fld && !fld.disabled) {
+        if (fld.value) { try { var oldType = fld.getAttribute('data-cc-reserve'); if (window.PC_API && PC_API.releaseCode) PC_API.releaseCode(fld.value, oldType); } catch (e) {} }
+        fld.value = ''; fld.removeAttribute('data-cc-code');
+        if (wantsEV) { fld.id = (fld.id || '').replace(/itccf-itemset-/, 'itccf-item-109-'); fld.setAttribute('data-cc-reserve', 'item'); fld.setAttribute('data-cc-cat', '109'); }
+        else { fld.id = (fld.id || '').replace(/itccf-item-\d+-/, 'itccf-itemset-'); fld.setAttribute('data-cc-reserve', 'itemset'); fld.removeAttribute('data-cc-cat'); }
+      }
+    });
+    if (fixed) {
+      if (isEVremark) remarkInp.value = ''; // Type Promo \u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e01\u0e32\u0e23 E-Voucher \u0e2d\u0e35\u0e01\u0e15\u0e48\u0e2d\u0e44\u0e1b \u2014 \u0e40\u0e04\u0e25\u0e35\u0e22\u0e23\u0e4c\u0e01\u0e25\u0e31\u0e1a Promotion set \u0e40\u0e23\u0e34\u0e48\u0e21\u0e15\u0e49\u0e19 (107)
+      if (!opts.silent && window.Swal) Swal.fire({ icon: 'warning', title: '\u0e2b\u0e21\u0e27\u0e14 Item Set \u0e44\u0e21\u0e48\u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a Type Promo', text: '\u0e25\u0e49\u0e32\u0e07\u0e23\u0e2b\u0e31\u0e2a Item Set \u0e17\u0e35\u0e48\u0e08\u0e2d\u0e07\u0e1c\u0e34\u0e14\u0e2b\u0e21\u0e27\u0e14\u0e41\u0e25\u0e49\u0e27 \u2014 \u0e04\u0e25\u0e34\u0e01\u0e0a\u0e48\u0e2d\u0e07\u0e23\u0e2b\u0e31\u0e2a Item Set \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e08\u0e2d\u0e07\u0e40\u0e25\u0e02\u0e43\u0e2b\u0e21\u0e48\u0e43\u0e2b\u0e49\u0e15\u0e23\u0e07\u0e2b\u0e21\u0e27\u0e14', timer: 2800, showConfirmButton: false });
+    }
+  };
+  window.itSyncCateOnType = function (sel) { var card = sel.closest('.card'); if (card) window.itSyncCateCard(card, { silent: false }); };
+  window.itSyncCateOnRemark = function (inp) { var card = inp.closest('.card'); if (card) window.itSyncCateCard(card, { silent: false }); };
+
+  window.itCreateAddonSubset = function(campName, month){
+    Swal.fire({title:'สร้าง Subset จาก Add on?', html:'ระบบจะออก SS code อัตโนมัติ + ผูกเป็นกลุ่มเลือกได้ (optional) เข้ากับสินค้าในชุด', icon:'question', showCancelButton:true, confirmButtonText:'สร้างเลย', cancelButtonText:'ยกเลิก', confirmButtonColor:'#1a1d20'}).then(function(res){
+      if(!res.isConfirmed) return;
+      Swal.fire({title:'กำลังสร้าง...', allowOutsideClick:false, didOpen:function(){Swal.showLoading();}});
+      google.script.run.withSuccessHandler(function(r){
+        if(r&&r.status==='success'){ Swal.fire('สำเร็จ', r.message, 'success').then(function(){ if(window.initIT_Settlement) window.initIT_Settlement(); }); }
+        else Swal.fire('ผิดพลาด', (r&&r.message)||'ไม่สำเร็จ', 'error');
+      }).withFailureHandler(function(e){Swal.fire('Error', String(e), 'error');}).createAddonSubsetForCampaign(campName, month);
+    });
+  };
+  // อัปเดต preview ป้ายแดง (ป้ายหมายเหตุเด่น) ขณะพิมพ์
+  window.itBranchNotePrev = function(inp){
+    var wrap = inp.parentElement; if(!wrap) return;
+    var prev = wrap.querySelector('.it-bnote-prev'); if(!prev) return;
+    var v = (inp.value||'').trim();
+    prev.innerHTML = v
+      ? '<span style="display:inline-block;background:#d5420c;color:#fff;font-weight:800;font-size:.72rem;padding:3px 10px;border-radius:6px"><i class="fas fa-tag me-1"></i>'+itEsc(v)+'</span>'
+      : '<span class="text-muted" style="font-size:.72rem">— ยังไม่มีป้าย —</span>';
+  };
+  /* ===== งานยกเลิก: IT ลบปุ่มออกจาก POS แล้วคืนโค้ดเข้าคลัง ===== */
+  window.itRemoveCancelled = function (campName, month) {
+    var card = window.itCardOf(campName, month);
+    if (card && card.getAttribute('data-everlive') === '1') return window.itKeepCancelled(campName, month);
+    var found = [];
+    /* FX-P71 — ลบเฉพาะใบที่กด: ส่งรายชื่อปุ่มบนการ์ดนี้ + เดือนนี้ ไปด้วย
+       → แคมเปคนชื่อคล้ายกัน/ปุ่มอื่นของแคมเปคนเดียวกันต่างเดือน จะไม่โดนลบติดไปด้วย */
+    var scopeSns = card ? [].map.call(card.querySelectorAll('.it-row-item'), function (tr) { return tr.getAttribute('data-short-name') || ''; }).filter(Boolean) : [];
+    scopeSns = scopeSns.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var push = function (code, type) {
+      code = String(code == null ? '' : code).trim();
+      if (!code || /^(—|-|ONLINE|NORMAL|OFFLINE)$/i.test(code)) return;
+      if (found.some(function (x) { return x.code === code; })) return;
+      found.push({ code: code, type: type || 'promo' });
+    };
+    if (card) {
+      card.querySelectorAll('.f-code').forEach(function (el) { push(el.value, el.getAttribute('data-cc-reserve') || 'promo'); });
+      card.querySelectorAll('.f-itempromo').forEach(function (el) { push(el.value, 'itemset'); });
+    }
+    try {
+      if (window.PC_COUNTER && PC_COUNTER.list) {
+        PC_COUNTER.list({}).forEach(function (e) {
+          if (String(e.where || '').trim() === String(campName).trim() && e.status !== 'RELEASED') push(e.code, e.type);
+        });
+      }
+    } catch (e) {}
+    var listHTML = found.length
+      ? '<div class="p-2 rounded border bg-light font-monospace small text-start">' + found.map(function (x) { return '• ' + itEsc(x.code) + ' <span class="text-muted">(' + itEsc(x.type) + ')</span>'; }).join('<br>') + '</div>'
+      : '<div class="text-muted small">ไม่พบเลขที่ต้องคืน (แคมเปญนี้ยังไม่เคยออกโค้ด)</div>';
+    Swal.fire({
+      title: 'ลบออกจาก POS + คืนโค้ด',
+      html: '<div class="text-start"><b>' + itEsc(campName) + '</b>' +
+        '<div class="small text-muted mb-2">โปรนี้ถูกยกเลิกจาก MKT — IT นำปุ่มออกจาก POS แล้วระบบจะคืนเลขโค้ดกลับคลังให้ใช้ซ้ำได้</div>' +
+        (scopeSns.length ? '<div class="small mb-2">ปุ่มที่จะลบ (เฉพาะใบนี้ ' + scopeSns.length + ' ปุ่ม): <b>' + scopeSns.map(itEsc).join(' · ') + '</b></div>' : '') +
+        listHTML + '</div>',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#c0392b',
+      confirmButtonText: '<i class="fas fa-trash-can me-1"></i>ลบ + คืนโค้ด', cancelButtonText: 'ยกเลิก'
+    }).then(function (r) {
+      if (!r.isConfirmed) return;
+      var returned = [];
+      found.forEach(function (x) {
+        try {
+          var ok = (window.PC_COUNTER && PC_COUNTER.returnCode) ? PC_COUNTER.returnCode(x.code, x.type, 'IT Settlement (ยกเลิกโปร — คืนโค้ด)', true) : null;
+          if (ok) returned.push(x.code);
+        } catch (e) {}
+      });
+      Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      google.script.run.withSuccessHandler(function (res) {
+        Swal.fire({
+          icon: 'success', title: 'ลบออกจากระบบแล้ว',
+          html: (res && res.message ? itEsc(res.message) : 'ลบเรียบร้อย') +
+            (returned.length
+              ? '<div class="small text-muted mt-2">คืนโค้ดเข้าคลัง: <b class="font-monospace">' + returned.join(', ') + '</b></div>'
+              : (found.length
+                  ? '<div class="small text-muted mt-2">โค้ด <b class="font-monospace">' + found.map(function (x) { return itEsc(x.code); }).join(', ') + '</b> ไม่ได้อยู่ในคลังเลขของระบบ (ออกก่อนมีตัวนับ หรือถูกคืนไปแล้ว) — ปุ่มถูกลบออกจาก POS เรียบร้อย</div>'
+                  : '<div class="small text-muted mt-2">แคมเปญนี้ไม่มีเลขโค้ดให้คืน</div>')),
+          confirmButtonColor: '#2e934a'
+        }).then(function () { window.loadITTasks && window.loadITTasks(); });
+      }).withFailureHandler(function (e) { Swal.fire('ผิดพลาด', String(e), 'error'); })
+        .itRemoveCancelled(campName, month, returned, scopeSns);
+    });
+  };
+
+  /* ===== งานยกเลิกที่ "เคยขึ้นปุ่มบน POS แล้ว" — คงไว้ในระบบ ปิดการขาย คืนโค้ดไม่ได้ ===== */
+  window.itKeepCancelled = function (campName, month) {
+    var kcCard = window.itCardOf(campName, month);
+    var kcSns = kcCard ? [].map.call(kcCard.querySelectorAll('.it-row-item'), function (tr) { return tr.getAttribute('data-short-name') || ''; }).filter(Boolean) : [];
+    kcSns = kcSns.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    Swal.fire({
+      title: 'ปิดการขาย — คงไว้ในระบบ',
+      html: '<div class="text-start"><b>' + itEsc(campName) + '</b>' +
+        '<div class="p-2 mt-2 rounded border" style="background:#fff4e5;border-color:#e08600!important">' +
+        '<div class="small"><b>โปรนี้เคยขึ้นปุ่มบน POS แล้ว</b><br>' +
+        '• <b>ลบออกจากเว็บไม่ได้</b> — ต้องคงไว้เพื่อการตรวจสอบย้อนหลัง<br>' +
+        '• <b>คืนโค้ดไม่ได้</b> — เลขถูกใช้งานจริงไปแล้ว จะไม่ถูกนำกลับเข้าคลัง<br>' +
+        '• ระบบจะ<b>ปิดการขาย</b>ปุ่มนี้ให้ (ไม่ขึ้นที่สาขาแล้ว)</div></div></div>',
+      icon: 'warning', input: 'textarea', inputLabel: 'หมายเหตุของ IT (ไม่บังคับ)',
+      inputPlaceholder: 'เช่น ปิดปุ่มที่ POS ทุกสาขาแล้ว เวลา 14:30',
+      showCancelButton: true, confirmButtonColor: '#e08600',
+      confirmButtonText: '<i class="fas fa-box-archive me-1"></i>ปิดการขาย + คงไว้', cancelButtonText: 'ยังไม่ทำ'
+    }).then(function (r) {
+      if (!r.isConfirmed) return;
+      Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      google.script.run.withSuccessHandler(function (res) {
+        Swal.fire({
+          icon: 'success', title: 'ปิดการขายแล้ว',
+          html: (res && res.message ? itEsc(res.message) : 'บันทึกเรียบร้อย') +
+            '<div class="small text-muted mt-2">โปรยังอยู่ในระบบ (ยกเลิกแล้ว) · โค้ดไม่ถูกคืนเข้าคลัง</div>',
+          confirmButtonColor: '#2e934a'
+        }).then(function () { window.loadITTasks && window.loadITTasks(); });
+      }).withFailureHandler(function (e) { Swal.fire('ผิดพลาด', String(e), 'error'); })
+        .itKeepCancelled(campName, month, r.value || '', kcSns);
+    });
+  };
+
+  /* ===== เด้งถามทุกครั้งที่เข้าหน้า IT ถ้ามีงานยกเลิกค้าง ===== */
+  window.itAskCancelJobs = function (tasks) {
+    var jobs = {};
+    (tasks || []).forEach(function (x) {
+      var ch = String(x.changeStatus || '').toUpperCase();
+      if (ch !== 'CANCELLED' && ch !== 'EXTENDED' && ch !== 'REDUCED') return;
+      if (ch === 'CANCELLED' && (x.removedFromPos || x.cancelHandled)) return;
+      if (ch !== 'CANCELLED' && String(x.itStatus || '').toUpperCase() === 'COMPLETE') return;
+      var k = x.campaign + '||' + x.month;
+      if (!jobs[k]) jobs[k] = { campaign: x.campaign, month: x.month, kind: ch, everLive: false, reason: x.cancelReason || '', endDate: x.endDate || '', note: x.extendCodeNote || '', n: 0 };
+      if (x.everLive) jobs[k].everLive = true;
+      jobs[k].n++;
+    });
+    var list = Object.keys(jobs).map(function (k) { return jobs[k]; });
+    if (!list.length) return;
+    var nCancel = list.filter(function (j) { return j.kind === 'CANCELLED'; }).length;
+    var nChange = list.length - nCancel;
+    var rows = list.map(function (j) {
+      var isC = j.kind === 'CANCELLED';
+      var bg = isC ? (j.everLive ? '#fff4e5' : '#eaf6ee') : '#eaf3fb';
+      var label = isC
+        ? (j.everLive ? '⚠️ ยกเลิก · เคยขึ้นปุ่มแล้ว → ปิดการขาย คงไว้ในระบบ <b>คืนโค้ดไม่ได้</b>'
+                      : '🗑️ ยกเลิก · ยังไม่เคยขึ้นปุ่ม → <b>ลบออกจากเว็บ + คืนโค้ด</b>')
+        : (j.kind === 'EXTENDED' ? '📅 <b>ขยายเวลา</b> → แก้วันหมดอายุที่ POS เป็น <b>' + itEsc(j.endDate || '-') + '</b>'
+                                 : '📅 <b>ลดเวลา</b> → แก้วันหมดอายุที่ POS เป็น <b>' + itEsc(j.endDate || '-') + '</b>')
+          + (j.note ? '<div class="text-muted">หมายเหตุ MKT: ' + itEsc(j.note) + '</div>' : '');
+      var btn = isC
+        ? '<button class="btn btn-sm ' + (j.everLive ? 'btn-warning text-dark' : 'btn-danger') + ' fw-bold ms-2" onclick="Swal.close(); window.' +
+          (j.everLive ? 'itKeepCancelled' : 'itRemoveCancelled') + '(&#39;' + itJsArg(j.campaign) + '&#39;,&#39;' + itJsArg(j.month) + '&#39;)">จัดการ</button>'
+        : '<button class="btn btn-sm btn-primary fw-bold ms-2" onclick="Swal.close(); window.itFocusCampaign(&#39;' + itJsArg(j.campaign) + '&#39;,&#39;' + itJsArg(j.month) + '&#39;)">ไปที่งาน</button>';
+      return '<div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2" style="background:' + bg + '">' +
+        '<div class="text-start small"><b>' + itEsc(j.campaign) + '</b> <span class="text-muted">· ' + itEsc(j.month) + ' · ' + j.n + ' ปุ่ม</span>' +
+        '<div class="text-muted">' + label + '</div></div>' + btn + '</div>';
+    }).join('');
+    var head = [];
+    if (nCancel) head.push('ยกเลิก ' + nCancel);
+    if (nChange) head.push('ขยาย/ลดเวลา ' + nChange);
+    Swal.fire({
+      title: 'มีงานรอ IT จัดการ (' + head.join(' · ') + ')',
+      html: '<div class="text-start"><div class="small text-muted mb-2">MKT แก้ไขโปรเหล่านี้ — ต้องให้ IT ปิดงานก่อน จึงจะหายจากคิว</div>' + rows + '</div>',
+      icon: 'warning', width: 680, confirmButtonText: 'ไว้ทีหลัง', confirmButtonColor: '#6c757d',
+      allowOutsideClick: true, allowEscapeKey: true, showCloseButton: true
+    });
+  };
+
+  /* เลื่อนไปที่การ์ดงานขยาย/ลดเวลา แล้วไฮไลต์ให้เห็นชัด */
+  window.itFocusCampaign = function (campName, month) {
+    var go = function () {
+      var card = window.itCardOf(campName, month);
+      if (!card) { Swal.fire('ไม่พบงานนี้ในหน้า', 'ลองเปลี่ยนแท็บเป็น ALL หรือล้างตัวกรอง', 'info'); return; }
+      var top = card.getBoundingClientRect().top + window.pageYOffset - 90;
+      window.scrollTo({ top: top, behavior: 'smooth' });
+      card.style.transition = 'box-shadow .3s';
+      card.style.boxShadow = '0 0 0 4px #0d6efd';
+      setTimeout(function () { card.style.boxShadow = ''; }, 2500);
+    };
+    /* ไปแท็บ ALL เสมอ — งานขยาย/ลดบางใบถูกจัดเป็น EDITED/NEW ตามสถานะอื่น จะหาไม่เจอถ้าอยู่แท็บเดียว */
+    var q = document.getElementById('itCampSearch'); if (q && q.value) { q.value = ''; }
+    window.itSetTab('ALL'); setTimeout(go, 600);
+  };
+
+  window.saveCampaign = function(campName, month) {
+    const card = window.itCardOf(campName, month);
+    /* FX-P70b — หาการ์ดไม่เจอ ห้าม return เงียบ (เดิมกดบันทึกแล้วไม่มีอะไรเกิดขึ้นเลย) */
+    if (!card) return Swal.fire({ icon: 'warning', title: 'หาการ์ดงานนี้ไม่เจอ', html: '<div class="text-start small">ชื่อแคมเปน: <b>' + itEsc(campName) + '</b><br>ลองกดรีเฟรชหน้า หรือสลับแท็บเป็น ALL แล้วลองอีกครั้ง</div>', confirmButtonColor: '#c0392b' });
+    const rows = card.querySelectorAll('.it-row-item');
+    const cateRemarkInp = card.querySelector('.f-cate-remark');
+    const cateRemark = cateRemarkInp ? cateRemarkInp.value.trim() : '';
+    const branchNoteInp = card.querySelector('.f-branch-note');
+    const branchNote = branchNoteInp ? branchNoteInp.value.trim() : '';
+
+    let headerStore = {};
+    let isValid = true, errorMessage = "";
+    let usedPromoCodes = new Set(), usedItemPromos = new Set();
+
+    /* หมวดปุ่มบน POS — บังคับเฉพาะงาน Item Set (คูปอง/Bill/Voucher ไม่ต้องมี — ไม่ได้สร้างปุ่มชุดใหม่) */
+    const _hasItemSetRow = Array.from(rows).some(function (tr) {
+      var sel = tr.querySelector('.f-type'); if (!sel || sel.disabled) return false;
+      return String(sel.value || '').toUpperCase().indexOf('ITEM SET') >= 0;
+    });
+    if (_hasItemSetRow && !cateRemark && cateRemarkInp) { isValid = false; cateRemarkInp.classList.add('is-invalid'); errorMessage = "กรุณากรอก PRODUCT CATEGORY (POS) ห้ามว่าง"; }
+    else if (cateRemarkInp) { cateRemarkInp.classList.remove('is-invalid'); }
+
+    const updates = Array.from(rows).map(tr => {
+      const shortName = tr.getAttribute('data-short-name');
+      const isHeader = !tr.querySelector('.f-code').disabled;
+      if (isHeader) {
+        const promoType = tr.querySelector('.f-type').value;
+        const isItemSet = (promoType || '').toUpperCase().indexOf('ITEM SET') >= 0;
+        const promoCode = tr.querySelector('.f-code').value.trim();
+        let itemPromo = tr.querySelector('.f-itempromo').value.trim();
+        let kitchen = tr.querySelector('.f-kitchen').value.trim();
+        // Code Item Set / Kitchen ใช้เฉพาะ Item Set — coupon/bill/voucher ปล่อยว่างได้ (ไม่มีข้อมูลจากฟอร์ม)
+        if (!isItemSet && !/^107/.test(String(itemPromo))) { itemPromo = ''; kitchen = ''; }
+        const netPrice = parseFloat(tr.querySelector('.f-net').value) || 0;
+        if (isItemSet) {
+          const posReady = tr.getAttribute('data-pos-ready') === '1';
+          const builderCode = (tr.getAttribute('data-builder-code') || '').trim();
+          const isChangeRow = ['EXTENDED','REDUCED','CANCELLED'].indexOf((tr.getAttribute('data-change-status') || '').toUpperCase()) >= 0;
+          if (!itemPromo || !kitchen) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "Item Set ต้องกรอก Code Item Set และ Kitchen Name ให้ครบ"; }
+          else if (usedItemPromos.has(itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Item Set ซ้ำกันในแคมเปญ: ${itemPromo}`; }
+          else if (!isChangeRow && !builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่มีรหัส Code Item Set จากหน้า Item Set Builder & Powder-Formula — ต้องตั้ง/ยืนยันรหัสที่หน้านั้นก่อน จึงจะปิดงานได้`; }
+          else if (!isChangeRow && itemPromo !== builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `รหัส Code Item Set ไม่ตรงกันระหว่าง 2 หน้า — IT Settlement: ${itemPromo || '(ว่าง)'} · Item Set Builder: ${builderCode} — ต้องเป็นรหัสเดียวกัน จึงจะปิดงานได้`; }
+          else if (netPrice < 0) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = "Net Price ไม่สามารถมีค่าติดลบได้"; }
+          else { tr.style.backgroundColor = ""; usedItemPromos.add(itemPromo); if (promoCode) usedPromoCodes.add(promoCode); }
+        } else {
+          // Coupon / Bill discount / Voucher / Price → IT ยืนยันแค่ Code Promotion (ส่วนลด/ชื่อปุ่ม มาจากฟอร์ม)
+          if (!promoCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "กรุณากรอก Code Promotion (โค้ดโปรโมชั่น)"; }
+          else if (usedPromoCodes.has(promoCode)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Promotion ซ้ำกันในแคมเปญ: ${promoCode}`; }
+          else if (netPrice < 0) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = "Net Price ไม่สามารถมีค่าติดลบได้"; }
+          else { tr.style.backgroundColor = ""; usedPromoCodes.add(promoCode); }
+        }
+        headerStore[shortName] = { promoType, promoCode, itemPromo, kitchenName: kitchen, shortName: tr.querySelector('.f-short').value, netPrice };
+      }
+      const h = headerStore[shortName] || {};
+      return {
+        rowIdx: tr.getAttribute('data-row-idx'), campaign: campName, month: month,
+        promoType: h.promoType || "", promoCode: h.promoCode || "", itemPromo: h.itemPromo || "",
+        kitchenName: h.kitchenName || "", shortName: h.shortName || "",
+        itemCode: tr.querySelector('.f-itemcode').value, itemNameEN: tr.querySelector('.f-itemname').value,
+        qty: tr.querySelector('.f-qty').value, price: tr.querySelector('.f-gross').value,
+        discount: tr.querySelector('.f-disc').value, netPrice: h.netPrice || "", cateRemark
+      };
+    });
+
+    if (!isValid) return Swal.fire('Validation Error', errorMessage, 'warning');
+
+    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res === "SUCCESS") {
+          /* ยืนยัน (CONFIRM) โค้ดที่จองไว้ของแคมเปญนี้ — กันถูกคืนตอน reload */
+          try { updates.forEach(function (u) { itConfirmIfReserved(u.promoCode, campName); itConfirmIfReserved(u.itemPromo, campName); }); } catch (e) {}
+          try { if (window.PC_CodeConvert) PC_CodeConvert.confirmForCampaign(campName); } catch (e) {}  // โค้ดจากฟอร์มแจ้งโปร → CONFIRMED → สาขาค้นเจอ
+          try { if (window.PC_API && PC_API.savePosButtonNoteCampaign) PC_API.savePosButtonNoteCampaign(campName, branchNote); } catch (e) {}  // ป้ายหมายเหตุเด่น → ทุกปุ่มของแคมเปญ → โชว์บนการ์ดสาขา
+          Swal.fire({ title: 'ปิดงานสำเร็จ!', text: 'แคมเปญถูกตั้งค่าและเปลี่ยนสถานะเป็น COMPLETE แล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
+        } else if (String(res).startsWith('DUP_PROMO|')) {
+          const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Promotion ซ้ำ', html:`รหัส <b>${p[1]}</b> ถูกใช้ไปแล้วในแคมเปญ<br><b>"${p[2]}"</b><br><span class="text-muted small">กรุณาใช้รหัสที่ไม่ซ้ำ</span>`, confirmButtonColor:'#dc3545' });
+        } else if (String(res).startsWith('DUP_ITEMSET|')) {
+          const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Item Set ซ้ำ', html:`รหัส <b>${p[1]}</b> ถูกใช้ไปแล้วในแคมเปญ<br><b>"${p[2]}"</b><br><span class="text-muted small">กรุณาใช้รหัสที่ไม่ซ้ำ</span>`, confirmButtonColor:'#dc3545' });
+        } else { Swal.fire('Database Notification', res, 'info'); }
+      })
+      .withFailureHandler(function(err) { Swal.fire('System Connection Error', 'ไม่สามารถเข้าถึงฐานข้อมูลได้: ' + err, 'error'); })
+      .saveSettlementBatch(month, updates);
+  };
+
+  /* ---- extend / reduce / cancel ---- */
+  window.itSeedTestDelete = function() {
+    google.script.run.withSuccessHandler(function(r){
+      if (r && r.status === 'success') {
+        Swal.fire({
+          icon: 'success',
+          title: 'เพิ่มงานทดสอบแล้ว',
+          html: 'แคมเปญ <b>' + (r.campaign || '') + '</b><br>โค้ดที่จอง: <b class="mono">' + (r.code || '(ไม่มี)') + '</b> <span class="badge bg-warning text-dark">RESERVED</span><br><span class="text-muted small">กดปุ่มลบ (ถังขยะ) ที่การ์ดนี้เพื่อทดสอบ flow คืนโค้ด → ดู log ที่หน้า Code Counter</span>',
+          confirmButtonColor: '#2e934a'
+        }).then(function(){
+          var sel = document.getElementById('filterMonthIT');
+          if (sel && r.month) sel.value = r.month;
+          window.loadITTasks();
+        });
+      } else {
+        Swal.fire('ผิดพลาด', (r && r.message) || 'เพิ่มงานทดสอบไม่สำเร็จ', 'error');
+      }
+    }).withFailureHandler(function(e){ Swal.fire('Error', String(e), 'error'); }).seedTestDeleteFlow();
+  };
+
+  window.deleteCampaign = function(campName, month) {
+    var _PC = window.PC_COUNTER, _ent = null;
+    try { if (_PC && _PC.list) { var _h = _PC.list({}).filter(function (e) { return String(e.where || '').trim() === String(campName).trim() && e.status === 'RESERVED'; }); if (_h.length) _ent = _h[0]; } } catch (e) {}
+
+    // CASE A — งานที่ IT จองโค้ดไว้แต่ยังไม่ได้บันทึก (RESERVED) → ลบทิ้งจากระบบได้เลย + คืนโค้ดกลับคลัง
+    if (_ent) {
+      Swal.fire({
+        title: 'ลบงาน + คืนโค้ด',
+        html: `แคมเปญ <b>${campName}</b><br>โค้ดที่จองไว้: <b class="font-monospace">${_ent.code}</b> <span class="badge bg-secondary">RESERVED</span><br><span class="text-muted small">งานนี้ยังไม่ได้บันทึก (แค่จองโค้ด) → ลบทิ้งออกจากระบบ และคืนโค้ดกลับคลัง (นำกลับมาใช้ใหม่ได้)</span>`,
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: 'ลบงาน + คืนโค้ด', confirmButtonColor: '#c0392b', cancelButtonText: 'ยกเลิก'
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        var returned = false;
+        try { if (typeof _PC.returnCode === 'function') returned = !!_PC.returnCode(_ent.code, _ent.type, 'IT Settlement (ลบงานที่ยังไม่บันทึก)'); } catch (e) {}
+        google.script.run.withSuccessHandler(function () {
+          window.loadITTasks();
+          Swal.fire({ icon: 'success', title: 'ลบงานแล้ว', html: returned ? 'คืนโค้ด <b class="font-monospace">'+_ent.code+'</b> กลับคลังเรียบร้อย' : 'ลบงานเรียบร้อย', timer: 1700, showConfirmButton: false });
+        }).withFailureHandler(function (e) { Swal.fire('Error', String(e), 'error'); }).deleteCampaigns([campName]);
+      });
+      return;
+    }
+
+    // CASE B — งานที่บันทึกแล้ว/ถูกยกเลิกจาก MKT-RD (มี CONFIRMED หรือไม่มีโค้ด) → แค่ซ่อนการ์ดจากหน้างาน (ข้อมูลในระบบยังอยู่)
+    Swal.fire({
+      title: 'เอางานออกจากหน้านี้?',
+      html: `<b>${campName}</b><br><span class="text-muted small">งานนี้ถูกบันทึกในระบบแล้ว (หรือถูกยกเลิกจาก MKT/RD) · ซ่อนการ์ดออกจากหน้างานเฉยๆ — ข้อมูลในระบบยังอยู่</span>`,
+      icon: 'question', showCancelButton: true, confirmButtonColor: '#6c757d',
+      confirmButtonText: 'ซ่อนออกจากหน้า', cancelButtonText: 'ยกเลิก'
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      var card = window.itCardOf(campName, month);
+      if (card) card.remove();
+      if (!document.querySelectorAll('#campaignGroupContainer .card').length) { var em = document.getElementById('itEmpty'); if (em) em.style.display = 'block'; }
+    });
+  };
+
+  window.extendCampaignPopup = function(campaignName, currentEnd, startDateStr) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    Swal.fire({
+      title: 'ปรับปรุงระยะเวลาแคมเปญ',
+      html: `
+        <div class="text-start">
+          <p class="mb-1"><b>แคมเปญ:</b> ${campaignName}</p>
+          <label class="small fw-bold">วันเริ่มต้น: ${startDateStr}</label><br>
+          <label class="small fw-bold text-primary">สิ้นสุดปัจจุบัน: ${currentEnd}</label>
+          <hr>
+          <label class="small fw-bold">ระบุวันที่สิ้นสุดใหม่:</label>
+          <input type="date" id="newEndDate" class="form-control mt-2" min="${todayStr}">
+          <p class="mt-2 text-muted" style="font-size: 11px;">*ระบบจะตรวจอัตโนมัติว่าเป็นการ "ขยาย" หรือ "ลด" และคงป้ายสถานะไว้ให้สาขาเห็น</p>
+        </div>`,
+      showCancelButton: true, confirmButtonText: 'ยืนยันและแจ้งเตือน', confirmButtonColor: '#2e934a',
+      preConfirm: () => { const v = document.getElementById('newEndDate').value; if (!v) return Swal.showValidationMessage('กรุณาเลือกวันที่'); return v; }
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      google.script.run.withSuccessHandler(res => {
+        if (res.status === "success") { Swal.fire('สำเร็จ', res.message, 'success').then(() => window.loadITTasks()); }
+        else { Swal.fire('ผิดพลาด', res.message, 'error'); }
+      }).extendCampaign(campaignName, result.value);
+    });
+  };
+
+  window.cancelCampaignPopup = function(campaignName) {
+    Swal.fire({
+      title: 'ยืนยันการยกเลิกแคมเปญ?',
+      html: `<p class="text-start mb-0"><b>แคมเปญ:</b> ${campaignName}</p><p class="text-muted small text-start">โปรนี้จะถูกทำเครื่องหมาย CANCELLED และยังแสดงให้สาขาเห็นว่ายกเลิกแล้ว</p>`,
+      input: 'textarea', inputPlaceholder: 'ระบุเหตุผลการยกเลิก...', icon: 'warning',
+      showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ยืนยันยกเลิก',
+      preConfirm: (val) => { if (!val) return Swal.showValidationMessage('กรุณาระบุเหตุผล'); return val; }
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      google.script.run.withSuccessHandler(res => {
+        if (res.status === "success") { Swal.fire('สำเร็จ', res.message, 'success').then(() => window.loadITTasks()); }
+        else { Swal.fire('ผิดพลาด', res.message, 'error'); }
+      }).cancelCampaign(campaignName, result.value);
+    });
+  };
+
+  window.syncItem = function(input, type) {
+    const tr = input.closest('tr');
+    const codeInp = tr.querySelector('.f-itemcode');
+    const nameInp = tr.querySelector('.f-itemname');
+    if (type === 'code') { if (itemMasterMap[codeInp.value]) nameInp.value = itemMasterMap[codeInp.value]; }
+    else { for (let code in itemMasterMap) { if (itemMasterMap[code] === nameInp.value) { codeInp.value = code; break; } } }
+  };
+
+  window.calcRow = function(el) {
+    const tr = el.closest('tr');
+    let headerRow = tr;
+    while (headerRow && headerRow.querySelector('.f-code').disabled) { headerRow = headerRow.previousElementSibling; }
+    const promoType = (headerRow && headerRow.querySelector('.f-type') ? headerRow.querySelector('.f-type').value : "").toUpperCase().trim();
+    const grossEl = tr.querySelector('.f-gross'), discEl = tr.querySelector('.f-disc');
+    const gross = parseFloat(String(grossEl.value).replace(/[^0-9.]/g, '')) || 0;
+    const discRaw = String(discEl.value);
+    const isPct = /%/.test(discRaw);
+    const disc = parseFloat(discRaw.replace(/[^0-9.]/g, '')) || 0;
+    const netInp = tr.querySelector('.f-net');
+    if (!netInp) return;
+    // Voucher (มูลค่าหน้าบัตร) + Bill discount (ส่วนลดทั้งบิล) — ไม่มี Net รายไอเท็ม
+    if (promoType.indexOf('VOUCHER') >= 0 || promoType.indexOf('BILL') >= 0) { netInp.value = ""; netInp.style.color = 'black'; return; }
+    // Coupon / Item Set: Net = Gross − ส่วนลด (รองรับหน่วย %)
+    const isCouponT = promoType.indexOf('COUPON') >= 0;
+    if (isCouponT || !tr.querySelector('.f-code').disabled) {
+      const r = isPct ? +(gross * (1 - disc / 100)).toFixed(2) : +(gross - disc).toFixed(2);
+      netInp.value = r;
+      netInp.style.color = r < 0 ? 'red' : 'black';
+    }
+  };
+
+  window.itBtnReject = function (campName, month, shortName) {
+    const map = (window.__itBadButtons || {})[campName + '||' + month] || {};
+    const b = map[shortName];
+    if (!b) return;
+    Swal.fire({
+      icon: 'warning',
+      title: '<span class="text-danger">ปุ่มนี้ถูกตีกลับ</span>',
+      html: `<div class="text-start">
+          <div class="alert alert-warning small py-2 mb-2"><b>ปุ่ม:</b> ${shortName}</div>
+          <b class="small text-muted d-block mb-1">หัวข้อที่ต้องแก้ไข:</b>
+          <ul class="ps-3 small mb-2">${b.issues.split('·').map(i => `<li>${i.trim()}</li>`).join('')}</ul>
+          <div class="p-2 border rounded bg-light small" style="white-space:pre-wrap;">${b.detail || '-'}</div>
+        </div>`,
+      width: '520px', confirmButtonColor: '#dc3545', confirmButtonText: 'รับทราบ'
+    });
+  };
+
+  window.showRejectReason = function(reason) {
+    reason = String(reason || '');
+    let issues = '', detail = reason;
+    const m = reason.match(/^\[([^\]]*)\]\s*([\s\S]*)$/);
+    if (m) {
+      issues = m[1].split('·').map(s => s.trim()).filter(Boolean)
+        .map(i => `<li class="mb-1"><i class="fas fa-triangle-exclamation text-danger me-1"></i>${i}</li>`).join('');
+      detail = m[2].trim();
+    }
+    Swal.fire({
+      icon: 'warning',
+      title: '<span class="text-danger">OP ตีกลับงานนี้</span>',
+      html: `<div class="text-start">
+        ${issues ? `<div class="mb-3"><b class="small text-muted d-block mb-1">หัวข้อที่ต้องแก้ไข:</b><ul class="mb-0 ps-3" style="font-size:13px;">${issues}</ul></div>` : ''}
+        <div class="p-3 border rounded bg-light"><b class="small text-muted d-block mb-1">รายละเอียดจาก OP:</b><div style="white-space:pre-wrap;font-size:13px;">${detail || '-'}</div></div>
+        <div class="small text-muted mt-2"><i class="fas fa-circle-info me-1"></i>แก้ไขข้อมูลตามที่ระบุ แล้วกด "บันทึก & ปิดงาน" อีกครั้ง</div>
+      </div>`,
+      width: '540px', confirmButtonColor: '#dc3545', confirmButtonText: 'รับทราบ'
+    });
+  };
+
+  // ---- Item Set composition + RM bind (driven by real submitted data) ----
+  var IT_RECIPE = {
+    '101001':[{rm:'3116',d:'เฟรนช์ฟรายส์ Kaida',q:'110',u:'G'},{rm:'4001',d:'ถ้วย Large',q:'1',u:'PCS'}],
+    '101002':[{rm:'3116',d:'เฟรนช์ฟรายส์ Kaida',q:'140',u:'G'},{rm:'4002',d:'ถ้วย Jumbo',q:'1',u:'PCS'}],
+    '101003':[{rm:'3116',d:'เฟรนช์ฟรายส์ Kaida',q:'180',u:'G'},{rm:'4003',d:'ถ้วย Mega',q:'1',u:'PCS'}],
+    '104001':[{rm:'3201',d:'ไก่ป๊อป',q:'95',u:'G'},{rm:'4001',d:'ถ้วย Large',q:'1',u:'PCS'}],
+    '201005':[{rm:'5002',d:'เป๊ปซี่ 22oz',q:'1',u:'PCS'}]
+  };
+  // resolve Recipe (RM) ตามลำดับ: BOM ไฟล์จริง (PC_RECIPE) → NPD ที่ RD กรอก (recipeCustom · แยกช่องทาง) → demo IT_RECIPE
+  function itRecipeOf(code, saleMode){
+    code = String(code==null?'':code);
+    var key = /grab|line|panda|shopee|robin|gokoo|gookoo|deliver/i.test(String(saleMode||'')) ? 'Delivery' : 'Take Away';
+    function pick(rec){ if(!rec||!rec.modes) return null; var l = rec.modes[key]||rec.modes['Take Away']||rec.modes['Delivery']; return (l&&l.length)?l:null; }
+    var R = window.PC_RECIPE && PC_RECIPE[code]; var l1 = pick(R); if(l1) return l1;
+    try{
+      var api = (window.PC_API && PC_API.getRecipeCustom) ? PC_API : (window.top && window.top.PC_API && window.top.PC_API.getRecipeCustom ? window.top.PC_API : null);
+      var l2 = pick(api && api.getRecipeCustom()[code]); if(l2) return l2;
+    }catch(e){}
+    return IT_RECIPE[code] || null;
+  }
+  var IT_SUBSET = { // legacy product→subset mapping (สินค้าเก่า)
+    '101001':[{ss:'SS0001',name:'Flavored Fries 1'}], '101002':[{ss:'SS0001',name:'Flavored Fries 1'}],
+    '101003':[{ss:'SS0001',name:'Flavored Fries 1'}], '104001':[{ss:'SS0024',name:'Flavored Chicken Pop 1'}]
+  };
+  window.itItemSetView = function(campName, month){
+    var group = (currentTasks||[]).filter(function(t){ return t.campaign===campName && t.month===month; });
+    if(!group.length){ Swal.fire('ไม่พบข้อมูล', campName, 'info'); return; }
+    // group member items per POS button (shortName)
+    var btns = {};
+    group.forEach(function(t){ (btns[t.shortName] = btns[t.shortName] || {info:t, items:[]}); btns[t.shortName].items.push(t); });
+    var subsetSet = {};
+    var blocks = Object.keys(btns).map(function(sn){
+      var b = btns[sn];
+      var rows = b.items.map(function(it){
+        var rc = (itRecipeOf(it.itemCode, b.info.saleMode)||[{rm:'—',d:'(ยังไม่มี Recipe — IT ผูกเพิ่ม)',q:'',u:''}]).map(function(r){ return '<span class="badge bg-light text-dark border me-1 mb-1">'+itEsc(r.rm)+' '+itEsc(r.d)+(r.q?' · '+itEsc(r.q)+itEsc(r.u):'')+'</span>'; }).join('');
+        var ss = IT_SUBSET[it.itemCode]||[];
+        ss.forEach(function(x){ subsetSet[x.ss]=x.name; });
+        var ssTxt = ss.length ? ss.map(function(x){ return '<span class="badge bg-success">'+itEsc(x.ss)+' · '+itEsc(x.name)+'</span>'; }).join(' ') : '<span class="text-muted small">— ไม่มีผง —</span>';
+        return '<tr><td class="fw-bold text-primary">'+itEsc(it.itemCode||'-')+'</td><td>'+itEsc(it.itemNameEN||'-')+'</td><td class="text-center">'+itEsc(it.qty||1)+'</td><td>'+rc+'</td></tr>';
+      }).join('');
+      return '<div class="border rounded-3 mb-3" style="overflow:hidden"><div class="px-3 py-2 fw-bold" style="background:#fff3cd"><i class="fas fa-mug-hot me-1"></i>ปุ่มเซ็ต: '+itEsc(sn)+' <span class="text-muted small">· '+itEsc(b.info.saleMode||'')+' · '+(b.info.itemPromo?('Item Set '+itEsc(b.info.itemPromo)):'<span class="text-danger">ยังไม่มี Code Item Set (IT กรอก)</span>')+'</span></div>'+
+        '<table class="table table-sm table-bordered m-0" style="font-size:.82rem"><thead class="table-light"><tr><th style="width:90px">Item Code</th><th>สินค้าสมาชิก</th><th style="width:46px">Qty</th><th>Recipe (RM) — ผูกอัตโนมัติ</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    }).join('');
+    var ssChips = Object.keys(subsetSet).map(function(ss){ return '<span class="badge bg-success me-1">'+itEsc(ss)+' · '+itEsc(subsetSet[ss])+'</span>'; }).join('') || '<span class="text-muted">— ไม่มีสินค้าที่ผูกผง —</span>';
+    Swal.fire({
+      title:'<span style="font-size:1rem"><i class="fas fa-gift text-warning me-1"></i>ส่วนประกอบ Item Set · '+itEsc(campName)+'</span>',
+      width: 820,
+      html:'<div class="text-start">'+
+        blocks+
+        '<div class="small text-muted"><i class="fas fa-circle-info me-1"></i>ข้อมูลสมาชิก + Recipe มาจากโปรที่ MKT กรอกจริง — IT ตรวจ/ผูก RM แล้วกรอก Code Item Set ที่ตารางหลัก จากนั้นกด "บันทึก & ปิดงาน"</div>'+
+        '</div>',
+      confirmButtonText:'ปิด', confirmButtonColor:'#1a1d20'
+    });
+  };
+
+  window.showDetail = function(rowIdx, month) {
+    const task = currentTasks.find(t => t.rowIdx == rowIdx && t.month == month);
+    if (!task) return;
+    const f = (text) => !text ? '-' : String(text).replace(/\n/g, '<br>');
+    Swal.fire({
+      title: `<span style="color:#ffffff">PROMOTION DETAILS</span>`,
+      html: `<div class="text-start" style="font-size:0.9rem; line-height: 1.5;">
+          <p><strong><i class="fas fa-info-circle text-primary"></i> Detail:</strong><br>${f(task.detail)}</p><hr>
+          <p><strong><i class="fas fa-tools text-success"></i> Mechanic:</strong><br>${f(task.mechanic)}</p>
+        </div>`,
+      confirmButtonText: 'Close', confirmButtonColor: '#343a40', width: '600px'
+    });
+  };
+
+  window.showStores = function(campName) {
+    const group = currentTasks.filter(t => t.campaign === campName);
+    if (group.length === 0) return;
+    const stores = group[0].storeData || [];
+    const storeRaw = group[0].store || '';
+    let contentHtml = '';
+    if (Array.isArray(stores) && stores.length > 0) {
+      contentHtml = `<div class="table-responsive" style="max-height: 450px; overflow-y: auto; border-radius: 8px;">
+          <table class="table table-sm table-hover table-bordered m-0" style="font-size: 0.85rem;">
+            <thead class="table-dark sticky-top"><tr class="text-center"><th style="width: 25%;">Branch ID</th><th>Branch Name (EN)</th><th>Branch Name (TH)</th></tr></thead>
+            <tbody>${stores.map(s => `<tr><td class="text-center fw-bold text-primary bg-light">${s.id || '-'}</td><td class="ps-3">${s.nameEn || '-'}</td><td class="ps-3">${s.nameTh || '-'}</td></tr>`).join('')}</tbody>
+          </table></div>`;
+    } else {
+      contentHtml = `<ul class="text-start" style="column-count: 2;">${storeRaw.split(',').map(s => `<li>${s.trim()}</li>`).join('')}</ul>`;
+    }
+    Swal.fire({
+      title: `<div class="d-flex align-items-center justify-content-center text-warning fw-bold"><i class="fas fa-store-alt me-2"></i> TARGET STORES</div>`,
+      html: `<div class="mb-3 text-muted small fw-bold text-uppercase border-bottom pb-2">${campName}</div>${contentHtml}`,
+      width: '750px', confirmButtonText: 'CLOSE', confirmButtonColor: '#343a40', customClass: { popup: 'rounded-4' }
+    });
+  };
+</script>

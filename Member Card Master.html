@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Member Card Master — บัตรสมาชิก</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/cloud-store.js"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:50px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:linear-gradient(118deg,#00582a 0%,#00753c 48%,#1fa85a 100%); color:#fff; padding:15px 20px; display:flex; align-items:center; gap:13px; position:relative; z-index:20; overflow:hidden; }
+  .topbar::before{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:radial-gradient(130% 200% at 2% -20%, rgba(255,255,255,.20), rgba(255,255,255,0) 42%); }
+  .topbar::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.10; background-image:repeating-linear-gradient(135deg, #fff 0 1.5px, transparent 1.5px 15px); }
+  .topbar h1, .topbar .role{ position:relative; z-index:1; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.3px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .role{ margin-left:auto; font-size:.74rem; font-weight:700; background:rgba(255,255,255,.12); border-radius:8px; padding:5px 11px; letter-spacing:.5px; }
+  .wrap{ max-width:none; margin:0; padding:22px 26px 0; }
+
+  .bar{ display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .bar h2{ font-size:1.1rem; font-weight:700; margin:0; }
+  .bar .count{ font-size:.84rem; color:#8a9099; }
+  .bar .sp{ flex:1; }
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.9rem; padding:11px 17px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-d{ background:var(--pc-black); color:#fff; } .btn-d:hover{ opacity:.92; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-sm{ padding:8px 13px; font-size:.82rem; border-radius:9px; }
+  .addmenu{ position:relative; }
+  .addpop{ position:absolute; top:calc(100% + 6px); right:0; background:#fff; border:1px solid #e7eaee; border-radius:12px; box-shadow:0 8px 26px rgba(0,0,0,.14); padding:6px; min-width:230px; z-index:30; display:none; }
+  .addpop.show{ display:block; }
+  .addpop button{ width:100%; text-align:left; border:0; background:transparent; font-family:inherit; font-size:.9rem; font-weight:600; color:#3a4150; padding:10px 12px; border-radius:9px; cursor:pointer; display:flex; align-items:center; gap:10px; }
+  .addpop button:hover{ background:#f3f5f8; }
+  .addpop button i{ width:20px; color:#8a9099; }
+  .addpop .div{ height:1px; background:#eef1f4; margin:4px 6px; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:18px; }
+  .mcard{ background:#fff; border:1px solid #e7eaee; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); cursor:pointer; transition:.14s; }
+  .mcard:hover{ transform:translateY(-3px); box-shadow:0 .7rem 1.5rem rgba(0,0,0,.1); }
+  .mcard.draft{ border:1.5px dashed #e6c45e; background:#fffdf5; }
+  .tag.draft{ background:#fff4d6; color:#946200; border:1px solid #f0dca0; }
+  .cvis{ padding:18px 18px 16px; color:#fff; position:relative; min-height:140px; display:flex; flex-direction:column; }
+  .cvis .tier{ font-size:.68rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:.85; }
+  .cvis .cname{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.4rem; line-height:1.05; margin-top:3px; }
+  .cvis .chip{ width:38px; height:28px; border-radius:6px; background:rgba(255,255,255,.35); margin:14px 0 auto; position:relative; }
+  .cvis .chip:after{ content:''; position:absolute; inset:5px 8px; border:1.5px solid rgba(255,255,255,.5); border-radius:3px; }
+  .cvis .num{ font-family:'JetBrains Mono',monospace; font-size:1.02rem; letter-spacing:2px; margin-top:8px; }
+  /* image card face — ปรับตามแนวรูป (ตั้ง/นอน) */
+  .cface{ position:relative; display:flex; align-items:center; justify-content:center; padding:20px; min-height:150px; }
+  .cface img{ max-width:100%; max-height:300px; width:auto; height:auto; border-radius:11px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.28)); }
+  .cface.land img{ width:86%; max-height:none; }
+  .cface .qrtag{ position:absolute; bottom:12px; right:14px; background:rgba(26,29,32,.82); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.4px; padding:3px 8px; border-radius:6px; display:flex; align-items:center; gap:5px; }
+  .cvis .disc{ position:absolute; top:16px; right:18px; text-align:right; }
+  .cvis .disc .b{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.7rem; line-height:1; }
+  .cvis .disc .s{ font-size:.66rem; opacity:.85; }
+  .cbody{ padding:14px 17px 16px; }
+  .privs{ display:flex; flex-direction:column; gap:6px; }
+  .priv{ font-size:.84rem; color:#3a4047; display:flex; align-items:center; gap:9px; }
+  .priv i{ color:var(--pc-green); font-size:.78rem; width:14px; }
+  .priv.hl{ font-weight:600; color:#1d7a4d; }
+  .priv.hl i{ color:#1d7a4d; }
+  .condbox{ margin-top:11px; background:#f8f9fb; border:1px solid #eef1f4; border-radius:10px; padding:9px 12px; }
+  .condh{ font-size:.7rem; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:#9aa1aa; margin-bottom:5px; }
+  .condh i{ color:#b6bcc4; margin-right:4px; }
+  .condi{ font-size:.78rem; color:#6b7280; line-height:1.45; padding-left:13px; position:relative; }
+  .condi::before{ content:'·'; position:absolute; left:3px; color:#aab0b8; }
+  .condi.more{ color:#9aa1aa; font-style:italic; }
+  .cmeta{ display:flex; gap:8px; margin-top:13px; flex-wrap:wrap; align-items:center; }
+  .tag{ font-size:.72rem; font-weight:700; border-radius:7px; padding:3px 9px; }
+  .tag.codes{ background:#eef4ff; color:#2c4a82; } .tag.on{ background:#eafaf1; color:#1d7a4d; } .tag.off{ background:#f1f4f7; color:#8a9099; }
+  .cacts{ display:flex; gap:8px; margin-top:13px; border-top:1px solid #f1f4f7; padding-top:12px; }
+
+  .empty{ grid-column:1/-1; background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:46px; color:#9aa1aa; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+  .vtoggle{ display:inline-flex; border:1.5px solid #dde2e7; border-radius:9px; overflow:hidden; }
+  .vbtn{ border:0; background:#fff; color:#8a9099; padding:8px 12px; cursor:pointer; font-size:.9rem; }
+  .vbtn.on{ background:#1a1d20; color:#fff; }
+  .glist{ background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .ltbl{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .ltbl th{ text-align:left; font-size:.68rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; padding:11px 14px; background:#fafbfc; border-bottom:1px solid #eef1f4; }
+  .ltbl td{ padding:11px 14px; border-bottom:1px solid #f4f6f8; vertical-align:middle; }
+  .ltbl tr:last-child td{ border-bottom:0; }
+  .ldot{ display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:9px; vertical-align:-2px; }
+  .backbtn{ position:relative; z-index:1; border:0; background:rgba(255,255,255,.14); color:#fff; width:36px; height:36px; border-radius:10px; cursor:pointer; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; flex:none; transition:.14s; }
+  .backbtn:hover{ background:rgba(255,255,255,.26); }
+  .srch{ display:inline-flex; align-items:center; gap:8px; background:#fff; border:1.5px solid #dde2e7; border-radius:11px; padding:0 13px; height:42px; }
+  .srch i{ color:#aab0b8; font-size:.85rem; }
+  .srch input{ border:0; outline:0; font-family:inherit; font-size:.9rem; width:190px; background:transparent; color:#1a1d20; }
+  body.vo .btn-d, body.vo .addmenu, body.vo .itnote, body.vo .cacts, body.vo .ltbl th:last-child, body.vo .ltbl td:last-child{ display:none !important; }
+  body.vo .mcard{ cursor:default; }
+  .cacts-vo{ display:flex; gap:8px; margin-top:10px; }
+  body:not(.vo) .cacts-vo{ display:none; }
+  .cacts-vo .btnrep{ flex:1; border:0; border-radius:9px; padding:10px 12px; font-weight:700; font-family:inherit; font-size:.86rem; cursor:pointer; background:#c0392b; color:#fff; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+  .cacts-vo .btnrep:hover{ background:#a83226; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="backbtn" onclick="goBack()" title="กลับหน้าก่อนหน้า"><i class="fas fa-arrow-left"></i></button>
+    <h1><i class="fas fa-id-card"></i>MEMBER CARD MASTER · บัตรสมาชิก</h1>
+    <span class="role">MKT</span>
+  </div>
+
+  <div class="wrap">
+    <div class="bar">
+      <h2>ประเภทบัตรสมาชิก</h2><span class="count" id="count"></span>
+      <div class="sp"></div>
+      <div class="vtoggle"><button class="vbtn" id="vCard" onclick="setView('card')" title="การ์ด"><i class="fas fa-grip"></i></button><button class="vbtn" id="vList" onclick="setView('list')" title="ลิสต์"><i class="fas fa-list"></i></button></div>
+      <div class="srch"><i class="fas fa-magnifying-glass"></i><input id="q" placeholder="ค้นหาชื่อ / Prefix" oninput="setQuery(this.value)"></div>
+      <button class="btn btn-d" onclick="addManual()"><i class="fas fa-plus"></i>เพิ่มบัตรสมาชิก</button>
+    </div>
+    <div class="itnote" style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:12px;padding:11px 15px;margin-bottom:16px;font-size:.88rem;color:#2c4a82;display:flex;gap:10px;align-items:flex-start"><i class="fas fa-circle-info" style="margin-top:2px"></i><div>ทุกการเปลี่ยนแปลงบัตร (เพิ่มประเภท · แก้ไข · ลบ · แจ้งเพิ่มโค้ด) จะ<b>ส่งเข้าคิวงานให้ IT</b> นำไปตั้งค่าต่อที่ Backoffice พร้อมแจ้งเตือนทีม IT</div></div>
+    <div class="grid" id="grid"></div>
+    <div class="demo-note">— หน้าตัวอย่าง (Mockup) · บันทึกในเครื่องนี้ (localStorage: pc_member_cards) · “แจ้งเพิ่มโค้ดบัตร” ส่งเข้าคิวให้ IT เหมือนระบบจัดการโค้ด —</div>
+  </div>
+
+<script>
+const KEY='pc_member_cards';
+const TIERS={
+  platinum: { label:'Platinum', c1:'#3b414a', c2:'#8b929c', text:'#fff'    },
+  gold:     { label:'Gold',     c1:'#b8860b', c2:'#f0cd6b', text:'#1a1d20' },
+  green:    { label:'Green',    c1:'#0a7d3c', c2:'#5bbd7e', text:'#fff'    },
+  black:    { label:'Black',    c1:'#0d0f11', c2:'#3a3f47', text:'#2e934a' },
+  silver:   { label:'Silver',   c1:'#8a93a0', c2:'#c2c9d2', text:'#1a1d20' },
+  vip:      { label:'VIP Black', c1:'#1a1d20', c2:'#3a3f47', text:'#2e934a' },
+};
+const CONDITIONS_COMMON=[
+  'นับรอบสิทธิ์รายสัปดาห์ · เพิ่มสิทธิ์ทุกวันจันทร์',
+  'ใช้ได้ทุกสาขา ยกเว้น สนามบิน · สนามมวย · Food Truck · งาน Event พิเศษ (Pop-up ในห้างใช้ได้)',
+  'ไม่ใช้ร่วมกับโปรโมชั่น/ส่วนลดอื่น',
+  'ใช้สิทธิ์ได้ถึง 31/12/2026',
+];
+const CARD_IMG={ ptn:'assets/cards/platinum.png', gld:'assets/cards/gold.png', grn:'assets/cards/green.png', blk:'assets/cards/black.png' };
+const DEFAULT_CARDS=[
+  { id:'ptn', name:'Platinum Card', tier:'platinum', typeCode:'VIP04', prefix:'PTN', discount:0, freeRedeem:true, anyFlavor:true, active:true, codeCount:0, image:CARD_IMG.ptn, start:'2026-01-01', end:'2026-12-31',
+    benefits:['แลกฟรี Giga FF + Giga CK · สินค้าละ 1 ถ้วย/สัปดาห์ ตลอดปี 2026'], conditions:[...CONDITIONS_COMMON] },
+  { id:'gld', name:'Gold Card', tier:'gold', typeCode:'VIP03', prefix:'GLD', discount:0, freeRedeem:true, anyFlavor:true, active:true, codeCount:0, image:CARD_IMG.gld, start:'2026-01-01', end:'2026-12-31',
+    benefits:['แลกฟรี Giga FF + Large Nugget · สินค้าละ 1 ถ้วย/สัปดาห์ ตลอดปี 2026'], conditions:[...CONDITIONS_COMMON] },
+  { id:'grn', name:'Green Card', tier:'green', typeCode:'VIP08', prefix:'GRN', discount:0, freeRedeem:true, anyFlavor:true, active:true, codeCount:0, image:CARD_IMG.grn, start:'2026-01-01', end:'2026-12-31',
+    benefits:['แลกฟรี Giga FF · 1 ถ้วย/สัปดาห์ ตลอดปี 2026'], conditions:[...CONDITIONS_COMMON] },
+  { id:'blk', name:'Black Card', tier:'black', typeCode:'VIP05', prefix:'BLK', discount:0, freeRedeem:true, anyFlavor:true, active:true, codeCount:0, image:CARD_IMG.blk, start:'2026-01-01', end:'2026-12-31',
+    benefits:['แลกฟรี Giga FF + Giga CK · สินค้าละ 1 ถ้วย/สัปดาห์ ตลอดปี 2026'], conditions:[...CONDITIONS_COMMON] },
+];
+const CARDS_VER='2';
+function load(){ let a=null; try{ a=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  let reseed=false;
+  if(!Array.isArray(a)||!a.length){ reseed=true; }
+  else { const ids=a.map(x=>x.id).slice().sort().join(',');
+    if((ids==='pcg,pcm,pcp'||ids==='pcm') && !a.some(c=>c&&c.typeCode)) reseed=true; }
+  if(reseed){ a=JSON.parse(JSON.stringify(DEFAULT_CARDS)); }
+  /* เติมรูปหน้าบัตรจริงให้บัตรตั้งต้นที่ยังไม่มีรูป + migrate โครงสิทธิ์/เงื่อนไขใหม่ */
+  let touched=reseed;
+  const REAL_TYPECODE={ ptn:'VIP04', gld:'VIP03', grn:'VIP08', blk:'VIP05' };
+  a.forEach(c=>{ if(!c) return;
+    // migrate typeCode ของ 4 บัตรตั้งต้นให้ตรง CMPOS Member Type (เช่น blk → VIP05)
+    if(REAL_TYPECODE[c.id] && c.typeCode!==REAL_TYPECODE[c.id]){ c.typeCode=REAL_TYPECODE[c.id]; touched=true; }
+    if(CARD_IMG[c.id] && !c.image){ c.image=CARD_IMG[c.id]; touched=true; }
+    if(!c.prefix && c.typeCode){ c.prefix=c.typeCode; touched=true; }
+    if(c.benefits===undefined){
+      const pr=Array.isArray(c.privileges)?c.privileges:[];
+      const isFlav=p=>/เลือกผง.*ฟรี/.test(p);
+      if(c.anyFlavor==null) c.anyFlavor=pr.some(isFlav);
+      if(c.freeRedeem==null) c.freeRedeem=(+(c.discount||0)===0);
+      const rest=pr.filter(p=>!isFlav(p));
+      c.benefits = rest.length?[rest[0]]:[];
+      c.conditions = rest.slice(1);
+      touched=true;
+    }
+    if(c.flavorOpt===undefined){ c.flavorOpt = c.anyFlavor? 'any':''; touched=true; }
+    if(c.name && !/card\s*$/i.test(c.name)){ c.name=c.name.trim()+' Card'; touched=true; }
+  });
+  if(touched){ try{ localStorage.setItem(KEY, JSON.stringify(a)); }catch(e){} }
+  try{ localStorage.setItem(KEY+'_ver',CARDS_VER); }catch(e){}
+  return a; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(CARDS)); }
+let CARDS=load();
+let FORM_IMG=null;
+function onFormImg(file){ if(!file) return; const rd=new FileReader(); rd.onload=e=>{ FORM_IMG=e.target.result; const p=document.getElementById('fImgPrev'); if(p){ p.style.background="#f1f4f7 url('"+FORM_IMG+"') center/contain no-repeat"; } }; rd.readAsDataURL(file); }
+function clearFormImg(){ FORM_IMG=null; const p=document.getElementById('fImgPrev'); if(p) p.style.background='#f1f4f7'; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function tierOf(t){ return TIERS[t]||TIERS.silver; }
+let MC_QUERY='';
+function setQuery(v){ MC_QUERY=(v||'').trim().toLowerCase(); render(); }
+function visCards(){ if(!MC_QUERY) return CARDS; return CARDS.filter(c=>(((c.name||'')+' '+(c.prefix||'')+' '+(c.typeCode||'')+' '+(tierOf(c.tier).label||'')).toLowerCase().indexOf(MC_QUERY)>-1)); }
+const VIEW_ONLY=/[?&]view=1/.test(location.search);
+function mcReport(i){ var c=CARDS[i]||{}; try{ localStorage.setItem('pc_report_ctx', JSON.stringify({ campaign:c.name||'บัตรสมาชิก', promoType:'บัตรสมาชิก', saleMode:'', branchCode:'', branch:'', lookupCode:(c.typeCode||c.prefix||''), fromCodeLookup:true, usedCode:false, buttons:[{ sn:c.name||'', code:(c.typeCode||c.prefix||''), saleMode:'', kitchen:'', priceFull:'', priceDisc:'' }] })); localStorage.setItem('pc_report_origin','Potato Corner Promotion System.html#BranchCards'); }catch(e){} try{ (window.top||window).location.href='Report Code Problem.html'; }catch(e){ location.href='Report Code Problem.html'; } }
+function mcQuota(i){ var c=CARDS[i]||{}; try{ localStorage.setItem('pc_report_ctx', JSON.stringify({ campaign:c.name||'บัตรสมาชิก', promoType:'บัตรสมาชิก', isMemberCard:true, preIssue:'QUOTA', saleMode:'', branchCode:'', branch:'', lookupCode:(c.typeCode||c.prefix||''), fromCodeLookup:true, usedCode:false, buttons:[{ sn:c.name||'', code:(c.typeCode||c.prefix||''), saleMode:'', kitchen:'', priceFull:'', priceDisc:'' }] })); localStorage.setItem('pc_report_origin','Potato Corner Promotion System.html#BranchCards'); }catch(e){} try{ (window.top||window).location.href='Report Code Problem.html'; }catch(e){ location.href='Report Code Problem.html'; } }
+function goBack(){ try{ if(window.parent && window.parent!==window && window.parent.history){ window.parent.history.back(); return; } }catch(e){} if(window.history.length>1){ window.history.back(); } }
+function fitFace(img){ const p=img.parentElement; if(!p) return; const land=img.naturalWidth>=img.naturalHeight; p.classList.toggle('land',land); }
+
+let VIEW='card';
+function setView(v){ VIEW=v; var a=document.getElementById('vCard'),b=document.getElementById('vList'); if(a)a.classList.toggle('on',v==='card'); if(b)b.classList.toggle('on',v==='list'); render(); }
+function listHTML(){
+  return `<table class="ltbl"><thead><tr><th>บัตร</th><th>Tier</th><th>ส่วนลด</th><th>Prefix</th><th>โค้ด</th><th>สถานะ</th><th></th></tr></thead><tbody>${visCards().map((c)=>{ const i=CARDS.indexOf(c); const t=tierOf(c.tier);
+    return `<tr${!c.active?' style="opacity:.55"':''}><td><span class="ldot" style="background:linear-gradient(135deg,${t.c1},${t.c2})"></span><b>${esc(c.name)}</b></td><td>${esc(t.label)}</td><td>${c.freeRedeem?'<span style="color:#1d7a4d;font-weight:600">แลกฟรี</span>':(+c.discount>0?('<b>'+c.discount+'%</b>'):'<span style="color:#8a9099">—</span>')}</td><td class="mono">${esc(c.prefix)}</td><td>${(+c.codeCount||0).toLocaleString()}</td><td>${c.draft?'<span style="font-size:.74rem;font-weight:700;border-radius:6px;padding:2px 8px;background:#fff4d6;color:#946200">ร่าง</span>':`<span style="font-size:.74rem;font-weight:700;border-radius:6px;padding:2px 8px;${c.active?'background:#eafaf1;color:#1d7a4d':'background:#fdecea;color:#c0392b'}">${c.active?'เปิดใช้งาน':'ยกเลิกใช้งาน'}</span>`}</td><td style="text-align:right;white-space:nowrap">${c.draft?`<button class="btn btn-g btn-sm" title="ยืนยัน + ส่งให้ IT" onclick="editCard(${i})"><i class="fas fa-paper-plane"></i></button>`:`<button class="btn btn-g btn-sm" onclick="addCodes(${i})"><i class="fas fa-plus"></i></button>`} <button class="btn btn-o btn-sm" onclick="editCard(${i})"><i class="fas fa-pen"></i></button> <button class="btn btn-o btn-sm" style="color:#c0392b;border-color:#f1c6bf" onclick="delCard(${i})"><i class="fas ${c.active?'fa-ban':'fa-rotate-left'}"></i></button></td></tr>`; }).join('')}</tbody></table>`;
+}
+function render(){
+  document.getElementById('count').textContent='· '+CARDS.length+' ประเภท · '+CARDS.reduce((s,c)=>s+(+c.codeCount||0),0).toLocaleString()+' โค้ด/สมาชิก';
+  const g=document.getElementById('grid');
+  g.className = VIEW==='list' ? 'glist' : 'grid';
+  if(VIEW==='list'){ g.innerHTML = CARDS.length ? listHTML() : '<div class="empty" style="padding:40px;text-align:center;color:#9aa1aa">ยังไม่มีบัตร</div>'; return; }
+  if(!CARDS.length){ g.innerHTML='<div class="empty"><i class="fas fa-id-card fa-2x" style="opacity:.4;display:block;margin-bottom:12px"></i>ยังไม่มีบัตรสมาชิก — กด “Add New Member Master”</div>'; return; }
+  g.innerHTML=visCards().map((c)=>{ const i=CARDS.indexOf(c); const t=tierOf(c.tier);
+    const face = c.image
+      ? `<div class="cface" style="background:linear-gradient(135deg,${t.c1}1f,${t.c2}1f)"><img class="cimg" src="${c.image}" alt="${esc(c.name)}" loading="lazy" onload="fitFace(this)"><span class="qrtag"><i class="fas fa-qrcode"></i> สแกน QR แลกฟรี</span></div>`
+      : `<div class="cvis" style="background:linear-gradient(135deg,${t.c1},${t.c2});color:${t.text}">
+        <div class="tier">${esc(t.label)} MEMBER</div>
+        <div class="cname">${esc(c.name)}</div>
+        ${c.freeRedeem?`<div class="disc"><div class="b" style="font-size:1.05rem;letter-spacing:.5px">แลกฟรี</div><div class="s">รายสัปดาห์</div></div>`:''}
+        <div class="chip"></div>
+        <div class="num">${esc(c.prefix)} •••• ••••</div>
+      </div>`;
+    return `<div class="mcard${c.draft?' draft':''}"${!c.active?' style="opacity:.62"':''}>
+      ${face}
+      <div class="cbody">
+        <div class="privs">${c.freeRedeem?`<div class="priv hl"><i class="fas fa-gift"></i>100% ไม่มีค่าใช้จ่ายใดๆ</div>`:''}${flavorLabel(c)?`<div class="priv hl"><i class="fas fa-mortar-pestle"></i>${esc(flavorLabel(c))}</div>`:''}${(c.benefits||[]).map(p=>`<div class="priv"><i class="fas fa-check"></i>${esc(p)}</div>`).join('')}</div>
+        ${(c.conditions&&c.conditions.length)?`<div class="condbox"><div class="condh"><i class="fas fa-circle-info"></i> เงื่อนไขการใช้บัตร</div>${c.conditions.slice(0,3).map(x=>`<div class="condi">${esc(x)}</div>`).join('')}${c.conditions.length>3?`<div class="condi more">+ อีก ${c.conditions.length-3} เงื่อนไข</div>`:''}</div>`:''}
+        <div class="cmeta">
+          <span class="tag codes"><i class="fas fa-barcode"></i> ${(+c.codeCount||0).toLocaleString()} โค้ด</span>
+          ${c.draft?`<span class="tag draft"><i class="fas fa-pen-ruler"></i> ร่าง · ยังไม่ส่ง IT</span>`:`<span class="tag" style="${c.active?'background:#eafaf1;color:#1d7a4d':'background:#fdecea;color:#c0392b'}">${c.active?'เปิดใช้งาน':'ยกเลิกการใช้งาน'}</span>`}
+          <span class="tag" style="background:#f1f4f7;color:#5a616b"><i class="far fa-calendar"></i> ถึง ${esc(c.end||'-')}</span>
+        </div>
+        <div class="cacts">
+          ${c.draft
+            ? `<button class="btn btn-g btn-sm" onclick="editCard(${i})"><i class="fas fa-paper-plane"></i>ยืนยัน + ส่งให้ IT</button>
+               <button class="btn btn-o btn-sm" onclick="editCard(${i})"><i class="fas fa-pen"></i>แก้ร่าง</button>`
+            : `<button class="btn btn-g btn-sm" onclick="addCodes(${i})"><i class="fas fa-plus"></i>แจ้งเพิ่มโค้ดบัตร</button>
+               <button class="btn btn-o btn-sm" onclick="editCard(${i})"><i class="fas fa-pen"></i>แก้ไข</button>`}
+          <button class="btn btn-o btn-sm" title="${c.active?'ยกเลิกการใช้งาน':'เปิดใช้งานอีกครั้ง'}" style="margin-left:auto;color:#c0392b;border-color:#f1c6bf" onclick="delCard(${i})"><i class="fas ${c.active?'fa-ban':'fa-rotate-left'}"></i></button>
+        </div>
+        <div class="cacts-vo"><button class="btnrep" onclick="mcReport(${i})"><i class="fas fa-flag"></i>แจ้งปัญหาบัตรนี้</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAddPop(e){ e.stopPropagation(); document.getElementById('addpop').classList.toggle('show'); }
+document.addEventListener('click',()=>{ const p=document.getElementById('addpop'); if(p) p.classList.remove('show'); });
+
+function cardForm(c){ c=c||{}; const topt=Object.keys(TIERS).map(k=>`<option value="${k}" ${c.tier===k?'selected':''}>${TIERS[k].label}</option>`).join('');
+  return `<div style="text-align:left;font-size:14px">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อบัตร <span style="color:#c0392b">*</span></label>
+    <input id="fName" class="swal2-input" style="margin:0 0 11px;width:100%" placeholder="เช่น PC Diamond" value="${esc(c.name)}">
+    <div style="display:flex;gap:11px">
+      <div style="width:150px"><label style="font-weight:600;display:block;margin:2px 0 4px">Code Type <span style="color:#c24033">*</span> <span style="font-size:.66rem;font-weight:700;background:#e7f0ff;color:#2c4a82;border:1px solid #cfe0fb;border-radius:5px;padding:1px 6px">IT กรอก</span></label><input id="fTypeCode" class="swal2-input mono" style="margin:0 0 11px;width:100%;background:#f3f5f7" value="${esc(c.typeCode||'')}" placeholder="เช่น PTN"></div>
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">Member Type <span style="color:#c0392b">*</span></label><select id="fTier" class="swal2-input" style="margin:0 0 11px;width:100%">${topt}</select></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:0 0 13px">
+      <label style="display:flex;align-items:center;gap:11px;border:1.5px solid #dde2e7;border-radius:10px;padding:9px 12px;cursor:pointer">
+        <input type="checkbox" id="fFree" ${c.freeRedeem?'checked':''} onchange="if(this.checked){var r=document.querySelector('input[name=&quot;fFlavor&quot;][value=&quot;any&quot;]');if(r)r.checked=true;}" style="width:18px;height:18px;accent-color:#2e934a;flex:none">
+        <span style="display:flex;flex-direction:column;line-height:1.3"><b>100% ไม่มีค่าใช้จ่ายใดๆ</b><span style="font-size:.78rem;color:#8a9099">บัตรแลกฟรี — ลูกค้าไม่ต้องจ่ายเพิ่ม</span></span></label>
+      <div style="border:1.5px solid #dde2e7;border-radius:10px;padding:10px 13px">
+        <div style="font-weight:600;font-size:13.5px;margin-bottom:6px">ตัวเลือกผง <span style="font-weight:400;color:#9aa1aa">(เลือกอย่างใดอย่างหนึ่ง)</span></div>
+        <label style="display:flex;align-items:center;gap:9px;padding:4px 0;cursor:pointer;font-size:13.5px"><input type="radio" name="fFlavor" value="" ${!(c.flavorOpt||(c.anyFlavor?'any':''))?'checked':''} style="width:17px;height:17px;accent-color:#2e934a"> ไม่ระบุ</label>
+        <label style="display:flex;align-items:center;gap:9px;padding:4px 0;cursor:pointer;font-size:13.5px"><input type="radio" name="fFlavor" value="any" ${(c.flavorOpt||(c.anyFlavor?'any':''))==='any'?'checked':''} style="width:17px;height:17px;accent-color:#2e934a"> เลือกผงได้ทุกรสชาติฟรี</label>
+        <label style="display:flex;align-items:center;gap:9px;padding:4px 0;cursor:pointer;font-size:13.5px"><input type="radio" name="fFlavor" value="truffle" ${(c.flavorOpt||'')==='truffle'?'checked':''} style="width:17px;height:17px;accent-color:#2e934a"> เลือกทรัฟเฟิล <span style="color:#9a6700">(+10 บาท/ถ้วย)</span></label>
+      </div>
+    </div>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">รูปหน้าการ์ด (ไม่บังคับ)</label>
+    <div style="display:flex;gap:11px;align-items:center;margin-bottom:11px">
+      <div id="fImgPrev" style="width:90px;height:56px;border-radius:9px;border:1.5px solid #dde2e7;background:${c.image?`#f1f4f7 url('${c.image}') center/contain no-repeat`:'#f1f4f7'};flex:none"></div>
+      <input type="file" id="fImg" accept="image/*" style="display:none" onchange="onFormImg(this.files[0])">
+      <button type="button" onclick="document.getElementById('fImg').click()" style="background:#1a1d20;color:#fff;border:0;border-radius:9px;padding:9px 14px;font-family:inherit;font-weight:600;font-size:.86rem;cursor:pointer"><i class="fas fa-image"></i> อัปโหลดรูป</button>
+      <button type="button" onclick="clearFormImg()" style="background:#fff;border:1.5px solid #dde2e7;border-radius:9px;padding:9px 12px;font-family:inherit;font-weight:600;font-size:.86rem;cursor:pointer;color:#c0392b">ลบรูป</button>
+    </div>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">รายละเอียดสิทธิประโยชน์ <span style="font-weight:400;color:#9aa1aa">(1 บรรทัด = 1 สิทธิ์)</span></label>
+    <textarea id="fBenefits" class="swal2-textarea" style="margin:0 0 11px;width:100%;min-height:64px" placeholder="แลกฟรี Giga FF + Giga CK · สินค้าละ 1 ถ้วย/สัปดาห์">${esc((c.benefits||[]).join('\n'))}</textarea>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">เงื่อนไขการใช้บัตร <span style="font-weight:400;color:#9aa1aa">(1 บรรทัด = 1 เงื่อนไข)</span></label>
+    <textarea id="fCond" class="swal2-textarea" style="margin:0 0 11px;width:100%;min-height:88px" placeholder="นับรอบสิทธิ์รายสัปดาห์ · เพิ่มสิทธิ์ทุกวันจันทร์&#10;ใช้ได้ทุกสาขา ยกเว้น สนามบิน · สนามมวย · Food Truck · งาน Event&#10;ไม่ใช้ร่วมกับโปรโมชั่น/ส่วนลดอื่น&#10;ใช้สิทธิ์ได้ถึง 31/12/2026">${esc((c.conditions||[]).join('\n'))}</textarea>
+    <div style="display:flex;gap:11px">
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">เริ่ม</label><input id="fStart" type="date" class="swal2-input" style="margin:0;width:100%" value="${esc(c.start||'2026-01-01')}"></div>
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">สิ้นสุด</label><input id="fEnd" type="date" class="swal2-input" style="margin:0;width:100%" value="${esc(c.end||'2026-12-31')}"></div>
+    </div>
+  </div>`; }
+function readForm(){ const name=(document.getElementById('fName').value||'').trim(); if(!name){ Swal.showValidationMessage('กรอกชื่อบัตร'); return false; }
+  const free=document.getElementById('fFree').checked; const code=(document.getElementById('fTypeCode').value||'').trim().toUpperCase();
+  const flavorOpt=(document.querySelector('input[name="fFlavor"]:checked')||{}).value||'';
+  return { name, tier:document.getElementById('fTier').value, freeRedeem:free, flavorOpt, anyFlavor:(flavorOpt==='any'), typeCode:code, prefix:code,
+    benefits:(document.getElementById('fBenefits').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    conditions:(document.getElementById('fCond').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    image:FORM_IMG, start:document.getElementById('fStart').value, end:document.getElementById('fEnd').value }; }
+function readFormDraft(){ const code=(document.getElementById('fTypeCode').value||'').trim().toUpperCase();
+  const flavorOpt=(document.querySelector('input[name="fFlavor"]:checked')||{}).value||'';
+  return { name:(document.getElementById('fName').value||'').trim()||'(ร่าง — ยังไม่ตั้งชื่อ)', tier:document.getElementById('fTier').value, freeRedeem:document.getElementById('fFree').checked, flavorOpt, anyFlavor:(flavorOpt==='any'), typeCode:code, prefix:code,
+    benefits:(document.getElementById('fBenefits').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    conditions:(document.getElementById('fCond').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    image:FORM_IMG, start:document.getElementById('fStart').value, end:document.getElementById('fEnd').value }; }
+function toastDraft(name){ Swal.fire({ toast:true, position:'top-end', icon:'info', iconColor:'#b07d00', title:'บันทึกร่างแล้ว', html:`<span style="font-size:13px;color:#6b7280">${esc(name)} · ยังไม่ส่งให้ IT</span>`, showConfirmButton:false, timer:2600, timerProgressBar:true }); }
+function flavorLabel(c){ const f=c.flavorOpt||(c.anyFlavor?'any':''); if(f==='any') return 'เลือกผงได้ทุกรสชาติฟรี'; if(f==='truffle') return 'เลือกทรัฟเฟิล (+10 บาท/ถ้วย)'; return ''; }
+function notifyIT(action, name, extra){
+  Swal.fire({ icon:'success', title:'เข้าคิวงานให้ IT แล้ว', width:540,
+    html:`<div style="text-align:left;font-size:14px"><div style="font-weight:600">${esc(action)} — <b>${esc(name)}</b></div>${extra?`<div style="color:#5a616b;margin-top:4px">${esc(extra)}</div>`:''}<div style="margin-top:11px;background:#f6f8fa;border-left:4px solid #2f5fb3;border-radius:10px;padding:10px 13px"><div style="font-size:.72rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#8a9099">แจ้งเตือนไปที่</div><div style="font-weight:600;margin-top:5px"><span style="font-size:.74rem;font-weight:700;background:#fdf3e0;color:#9a6700;border-radius:6px;padding:2px 8px">Email</span> <span style="font-size:.74rem;font-weight:700;background:#eef4ff;color:#2c4a82;border-radius:6px;padding:2px 8px">Team Chat</span> <span style="color:#9aa1aa">→</span> ทีม IT</div><div style="font-size:13px;color:#6b7280;margin-top:7px">IT รับไปตั้งค่า/อัปข้อมูลที่ Backoffice ต่อ</div></div></div>`, confirmButtonColor:'#2e934a' });
+}
+function addManual(){ FORM_IMG=null; Swal.fire({ title:'เพิ่มบัตรสมาชิก', width:560, html:cardForm(), showCancelButton:true, showDenyButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม + ส่งให้ IT', denyButtonText:'<i class="fas fa-pen-ruler"></i> บันทึกร่าง', denyButtonColor:'#b07d00', cancelButtonText:'ยกเลิก', preConfirm:readForm, preDeny:readFormDraft })
+  .then(r=>{ if(r.isDismissed) return; const v=r.value; v.id='c'+Date.now().toString(36); v.active=true; v.codeCount=0;
+    if(r.isDenied){ v.draft=true; CARDS.unshift(v); save(); render(); toastDraft(v.name); return; }
+    v.draft=false; CARDS.unshift(v); save(); render(); notifyIT('เพิ่มประเภทบัตรใหม่', v.name, TIERS[v.tier].label+' · Prefix '+v.prefix); }); }
+function editCard(i){ FORM_IMG=CARDS[i].image||null; const wasDraft=!!CARDS[i].draft; Swal.fire({ title: wasDraft?'แก้ไขร่างบัตร':'แก้ไขบัตรสมาชิก', width:560, html:cardForm(CARDS[i]), showCancelButton:true, showDenyButton:true, confirmButtonColor:'#2e934a', confirmButtonText: wasDraft?'ยืนยัน + ส่งให้ IT':'บันทึก', denyButtonText:'<i class="fas fa-pen-ruler"></i> บันทึกร่าง', denyButtonColor:'#b07d00', cancelButtonText:'ยกเลิก', preConfirm:readForm, preDeny:readFormDraft })
+  .then(r=>{ if(r.isDismissed) return;
+    if(r.isDenied){ Object.assign(CARDS[i], r.value, {draft:true}); save(); render(); toastDraft(CARDS[i].name); return; }
+    Object.assign(CARDS[i], r.value, {draft:false}); save(); render(); notifyIT(wasDraft?'ยืนยันบัตรจากร่าง':'แก้ไขบัตรสมาชิก', CARDS[i].name, 'อัปเดตสิทธิ์/เงื่อนไข/รูปบัตร'); }); }
+function delCard(i){ const c=CARDS[i];
+  if(!c.active){ Swal.fire({icon:'question',title:'เปิดใช้งานบัตรนี้อีกครั้ง?',html:`<b>${esc(c.name)}</b>`,showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'เปิดใช้งาน',cancelButtonText:'ปิด'}).then(r=>{ if(r.isConfirmed){ c.active=true; save(); render(); notifyIT('เปิดใช้งานบัตรสมาชิกอีกครั้ง', c.name); } }); return; }
+  Swal.fire({icon:'warning',title:'ยกเลิกการใช้งานบัตรนี้?',html:`<b>${esc(c.name)}</b><br><span style="font-size:13px;color:#6b7280">บัตรจะถูกตั้งเป็น <b>ยกเลิกการใช้งาน</b> — ข้อมูลยังอยู่เพื่อให้<b>สาขาตรวจสอบได้ว่าบัตรนี้ไม่ใช้แล้ว</b> · แจ้ง IT ถอด/ปิดที่ Backoffice</span>`,showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ยกเลิกการใช้งาน',cancelButtonText:'ยกเลิก'})
+  .then(r=>{ if(!r.isConfirmed) return; c.active=false; save(); render(); notifyIT('ยกเลิกการใช้งานบัตรสมาชิก', c.name, 'ข้อมูลยังอยู่ในระบบ (สถานะ: ยกเลิกการใช้งาน) · สาขาตรวจสอบได้'); }); }
+
+function addCodes(i){ const c=CARDS[i];
+  if(c.draft){ Swal.fire({icon:'info',iconColor:'#b07d00',title:'บัตรนี้ยังเป็นร่าง',html:'<span style="font-size:13px;color:#6b7280">กด <b>ยืนยัน + ส่งให้ IT</b> ก่อน จึงจะแจ้งเพิ่มโค้ดได้</span>',confirmButtonColor:'#2e934a'}); return; }
+  try{ localStorage.setItem('pc_code_role','ADD');
+    localStorage.setItem('pc_card_addcode', JSON.stringify({name:c.name, prefix:c.prefix, typeCode:c.typeCode||c.prefix, kind:'Member card', cat:'member', start:c.start, end:c.end})); }catch(e){}
+  location.href='Code Management.html';
+}
+function queueCardCodes(c, n){
+  let all; try{ all=JSON.parse(localStorage.getItem('pc_code_requests'))||[]; }catch(e){ all=[]; }
+  let m=1000; all.forEach(x=>{ const k=parseInt(String(x.id||'').replace(/\D/g,'')); if(k>m) m=k; });
+  const id='CR-'+(m+1);
+  const cap=Math.min(n,2000); const codes=[]; for(let i=1;i<=cap;i++) codes.push({code:c.prefix+String(i).padStart(5,'0'), redeemed:false});
+  const promoCode='108'+String(2000+Math.floor(Math.random()*7999));
+  const req={ id, type:'ADD', kind:'Member card', proStatus:'Normal', kindShort:'member', campaign:c.name, button:c.prefix, promoCode, start:c.start, end:c.end, proExpire:c.end, startDate:c.start, codes, count:n, reporter:'MKT · บัตรสมาชิก', status:'CONFIRMED', itStatus:'PENDING', createdAt:Date.now(), source:'card' };
+  all.unshift(req); localStorage.setItem('pc_code_requests', JSON.stringify(all));
+  Swal.fire({ icon:'success', title:'ส่งเข้าคิวงานโค้ดให้ IT แล้ว', width:560, html:`<div style="text-align:left;font-size:14px">ออกโค้ดบัตร <b>${esc(c.name)}</b> จำนวน <b>${n.toLocaleString()}</b> โค้ด (Prefix <b class="mono">${esc(c.prefix)}</b>)<div style="margin-top:9px;background:#f6f8fa;border-left:4px solid #2f5fb3;border-radius:10px;padding:10px 13px"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#8a9099">เลขที่คำขอ</div><div class="mono" style="font-weight:700;margin-top:3px">${id}</div><div style="font-size:13px;color:#6b7280;margin-top:7px">ไปโผล่ในหน้า “จัดการโค้ดโปรโมชัน” แท็บ IT (ประเภท: Member card) · IT โหลดไฟล์/คัดลอก Code Promotion ไปอัป Backoffice</div></div></div>`, confirmButtonColor:'#2e934a' });
+}
+
+function importCards(){ Swal.fire({ title:'Import บัตรสมาชิก', width:580, html:`<div style="text-align:left;font-size:13.5px">
+    <div style="color:#5a616b;margin-bottom:8px">วางข้อมูลจาก Excel — 1 บรรทัด/บัตร · คั่นด้วย <b>Tab หรือ ,</b> ตามหัว Template:<br><span class="mono" style="font-size:.74rem;color:#8a9099">ชื่อบัตร, tier, ส่วนลด%, prefix, typeCode, lot, สิทธิ์(คั่นด้วย ;), เริ่ม, สิ้นสุด</span></div>
+    <textarea id="imp" class="swal2-textarea" style="margin:0;width:100%;min-height:140px;font-family:'JetBrains Mono',monospace;font-size:12.5px" placeholder="Platinum	platinum	0	PTN	PTN	Lot 1	แลกฟรี Giga FF + Giga CK 1 ถ้วย/สัปดาห์;เลือกผงได้ทุกรส	2026-01-01	2026-12-31"></textarea></div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'นำเข้า', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const txt=(document.getElementById('imp').value||'').trim(); if(!txt){ Swal.showValidationMessage('วางข้อมูลก่อน'); return false; } return txt; } })
+    .then(r=>{ if(!r.isConfirmed) return; const rows=r.value.split('\n').map(l=>l.trim()).filter(Boolean); let n=0;
+      rows.forEach(line=>{ const p=line.split(/\t|,/).map(s=>s.trim()); if(!p[0]) return;
+        const tier=(p[1]||'silver').toLowerCase(); CARDS.unshift({ id:'c'+Date.now().toString(36)+n, name:p[0], tier:TIERS[tier]?tier:'silver', discount:+p[2]||0, prefix:(p[3]||'').toUpperCase(), typeCode:(p[4]||'').toUpperCase(), lot:p[5]||'', privileges:(p[6]||'').split(';').map(s=>s.trim()).filter(Boolean), start:p[7]||'2026-01-01', end:p[8]||'2026-12-31', active:true, codeCount:0 }); n++; });
+      save(); render(); Swal.fire({icon:'success',title:'นำเข้าแล้ว',html:`เพิ่ม <b>${n}</b> บัตร`,timer:1600,showConfirmButton:false}); }); }
+
+function downloadTemplate(){ const header='ชื่อบัตร,tier,ส่วนลด%,prefix,typeCode,lot,สิทธิ์ (คั่นด้วย ;),เริ่ม,สิ้นสุด';
+  const sample='Platinum,platinum,0,PTN,PTN,Lot 1,แลกฟรี Giga FF + Giga CK 1 ถ้วย/สัปดาห์;เลือกผงได้ทุกรส,2026-01-01,2026-12-31';
+  const csv='\uFEFF'+header+'\n'+sample+'\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='member_card_template.csv'; document.body.appendChild(a); a.click(); a.remove(); }
+
+/* เทมเพลต“โค้ดบัตร” (Name/Code/Member no.) — ไฟล์ที่ผู้กรอกแนบเข้าระบบโค้ด (ตรวจโค้ดได้) · IT จะได้ไฟล์ Backoffice อัตโนมัติ */
+function downloadCodeTemplate(){ if(typeof XLSX==='undefined'){ Swal.fire({icon:'error',title:'โหลดตัวสร้างไฟล์ไม่สำเร็จ',confirmButtonColor:'#2e934a'}); return; }
+  const wb=XLSX.utils.book_new();
+  const rows=[['Member Name','Code','Member no.'],
+    ['PEARPLOY THOONSOONGNEON','PTN26AB12','PTN001'],
+    ['PARNRAWEE PINKHAI','PTN26CD34','PTN002'],
+    ['CHAYAKAN RITTISOONTREEROT','PTN26EF56','PTN003']];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Member_Code');
+  XLSX.writeFile(wb, 'member_card_code_template.xlsx');
+}
+
+setView('card');
+if(VIEW_ONLY){ document.body.classList.add('vo'); var _r=document.querySelector('.topbar .role'); if(_r) _r.textContent='สาขา · ดูข้อมูล'; var _h2=document.querySelector('.bar h2'); if(_h2) _h2.textContent='บัตรสมาชิกของร้าน'; }
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

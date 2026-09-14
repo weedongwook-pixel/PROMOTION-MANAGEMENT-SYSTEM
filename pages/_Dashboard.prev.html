@@ -1,0 +1,278 @@
+<div class="p-4 dash-scope" style="background-color:#f4f6f9; min-height:100vh;">
+
+  <!-- header (kept) -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width:10px; height:55px; background:var(--pc-yellow,#2e934a); margin-right:15px; border-radius:5px;"></div>
+      <div>
+        <h2 class="fw-bold m-0 text-white" style="font-family:'Montserrat',sans-serif; letter-spacing:.5px; text-transform:uppercase;"><i class="fas fa-chart-line me-2 text-warning"></i> DASHBOARD</h2>
+        <small class="fw-bold text-uppercase" style="font-size:11px; letter-spacing:.5px; color:rgba(255,255,255,.85);">Operations Overview — ภาพรวมการทำงานแต่ละฝ่าย</small>
+      </div>
+    </div>
+    <div class="bg-dark text-white px-4 py-2 rounded-3 shadow-sm">
+      <span class="text-warning small fw-bold"><i class="far fa-calendar me-1"></i> วันนี้</span>
+      <span class="fw-bold ms-2" id="dashToday"></span>
+    </div>
+  </div>
+
+  <!-- KPI cards (kept) -->
+  <div class="row g-3 mb-4" id="dashKpis">
+    <div class="col-12 text-center text-muted py-4"><div class="spinner-border text-warning"></div></div>
+  </div>
+
+  <!-- department tracking -->
+  <div class="mb-2 d-flex align-items-center"><span class="fw-bold text-uppercase text-muted" style="font-size:.8rem; letter-spacing:1px;"><i class="fas fa-people-arrows me-2"></i>การทำงานแต่ละฝ่าย (Workflow Tracking)</span></div>
+  <div class="row g-3 mb-4" id="dashDept">
+    <div class="col-12 text-center text-muted py-3"><div class="spinner-border spinner-border-sm text-warning"></div></div>
+  </div>
+
+  <div class="row g-4">
+    <!-- promotions by type -->
+    <div class="col-lg-5">
+      <div class="bg-white rounded-3 shadow-sm border h-100">
+        <div class="bg-dark text-white fw-bold px-4 py-3" style="border-radius:12px 12px 0 0;"><i class="fas fa-shapes text-warning me-2"></i> โปรโมชั่นแยกตามประเภท</div>
+        <div class="p-4" id="dashByType"></div>
+      </div>
+    </div>
+
+    <!-- submissions by month -->
+    <div class="col-lg-7">
+      <div class="bg-white rounded-3 shadow-sm border h-100">
+        <div class="bg-dark text-white fw-bold px-4 py-3 d-flex justify-content-between align-items-center" style="border-radius:12px 12px 0 0;">
+          <span><i class="fas fa-calendar-week text-warning me-2"></i> การแจ้งปุ่มต่อเดือน</span>
+        </div>
+        <div class="p-3" id="dashByMonth"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- changes overview -->
+  <div class="bg-white rounded-3 shadow-sm border mt-4">
+    <div class="bg-dark text-white fw-bold px-4 py-3" style="border-radius:12px 12px 0 0;"><i class="fas fa-flag text-warning me-2"></i> การเปลี่ยนแปลงระยะเวลา / ยกเลิก</div>
+    <div class="p-4" id="dashChanges"></div>
+  </div>
+
+  <!-- reject issues tracking -->
+  <div class="bg-white rounded-3 shadow-sm border mt-4">
+    <div class="bg-dark text-white fw-bold px-4 py-3" style="border-radius:12px 12px 0 0;"><i class="fas fa-rotate-left text-warning me-2"></i> หัวข้อที่ถูก OP ตีกลับ (Reject Tracking)</div>
+    <div class="p-4" id="dashRejects"></div>
+  </div>
+</div>
+
+<script>
+  window.gotoPage = function (pg) { if (typeof loadPage === 'function') loadPage(pg); };
+
+  window.initDashboard = function () {
+    const today = new Date();
+    const el = document.getElementById('dashToday');
+    if (el) el.innerText = today.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    google.script.run.withSuccessHandler(function (o) {
+      window._ops = o;
+      window.renderDashKpis(o.kpi);
+      window.renderDashDept(o);
+      window.renderDashByType(o.byType);
+      window.renderDashByMonth(o.byMonth);
+      window.renderDashChanges(o.changes);
+      window.renderDashRejects(o.rejectIssues || []);
+    }).getOpsOverview();
+    google.script.run.withSuccessHandler(function (s) { window.renderDashNpd(s); }).getNpdFlavorSummary();
+  };
+
+  window.renderDashKpis = function (k) {
+    const kpis = [
+      { t: 'TOTAL CAMPAIGNS', v: k.total, c: 'bg-dark text-white', i: 'fa-layer-group', ic: 'text-warning' },
+      { t: 'PENDING / IT', v: k.pendingIT, c: 'bg-warning text-dark', i: 'fa-clock', ic: 'text-dark' },
+      { t: 'COMPLETED', v: k.complete, c: 'bg-success text-white', i: 'fa-check-double', ic: 'text-white' },
+      { t: 'OP CONFIRMED', v: k.opApproved, c: 'bg-white text-dark border', i: 'fa-thumbs-up', ic: 'text-success' },
+    ];
+    document.getElementById('dashKpis').innerHTML = kpis.map(x => `
+      <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm ${x.c}" style="border-radius:14px;">
+          <div class="card-body p-4 d-flex justify-content-between align-items-center">
+            <div><small class="fw-bold opacity-75 d-block text-uppercase" style="font-size:.7rem; letter-spacing:.5px;">${x.t}</small><h2 class="fw-bold m-0 mt-1">${x.v}</h2></div>
+            <i class="fas ${x.i} fa-2x ${x.ic} opacity-50"></i>
+          </div>
+        </div>
+      </div>`).join('');
+  };
+
+  function leadTime(d) {
+    if (d === null || d === undefined) return '—';
+    if (d < 1) return 'ภายในวันเดียว';
+    return d.toFixed(1) + ' วัน';
+  }
+  function progress(done, total, color) {
+    const pct = total ? Math.round(done / total * 100) : 0;
+    return `<div class="progress mt-2" style="height:8px; border-radius:6px;"><div class="progress-bar ${color}" style="width:${pct}%"></div></div><small class="text-muted" style="font-size:.7rem;">${pct}%</small>`;
+  }
+
+  window.renderDashDept = function (o) {
+    const d = o.dept;
+    const cards = [
+      {
+        key: 'mkt', title: 'MKT', sub: 'เสนอโปรโมชั่น', icon: 'fa-bullhorn', accent: '#2e934a',
+        big: o.totals.campaigns, bigLabel: 'แคมเปญที่แจ้งเข้า',
+        extra: `<div class="d-flex justify-content-between small mt-2"><span class="fw-bold">${o.totals.buttons} ปุ่ม</span><span class="text-muted">เฉลี่ยกรอกล่วงหน้า ${leadTime(o.avgLeadDays)}</span></div>`
+      },
+      {
+        key: 'it', title: 'IT', sub: 'ตั้งค่าปุ่ม POS', icon: 'fa-microchip', accent: '#0dcaf0',
+        big: d.it.complete + '/' + (d.it.complete + d.it.pending), bigLabel: 'ทำเสร็จ / ทั้งหมด',
+        extra: `${progress(d.it.complete, d.it.complete + d.it.pending, 'bg-info')}
+                <div class="d-flex justify-content-between small mt-2"><span class="text-warning fw-bold">ค้าง ${d.it.pending}</span><span class="text-muted">เฉลี่ยทำปุ่ม ${leadTime(o.avgItDays)}</span></div>`
+      },
+      {
+        key: 'op', title: 'OP', sub: 'ตรวจสอบ', icon: 'fa-clipboard-check', accent: '#198754',
+        big: d.op.approved + '/' + (d.op.approved + d.op.waiting), bigLabel: 'ตรวจแล้ว / ทั้งหมด',
+        extra: `${progress(d.op.approved, d.op.approved + d.op.waiting, 'bg-success')}
+                <div class="d-flex justify-content-between small mt-2"><span class="text-success fw-bold">รอตรวจ ${d.op.waiting}</span><span class="text-muted">เฉลี่ยตรวจ ${leadTime(o.avgOpDays)}</span></div>
+                <div class="d-flex gap-2 mt-2">
+                  <div class="flex-fill text-center p-2 rounded-3" style="background:#e8f6ee;"><span class="d-block fw-bold text-success" style="font-size:1.1rem;">${d.op.cleanPass}</span><small class="text-muted" style="font-size:.6rem;">ถูกต้องครั้งแรก</small></div>
+                  <div class="flex-fill text-center p-2 rounded-3" style="background:#fdeaea;"><span class="d-block fw-bold text-danger" style="font-size:1.1rem;">${d.op.rejects}</span><small class="text-muted" style="font-size:.6rem;">ตีกลับ (ครั้ง)</small></div>
+                </div>`
+      },
+    ];
+    document.getElementById('dashDept').innerHTML = cards.map(c => `
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius:14px; cursor:pointer; border-top:5px solid ${c.accent} !important;" onclick="window.showDeptTiming('${c.key}')">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h4 class="fw-bold m-0" style="font-family:'Montserrat',sans-serif;">${c.title}</h4>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:.65rem; letter-spacing:.5px;">${c.sub}</small>
+              </div>
+              <span class="d-inline-flex align-items-center justify-content-center" style="width:46px;height:46px;border-radius:12px;background:${c.accent}22;"><i class="fas ${c.icon} fa-lg" style="color:${c.accent}"></i></span>
+            </div>
+            <div class="mt-3"><span class="fw-bold" style="font-size:1.9rem; line-height:1;">${c.big}</span><br><small class="text-muted" style="font-size:.7rem;">${c.bigLabel}</small></div>
+            ${c.extra}
+            <div class="text-end mt-2"><small class="fw-bold" style="color:${c.accent}; font-size:.7rem;">คลิกดูระยะเวลาทำงาน <i class="fas fa-arrow-right"></i></small></div>
+          </div>
+        </div>
+      </div>`).join('');
+  };
+
+  window.showDeptTiming = function (dept) {
+    google.script.run.withSuccessHandler(function (rows) {
+      const cfg = {
+        mkt: { title: 'MKT — ระยะเวลากรอกแจ้งล่วงหน้า', col: 'กรอกล่วงหน้าก่อนวันเล่นโปร', pick: r => r.leadDays, c1: 'วันที่กรอก', v1: r => r.submittedDate || '-', c2: 'วันเริ่มโปร', v2: r => r.startDate || '-' },
+        it: { title: 'IT — ระยะเวลาขึ้นปุ่ม POS', col: 'ใช้เวลาทำปุ่ม (รับแจ้ง→เสร็จ)', pick: r => r.itDays, c1: 'รับแจ้ง', v1: r => r.submittedDate || '-', c2: 'IT เสร็จ', v2: r => r.itDoneDate || (r.itStatus !== 'COMPLETE' ? 'ยังไม่เสร็จ' : '-') },
+        op: { title: 'OP — ระยะเวลาตรวจสอบ', col: 'ใช้เวลาตรวจ (IT เสร็จ→ตรวจ)', pick: r => r.opDays, c1: 'IT เสร็จ', v1: r => r.itDoneDate || '-', c2: 'OP ตรวจ', v2: r => r.opDoneDate || (r.opStatus !== 'APPROVED' ? 'รอตรวจ' : '-') }
+      }[dept];
+      const fmtDays = (d) => (d === null || d === undefined) ? '<span class="text-muted">—</span>' : (d <= 0 ? '<span class="badge bg-success">ภายในวันเดียว</span>' : `<span class="badge bg-dark">${d} วัน</span>`);
+      const body = rows.map(r => `
+        <tr>
+          <td class="text-start fw-bold">${r.campaign}</td>
+          <td><span class="badge bg-light text-dark border">${r.type || '-'}</span></td>
+          <td class="small">${cfg.v1(r)}</td>
+          <td class="small">${cfg.v2(r)}</td>
+          <td>${fmtDays(cfg.pick(r))}</td>
+        </tr>`).join('');
+      Swal.fire({
+        title: cfg.title,
+        html: `<div class="table-responsive" style="max-height:60vh;"><table class="table table-sm table-hover align-middle"><thead class="table-dark"><tr><th class="text-start">Campaign</th><th>Type</th><th>${cfg.c1}</th><th>${cfg.c2}</th><th>${cfg.col}</th></tr></thead><tbody>${body || '<tr><td colspan=5 class="py-3 text-muted">ไม่มีข้อมูล</td></tr>'}</tbody></table></div>`,
+        width: '820px', confirmButtonColor: '#1a1d20', confirmButtonText: 'ปิด'
+      });
+    }).getWorkflowTimings();
+  };
+
+  window.renderDashByType = function (byType) {
+    const colors = { 'Item Set': '#2e934a', 'Coupon': '#2e934a', 'Bill Discount': '#198754', 'Voucher': '#0dcaf0', 'Other': '#6c757d' };
+    const max = Math.max(1, ...byType.map(t => t.count));
+    const box = document.getElementById('dashByType');
+    if (!byType.length) { box.innerHTML = '<div class="text-muted text-center py-3">ยังไม่มีข้อมูล</div>'; return; }
+    box.innerHTML = byType.map(t => `
+      <div class="mb-3">
+        <div class="d-flex justify-content-between mb-1"><span class="fw-bold small">${t.type}</span><span class="fw-bold small">${t.count}</span></div>
+        <div class="progress" style="height:14px; border-radius:7px; background:#eee;">
+          <div class="progress-bar fw-bold" style="width:${Math.round(t.count / max * 100)}%; background:${colors[t.type] || '#6c757d'}; color:#000;"></div>
+        </div>
+      </div>`).join('');
+  };
+
+  window.renderDashByMonth = function (byMonth) {
+    const box = document.getElementById('dashByMonth');
+    if (!byMonth.length) { box.innerHTML = '<div class="text-muted text-center py-3">ยังไม่มีข้อมูล</div>'; return; }
+    const totC = byMonth.reduce((a, m) => a + m.campaigns, 0);
+    const totB = byMonth.reduce((a, m) => a + m.buttons, 0);
+    const chip = (t, n) => {
+      const c = { 'Item Set': 'bg-warning text-dark', 'Coupon': 'bg-warning text-dark', 'Bill Discount': 'bg-success text-white', 'Voucher': 'bg-info text-dark', 'Other': 'bg-secondary text-white' }[t] || 'bg-secondary';
+      return `<span class="badge ${c} me-1">${t} ${n}</span>`;
+    };
+    box.innerHTML = `
+      <div class="d-flex gap-2 mb-3">
+        <div class="flex-fill text-center p-2 rounded-3" style="background:var(--pc-dark,#1a1d20);color:#fff;"><h4 class="fw-bold m-0 text-warning">${totC}</h4><small style="font-size:.65rem;">แคมเปญที่เล่น</small></div>
+        <div class="flex-fill text-center p-2 rounded-3" style="background:var(--pc-yellow,#2e934a);color:#000;"><h4 class="fw-bold m-0">${totB}</h4><small style="font-size:.65rem;">ปุ่มที่ทำทั้งหมด</small></div>
+      </div>
+      <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead class="text-muted small text-uppercase"><tr><th>เดือน</th><th class="text-center">แคมเปญ</th><th class="text-center">ปุ่ม</th><th>แยกตามประเภท</th></tr></thead>
+      <tbody>${byMonth.map(m => `
+        <tr>
+          <td class="fw-bold">Promotion ${m.month}</td>
+          <td class="text-center"><span class="badge bg-dark fs-6">${m.campaigns}</span></td>
+          <td class="text-center"><span class="badge bg-warning text-dark fs-6">${m.buttons}</span></td>
+          <td>${Object.keys(m.types).map(t => chip(t, m.types[t])).join('')}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+  };
+
+  window.renderDashChanges = function (c) {
+    const items = [
+      { t: 'ขยายเวลา (EXTENDED)', v: c.EXTENDED, cls: 'bg-info text-dark', i: 'fa-calendar-plus' },
+      { t: 'ลดเวลา (REDUCED)', v: c.REDUCED, cls: 'bg-danger text-white', i: 'fa-calendar-minus' },
+      { t: 'ยกเลิก (CANCELLED)', v: c.CANCELLED, cls: 'bg-dark text-white', i: 'fa-ban' },
+    ];
+    document.getElementById('dashChanges').innerHTML = '<div class="row g-3">' + items.map(x => `
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-3 p-3 rounded-3 ${x.cls}">
+          <i class="fas ${x.i} fa-2x opacity-75"></i>
+          <div><h3 class="fw-bold m-0">${x.v}</h3><small class="fw-bold opacity-75" style="font-size:.7rem;">${x.t}</small></div>
+        </div>
+      </div>`).join('') + '</div>';
+  };
+
+  window.renderDashRejects = function (issues) {
+    const box = document.getElementById('dashRejects');
+    if (!box) return;
+    if (!issues.length) { box.innerHTML = '<div class="text-muted text-center py-4"><i class="fas fa-circle-check text-success me-1"></i> ยังไม่มีการตีกลับ — งานผ่านการตรวจสอบครั้งแรกทั้งหมด</div>'; return; }
+    const total = issues.reduce((a, i) => a + i.count, 0);
+    const max = Math.max(1, ...issues.map(i => i.count));
+    box.innerHTML = `<div class="mb-3 small text-muted fw-bold">ตีกลับทั้งหมด ${total} ครั้ง · แยกตามหัวข้อ</div>` + issues.map(i => `
+      <div class="mb-3">
+        <div class="d-flex justify-content-between mb-1"><span class="fw-bold small"><i class="fas fa-triangle-exclamation text-danger me-1"></i>${i.issue}</span><span class="fw-bold small">${i.count} ครั้ง</span></div>
+        <div class="progress" style="height:14px; border-radius:7px; background:#eee;">
+          <div class="progress-bar bg-danger fw-bold" style="width:${Math.round(i.count / max * 100)}%;">${i.count}</div>
+        </div>
+      </div>`).join('');
+  };
+
+  window.renderDashNpd = function (s) {
+    const box = document.getElementById('dashNpd');
+    if (!box) return;
+    s = s || { npd: {}, flavor: {}, recent: [] };
+    const block = (title, t, sub, icon, accent) => `
+      <div class="col-md-6">
+        <div class="border rounded-3 p-3 h-100" style="border-top:4px solid ${accent} !important;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold"><i class="fas ${icon} me-2" style="color:${accent}"></i>${title}</span>
+            <span class="badge bg-dark fs-6">${t.total || 0}</span>
+          </div>
+          <div class="d-flex gap-2">
+            <div class="flex-fill text-center p-2 rounded-3" style="background:#fff8e1;"><span class="d-block fw-bold h5 m-0 text-warning">${t.pending || 0}</span><small class="text-muted" style="font-size:.6rem;">รอตรวจ</small></div>
+            <div class="flex-fill text-center p-2 rounded-3" style="background:#e8f6ee;"><span class="d-block fw-bold h5 m-0 text-success">${t.confirmed || 0}</span><small class="text-muted" style="font-size:.6rem;">ยืนยันแล้ว</small></div>
+            <div class="flex-fill text-center p-2 rounded-3" style="background:#fdeaea;"><span class="d-block fw-bold h5 m-0 text-danger">${t.rejected || 0}</span><small class="text-muted" style="font-size:.6rem;">ตีกลับ</small></div>
+          </div>
+          <div class="small text-muted mt-2">${sub}</div>
+        </div>
+      </div>`;
+    const badge = (st) => st === 'CONFIRMED' ? 'bg-success' : (st === 'REJECTED' ? 'bg-danger' : 'bg-warning text-dark');
+    const recent = (s.recent || []).length
+      ? `<div class="table-responsive mt-3"><table class="table table-sm align-middle mb-0">
+          <thead class="text-muted small text-uppercase"><tr><th>เลขที่</th><th>ประเภท</th><th>Project</th><th>สถานะ</th></tr></thead>
+          <tbody>${s.recent.map(r => `<tr><td class="fw-bold">${r.id}</td><td><span class="badge bg-light text-dark border">${r.kind}</span></td><td class="small">${r.project || '-'}</td><td><span class="badge ${badge(r.status)}">${r.status}</span></td></tr>`).join('')}</tbody>
+        </table></div>`
+      : '<div class="text-muted text-center py-3 mt-2">ยังไม่มีรายการ NPD / ผงรสชาติ</div>';
+    box.innerHTML = `<div class="row g-3">
+      ${block('สินค้าใหม่ (NPD)', s.npd, (s.npdItems || 0) + ' รายการสินค้า', 'fa-box-open', '#2e934a')}
+      ${block('ผงรสชาติ (Flavor)', s.flavor, (s.flavorGroups || 0) + ' กลุ่ม CMPOS', 'fa-mortar-pestle', '#2e934a')}
+    </div>${recent}`;
+  };
+</script>

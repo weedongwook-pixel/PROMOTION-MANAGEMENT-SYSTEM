@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าล็อกการแจ้งล่วงหน้า</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-green:#2e934a; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:#eef1f4; color:#1a1d20; margin:0; padding:22px; }
+  .wrap{ max-width:720px; margin:0 auto; padding-bottom:40px; }
+  .head{ font-size:1.18rem; font-weight:700; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .head i.lk{ color:var(--pc-green); }
+  .it-only{ display:inline-flex; align-items:center; gap:6px; font-size:.74rem; font-weight:700; background:#e7f0ff; color:var(--blue); border:1px solid #cfe0fb; border-radius:7px; padding:3px 9px; }
+  .note{ font-size:.88rem; color:#6b7280; margin:6px 0 14px; line-height:1.55; }
+  .summary{ background:#fff; border:1px solid #e7eaee; border-radius:12px; padding:11px 15px; font-size:.9rem; font-weight:600; color:#1a1d20; display:flex; align-items:center; gap:10px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .summary i{ color:var(--pc-green); }
+  .summary b{ color:var(--pc-green); }
+
+  .grp{ margin-bottom:20px; }
+  .grp-h{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin:0 2px 9px; }
+
+  .area{ background:#fff; border:1px solid #e7eaee; border-radius:13px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:border-color .14s; }
+  .area.on{ border-color:#bfe3cc; }
+  .area-top{ display:flex; align-items:center; gap:12px; }
+  .area-name{ font-weight:600; font-size:.98rem; display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+  .area-name > i{ width:20px; text-align:center; color:#8a9099; }
+  .area.on .area-name > i{ color:var(--pc-green); }
+  .core-badge{ font-size:.66rem; font-weight:700; background:#fff4d6; color:#946200; border:1px solid #f0dca0; border-radius:6px; padding:2px 7px; }
+  .lk-state{ font-size:.78rem; font-weight:700; color:#9aa1aa; white-space:nowrap; }
+  .area.on .lk-state{ color:var(--pc-green); }
+
+  .switch{ position:relative; width:46px; height:26px; flex:none; cursor:pointer; }
+  .switch input{ display:none; }
+  .switch .sl{ position:absolute; inset:0; background:#d4d8dd; border-radius:99px; transition:.18s; }
+  .switch .sl::before{ content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .switch input:checked + .sl{ background:var(--pc-green); }
+  .switch input:checked + .sl::before{ transform:translateX(20px); }
+
+  .area-body{ margin-top:13px; padding-top:13px; border-top:1px dashed #e7eaee; }
+  .row3{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .row3 .f label{ display:block; font-size:.74rem; font-weight:600; color:#6b7280; margin-bottom:5px; }
+  .row3 input[type=number]{ width:108px; border:1.6px solid #dde2e7; border-radius:9px; padding:8px 11px; font-family:inherit; font-size:.96rem; }
+  .row3 input[type=number]:focus{ outline:none; border-color:var(--pc-green); }
+  .tog{ display:flex; align-items:center; gap:9px; cursor:pointer; font-weight:600; font-size:.88rem; background:#fafbfc; border:1.6px solid #e7eaee; border-radius:10px; padding:9px 13px; }
+  .tog input{ width:18px; height:18px; accent-color:var(--pc-green); }
+  .mini-prev{ background:#fff8ec; border:1px solid #f3d99a; border-radius:10px; padding:9px 13px; margin-top:12px; font-size:.85rem; color:#9a6700; font-weight:600; display:flex; align-items:center; gap:8px; line-height:1.4; }
+  .mini-prev i{ color:#c9870a; flex:none; }
+  .mini-prev b{ color:#1a1d20; }
+
+  .savebar{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; position:sticky; bottom:14px; }
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.96rem; padding:12px 22px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-g:hover{ background:#00632f; }
+  .btn-o{ background:#fff; border:1.5px solid #d8dde2; color:#6b7280; } .btn-o:hover{ border-color:#b6bcc4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><i class="fas fa-lock lk"></i>ตั้งค่าล็อกการแจ้งล่วงหน้า <span class="it-only"><i class="fas fa-laptop-code"></i>IT เท่านั้น</span></div>
+  <p class="note">ล็อก = บังคับให้ผู้แจ้งต้องเลือก “วันเริ่มใช้” ล่วงหน้าอย่างน้อยตามจำนวนวันที่กำหนด — เปิด/ปิดได้รายส่วน · <b>ค่าเริ่มต้นเปิดล็อกเฉพาะ “แจ้งเพิ่มโค้ด”</b> ส่วนอื่นปิดไว้ก่อน</p>
+
+  <div class="summary" id="summary"></div>
+  <div id="groups"></div>
+
+  <div class="savebar">
+    <button class="btn btn-o" onclick="resetAll()"><i class="fas fa-rotate-left"></i> คืนค่าเริ่มต้น</button>
+    <button class="btn btn-g" onclick="save()"><i class="fas fa-check"></i> บันทึกทั้งหมด</button>
+  </div>
+</div>
+
+<script>
+const LKEY='pc_lock_settings';     // ตารางตั้งค่าล็อกรายส่วน (ใหม่)
+const CKEY='pc_code_settings';     // ค่าเดิมของหน้าแจ้งเพิ่มโค้ด (mirror จากส่วน codeAdd เพื่อ backward-compat)
+const TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+/* ส่วนการแจ้งทั้งหมดในระบบ */
+const GROUPS=[
+  { g:'โปรโมชั่น & โค้ด', items:[
+    { id:'codeAdd',     label:'แจ้งเพิ่มโค้ดโปรโมชัน', icon:'fa-plus',        core:true },
+    { id:'codeRemove',  label:'แจ้งลบโค้ด',           icon:'fa-trash-can' },
+    { id:'memberCode',  label:'แจ้งเพิ่มโค้ดบัตรสมาชิก', icon:'fa-id-card' },
+    { id:'createPromo', label:'แจ้งโปรโมชั่น (Item Set)', icon:'fa-bullhorn' },
+    { id:'coupon',      label:'เสนอคูปอง',            icon:'fa-ticket' },
+    { id:'billDiscount',label:'เสนอ Bill Discount',   icon:'fa-calculator' },
+    { id:'voucher',     label:'เสนอ Voucher',         icon:'fa-gift' },
+  ]},
+  { g:'สินค้าใหม่ & เอกสาร', items:[
+    { id:'npd',    label:'แจ้ง RD / สินค้าใหม่ (NPD)', icon:'fa-flask' },
+    { id:'flavor', label:'แจ้งเพิ่มผงรสชาติ',         icon:'fa-mortar-pestle' },
+    { id:'memo',   label:'สร้าง MEMO',               icon:'fa-file-lines' },
+  ]},
+  { g:'สติ๊กเกอร์สรรพากร', items:[
+    { id:'rdSticker', label:'แจ้งเพิ่มเลขสติ๊กเกอร์', icon:'fa-receipt' },
+    { id:'rdCancel',  label:'แจ้งยกเลิก / จดใหม่',    icon:'fa-rotate' },
+  ]},
+];
+const ALL_IDS = GROUPS.reduce((a,g)=>a.concat(g.items.map(i=>i.id)),[]);
+const AREA = id => { for(const g of GROUPS){ const it=g.items.find(x=>x.id===id); if(it) return it; } return {}; };
+
+function defArea(id){ return { enabled:id==='codeAdd', lead:3, rec:5, weekend:false }; }
+function defaults(){ const o={}; ALL_IDS.forEach(id=>o[id]=defArea(id)); return o; }
+
+let S = {};
+function load(){
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem(LKEY)); }catch(e){}
+  const o=defaults();
+  if(saved && typeof saved==='object'){
+    ALL_IDS.forEach(id=>{ const s=saved[id]; if(s&&typeof s==='object'){
+      o[id]={ enabled:!!s.enabled,
+        lead:typeof s.lead==='number'?s.lead:o[id].lead,
+        rec:typeof s.rec==='number'?s.rec:o[id].rec,
+        weekend:typeof s.weekend==='boolean'?s.weekend:o[id].weekend }; }});
+  } else {
+    // ครั้งแรก: ดึงค่าจากของเดิม (pc_code_settings) มาเป็นส่วน codeAdd
+    let leg=null; try{ leg=JSON.parse(localStorage.getItem(CKEY)); }catch(e){}
+    if(leg&&typeof leg==='object'){
+      o.codeAdd={ enabled:true,
+        lead:typeof leg.leadDays==='number'?leg.leadDays:3,
+        rec:typeof leg.recDays==='number'?leg.recDays:5,
+        weekend:typeof leg.countWeekend==='boolean'?leg.countWeekend:false };
+    }
+  }
+  return o;
+}
+
+function isWeekend(d){ const w=d.getDay(); return w===0||w===6; }
+function fmt(d){ return d.getDate()+' '+TH_M[d.getMonth()]+' '+(d.getFullYear()+543); }
+function earliest(a){ const d=new Date(); d.setHours(0,0,0,0); let add=0;
+  const lead=Math.max(0,a.lead|0); let guard=0;
+  while(add<lead && guard<400){ d.setDate(d.getDate()+1); if(a.weekend||!isWeekend(d)) add++; guard++; } return d; }
+
+function render(){
+  const cnt=ALL_IDS.filter(id=>S[id].enabled).length;
+  document.getElementById('summary').innerHTML =
+    `<i class="fas fa-lock"></i> เปิดล็อกอยู่ <b>${cnt}</b> / ${ALL_IDS.length} ส่วน` + (cnt===0?' · <span style="color:#9aa1aa;font-weight:500">ไม่มีส่วนใดถูกล็อก</span>':'');
+  document.getElementById('groups').innerHTML = GROUPS.map(g=>`
+    <div class="grp"><div class="grp-h">${g.g}</div>
+    ${g.items.map(it=>areaHTML(it)).join('')}</div>`).join('');
+  ALL_IDS.forEach(id=>{ if(S[id].enabled) updPrev(id); });
+}
+function areaHTML(it){
+  const a=S[it.id], en=a.enabled;
+  return `<div class="area ${en?'on':''}" id="area-${it.id}">
+    <div class="area-top">
+      <div class="area-name"><i class="fas ${it.icon}"></i> ${it.label} ${it.core?'<span class="core-badge">ค่าเริ่มต้น</span>':''}</div>
+      <span class="lk-state">${en?'ล็อก':'ไม่ล็อก'}</span>
+      <label class="switch"><input type="checkbox" ${en?'checked':''} onchange="toggleArea('${it.id}',this.checked)"><span class="sl"></span></label>
+    </div>
+    <div class="area-body" style="${en?'':'display:none'}">
+      <div class="row3">
+        <div class="f"><label>ขั้นต่ำ (วัน)</label><input type="number" min="0" max="60" value="${a.lead}" oninput="setVal('${it.id}','lead',this.value)"></div>
+        <div class="f"><label>แนะนำ (วัน)</label><input type="number" min="0" max="60" value="${a.rec}" oninput="setVal('${it.id}','rec',this.value)"></div>
+        <div class="f"><label>วันหยุด</label><label class="tog"><input type="checkbox" ${a.weekend?'checked':''} onchange="setVal('${it.id}','weekend',this.checked)"> นับ ส–อา</label></div>
+      </div>
+      <div class="mini-prev" id="prev-${it.id}"></div>
+    </div>
+  </div>`;
+}
+function updPrev(id){ const el=document.getElementById('prev-'+id); if(!el) return; const a=S[id]; const d=earliest(a);
+  el.innerHTML=`<i class="fas fa-calendar-day"></i>ถ้าแจ้งวันนี้ เลือกวันเริ่มได้เร็วสุด <b>${fmt(d)}</b> (อย่างน้อย ${Math.max(0,a.lead|0)} วัน${a.weekend?'':'ทำการ'})`; }
+
+function toggleArea(id,on){ S[id].enabled=on; render(); }
+function setVal(id,field,val){
+  if(field==='weekend') S[id][field]=!!val;
+  else S[id][field]=Math.max(0,parseInt(val||'0',10));
+  if(field!=='weekend') document.querySelector('#summary'); // no-op
+  updPrev(id);
+  // อัปเดตป้ายสถานะ/summary เฉพาะเมื่อจำนวนเปลี่ยน (enabled ไม่เปลี่ยนตรงนี้)
+}
+
+function save(){
+  localStorage.setItem(LKEY, JSON.stringify(S));
+  // mirror ส่วน codeAdd → pc_code_settings (หน้าแจ้งเพิ่มโค้ดอ่านค่านี้บังคับ lead-time)
+  const c=S.codeAdd;
+  localStorage.setItem(CKEY, JSON.stringify({ leadDays:c.enabled?Math.max(0,c.lead|0):0, recDays:Math.max(0,c.rec|0), countWeekend:!!c.weekend }));
+  const cnt=ALL_IDS.filter(id=>S[id].enabled).length;
+  Swal.fire({icon:'success',title:'บันทึกแล้ว',html:`เปิดล็อก <b>${cnt}</b> ส่วน · หน้าแจ้งงานจะใช้ค่านี้`,confirmButtonColor:'#2e934a',timer:1500,showConfirmButton:false});
+}
+function resetAll(){
+  Swal.fire({icon:'warning',title:'คืนค่าเริ่มต้น?',text:'ล็อกเฉพาะ “แจ้งเพิ่มโค้ด” (ล่วงหน้า 3 วันทำการ) ส่วนอื่นปิด',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'คืนค่า',cancelButtonText:'ยกเลิก'})
+    .then(r=>{ if(r.isConfirmed){ S=defaults(); render(); save(); } });
+}
+
+S=load(); render();
+</script>
+</body>
+</html>

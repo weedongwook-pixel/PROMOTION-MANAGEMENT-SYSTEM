@@ -1,0 +1,610 @@
+<style>
+/* ===== Dashboard v2 — collapsible-sidebar mockup look, wired to live data ===== */
+.dash2{ --d-green:#2e934a; --d-greenL:#3fae5b; --d-yellow:#fbbc04; --d-ink:#111827;
+  --d-panel:#fff; --d-line:#eef1f5; --d-soft:#5b6571; --d-faint:#9aa4b0;
+  --d-shadow:0 1px 2px rgba(16,24,40,.04), 0 12px 30px rgba(16,24,40,.055);
+  --d-radius:20px;
+  font-family:'Kanit',sans-serif; color:var(--d-ink); padding:22px; background:#f4f6f9; min-height:100vh; }
+.dash2 .num{ font-family:'Montserrat',sans-serif; font-feature-settings:"tnum"; }
+.dash2 .mono{ font-family:'JetBrains Mono',monospace; }
+
+/* header */
+.dash2 .d-head{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:linear-gradient(100deg,#0a5d33,#2e934a); color:#fff;
+  border-radius:16px; padding:20px 24px; box-shadow:0 8px 24px rgba(46,147,74,.22); margin-bottom:22px; }
+.dash2 .d-head .hbar{ width:8px; height:46px; background:var(--d-yellow); border-radius:5px; }
+.dash2 .d-head h1{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.45rem; margin:0; letter-spacing:.4px; text-transform:uppercase; }
+.dash2 .d-head p{ margin:2px 0 0; font-size:.74rem; color:rgba(255,255,255,.82); }
+.dash2 .d-datepill{ margin-left:auto; display:flex; align-items:center; gap:9px; background:rgba(0,0,0,.28); padding:10px 16px; border-radius:12px; font-size:.8rem; }
+.dash2 .d-datepill .y{ color:var(--d-yellow); font-weight:600; }
+
+.dash2 .sec-lbl{ display:flex; align-items:center; gap:9px; font-size:.7rem; letter-spacing:1.4px; text-transform:uppercase; color:var(--d-faint); font-weight:700; margin:0 0 13px; }
+.dash2 .sec-lbl i{ color:var(--d-green); }
+
+/* stat cards */
+.dash2 .stat-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:26px; }
+@media(max-width:1300px){ .dash2 .stat-grid{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:680px){ .dash2 .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+.dash2 .stat{ position:relative; background:var(--d-panel); border:1px solid var(--d-line); border-radius:var(--d-radius); padding:20px 20px 18px;
+  box-shadow:var(--d-shadow); transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s; overflow:hidden; }
+.dash2 .stat::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--_ac,var(--d-green)); opacity:.9; }
+.dash2 .stat:hover{ transform:translateY(-4px); box-shadow:0 18px 40px rgba(16,24,40,.12); }
+.dash2 .stat .ico{ width:46px; height:46px; border-radius:14px; display:grid; place-items:center; font-size:1.15rem; margin-bottom:15px; }
+.dash2 .stat .v{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:2.15rem; line-height:1; letter-spacing:-.5px; }
+.dash2 .stat .t{ font-size:.78rem; color:var(--d-soft); margin-top:6px; font-weight:600; }
+.dash2 .stat .x{ font-size:.68rem; color:var(--d-faint); margin-top:9px; padding-top:9px; border-top:1px solid var(--d-line); }
+.dash2 .stat .x b{ color:var(--d-soft); }
+
+/* cards */
+.dash2 .d-card{ background:var(--d-panel); border:1px solid var(--d-line); border-radius:var(--d-radius); box-shadow:var(--d-shadow); overflow:hidden; height:100%; }
+.dash2 .d-card .ch{ display:flex; align-items:center; gap:10px; padding:17px 21px; border-bottom:1px solid var(--d-line); font-weight:700; font-size:.95rem; letter-spacing:.1px; }
+.dash2 .d-card .ch i{ color:var(--d-green); font-size:1.02rem; }
+.dash2 .d-card .ch .more{ margin-left:auto; font-size:.72rem; color:var(--d-faint); font-weight:500; }
+.dash2 .d-card .cb{ padding:20px 21px; }
+
+/* dept workflow */
+.dash2 .dept{ border:1px solid var(--d-line); border-radius:13px; padding:15px 16px; background:#fbfcfd; border-top:4px solid var(--d-green); cursor:pointer; transition:box-shadow .15s; height:100%; }
+.dash2 .dept:hover{ box-shadow:0 6px 18px rgba(16,24,40,.08); }
+.dash2 .dept.it{ border-top-color:#3b82f6; } .dash2 .dept.op{ border-top-color:#16a34a; }
+.dash2 .dept .dh{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:9px; }
+.dash2 .dept .dh b{ font-family:'Montserrat'; font-weight:800; font-size:1.05rem; }
+.dash2 .dept .dh small{ display:block; font-size:.6rem; letter-spacing:.5px; text-transform:uppercase; color:var(--d-faint); font-weight:600; }
+.dash2 .dept .dh .dico{ width:38px; height:38px; border-radius:10px; display:grid; place-items:center; font-size:.95rem; }
+.dash2 .dept .big{ font-family:'Montserrat'; font-weight:800; font-size:1.5rem; line-height:1; }
+.dash2 .dept .big small{ font-size:.62rem; color:var(--d-faint); font-weight:500; display:block; margin-top:3px; font-family:'Kanit'; }
+.dash2 .bar{ height:7px; border-radius:5px; background:var(--d-line); margin-top:10px; overflow:hidden; }
+.dash2 .bar>i{ display:block; height:100%; border-radius:5px; }
+.dash2 .dept .meta{ display:flex; justify-content:space-between; font-size:.7rem; margin-top:7px; color:var(--d-soft); }
+.dash2 .dept .click{ text-align:right; margin-top:8px; font-size:.66rem; font-weight:600; }
+
+/* type bars */
+.dash2 .type-row{ margin-bottom:14px; } .dash2 .type-row:last-child{ margin-bottom:0; }
+.dash2 .type-row .tr-h{ display:flex; justify-content:space-between; font-size:.83rem; margin-bottom:5px; font-weight:500; }
+.dash2 .type-row .tr-h .n{ font-family:'Montserrat'; font-weight:700; }
+.dash2 .tbar{ height:13px; border-radius:7px; background:var(--d-line); overflow:hidden; }
+.dash2 .tbar>i{ display:block; height:100%; border-radius:7px; }
+
+/* feed */
+.dash2 .feed .it{ display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--d-line); }
+.dash2 .feed .it:last-child{ border-bottom:none; }
+.dash2 .feed .fi{ width:36px; height:36px; flex:0 0 36px; border-radius:10px; display:grid; place-items:center; font-size:.86rem; }
+.dash2 .feed .ft{ flex:1; min-width:0; }
+.dash2 .feed .ft b{ font-size:.84rem; font-weight:500; display:block; line-height:1.3; }
+.dash2 .feed .ft .sub{ font-size:.72rem; color:var(--d-soft); margin-top:1px; }
+.dash2 .feed .ft .code{ font-family:'JetBrains Mono'; font-size:.7rem; background:#fbfcfd; border:1px solid var(--d-line); padding:1px 6px; border-radius:5px; color:var(--d-green); }
+.dash2 .feed .badge2{ font-size:.62rem; padding:1px 7px; border-radius:20px; font-weight:600; }
+
+/* by-month table */
+.dash2 .mtbl{ width:100%; border-collapse:collapse; }
+.dash2 .mtbl th{ text-align:left; font-size:.64rem; letter-spacing:.5px; text-transform:uppercase; color:var(--d-faint); font-weight:600; padding:0 8px 9px; }
+.dash2 .mtbl td{ padding:9px 8px; border-top:1px solid var(--d-line); font-size:.85rem; }
+.dash2 .mtbl tr:first-child td{ border-top:none; }
+.dash2 .chip{ display:inline-block; font-size:.66rem; padding:2px 8px; border-radius:20px; font-weight:500; margin:1px 2px 1px 0; }
+
+/* by-month bar chart */
+.dash2 .mchart-wrap{ overflow-x:auto; overflow-y:visible; padding:54px 2px 4px; }
+.dash2 .mchart-wrap::-webkit-scrollbar{ height:8px; }
+.dash2 .mchart-wrap::-webkit-scrollbar-thumb{ background:var(--d-line); border-radius:6px; }
+.dash2 .mchart{ display:flex; align-items:flex-end; gap:9px; min-width:100%; border-bottom:1px solid var(--d-line); }
+.dash2 .mcol{ flex:1 0 30px; min-width:30px; display:flex; flex-direction:column; align-items:center; }
+.dash2 .mbar-area{ height:158px; width:100%; display:flex; align-items:flex-end; justify-content:center; }
+.dash2 .mbar{ width:64%; max-width:32px; min-width:13px; min-height:3px; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#3fae5b,#2e934a); position:relative; cursor:default; transition:filter .14s; }
+.dash2 .mbar:hover{ filter:brightness(1.1); }
+.dash2 .mval{ position:absolute; top:-17px; left:50%; transform:translateX(-50%); font-family:'Montserrat'; font-weight:700; font-size:.66rem; color:#2e934a; }
+.dash2 .mlbl{ font-size:.6rem; color:var(--d-faint); margin-top:6px; white-space:nowrap; }
+.dash2 .mtip{ position:absolute; bottom:calc(100% + 9px); left:50%; transform:translateX(-50%); background:#1a1d20; color:#fff; padding:8px 11px; border-radius:9px; font-size:.7rem; line-height:1.5; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s; z-index:30; box-shadow:0 6px 18px rgba(0,0,0,.32); }
+.dash2 .mtip::after{ content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:6px solid transparent; border-top-color:#1a1d20; }
+.dash2 .mbar:hover .mtip{ opacity:1; }
+.dash2 .mtip b{ color:#fbbc04; }
+.dash2 .mtip .tt-row{ color:#cfd6dd; font-size:.66rem; }
+
+/* month filter + scope tags */
+.dash2 .d-monthbar{ display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--d-line); border-radius:13px; padding:11px 16px; box-shadow:var(--d-shadow); margin-bottom:18px; flex-wrap:wrap; }
+.dash2 .d-monthbar .mb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:.9rem; }
+.dash2 .d-monthbar .mb-title i{ color:var(--d-green); }
+.dash2 .d-monsel{ font-family:'Kanit',sans-serif; font-size:.85rem; border:1px solid var(--d-line); border-radius:9px; padding:7px 12px; background:#fbfcfd; color:var(--d-ink); cursor:pointer; min-width:200px; }
+.dash2 .d-monsel:focus{ outline:none; border-color:var(--d-green); }
+.dash2 .d-monsel-sm{ padding:5px 11px; font-size:.78rem; min-width:140px; font-weight:400; }
+.dash2 .d-monthbar .mb-hint{ margin-left:auto; font-size:.7rem; color:var(--d-faint); }
+.dash2 .scope-tag{ font-size:.66rem; font-weight:600; padding:2px 9px; border-radius:20px; background:rgba(46,147,74,.13); color:#2e934a; }
+
+/* overview grouped (pipeline) chart */
+.dash2 .ovlegend{ display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:4px; }
+.dash2 .ovlegend span{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; color:var(--d-soft); }
+.dash2 .ovlegend i{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+.dash2 .mcol{ position:relative; }
+.dash2 .ovset{ display:flex; align-items:flex-end; justify-content:center; gap:2px; height:100%; width:100%; }
+.dash2 .ovb{ width:8px; min-height:2px; border-radius:3px 3px 0 0; transition:filter .14s; }
+.dash2 .mcol.clk{ cursor:pointer; border-radius:8px; transition:background .14s; }
+.dash2 .mcol.clk:hover{ background:rgba(46,147,74,.06); }
+.dash2 .mcol.clk:hover .ovb{ filter:brightness(1.08); }
+.dash2 .mcol.sel{ background:rgba(251,188,4,.18); box-shadow:inset 0 0 0 1px rgba(251,188,4,.5); }
+.dash2 .mcol:hover .mtip{ opacity:1; }
+
+/* dark-mode toggle button (in header) */
+.dash2 .d2-dark-btn{ width:42px; height:42px; border-radius:11px; border:1px solid rgba(255,255,255,.28); background:rgba(0,0,0,.22); color:#fff; cursor:pointer; font-size:1rem; display:grid; place-items:center; transition:background .15s; }
+.dash2 .d2-dark-btn:hover{ background:rgba(0,0,0,.4); }
+
+/* ===== DARK THEME ===== */
+.dash2.dark{ --d-panel:#1d2126; --d-line:#2e343b; --d-soft:#a4afba; --d-faint:#6b7682; --d-shadow:0 1px 3px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.32); color:#eef1f4; background:#15181c; }
+.dash2.dark .dept{ background:#23282e; }
+.dash2.dark .qs .q{ background:#23282e; }
+.dash2.dark .d-monthbar{ background:#1d2126; }
+.dash2.dark .d-monsel{ background:#23282e; color:#eef1f4; }
+.dash2.dark .feed .ft .code{ background:#23282e; color:#7fdca0; }
+.dash2.dark .mcol.clk:hover{ background:rgba(255,255,255,.05); }
+
+/* single-month funnel (overview when one month picked) */
+.dash2 .ovhead{ margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.dash2 .ovmon{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.15rem; }
+.dash2 .ovsub{ font-size:.76rem; color:var(--d-soft); }
+.dash2 .curtag{ font-size:.6rem; background:#2e934a; color:#fff; padding:2px 9px; border-radius:11px; font-weight:700; }
+.dash2 .funnel{ display:flex; flex-direction:column; gap:15px; }
+.dash2 .fn .fh{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.dash2 .fn .fl{ font-size:.85rem; font-weight:500; }
+.dash2 .fn .fr{ display:inline-flex; align-items:baseline; gap:9px; }
+.dash2 .fn .fv{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.1rem; }
+.dash2 .fn .fp{ font-size:.72rem; color:var(--d-soft); }
+.dash2 .fnbar{ height:22px; border-radius:8px; background:var(--d-line); overflow:hidden; }
+.dash2 .fnbar>i{ display:block; height:100%; border-radius:8px; transition:width .45s ease; }
+.dash2 .mcol.cur .mlbl{ color:#2e934a; font-weight:700; }
+.dash2 .mcol.cur{ background:rgba(46,147,74,.08); border-radius:8px; }
+
+/* quick stats */
+.dash2 .qs{ display:flex; flex-direction:column; gap:10px; }
+.dash2 .qs .q{ display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:11px; background:#fbfcfd; border:1px solid var(--d-line); }
+.dash2 .qs .qi{ width:38px; height:38px; flex:0 0 38px; border-radius:10px; display:grid; place-items:center; font-size:.95rem; }
+.dash2 .qs .ql{ flex:1; font-size:.8rem; color:var(--d-soft); }
+.dash2 .qs .qv{ font-family:'Montserrat'; font-weight:800; font-size:1.3rem; }
+
+/* changes */
+.dash2 .chg{ display:flex; align-items:center; gap:14px; padding:15px 17px; border-radius:13px; color:#fff; }
+.dash2 .chg i{ font-size:1.7rem; opacity:.8; } .dash2 .chg h3{ font-family:'Montserrat'; font-weight:800; margin:0; font-size:1.6rem; }
+.dash2 .chg small{ font-size:.7rem; opacity:.85; font-weight:500; }
+
+.dash2 .empty{ text-align:center; color:var(--d-faint); padding:26px 10px; font-size:.84rem; }
+.dash2 .spin-wrap{ text-align:center; padding:34px; }
+.dash2 .pair2{ display:flex; gap:20px; flex-wrap:wrap; }
+.dash2 .pair2 > *{ flex:1 1 330px; min-width:0; }
+.dash2 .pair2 > * > .d-card{ height:100%; }
+</style>
+
+<div class="dash2">
+  <div class="d-head">
+    <div class="hbar"></div>
+    <div>
+      <h1><i class="fas fa-chart-line me-2" style="color:var(--d-yellow);"></i>Dashboard</h1>
+      <p>ภาพรวมการทำงานโปรโมชัน — Operations Overview</p>
+    </div>
+    <div class="d-datepill" style="margin-left:auto;"><i class="far fa-calendar y"></i><span class="y">วันนี้</span><span class="num" id="d2Today"></span></div>
+    <button id="d2DarkBtn" class="d2-dark-btn" onclick="window.d2ToggleDark()" title="สลับโหมดมืด/สว่าง"><i class="fas fa-moon"></i></button>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid" id="d2Stats">
+    <div class="spin-wrap" style="grid-column:1/-1;"><div class="spinner-border text-success"></div></div>
+  </div>
+
+  <!-- การทำงานแต่ละฝ่าย (เหนือเจาะรายเดือน) -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-people-arrows"></i> การทำงานแต่ละฝ่าย <span id="d2DeptScope" class="scope-tag"></span> <span class="more">คลิกการ์ดเพื่อดูระยะเวลา</span></div>
+        <div class="cb"><div class="row g-3" id="d2Dept"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTH FILTER -->
+  <div class="d-monthbar">
+    <div class="mb-title"><i class="fas fa-calendar-day"></i> เจาะรายเดือน</div>
+    <select id="d2Mon" class="d-monsel" onchange="window.d2ApplyMonth(this.value)"></select>
+    <span class="mb-hint">เลือกเดือนเพื่อดูภาพรวม + ความเคลื่อนไหว + Workflow เฉพาะเดือนนั้น</span>
+  </div>
+
+  <!-- ภาพรวมการทำงานรายเดือน (คุมด้วยตัวกรองเดือน) -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-chart-column"></i> ภาพรวมการทำงานรายเดือน <span class="more">ปุ่ม → IT → OP</span></div>
+        <div class="cb" id="d2Overview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ความเคลื่อนไหว -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-bolt"></i> ความเคลื่อนไหว <span id="d2FeedScope" class="scope-tag"></span></div>
+        <div class="cb"><div class="feed" id="d2Feed"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- by type | quick (overall) -->
+  <div class="row g-4 mt-1">
+    <div class="col-xl-8">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-shapes"></i> โปรโมชันแยกตามประเภท <select id="d2TypeMon" class="d-monsel d-monsel-sm" onchange="window.d2Type(this.value)" style="margin-left:auto;"></select></div>
+        <div class="cb" id="d2Type"></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-gauge-high"></i> สรุปสถานะงาน <span class="more">รวม</span></div>
+        <div class="cb"><div class="qs" id="d2Quick"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: changes -->
+  <div class="d-card mt-4">
+    <div class="ch"><i class="fas fa-flag"></i> การเปลี่ยนแปลงระยะเวลา / ยกเลิก <span id="d2ChgScope" class="scope-tag"></span></div>
+    <div class="cb"><div class="row g-3" id="d2Changes"></div></div>
+  </div>
+
+  <!-- ROW: rejects -->
+  <div class="d-card mt-4">
+    <div class="ch"><i class="fas fa-rotate-left"></i> หัวข้อที่ถูก OP ตีกลับ (Reject Tracking)</div>
+    <div class="cb" id="d2Rejects"></div>
+  </div>
+</div>
+
+<script>
+  window.gotoPage = function (pg) { if (typeof loadPage === 'function') loadPage(pg); };
+
+  window.d2ToggleDark = function () {
+    const d = document.querySelector('.dash2'); if (!d) return;
+    const on = d.classList.toggle('dark');
+    try { localStorage.setItem('pc_dash_dark', on ? '1' : '0'); } catch (e) {}
+    const ic = document.querySelector('#d2DarkBtn i'); if (ic) ic.className = on ? 'fas fa-sun' : 'fas fa-moon';
+  };
+
+  window.initDashboard = function () {
+    const el = document.getElementById('d2Today');
+    if (el) el.textContent = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+    try { if (localStorage.getItem('pc_dash_dark') === '1') { const dd = document.querySelector('.dash2'); if (dd) dd.classList.add('dark'); const ic = document.querySelector('#d2DarkBtn i'); if (ic) ic.className = 'fas fa-sun'; } } catch (e) {}
+
+    let ops = null, npd = null;
+    const done = () => {
+      if (!ops || !npd) return;
+      window._ops = ops; window._npd = npd;
+      window.d2Stats(ops, npd);
+      window.d2BuildMonths(ops.monthly || []);
+      window.d2ApplyMonth(window.d2CurMonth());
+      window.d2BuildTypeMonths(ops.monthly || []);
+      window.d2Type(window.d2CurMonth());
+      window.d2Quick(ops);
+      window.d2Rejects(ops.rejectIssues || []);
+    };
+    google.script.run.withSuccessHandler(function (o) { window._ops = o; ops = o; done(); }).getOpsOverview();
+    google.script.run.withSuccessHandler(function (s) { npd = s || { npd: {}, flavor: {}, recent: [] }; done(); }).getNpdFlavorSummary();
+  };
+
+  function branchCount() {
+    try { if (Array.isArray(window.PC_BRANCH_MASTER)) return window.PC_BRANCH_MASTER.length; } catch (e) {}
+    return 0;
+  }
+
+  /* ---- stat cards ---- */
+  window.d2Stats = function (o, n) {
+    const k = o.kpi, d = o.dept;
+    const cards = [
+      { v: k.total, t: 'แคมเปญทั้งหมด', i: 'fa-bullhorn', fg: '#2e934a', bg: 'rgba(46,147,74,.13)', x: `<b>${o.totals.buttons}</b> ปุ่มทั้งหมด` },
+      { v: k.pendingIT, t: 'งานรอ IT ทำปุ่ม', i: 'fa-clock', fg: '#b45309', bg: 'rgba(251,188,4,.2)', x: `ทำเสร็จแล้ว <b>${d.it.complete}</b>` },
+      { v: (n.npd && n.npd.total) || 0, t: 'สินค้าใหม่ (NPD)', i: 'fa-box-open', fg: '#3b82f6', bg: 'rgba(59,130,246,.13)', x: `<b>${n.npdItems || 0}</b> รายการสินค้า` },
+      { v: (n.flavor && n.flavor.total) || 0, t: 'ผงรสชาติใหม่', i: 'fa-mortar-pestle', fg: '#8b5cf6', bg: 'rgba(139,92,246,.13)', x: `<b>${n.flavorGroups || 0}</b> กลุ่ม CMPOS` },
+      { v: branchCount(), t: 'สาขาในระบบ', i: 'fa-store', fg: '#16a34a', bg: 'rgba(22,163,74,.13)', x: 'ทั่วประเทศ' },
+    ];
+    document.getElementById('d2Stats').innerHTML = cards.map(c => `
+      <div class="stat" style="--_ac:${c.fg};">
+        <div class="ico" style="background:${c.bg};color:${c.fg};"><i class="fas ${c.i}"></i></div>
+        <div class="v num">${c.v}</div>
+        <div class="t">${c.t}</div>
+        <div class="x">${c.x}</div>
+      </div>`).join('');
+  };
+
+  function leadTime(d) { if (d === null || d === undefined) return '—'; if (d < 1) return 'ภายในวันเดียว'; return d.toFixed(1) + ' วัน'; }
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+
+  /* ---- dept workflow (scoped by month) ---- */
+  window.d2Dept = function (s) {
+    document.getElementById('d2Dept').innerHTML = `
+      <div class="col-md-4">
+        <div class="dept mkt" onclick="window.showDeptTiming('mkt')">
+          <div class="dh"><div><b>MKT</b><small>เสนอโปรโมชั่น</small></div>
+            <div class="dico" style="background:rgba(46,147,74,.15);color:#2e934a;"><i class="fas fa-bullhorn"></i></div></div>
+          <div class="big num">${s.mkt.campaigns}<small>แคมเปญที่แจ้งเข้า</small></div>
+          <div class="meta"><span><b class="num">${s.mkt.buttons}</b> ปุ่ม</span><span>ล่วงหน้า ${leadTime(s.avgLeadDays)}</span></div>
+          <div class="click" style="color:#2e934a;">ดูระยะเวลา <i class="fas fa-arrow-right"></i></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="dept it" onclick="window.showDeptTiming('it')">
+          <div class="dh"><div><b>IT</b><small>ตั้งค่าปุ่ม POS</small></div>
+            <div class="dico" style="background:rgba(59,130,246,.15);color:#3b82f6;"><i class="fas fa-microchip"></i></div></div>
+          <div class="big num">${s.it.complete}/${s.it.complete + s.it.pending}<small>ทำเสร็จ / ทั้งหมด</small></div>
+          <div class="bar"><i style="width:${pct(s.it.complete, s.it.complete + s.it.pending)}%;background:#3b82f6;"></i></div>
+          <div class="meta"><span style="color:#b45309;font-weight:600;">ค้าง ${s.it.pending}</span><span>เฉลี่ย ${leadTime(s.avgItDays)}</span></div>
+          <div class="click" style="color:#3b82f6;">ดูระยะเวลา <i class="fas fa-arrow-right"></i></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="dept op" onclick="window.showDeptTiming('op')">
+          <div class="dh"><div><b>OP</b><small>ตรวจสอบ</small></div>
+            <div class="dico" style="background:rgba(22,163,74,.15);color:#16a34a;"><i class="fas fa-clipboard-check"></i></div></div>
+          <div class="big num">${s.op.approved}/${s.op.approved + s.op.waiting}<small>ตรวจแล้ว / ทั้งหมด</small></div>
+          <div class="bar"><i style="width:${pct(s.op.approved, s.op.approved + s.op.waiting)}%;background:#16a34a;"></i></div>
+          <div class="meta"><span style="color:#16a34a;font-weight:600;">ผ่านครั้งแรก ${s.op.cleanPass}</span><span style="color:#dc3545;font-weight:600;">ตีกลับ ${s.op.rejects}</span></div>
+          <div class="click" style="color:#16a34a;">ดูระยะเวลา <i class="fas fa-arrow-right"></i></div>
+        </div>
+      </div>`;
+  };
+
+  /* ---- month label + filter wiring ---- */
+  window.d2MonLbl = function (mm) {
+    const THMON = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const p = String(mm).split('-'); const mo = parseInt(p[1], 10); const yr = (p[0] || '').slice(2);
+    return (THMON[mo] || p[1] || '') + (yr ? ' ' + yr : '');
+  };
+  window.d2CurMonth = function () { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  /* continuous month list from START(2026-05) up to current month (or latest data) */
+  window.d2MonthSeq = function (monthly) {
+    const START = '2026-05';
+    const cur = window.d2CurMonth();
+    let end = cur;
+    (monthly || []).forEach(m => { if (m.month && String(m.month) >= START && String(m.month) > end) end = String(m.month); });
+    const seq = []; let [y, mo] = START.split('-').map(Number); const [ey, em] = end.split('-').map(Number); let g = 0;
+    while ((y < ey || (y === ey && mo <= em)) && g++ < 240) { seq.push(y + '-' + String(mo).padStart(2, '0')); mo++; if (mo > 12) { mo = 1; y++; } }
+    return seq;
+  };
+  window.d2ScopeFor = function (val) {
+    const o = window._ops || {};
+    if (val === 'all' || !val) return { mkt: { campaigns: o.totals.campaigns, buttons: o.totals.buttons }, it: o.dept.it, op: o.dept.op, avgItDays: o.avgItDays, avgOpDays: o.avgOpDays, avgLeadDays: o.avgLeadDays, label: 'ทุกเดือน' };
+    const m = (o.monthly || []).find(x => x.month === val);
+    if (!m) return { mkt: { campaigns: 0, buttons: 0 }, it: { complete: 0, pending: 0 }, op: { approved: 0, waiting: 0, rejects: 0, cleanPass: 0 }, avgItDays: null, avgOpDays: null, avgLeadDays: null, label: window.d2MonLbl(val) };
+    return { mkt: m.mkt, it: m.it, op: m.op, avgItDays: m.avgItDays, avgOpDays: m.avgOpDays, avgLeadDays: m.avgLeadDays, label: window.d2MonLbl(val) };
+  };
+  window.d2BuildMonths = function (monthly) {
+    const sel = document.getElementById('d2Mon'); if (!sel) return;
+    const seq = window.d2MonthSeq(monthly).slice().reverse();
+    sel.innerHTML = '<option value="all">ทั้งหมด (ทุกเดือน)</option>' + seq.map(m => `<option value="${m}">Promotion ${m} · ${window.d2MonLbl(m)}</option>`).join('');
+    sel.value = window.d2CurMonth();
+  };
+  window.d2ApplyMonth = function (val) {
+    window.__d2mon = val;
+    const sel = document.getElementById('d2Mon'); if (sel && sel.value !== val) sel.value = val;
+    window.d2Overview(val);
+    const s = window.d2ScopeFor(val);
+    window.d2Dept(s);
+    const dt = document.getElementById('d2DeptScope'); if (dt) dt.textContent = s.label;
+    window.d2Feed(window._npd, val);
+    window.d2Changes(val);
+  };
+
+  /* ---- drill-down (redesigned: stat strip + clean sorted table) ---- */
+  function d2EnsureModalCss() {
+    if (document.getElementById('dtmodal-css')) return;
+    const st = document.createElement('style'); st.id = 'dtmodal-css';
+    st.textContent = `
+      .dt-popup{ border-radius:18px !important; padding:24px !important; }
+      .dtmodal{ font-family:'Kanit',sans-serif; text-align:left; }
+      .dtmodal .dt-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+      .dtmodal .dt-stat{ background:#f4f6f9; border:1px solid #e8ecf1; border-radius:13px; padding:13px 10px; text-align:center; }
+      .dtmodal .dt-stat .v{ display:block; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.4rem; line-height:1; color:#1a1d20; }
+      .dtmodal .dt-stat .l{ font-size:.66rem; color:#5b6571; margin-top:5px; display:block; }
+      .dtmodal .dt-tablewrap{ max-height:50vh; overflow:auto; border:1px solid #e8ecf1; border-radius:13px; }
+      .dtmodal table.dt-tbl{ width:100%; border-collapse:collapse; font-size:.82rem; }
+      .dtmodal .dt-tbl thead th{ position:sticky; top:0; background:#1a1d20; color:#fff; font-weight:600; font-size:.68rem; letter-spacing:.3px; padding:11px 13px; text-align:left; white-space:nowrap; }
+      .dtmodal .dt-tbl tbody td{ padding:10px 13px; border-top:1px solid #eef1f4; vertical-align:middle; }
+      .dtmodal .dt-tbl tbody tr:nth-child(even){ background:#fafbfc; }
+      .dtmodal .dt-tbl tbody tr:hover{ background:#eef7f1; }
+      .dtmodal .dt-camp{ font-weight:600; color:#1a1d20; }
+      .dtmodal .dt-type{ display:inline-block; font-size:.66rem; padding:2px 9px; border-radius:20px; background:#eef1f4; color:#5b6571; white-space:nowrap; }
+      .dtmodal .dt-date{ font-family:'JetBrains Mono',monospace; font-size:.74rem; color:#5b6571; white-space:nowrap; }
+      .dtmodal .dt-na{ font-size:.74rem; color:#9aa4b0; }
+      .dtmodal .dt-dur{ display:inline-block; font-size:.68rem; font-weight:700; padding:3px 11px; border-radius:20px; white-space:nowrap; }
+      .dtmodal .dt-dur.g{ background:rgba(22,163,74,.13); color:#16a34a; }
+      .dtmodal .dt-dur.a{ background:rgba(251,188,4,.22); color:#b45309; }
+      .dtmodal .dt-dur.r{ background:rgba(220,53,69,.13); color:#dc3545; }
+      .dtmodal .dt-dur.n{ background:#eef1f4; color:#9aa4b0; }
+      .dtmodal .dt-empty{ padding:34px; text-align:center; color:#9aa4b0; }`;
+    document.head.appendChild(st);
+  }
+  window.showDeptTiming = function (dept) {
+    google.script.run.withSuccessHandler(function (rows) {
+      d2EnsureModalCss();
+      const cfg = {
+        mkt: { icon: 'fa-bullhorn', title: 'MKT — ระยะเวลากรอกแจ้งล่วงหน้า', col: 'กรอกล่วงหน้า', pick: r => r.leadDays, c1: 'วันที่กรอก', v1: r => r.submittedDate, c2: 'วันเริ่มโปร', v2: r => r.startDate },
+        it: { icon: 'fa-microchip', title: 'IT — ระยะเวลาขึ้นปุ่ม POS', col: 'ใช้เวลาทำปุ่ม', pick: r => r.itDays, c1: 'รับแจ้ง', v1: r => r.submittedDate, c2: 'IT เสร็จ', v2: r => r.itDoneDate || (r.itStatus !== 'COMPLETE' ? 'ยังไม่เสร็จ' : null) },
+        op: { icon: 'fa-clipboard-check', title: 'OP — ระยะเวลาตรวจสอบ', col: 'ใช้เวลาตรวจ', pick: r => r.opDays, c1: 'IT เสร็จ', v1: r => r.itDoneDate, c2: 'OP ตรวจ', v2: r => r.opDoneDate || (r.opStatus !== 'APPROVED' ? 'รอตรวจ' : null) }
+      }[dept];
+      const fmtD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? (m[3] + '/' + m[2] + '/' + m[1].slice(2)) : null; };
+      const cell = (s) => { if (s === null || s === undefined || s === '') return '<span class="dt-na">—</span>'; const d = fmtD(s); return d ? `<span class="dt-date">${d}</span>` : `<span class="dt-na">${s}</span>`; };
+      const durBadge = (d) => (d === null || d === undefined) ? '<span class="dt-dur n">—</span>' : (d <= 0 ? '<span class="dt-dur g">ภายในวันเดียว</span>' : (d <= 3 ? `<span class="dt-dur a">${d} วัน</span>` : `<span class="dt-dur r">${d} วัน</span>`));
+      const picks = rows.map(r => cfg.pick(r)).filter(d => d !== null && d !== undefined && d >= 0);
+      const n = picks.length;
+      const avg = n ? (picks.reduce((a, b) => a + b, 0) / n) : null;
+      const sameDayPct = n ? Math.round(picks.filter(d => d <= 0).length / n * 100) : 0;
+      const mx = n ? Math.max(...picks) : null;
+      const sorted = rows.slice().sort((a, b) => { const x = cfg.pick(a), y = cfg.pick(b); const xn = (x == null), yn = (y == null); if (xn && yn) return 0; if (xn) return 1; if (yn) return -1; return y - x; });
+      const body = sorted.map(r => `
+        <tr><td class="dt-camp">${r.campaign}</td>
+          <td><span class="dt-type">${r.type || '-'}</span></td>
+          <td>${cell(cfg.v1(r))}</td><td>${cell(cfg.v2(r))}</td><td>${durBadge(cfg.pick(r))}</td></tr>`).join('');
+      const stat = (v, l) => `<div class="dt-stat"><span class="v">${v}</span><span class="l">${l}</span></div>`;
+      Swal.fire({
+        title: '', width: '880px', showCloseButton: true, confirmButtonColor: '#1a1d20', confirmButtonText: 'ปิด',
+        customClass: { popup: 'dt-popup' },
+        html: `<div class="dtmodal">
+          <div style="display:flex;align-items:center;gap:13px;margin-bottom:18px;">
+            <div style="width:48px;height:48px;border-radius:13px;background:rgba(46,147,74,.13);display:grid;place-items:center;color:#2e934a;font-size:1.25rem;flex:0 0 48px;"><i class="fas ${cfg.icon}"></i></div>
+            <div><div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:1.12rem;color:#1a1d20;">${cfg.title}</div>
+              <div style="font-size:.74rem;color:#5b6571;">${cfg.col} · เรียงจากใช้เวลานานสุด</div></div>
+          </div>
+          <div class="dt-stats">
+            ${stat(avg === null ? '—' : avg.toFixed(1), 'เฉลี่ย (วัน)')}
+            ${stat(n, 'จำนวนงาน')}
+            ${stat(sameDayPct + '%', 'ภายในวันเดียว')}
+            ${stat(mx === null ? '—' : mx, 'นานสุด (วัน)')}
+          </div>
+          <div class="dt-tablewrap">
+            <table class="dt-tbl"><thead><tr><th>แคมเปญ</th><th>ประเภท</th><th>${cfg.c1}</th><th>${cfg.c2}</th><th>${cfg.col}</th></tr></thead>
+            <tbody>${body || '<tr><td colspan="5" class="dt-empty">ไม่มีข้อมูล</td></tr>'}</tbody></table>
+          </div>
+        </div>`
+      });
+    }).getWorkflowTimings();
+  };
+
+  /* ---- by type (own month selector) ---- */
+  window.d2BuildTypeMonths = function (monthly) {
+    const sel = document.getElementById('d2TypeMon'); if (!sel) return;
+    const seq = window.d2MonthSeq(monthly).slice().reverse();
+    sel.innerHTML = '<option value="all">ทั้งหมด (ทุกเดือน)</option>' + seq.map(m => `<option value="${m}">${window.d2MonLbl(m)}</option>`).join('');
+    sel.value = window.d2CurMonth();
+  };
+  window.d2Type = function (val) {
+    const o = window._ops || {};
+    let byType;
+    if (!val || val === 'all') byType = o.byType || [];
+    else { const m = (o.monthly || []).find(x => x.month === val); byType = (m && m.byType) || []; }
+    const sel = document.getElementById('d2TypeMon'); if (sel && val && sel.value !== val) sel.value = val;
+    const colors = { 'Item Set': '#2e934a', 'Coupon': '#3fae5b', 'Bill Discount': '#16a34a', 'Voucher': '#fbbc04', 'Price Promotion': '#0ea5e9', 'Other': '#6c757d' };
+    const box = document.getElementById('d2Type');
+    if (!byType.length) { box.innerHTML = '<div class="empty">' + ((val && val !== 'all') ? 'เดือนนี้ยังไม่มีโปรโมชัน' : 'ยังไม่มีข้อมูลโปรโมชัน') + '</div>'; return; }
+    const max = Math.max(1, ...byType.map(t => t.count));
+    box.innerHTML = byType.map(t => `
+      <div class="type-row">
+        <div class="tr-h"><span>${t.type}</span><span class="n">${t.count}</span></div>
+        <div class="tbar"><i style="width:${Math.round(t.count / max * 100)}%;background:${colors[t.type] || '#6c757d'};"></i></div>
+      </div>`).join('');
+  };
+
+  /* ---- overview: per-month pipeline (buttons -> IT done -> OP confirmed) ---- */
+  window.d2Overview = function (val) {
+    const box = document.getElementById('d2Overview');
+    const o = window._ops || {};
+    const monthly = o.monthly || [];
+    const byMon = {}; monthly.forEach(m => { byMon[m.month] = m; });
+    const cur = window.d2CurMonth();
+    const pick = mm => { const m = byMon[mm] || {}; return { month: mm, buttons: (m.mkt ? m.mkt.buttons : 0) || 0, campaigns: (m.mkt ? m.mkt.campaigns : 0) || 0, itDone: m.it ? m.it.complete : 0, opOk: m.op ? m.op.approved : 0 }; };
+
+    if (!val || val === 'all') {
+      const rows = window.d2MonthSeq(monthly).map(pick);
+      const max = Math.max(1, ...rows.map(r => r.buttons));
+      const H = v => Math.max(2, Math.round(v / max * 100));
+      const totB = rows.reduce((a, r) => a + r.buttons, 0), totI = rows.reduce((a, r) => a + r.itDone, 0), totO = rows.reduce((a, r) => a + r.opOk, 0);
+      const bars = rows.map(r => `
+        <div class="mcol clk${r.month === cur ? ' cur' : ''}" data-mon="${r.month}" onclick="window.d2ApplyMonth('${r.month}')">
+          <div class="mbar-area"><div class="ovset">
+            <div class="ovb" style="height:${H(r.buttons)}%;background:#94a3b8;"></div>
+            <div class="ovb" style="height:${H(r.itDone)}%;background:#3b82f6;"></div>
+            <div class="ovb" style="height:${H(r.opOk)}%;background:#2e934a;"></div>
+          </div></div>
+          <div class="mlbl">${window.d2MonLbl(r.month)}</div>
+          <div class="mtip"><b>Promotion ${r.month}</b> · ${r.campaigns} แคมเปญ<br><span class="tt-row">ปุ่ม ${r.buttons} · IT เสร็จ ${r.itDone} · OP ยืนยัน ${r.opOk}</span></div>
+        </div>`).join('');
+      box.innerHTML = `
+        <div class="ovlegend">
+          <span><i style="background:#94a3b8;"></i> ปุ่มทั้งหมด (${totB})</span>
+          <span><i style="background:#3b82f6;"></i> IT ทำเสร็จ (${totI})</span>
+          <span><i style="background:#2e934a;"></i> OP ยืนยัน (${totO})</span>
+          <span style="margin-left:auto;color:var(--d-faint);">คลิกเดือนเพื่อเจาะ · เดือนนี้ไฮไลต์ไว้</span>
+        </div>
+        <div class="mchart-wrap"><div class="mchart">${bars}</div></div>`;
+      const w = box.querySelector('.mchart-wrap'); if (w) w.scrollLeft = w.scrollWidth;
+      return;
+    }
+
+    // single month → funnel (ปุ่ม → IT เสร็จ → OP ยืนยัน)
+    const r = pick(val);
+    const W = v => Math.max(2, Math.round(v / Math.max(1, r.buttons) * 100));
+    const fr = (label, val2, color, denom) => `
+      <div class="fn"><div class="fh"><span class="fl">${label}</span>
+        <span class="fr">${denom ? `<span class="fp">${Math.round(val2 / denom * 100)}%</span>` : ''}<span class="fv num">${val2}</span></span></div>
+        <div class="fnbar"><i style="width:${W(val2)}%;background:${color};"></i></div></div>`;
+    box.innerHTML = `
+      <div class="ovhead">
+        <span class="ovmon">${window.d2MonLbl(val)}</span>
+        ${val === cur ? '<span class="curtag">เดือนปัจจุบัน</span>' : ''}
+        <span class="ovsub">Promotion ${val} · ${r.campaigns} แคมเปญ · ${r.buttons} ปุ่ม</span>
+      </div>
+      <div class="funnel">
+        ${fr('ปุ่มทั้งหมด', r.buttons, '#94a3b8', 0)}
+        ${fr('IT ทำเสร็จ', r.itDone, '#3b82f6', r.buttons)}
+        ${fr('OP ยืนยัน', r.opOk, '#2e934a', r.buttons)}
+      </div>
+      ${r.buttons === 0 ? '<div class="empty" style="padding:16px 0 0;"><i class="far fa-folder-open me-1"></i>เดือนนี้ยังไม่มีการแจ้งปุ่ม</div>' : ''}`;
+  };
+
+  /* ---- recent activity feed (from NPD + Flavor recent, scoped by month) ---- */
+  window.d2Feed = function (n, month) {
+    const box = document.getElementById('d2Feed');
+    let recent = (n && n.recent) || [];
+    if (month && month !== 'all') recent = recent.filter(r => r.month === month);
+    recent = recent.slice(0, 12);
+    const scopeEl = document.getElementById('d2FeedScope'); if (scopeEl) scopeEl.textContent = (month && month !== 'all') ? window.d2MonLbl(month) : 'ล่าสุด';
+    if (!recent.length) { box.innerHTML = '<div class="empty"><i class="far fa-clock me-1"></i>' + ((month && month !== 'all') ? 'เดือนนี้ยังไม่มีความเคลื่อนไหว' : 'ยังไม่มีความเคลื่อนไหว') + '</div>'; return; }
+    const meta = (r) => {
+      const st = String(r.status || 'PENDING').toUpperCase();
+      const isFlv = r.kind === 'ผงรสชาติ';
+      if (st === 'CONFIRMED') return { ic: 'fa-check-double', fg: '#16a34a', label: (isFlv ? 'ผงรสชาติ' : 'สินค้าใหม่') + 'ขึ้นปุ่มเสร็จ', badge: 'ยืนยันแล้ว', bc: 'background:rgba(22,163,74,.15);color:#16a34a;' };
+      if (st === 'REJECTED') return { ic: 'fa-rotate-left', fg: '#dc3545', label: 'OP ตีกลับ' + (isFlv ? ' (ผงรสชาติ)' : ' (สินค้าใหม่)'), badge: 'ตีกลับ', bc: 'background:rgba(220,53,69,.13);color:#dc3545;' };
+      return { ic: isFlv ? 'fa-mortar-pestle' : 'fa-box-open', fg: isFlv ? '#8b5cf6' : '#3b82f6', label: 'แจ้ง' + (isFlv ? 'ผงรสชาติใหม่' : 'สินค้าใหม่'), badge: 'รอตรวจ', bc: 'background:rgba(251,188,4,.22);color:#b45309;' };
+    };
+    box.innerHTML = recent.map(r => {
+      const m = meta(r);
+      return `<div class="it">
+        <div class="fi" style="background:${m.fg}1f;color:${m.fg};"><i class="fas ${m.ic}"></i></div>
+        <div class="ft"><b>${m.label}</b>
+          <div class="sub">${r.project || '-'} <span class="code">${r.id}</span></div></div>
+        <span class="badge2" style="${m.bc}">${m.badge}</span></div>`;
+    }).join('');
+  };
+
+  /* ---- quick stats ---- */
+  window.d2Quick = function (o) {
+    const d = o.dept;
+    const items = [
+      { i: 'fa-check-double', fg: '#2e934a', bg: 'rgba(46,147,74,.13)', l: 'ทำปุ่มเสร็จแล้ว', v: d.it.complete },
+      { i: 'fa-clock', fg: '#b45309', bg: 'rgba(251,188,4,.2)', l: 'รอ IT ดำเนินการ', v: d.it.pending },
+      { i: 'fa-thumbs-up', fg: '#16a34a', bg: 'rgba(22,163,74,.13)', l: 'OP ยืนยันแล้ว', v: d.op.approved },
+      { i: 'fa-hourglass-half', fg: '#3b82f6', bg: 'rgba(59,130,246,.13)', l: 'รอ OP ตรวจ', v: d.op.waiting },
+      { i: 'fa-rotate-left', fg: '#dc3545', bg: 'rgba(220,53,69,.13)', l: 'ถูกตีกลับ (ครั้ง)', v: d.op.rejects },
+    ];
+    document.getElementById('d2Quick').innerHTML = items.map(q => `
+      <div class="q"><div class="qi" style="background:${q.bg};color:${q.fg};"><i class="fas ${q.i}"></i></div>
+        <div class="ql">${q.l}</div><div class="qv num" style="color:${q.fg};">${q.v}</div></div>`).join('');
+  };
+
+  /* ---- changes (scoped by month) ---- */
+  window.d2Changes = function (val) {
+    const o = window._ops || {};
+    let c, label;
+    if (!val || val === 'all') { c = o.changes || { EXTENDED: 0, REDUCED: 0, CANCELLED: 0 }; label = 'ทุกเดือน'; }
+    else { const m = (o.monthly || []).find(x => x.month === val); c = (m && m.changes) || { EXTENDED: 0, REDUCED: 0, CANCELLED: 0 }; label = window.d2MonLbl(val); }
+    const tag = document.getElementById('d2ChgScope'); if (tag) tag.textContent = label;
+    const items = [
+      { t: 'ขยายเวลา (EXTENDED)', v: c.EXTENDED || 0, bg: '#3b82f6', i: 'fa-calendar-plus' },
+      { t: 'ลดเวลา (REDUCED)', v: c.REDUCED || 0, bg: '#dc3545', i: 'fa-calendar-minus' },
+      { t: 'ยกเลิก (CANCELLED)', v: c.CANCELLED || 0, bg: '#1a1d20', i: 'fa-ban' },
+    ];
+    document.getElementById('d2Changes').innerHTML = items.map(x => `
+      <div class="col-md-4"><div class="chg" style="background:${x.bg};">
+        <i class="fas ${x.i}"></i><div><h3 class="num">${x.v}</h3><small>${x.t}</small></div></div></div>`).join('');
+  };
+
+  /* ---- rejects ---- */
+  window.d2Rejects = function (issues) {
+    const box = document.getElementById('d2Rejects');
+    if (!issues.length) { box.innerHTML = '<div class="empty"><i class="fas fa-circle-check text-success me-1"></i>ยังไม่มีการตีกลับ — งานผ่านการตรวจสอบครั้งแรกทั้งหมด</div>'; return; }
+    const total = issues.reduce((a, i) => a + i.count, 0), max = Math.max(1, ...issues.map(i => i.count));
+    box.innerHTML = `<div class="mb-3 small text-muted fw-bold">ตีกลับทั้งหมด ${total} ครั้ง · แยกตามหัวข้อ</div>` + issues.map(i => `
+      <div class="type-row">
+        <div class="tr-h"><span><i class="fas fa-triangle-exclamation text-danger me-1"></i>${i.issue}</span><span class="n">${i.count} ครั้ง</span></div>
+        <div class="tbar"><i style="width:${Math.round(i.count / max * 100)}%;background:#dc3545;"></i></div>
+      </div>`).join('');
+  };
+</script>

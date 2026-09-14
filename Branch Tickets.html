@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ติดตามงานแจ้งปัญหา — Branch Tickets</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#F4D03F; --pc-green:#1D8348; --bg:#f8fafc;
+    --open:#2f5fb3; --prog:#c9870a; --resolved:#2e934a; --closed:#6b7280; --rejected:#c0392b; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1240px; margin:0 auto; padding:22px 26px 60px; }
+
+  .bv-head{ background:#F4D03F; color:#1A1A1A; border-bottom:5px solid #1D8348; border-radius:18px; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+  .bv-head .back{ display:inline-flex; align-items:center; gap:9px; color:#176b3a; text-decoration:none; background:rgba(29,131,72,.14); border-radius:11px; padding:9px 14px; font-weight:600; font-size:.88rem; }
+  .bv-head .back:hover{ background:rgba(29,131,72,.24); color:#0f5128; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.35rem; font-weight:700; margin:8px 0 0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-green); }
+  .bv-head .sub{ opacity:.7; font-size:.9rem; margin-top:3px; }
+
+  .controls{ background:#fff; border-radius:16px; padding:14px 16px; margin-top:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .controls label{ font-size:.66rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin-bottom:4px; display:block; }
+  .controls .form-select{ border:1.5px solid #d8dde2; font-weight:500; border-radius:10px; min-width:230px; }
+  .controls .form-select:focus{ border-color:var(--pc-green); box-shadow:none; }
+
+  .statbar{ display:flex; flex-wrap:wrap; gap:9px; margin:18px 0 4px; }
+  .statchip{ border:1.5px solid #d8dde2; background:#fff; border-radius:999px; padding:7px 15px 7px 12px; font-size:.86rem; font-weight:600; color:#5a616b; cursor:pointer; display:flex; align-items:center; gap:8px; transition:.13s; }
+  .statchip .dot{ width:9px; height:9px; border-radius:50%; }
+  .statchip .n{ font-family:'JetBrains Mono',monospace; background:#eef1f4; border-radius:6px; padding:1px 7px; font-size:.78rem; }
+  .statchip:hover{ border-color:#b6bcc4; }
+  .statchip.on{ color:#fff; border-color:transparent; }
+  .statchip.on .n{ background:rgba(255,255,255,.25); color:#fff; }
+  .statchip.on .dot{ background:#fff !important; }
+
+  .countline{ font-size:.84rem; color:#8a9099; font-weight:500; margin:16px 2px 14px; }
+  .countline b{ color:var(--pc-black); }
+
+  #list{ display:flex; flex-direction:column; gap:14px; }
+  .tk{ background:#fff; border-radius:16px; border:1px solid #e7eaee; box-shadow:0 1px 3px rgba(0,0,0,.06); overflow:hidden; }
+  .tk-strip{ padding:9px 16px; display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:700; font-size:.9rem; gap:10px; }
+  .tk-strip .id{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.82rem; background:rgba(255,255,255,.2); border-radius:8px; padding:2px 10px; }
+  .tk-body{ padding:15px 17px 16px; }
+  .tk-camp{ font-size:1.1rem; font-weight:700; line-height:1.25; }
+  .tk-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; align-items:center; }
+  .tk-tag{ font-size:.74rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; }
+  .tk-tag i{ color:#9aa1aa; font-size:.7rem; }
+  .tk-btn{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); background:#eafaf1; border:1px solid #bfe6cf; border-radius:7px; padding:3px 9px; font-size:.78rem; }
+
+  .tk-issues{ display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+  .tk-iss{ font-size:.8rem; font-weight:600; background:#eaf4ee; border:1px solid #f3d39a; color:#9a6700; border-radius:999px; padding:4px 11px; display:inline-flex; align-items:center; gap:6px; }
+  .tk-iss i{ color:#c9870a; font-size:.62rem; }
+  .tk-note{ font-size:.88rem; color:#4a4f56; background:#f6f8fa; border-radius:10px; padding:9px 12px; margin-top:11px; line-height:1.4; }
+  .tk-note b{ color:#8a9099; font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; display:block; margin-bottom:2px; }
+
+  /* per-button breakdown */
+  .bks{ margin-top:11px; display:flex; flex-direction:column; gap:9px; }
+  .bk{ border:1px solid #e7eaee; border-radius:12px; padding:10px 13px; background:#fbfbfc; }
+  .bk-hd{ font-weight:700; font-size:.98rem; display:flex; align-items:center; gap:9px; }
+  .bk-hd i{ color:var(--pc-green); }
+  .bk-code{ font-family:'JetBrains Mono',monospace; font-size:.76rem; background:#eafaf1; border:1px solid #bfe6cf; color:#1d7a4d; border-radius:6px; padding:1px 8px; margin-left:auto; }
+  .bk-iss{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .bk-note{ font-size:.85rem; color:#5a616b; margin-top:8px; background:#fff; border:1px dashed #e2e6ea; border-radius:8px; padding:7px 10px; }
+
+  /* timeline */
+  .tl{ margin-top:13px; padding-top:13px; border-top:1px dashed #e7eaee; }
+  .tl-step{ display:flex; gap:11px; align-items:flex-start; padding:4px 0; }
+  .tl-dot{ width:24px; flex:none; display:flex; flex-direction:column; align-items:center; }
+  .tl-dot .c{ width:13px; height:13px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 2px currentColor; }
+  .tl-dot .line{ width:2px; flex:1; background:#e2e6ea; margin:3px 0; min-height:12px; }
+  .tl-txt{ font-size:.84rem; padding-bottom:6px; }
+  .tl-txt .s{ font-weight:700; }
+  .tl-txt .t{ color:#9aa1aa; font-size:.76rem; margin-left:6px; }
+  .tl-txt .n{ color:#6b7280; font-size:.8rem; }
+
+  .tk-act{ display:flex; gap:9px; margin-top:13px; }
+  .tk-act .btn{ border-radius:10px; font-weight:600; font-size:.86rem; }
+  @media(max-width:560px){
+    .wrap{ padding:16px 13px 60px; }
+    .bv-head{ padding:15px 16px; gap:12px; }
+    .bv-head h1, .bv-head h3{ font-size:1.2rem; }
+    .controls{ padding:13px 14px; gap:10px; }
+    .controls > *{ flex:1 1 100%; }
+    .controls .form-select{ min-width:0; width:100%; }
+    .statchip{ font-size:.84rem; }
+    .tk-camp{ font-size:1.05rem; }
+    .tk-act{ flex-wrap:wrap; }
+    .tk-act .btn{ flex:1; min-width:130px; }
+  }
+
+  .empty{ background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:54px 20px; color:#9aa1aa; }
+  .empty i{ font-size:2rem; display:block; margin-bottom:10px; opacity:.5; }
+  .ubadge{ background:#c0392b; color:#fff; font-size:.7rem; font-weight:700; border-radius:7px; padding:2px 9px; margin-left:8px; }
+  .uroute{ background:#fff; border:1px solid #e7eaee; border-left:4px solid #2f5fb3; border-radius:11px; padding:10px 13px; font-size:.9rem; font-weight:600; }
+  .uroute .ch{ font-size:.74rem; font-weight:700; border-radius:6px; padding:2px 8px; margin:0 2px; }
+  .ch.mail{ background:#fdf3e0; color:#9a6700; } .ch.chat{ background:#eef4ff; color:#2c4a82; } .ch.line{ background:#eafaef; color:#06934a; }
+  .callbox{ margin-top:11px; background:#fff8ec; border:1px solid #f3d99a; border-radius:11px; padding:11px 13px; font-size:.92rem; line-height:1.5; }
+  .callbox b{ font-family:'JetBrains Mono',monospace; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:34px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <div>
+      <a class="back" id="backLink" target="_top" href="Potato Corner Promotion System.html#Branch_View"><i class="fas fa-arrow-left"></i><span class="lbl">กลับหน้าโปรโมชั่น</span></a>
+      <h1><i class="fas fa-clipboard-list me-2"></i>ติดตามงานแจ้งปัญหา</h1>
+      <div class="sub">ติดตามสถานะปัญหาปุ่ม POS ที่สาขาแจ้งเข้าระบบ</div>
+    </div>
+    <a class="back" id="newLink" target="_top" href="Potato Corner Promotion System.html#Branch_View" style="background:var(--pc-green);color:#fff"><i class="fas fa-flag"></i>แจ้งปัญหาใหม่</a>
+  </div>
+
+  <div class="controls">
+    <div>
+      <label>สาขา</label>
+      <select id="fBranch" class="form-select" onchange="render()"></select>
+    </div>
+    <div>
+      <label>ตั้งแต่วันที่</label>
+      <input type="date" id="fFrom" class="form-select" style="min-width:150px" onchange="render()">
+    </div>
+    <div>
+      <label>ถึงวันที่</label>
+      <input type="date" id="fTo" class="form-select" style="min-width:150px" onchange="render()">
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <button type="button" class="btn btn-outline-secondary" onclick="clearTkDates()"><i class="fas fa-rotate-left me-1"></i>ล้างวันที่</button>
+    </div>
+  </div>
+
+  <div class="statbar" id="statbar"></div>
+  <div class="countline" id="countline"></div>
+  <div id="list"></div>
+
+  <div class="demo-note">— หน้าตัวอย่าง (Mockup) · ข้อมูลสาธิต · อ้างอิงวันที่ระบบ 19 มิ.ย. 2026 —<br><a href="IT Ticket Queue.html" style="color:#8a9099"><i class="fas fa-screwdriver-wrench me-1"></i>มุมมองทีม IT (จัดการคิว)</a> · <a href="Report Settings.html" style="color:#8a9099"><i class="fas fa-sliders me-1"></i>ตั้งค่าระบบแจ้งปัญหา</a></div>
+</div>
+
+<script>
+const TK_KEY='pc_branch_tickets';
+const NOW = new Date(2026,5,19,11,0).getTime();
+const DAY = 86400000;
+function loadTickets(){ try{ return JSON.parse(localStorage.getItem(TK_KEY))||[]; }catch(e){ return []; } }
+function saveTickets(a){ localStorage.setItem(TK_KEY, JSON.stringify(a)); }
+function btnChips(t){
+  const arr = (t.taggedButtons&&t.taggedButtons.length) ? t.taggedButtons : (t.button?[{sn:t.button,code:t.buttonCode}]:[]);
+  return arr.map(b=>`<span class="tk-btn"><i class="fas fa-hand-pointer me-1"></i>${b.sn}${b.code?' · '+b.code:''}</span>`).join('');
+}
+/* normalize: ticket.buttons = [{sn,code,issues,note}] (รองรับ ticket แบบเก่า) */
+function ticketButtons(t){
+  if(t.buttons && t.buttons.length) return t.buttons;
+  const arr=(t.taggedButtons&&t.taggedButtons.length)?t.taggedButtons:(t.button?[{sn:t.button,code:t.buttonCode}]:[]);
+  return arr.map(b=>({sn:b.sn,code:b.code,issues:t.issues||[],note:t.note||''}));
+}
+
+const ST = {
+  OPEN:     { label:'แจ้งแล้ว',      color:'var(--open)',     icon:'fa-paper-plane' },
+  PROGRESS: { label:'กำลังตรวจสอบ',   color:'var(--prog)',     icon:'fa-magnifying-glass' },
+  RESOLVED: { label:'แก้ไขแล้ว',      color:'var(--resolved)', icon:'fa-circle-check' },
+  CLOSED:   { label:'ปิดเรื่อง',      color:'var(--closed)',   icon:'fa-lock' },
+  REJECTED: { label:'ตีกลับ',        color:'var(--rejected)', icon:'fa-rotate-left' },
+};
+const COLOR = { OPEN:'#2f5fb3', PROGRESS:'#c9870a', RESOLVED:'#2e934a', CLOSED:'#6b7280', REJECTED:'#c0392b' };
+
+/* seed demo tickets — additive (won't wipe user data); 1 ticket/แคมเปญ + per-button breakdown */
+const SEED_VER=100;
+function demoTickets(){ return []; }
+function _demoTickets_unused(){ return [
+  { id:'BVT-1002', branchCode:'101', branch:'101 · Central World (เซ็นทรัลเวิลด์)', campaign:'Cheese Avalanche Combo', promoType:'Item Set', reporter:'แคชเชียร์ #07',
+    buttons:[
+      {sn:'CHEESE AVALANCHE', code:'1070231', issues:['ราคาเต็มไม่ถูกต้อง'], note:'หน้าจอ POS ขึ้น ฿189 แต่โปรคือ ฿149'},
+      {sn:'CHEESE AVALANCHE L', code:'1070232', issues:['จำนวนผงไม่ถูกต้อง','ชื่อย่อผงไม่ถูกต้อง'], note:'ไซซ์ L เลือกผงได้ 2 แต่ควรได้ 1'}
+    ], status:'PROGRESS', createdAt:NOW-2*DAY,
+    log:[{status:'OPEN',at:NOW-2*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-1*DAY,by:'IT',note:'กำลังตรวจสอบราคา+สูตรผงในระบบ POS'}] },
+  { id:'BVT-1001', branchCode:'088', branch:'088 · Mega Bangna (เมกาบางนา)', campaign:'Saver Bill 199.-', promoType:'Bill Discount', reporter:'สาขา',
+    buttons:[{sn:'SAVER 199', code:'1052210', issues:['กดแล้วไม่ลดราคา'], note:'กดแล้วเด้ง error ไม่ลดบิลให้'}],
+    status:'RESOLVED', createdAt:NOW-5*DAY,
+    log:[{status:'OPEN',at:NOW-5*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-4*DAY,by:'IT',note:''},{status:'RESOLVED',at:NOW-3*DAY,by:'IT',note:'แก้ไขเงื่อนไขขั้นต่ำในระบบแล้ว ใช้งานได้ปกติ'}] },
+  { id:'BVT-1000', branchCode:'101', branch:'101 · Central World (เซ็นทรัลเวิลด์)', campaign:'Songkran Splash Fries', promoType:'Item Set', reporter:'แคชเชียร์ #03',
+    buttons:[{sn:'SONGKRAN FRIES', code:'1070118', issues:['ขอนำปุ่มออกจาก POS'], note:'โปรหมดแล้วแต่ปุ่มยังโผล่บนจอ'}],
+    status:'CLOSED', createdAt:NOW-8*DAY,
+    log:[{status:'OPEN',at:NOW-8*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-7*DAY,by:'OP',note:''},{status:'RESOLVED',at:NOW-6*DAY,by:'IT',note:'ปิดปุ่มออกจาก POS แล้ว'},{status:'CLOSED',at:NOW-6*DAY,by:'สาขา',note:'ยืนยันปุ่มหายแล้ว'}] },
+]; }
+(function(){
+  // clean slate: ไม่ seed ticket เดโม + ลบ ticket เดโมเก่า (BVT-1000..1003) ออก เหลือเฉพาะเคสที่สาขาแจ้งจริง
+  const demoIds=new Set(['BVT-1000','BVT-1001','BVT-1002','BVT-1003']);
+  let all=loadTickets();
+  if((+(localStorage.getItem('pc_tickets_seed_ver')||0)) < SEED_VER){
+    all = all.filter(t=>!demoIds.has(t.id));
+    saveTickets(all); localStorage.setItem('pc_tickets_seed_ver',String(SEED_VER));
+  }
+})();
+
+const TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function ago(ts){
+  const d=NOW-ts;
+  if(d<DAY){ const h=Math.max(1,Math.floor(d/3600000)); return h+' ชม.ที่แล้ว'; }
+  const n=Math.floor(d/DAY); return n+' วันที่แล้ว';
+}
+function dt(ts){ const d=new Date(ts); return d.getDate()+' '+TH_M[d.getMonth()]+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0'); }
+
+let filterStatus='ALL', GC={};
+/* สาขา (ไม่ใช่ HO/IT/MKT) → เห็นเฉพาะเคสของสาขาตัวเอง (ล็อกตาม pc_bv_branch) */
+function ticketScopeBranch(){
+  try{
+    var role=String(localStorage.getItem('pc_role')||'').trim();
+    var HO=['Admin','Admin HQ','IT','MKT','ACC','BD'];
+    if(HO.indexOf(role)>=0) return null;            // ส่วนกลาง → เห็นทุกสาขา
+    var b=localStorage.getItem('pc_bv_branch'); return b||null;
+  }catch(e){ return null; }
+}
+/* OP/Area (มี zone ในหน้าสิทธิ์) → เห็นเฉพาะเคสของสาขาในโซนที่ตัวเองดูแล */
+function opZoneScope(){ try{ var role=String(localStorage.getItem('pc_role')||'').trim(); if(['Admin','Admin HQ','IT','MKT','ACC','BD'].indexOf(role)>=0) return null; var user=String(localStorage.getItem('pc_userName')||'').trim().toLowerCase(); if(!user) return null; var m={}; try{ m=JSON.parse(localStorage.getItem('pc_op_zones'))||{}; }catch(e){} var zs=[]; Object.keys(m).forEach(function(z){ if((m[z]||[]).some(function(u){return String(u).trim().toLowerCase()===user;})) zs.push(String(z)); }); if(zs.indexOf('ALL')>-1) return null; return zs.length?zs:null; }catch(e){ return null; } }
+function ticketZone(t){ if(t && t.zone) return String(t.zone); try{ var az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; var r=az[t.branchCode]; if(r) return String(r.zone||''); }catch(e){} return ''; }
+function buildBranchOptions(){
+  const all=loadTickets();
+  const map={}; all.forEach(t=>{ if(t.branchCode) map[t.branchCode]=t.branch; });
+  /* branch list = Shop Master (Master Settings) — reads pc_master_lists so edits/deletions there
+     reflect here. Falls back to the static PC_BRANCH_MASTER on the shell if Shop Master isn't set yet.
+     localStorage is shared same-origin, so the iframe can read it directly. */
+  try{
+    var BM=[];
+    try{ var ml=JSON.parse(localStorage.getItem('pc_master_lists')); if(ml && Array.isArray(ml.branches) && ml.branches.length) BM=ml.branches; }catch(e){}
+    if(!BM.length){ BM = (window.parent && window.parent.PC_BRANCH_MASTER) || (window.top && window.top.PC_BRANCH_MASTER) || window.PC_BRANCH_MASTER || []; }
+    BM.forEach(function(b){ if(b && b.id && !map[b.id]) map[b.id]= b.id+' · '+(b.nameTH||b.name||''); });
+  }catch(e){}
+  var BLOCK={ 'HQ01':1, 'MPC1001':1 };
+  Object.keys(BLOCK).forEach(function(c){ delete map[c]; });
+  var html='<option value="ALL">— ทุกสาขา —</option>';
+  Object.keys(map).sort(function(a,b){ return String(a).localeCompare(String(b),undefined,{numeric:true}); }).forEach(function(code){ var lbl=String(map[code]); if(lbl.indexOf(code)!==0) lbl=code+' · '+lbl; html+='<option value="'+code+'">'+lbl.replace(/</g,'&lt;')+'</option>'; });
+  var sel=document.getElementById('fBranch');
+  if(sel){
+    sel.innerHTML=html; sel.disabled=false;
+    var pref=localStorage.getItem('pc_bv_branch');
+    if(pref && map[pref]) sel.value=pref;
+    var scope=ticketScopeBranch();
+    if(scope && !BLOCK[scope] && map[scope]) sel.value=scope;
+  }
+}
+
+function clearTkDates(){ var f=document.getElementById('fFrom'), t=document.getElementById('fTo'); if(f)f.value=''; if(t)t.value=''; render(); }
+function render(){
+  var code=document.getElementById('fBranch').value;
+  GC={}; loadTickets().forEach(t=>{ if(t.groupId) GC[t.groupId]=(GC[t.groupId]||0)+1; });
+  let base=loadTickets();
+  if(code && code!=='ALL'){ base=base.filter(t=>t.branchCode===code); }
+  else { var zScope=opZoneScope(); if(zScope) base=base.filter(t=> zScope.indexOf(ticketZone(t))>-1 ); }
+  /* กรองช่วงวันที่ที่แจ้ง (createdAt) */
+  var _ff=document.getElementById('fFrom'), _ft=document.getElementById('fTo');
+  var _fv=_ff&&_ff.value?new Date(_ff.value+'T00:00:00').getTime():null;
+  var _tv=_ft&&_ft.value?new Date(_ft.value+'T23:59:59').getTime():null;
+  if(_fv) base=base.filter(t=>(t.createdAt||0)>=_fv);
+  if(_tv) base=base.filter(t=>(t.createdAt||0)<=_tv);
+
+  const counts={ALL:base.length}; base.forEach(t=>counts[t.status]=(counts[t.status]||0)+1);
+  const order=['ALL','OPEN','PROGRESS','RESOLVED','CLOSED','REJECTED'];
+  const lbl={ALL:'ทั้งหมด'}; Object.keys(ST).forEach(k=>lbl[k]=ST[k].label);
+  const col=k=>k==='ALL'?'#1a1d20':COLOR[k];
+  document.getElementById('statbar').innerHTML = order.filter(k=>k==='ALL'||counts[k]).map(k=>{
+    const on=filterStatus===k;
+    return `<div class="statchip ${on?'on':''}" style="${on?`background:${col(k)}`:''}" onclick="filterStatus='${k}';render()">
+      <span class="dot" style="background:${col(k)}"></span>${lbl[k]} <span class="n">${counts[k]||0}</span></div>`;
+  }).join('');
+
+  let rows = filterStatus==='ALL' ? base : base.filter(t=>t.status===filterStatus);
+  const rank={OPEN:0,PROGRESS:1,RESOLVED:2,REJECTED:3,CLOSED:4};
+  rows.sort((a,b)=> (rank[a.status]-rank[b.status]) || (b.createdAt-a.createdAt));
+
+  document.getElementById('countline').innerHTML=`มี <b>${rows.length}</b> เรื่องที่แจ้ง`;
+  const list=document.getElementById('list');
+  if(!rows.length){ list.innerHTML='<div class="empty"><i class="fas fa-clipboard-check"></i>ไม่พบเคสแจ้ง</div>'; return; }
+  list.innerHTML=rows.map(tkHTML).join('');
+}
+
+function tkHTML(t){
+  const s=ST[t.status]||ST.OPEN;
+  const active=(t.status==='OPEN'||t.status==='PROGRESS');
+  const sla=slaInfo(t);
+  const slaChip = active ? `<span class="tk-tag" style="${sla.over?'background:#fdecea;color:#c0392b':'background:#eafaf1;color:#1d7a4d'};font-weight:700"><i class="far fa-clock" style="color:${sla.over?'#c0392b':'#1d7a4d'}"></i>${sla.over?('เกินกำหนด '+fmtDur(sla.remain)):('ภายใน '+sla.hours+' ชม. · เหลือ '+fmtDur(sla.remain))}</span>` : '';
+  const log=(t.log||[]).slice().sort((a,b)=>a.at-b.at);
+  const tl=log.map((e,i)=>{
+    const es=ST[e.status]||ST.OPEN;
+    const last=i===log.length-1;
+    return `<div class="tl-step">
+      <div class="tl-dot" style="color:${COLOR[e.status]||'#999'}"><span class="c"></span>${last?'':'<span class="line"></span>'}</div>
+      <div class="tl-txt"><span class="s" style="color:${COLOR[e.status]||'#333'}"><i class="fas ${es.icon} me-1"></i>${es.label}</span><span class="t">${e.by||''} · ${dt(e.at)}</span>${e.note?`<div class="n">${e.note}</div>`:''}</div>
+    </div>`;
+  }).join('');
+  let act='';
+  if(t.status==='OPEN') act=`<button class="btn btn-outline-secondary btn-sm" onclick="cancelTk('${t.id}')"><i class="fas fa-xmark me-1"></i>ยกเลิกการแจ้ง</button>`;
+  else if(t.status==='RESOLVED') act=`<button class="btn btn-success btn-sm" onclick="closeTk('${t.id}')"><i class="fas fa-check me-1"></i>ยืนยันแก้แล้ว ปิดเรื่อง</button><button class="btn btn-outline-danger btn-sm" onclick="reopenTk('${t.id}')"><i class="fas fa-rotate-left me-1"></i>ยังไม่หาย</button>`;
+  const _isHO_ = ['Admin','Admin HQ','IT','MKT','ACC','BD'].indexOf(String(localStorage.getItem('pc_role')||'').trim())>=0;
+  const _isQuota_ = ticketButtons(t).some(b=>(b.issues||[]).some(x=>/โควต้า/.test(String(x))));
+  if(_isHO_ && _isQuota_ && (t.status==='OPEN'||t.status==='PROGRESS')) act += `<button class="btn btn-success btn-sm" onclick="quotaReply('${t.id}')"><i class="fas fa-reply me-1"></i>ตอบสาขา (ทำตามสิทธิ์ + waste MKT)</button>`;
+  if(active) act += `<button class="btn btn-danger btn-sm" onclick="urgentTk('${t.id}')"><i class="fas fa-bolt me-1"></i>ตามงานด่วน${t.urgent?' (อีกครั้ง)':''}</button>`;
+  const bks = ticketButtons(t).map(b=>`
+    <div class="bk">
+      <div class="bk-hd"><i class="fas fa-hand-pointer"></i>${b.sn||'-'}${b.code?`<span class="bk-code">${b.code}</span>`:''}</div>
+      <div class="bk-iss">${(b.issues||[]).map(x=>`<span class="tk-iss"><i class="fas fa-circle"></i>${x}</span>`).join('')}</div>
+      ${b.note?`<div class="bk-note">${b.note}</div>`:''}
+    </div>`).join('');
+  return `
+  <div class="tk">
+    <div class="tk-strip" style="background:${s.color}">
+      <span><i class="fas ${s.icon} me-2"></i>${s.label}${t.urgent?'<span class="ubadge"><i class="fas fa-bolt"></i> ด่วน</span>':''}</span>
+      <span class="id">${t.id}</span>
+    </div>
+    <div class="tk-body">
+      <div class="tk-camp">${t.campaign}</div>
+      <div class="tk-row">
+        <span class="tk-tag"><i class="fas fa-store"></i>${t.branch||'-'}</span>
+        <span class="tk-tag"><i class="fas fa-tag"></i>${t.promoType||'-'}</span>
+        ${t.reporter?`<span class="tk-tag"><i class="fas fa-user"></i>${t.reporter}</span>`:''}
+        ${slaChip}
+        <span class="tk-tag" style="margin-left:auto"><i class="far fa-clock"></i>${ago(t.createdAt)}</span>
+      </div>
+      <div class="bks">${bks}</div>
+      <div class="tl">${tl}</div>
+      ${act?`<div class="tk-act">${act}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function slaCfg(){ try{ const s=JSON.parse(localStorage.getItem('pc_report_settings'))||{}; return { hours:(s.slaHours||4), itPhone:(s.itPhone||'02-016-9999 ต่อ IT (1234)') }; }catch(e){ return {hours:4,itPhone:'02-016-9999 ต่อ IT (1234)'}; } }
+function slaInfo(t){ const cfg=slaCfg(); const due=(t.createdAt||Date.now())+cfg.hours*3600000; const remain=due-Date.now(); return {due, remain, over:remain<0, hours:cfg.hours}; }
+function fmtDur(ms){ const m=Math.max(1,Math.round(Math.abs(ms)/60000)); const h=Math.floor(m/60), mm=m%60; return (h?h+' ชม. ':'')+(mm?mm+' น.':(h?'':'< 1 น.')); }
+const CASHIER_KEY='pc_cashier_users';
+const CASHIER_SEED=[ {code:'4821',name:'สมชาย ใจดี',password:'1234',position:'ผู้จัดการสาขา',branch:'101 · Central World'},{code:'5510',name:'มาลี สดใส',password:'1234',position:'แคชเชียร์',branch:'101 · Central World'},{code:'6093',name:'อนุชา รักงาน',password:'1234',position:'ผู้ช่วยผู้จัดการ',branch:'088 · Mega Bangna'} ];
+function loadCashiers(){ let a; try{ a=JSON.parse(localStorage.getItem(CASHIER_KEY)); }catch(e){ a=null; } if(!Array.isArray(a)||!a.length){ a=CASHIER_SEED.slice(); localStorage.setItem(CASHIER_KEY,JSON.stringify(a)); } return a; }
+function reportAuthMode(){ try{ return (JSON.parse(localStorage.getItem('pc_report_settings'))||{}).authMode||'branch'; }catch(e){ return 'branch'; } }
+function requireAuth(cb){ const mode=reportAuthMode();
+  // บังคับกรอกรหัสพนักงาน + ชื่อ-นามสกุล ทุกครั้งก่อนส่ง
+  Swal.fire({ title:'ยืนยันผู้แจ้ง',
+    html:`<div style="text-align:left;font-size:14px"><label style="font-weight:600;display:block;margin:2px 0 4px">รหัสพนักงาน <span style="color:#c0392b">*</span></label><input id="aEmp" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="PCxxxx"><label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อ-นามสกุล <span style="color:#c0392b">*</span></label><input id="aNm" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อ นามสกุล"></div>`,
+    showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ยืนยัน + ส่ง', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const emp=(document.getElementById('aEmp').value||'').trim(); const nm=(document.getElementById('aNm').value||'').trim(); if(!emp||!nm){ Swal.showValidationMessage('กรอกรหัสพนักงานและชื่อ-นามสกุลให้ครบ'); return false; } return `${nm} (${emp})`; }
+  }).then(r=>{ if(r.isConfirmed) cb(r.value); }); return;
+  if(mode==='none'){ cb('— ไม่ระบุผู้แจ้ง —'); return; }
+  if(mode==='branch'){ Swal.fire({ title:'ยืนยันตัวตน (อีเมลสาขา)', html:`<div style="text-align:left;font-size:14px"><label style="font-weight:600;display:block;margin:2px 0 4px">อีเมลสาขา *</label><input id="aE" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="central.world@potatocornerth.com"><label style="font-weight:600;display:block;margin:2px 0 4px">รหัสผ่าน *</label><input id="aP" type="password" class="swal2-input" style="margin:0;width:100%"></div>`, showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ยืนยัน', cancelButtonText:'ยกเลิก', preConfirm:()=>{ const e=(document.getElementById('aE').value||'').trim().toLowerCase(); const p=(document.getElementById('aP').value||'').trim(); if(!e||!p){ Swal.showValidationMessage('กรอกอีเมลและรหัสผ่าน'); return false; } if(!e.endsWith('@potatocornerth.com')){ Swal.showValidationMessage('ต้องเป็นอีเมล @potatocornerth.com'); return false; } return e; } }).then(r=>{ if(r.isConfirmed) cb(r.value); }); return; }
+  Swal.fire({ title:'ยืนยันแคชเชียร์', html:`<input id="aC" class="swal2-input" placeholder="รหัสแคชเชียร์" inputmode="numeric"><input id="aPw" type="password" class="swal2-input" placeholder="รหัสผ่าน">`, showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ยืนยัน', cancelButtonText:'ยกเลิก', preConfirm:()=>{ const c=(document.getElementById('aC').value||'').trim(); const p=(document.getElementById('aPw').value||'').trim(); if(!c||!p){ Swal.showValidationMessage('กรอกรหัสแคชเชียร์และรหัสผ่าน'); return false; } const u=loadCashiers().find(x=>String(x.code)===c); if(!u){ Swal.showValidationMessage('ไม่พบรหัสแคชเชียร์'); return false; } if(String(u.password)!==p){ Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง'); return false; } return u; } }).then(r=>{ if(r.isConfirmed){ const u=r.value; cb(`${u.name} (${u.code})`); } });
+}
+function urgentRoute(){ let cfg=null; try{ cfg=JSON.parse(localStorage.getItem('pc_notify_settings')); }catch(e){} let teams=['ทีม IT'], chans={email:true,chat:true,line:true};
+  if(cfg&&cfg.events&&cfg.events.ticket_urgent){ const ev=cfg.events.ticket_urgent; chans=ev.channels||chans; const dks=(ev.depts&&ev.depts.length)?ev.depts:['it']; teams=dks.map(dk=>(cfg.depts&&cfg.depts[dk]&&cfg.depts[dk].label)||dk); }
+  const chips=[]; if(chans.email)chips.push('<span class="ch mail">Email</span>'); if(chans.chat)chips.push('<span class="ch chat">Team Chat</span>'); if(chans.line)chips.push('<span class="ch line">LINE</span>');
+  return `<div class="uroute"><i class="fas fa-bolt" style="color:#c0392b"></i> แจ้งเตือนด่วนถูกส่งไปที่ ${chips.join('')} <span style="color:#9aa1aa">→</span> ${teams.join(', ')}</div>`;
+}
+function urgentTk(id){ requireAuth(reporter=>{
+  Swal.fire({ title:'⚡ ตามงานด่วน', input:'textarea', inputLabel:'เหตุผลที่ต้องเร่งด่วน (จำเป็น)', inputPlaceholder:'เช่น ลูกค้ารอหน้าร้าน คิวยาว · โค้ดใช้ไม่ได้ปิดการขายไม่ได้', showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ส่งแจ้งด่วน', cancelButtonText:'ยกเลิก', inputValidator:v=>(!v||!v.trim())&&'กรอกเหตุผลที่ด่วน' })
+  .then(r=>{ if(!r.isConfirmed) return; const reason=r.value.trim(); const all=loadTickets(); const t=all.find(x=>x.id===id); if(!t) return;
+    t.urgent=true; t.urgentAt=NOW; (t.log=t.log||[]).push({status:t.status, at:NOW, by:reporter||'สาขา', note:'⚡ ตามงานด่วน: '+reason}); saveTickets(all);
+    try{ var _N=(window.PC_notify||(window.top&&window.top.PC_notify)); if(_N) _N('ticket_urgent', { text:'⚡ ปัญหาสาขาด่วน '+(t.id||'')+(t.branch?(' · '+t.branch):'')+' — '+String(reason||'').slice(0,90)+' · ต้องการ IT ด่วน' }); }catch(e){}
+    const cfg=slaCfg();
+    Swal.fire({ icon:'success', title:'ส่งแจ้งด่วนแล้ว', width:580, html:`<div style="text-align:left">${urgentRoute()}<div class="callbox"><i class="fas fa-phone" style="color:#c9870a"></i> หากเร่งด่วนมาก โทรหา IT ได้เลย: <b>${cfg.itPhone}</b><div style="font-size:.82rem;color:#8a7a4a;margin-top:5px">ช่องทาง/กลุ่มที่แจ้งเตือน ตั้งค่าได้ที่ Notification Settings ▸ เหตุการณ์ “ตามงานด่วน”</div></div></div>`, confirmButtonColor:'#2e934a' }).then(()=>render());
+  });
+}); }
+function setStatus(id,status,by,note){
+  const all=loadTickets(); const t=all.find(x=>x.id===id); if(!t) return;
+  t.status=status; t.log=t.log||[]; t.log.push({status,at:NOW,by:by||'สาขา',note:note||''});
+  saveTickets(all); render();
+}
+function cancelTk(id){
+  Swal.fire({icon:'question',title:'ยกเลิกการแจ้ง?',text:'เรื่องนี้จะถูกปิดและไม่ส่งต่อให้ทีม IT',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ยกเลิกการแจ้ง',cancelButtonText:'ไม่'})
+    .then(r=>{ if(r.isConfirmed) setStatus(id,'CLOSED','สาขา','สาขายกเลิกการแจ้ง'); });
+}
+function closeTk(id){ setStatus(id,'CLOSED','สาขา','สาขายืนยันว่าแก้ไขแล้ว'); }
+function quotaReply(id){
+  const msg='รบกวนทำสินค้า / ให้ส่วนลดลูกค้าตามสิทธิ์ก่อน แล้วลง waste MKT เพื่อจบบิลที่ POS · ระบบตรวจสอบโควต้าให้แล้ว';
+  Swal.fire({title:'ตอบกลับเคสโควต้า', input:'textarea', inputValue:msg, inputLabel:'ข้อความถึงสาขา', showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'ส่งตอบกลับ + แก้ไขแล้ว', cancelButtonText:'ยกเลิก'})
+  .then(r=>{ if(!r.isConfirmed) return; const by=(localStorage.getItem('pc_role')||'IT'); const note=((r.value||msg)).trim(); setStatus(id,'RESOLVED',by,note);
+    try{ var N=(window.PC_notify||(window.top&&window.top.PC_notify)); if(N) N('report_general',{ text:'IT ตอบเคสโควต้า '+id+' — '+note }); }catch(e){}
+  });
+}
+function reopenTk(id){
+  Swal.fire({icon:'warning',title:'ยังไม่หาย?',text:'ส่งกลับให้ทีม IT ตรวจสอบอีกครั้ง',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'แจ้งซ้ำ',cancelButtonText:'ปิด'})
+    .then(r=>{ if(r.isConfirmed) setStatus(id,'OPEN','สาขา','สาขาแจ้งว่ายังไม่หาย'); });
+}
+
+buildBranchOptions();
+/* nav helper: when embedded in the shell (iframe), a hash-only <a target=_top> does NOT
+   trigger the SPA router — so route via the shell's loadPage() instead. The shell is
+   window.parent (NOT window.top: the preview nests the shell inside a host iframe). */
+function pcTkShell(){
+  try{ if(window.parent && window.parent!==window && typeof window.parent.loadPage==='function') return window.parent; }catch(e){}
+  try{ if(window.top && typeof window.top.loadPage==='function') return window.top; }catch(e){}
+  return null;
+}
+function pcTkNav(url){
+  var sh=pcTkShell(); var hm=/#([^?]+)/.exec(url||'');
+  if(hm && sh){ try{ sh.loadPage(hm[1]); return; }catch(e){} }
+  try{ (window.parent&&window.parent!==window?window.parent:window).location.href=url; }
+  catch(e){ try{ window.location.href=url; }catch(_){} }
+}
+(function(){
+  var _stored=localStorage.getItem('pc_report_origin')||'';
+  const isCode=/Code Management/.test(_stored);
+  /* ticket tracking belongs to the branch hub — default back = สินค้าและโปรโมชั่น (BranchWork);
+     only a genuine code-lookup flow returns to Code Management */
+  const o=isCode?_stored:'Potato Corner Promotion System.html#BranchWork';
+  const bl=document.getElementById('backLink');
+  if(bl){ bl.href=o; bl.removeAttribute('target'); const l=bl.querySelector('.lbl'); if(l) l.textContent=isCode?'กลับหน้าตรวจสอบโค้ด':'กลับหน้าสินค้าและโปรโมชั่น'; bl.addEventListener('click',function(e){ e.preventDefault(); pcTkNav(o); }); }
+  const nl=document.getElementById('newLink');
+  if(nl){ nl.href=o; nl.removeAttribute('target'); nl.addEventListener('click',function(e){ e.preventDefault(); pcTkNav(o); }); }
+})();
+render();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

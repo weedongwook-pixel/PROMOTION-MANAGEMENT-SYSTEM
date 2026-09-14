@@ -1,0 +1,596 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  .tset-scope{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --blue:#2f5fb3; font-family:'Kanit',sans-serif; background:#eef1f4; color:var(--pc-black); min-height:100vh; padding:24px 24px 50px; }
+  .tset-scope *{ box-sizing:border-box; }
+  .tset-scope .mono{ font-family:'JetBrains Mono',monospace; }
+  .tset-scope .head{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:var(--pc-green); color:#fff; border-radius:16px; padding:18px 22px; margin-bottom:16px; }
+  .tset-scope .head .bar-accent{ width:8px; align-self:stretch; min-height:42px; background:var(--pc-yellow); border-radius:5px; }
+  .tset-scope .head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.18rem; margin:0; display:flex; align-items:center; gap:10px; }
+  .tset-scope .head h1 i{ color:var(--pc-yellow); }
+  .tset-scope .head p{ margin:3px 0 0; font-size:.82rem; color:rgba(255,255,255,.82); }
+
+  .tset-scope .tabbar{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .tset-scope .tab{ border:1px solid #e0e5ea; background:#fff; color:#5a616b; font-family:inherit; font-weight:600; font-size:.92rem; border-radius:11px; padding:11px 18px; cursor:pointer; display:flex; align-items:center; gap:9px; }
+  .tset-scope .tab.on{ background:var(--pc-black); color:#fff; border-color:var(--pc-black); }
+  .tset-scope .tab .c{ font-family:'JetBrains Mono',monospace; font-size:.74rem; font-weight:700; background:#eef1f4; color:#5a616b; border-radius:999px; padding:1px 9px; }
+  .tset-scope .tab.on .c{ background:rgba(255,255,255,.22); color:#fff; }
+
+  .tset-scope .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:18px; }
+  .tset-scope .cardhd{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .tset-scope .cardhd h2{ font-size:1.04rem; font-weight:700; margin:0; display:flex; align-items:center; gap:9px; }
+  .tset-scope .cardhd h2 i{ color:var(--pc-green); }
+  .tset-scope .cardhd .ha{ margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+  .tset-scope .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:.84rem; color:#5a616b; }
+
+  .tset-scope .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.9rem; padding:10px 16px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .tset-scope .btn-g{ background:var(--pc-green); color:#fff; }
+  .tset-scope .btn-y{ background:var(--pc-yellow); color:var(--pc-black); }
+  .tset-scope .btn-o{ background:#fff; border:1.4px solid #dde2e7; color:#3a4150; }
+  .tset-scope .btn-o:hover{ border-color:#b6bcc4; }
+  .tset-scope .btn-sm{ padding:8px 13px; font-size:.82rem; border-radius:9px; }
+
+  .tset-scope .grp{ display:flex; align-items:center; gap:9px; font-size:.82rem; font-weight:700; color:#5a616b; text-transform:uppercase; letter-spacing:.4px; margin:6px 0 9px; }
+  .tset-scope .grp i{ color:var(--pc-green); }
+  .tset-scope .grp .cnt{ background:#eef1f4; color:#5a616b; font-size:.74rem; border-radius:999px; padding:2px 9px; }
+
+  .tset-scope table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .tset-scope th{ text-align:left; font-size:.72rem; color:#8a9099; font-weight:700; padding:8px 11px; border-bottom:2px solid #eef1f4; text-transform:uppercase; letter-spacing:.4px; }
+  .tset-scope td{ padding:10px 11px; border-bottom:1px solid #f1f4f7; vertical-align:middle; }
+  .tset-scope tr:last-child td{ border-bottom:0; }
+  .tset-scope .tcode{ font-family:'JetBrains Mono',monospace; font-weight:700; }
+  .tset-scope .tname{ font-weight:600; display:flex; align-items:center; gap:9px; }
+  .tset-scope .tname .ic{ width:30px; height:30px; border-radius:8px; background:#e3f3ea; color:var(--pc-green); display:flex; align-items:center; justify-content:center; font-size:.9rem; }
+  .tset-scope .badge{ font-size:.72rem; font-weight:700; border-radius:6px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; }
+  .tset-scope .b-std{ background:#eafaf1; color:#1d7a4d; } .tset-scope .b-man{ background:#eaf4ee; color:#9a6700; } .tset-scope .b-if{ background:#e7f0ff; color:#2c4a82; }
+  .tset-scope .b-none{ background:#f1f4f7; color:#5a616b; } .tset-scope .b-unset{ background:#fdecea; color:#c0392b; }
+  .tset-scope .note{ color:#6c757d; font-size:.85rem; }
+  .tset-scope .rowacts{ display:flex; gap:5px; justify-content:flex-end; }
+  .tset-scope .iconbtn{ border:0; background:transparent; color:#8a9099; cursor:pointer; font-size:.9rem; padding:6px 8px; border-radius:7px; }
+  .tset-scope .iconbtn:hover{ background:#eef1f4; color:var(--pc-black); }
+  .tset-scope .iconbtn.del:hover{ color:#c0392b; }
+  .tset-scope .empty{ text-align:center; color:#9aa1aa; padding:26px; font-size:.9rem; }
+
+  /* EDC tab */
+  .tset-scope .toolbar{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .tset-scope .inp{ border:1.5px solid #dde2e7; border-radius:10px; padding:9px 12px; font-family:inherit; font-size:.9rem; background:#fff; color:var(--pc-black); }
+  .tset-scope .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .tset-scope .search{ flex:1; min-width:200px; }
+  .tset-scope .chips{ display:flex; gap:9px; flex-wrap:wrap; margin-bottom:14px; }
+  .tset-scope .chip{ border:1px solid #e7eaee; border-radius:12px; padding:9px 14px; background:#fff; display:flex; align-items:center; gap:9px; font-size:.85rem; font-weight:600; }
+  .tset-scope .chip .n{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.15rem; }
+  .tset-scope .chip.if .n{ color:var(--blue); } .tset-scope .chip.man .n{ color:#9a6700; } .tset-scope .chip.none .n{ color:#5a616b; } .tset-scope .chip.unset .n{ color:#c0392b; } .tset-scope .chip.all .n{ color:var(--pc-green); }
+  .tset-scope .tblscroll{ max-height:560px; overflow:auto; border:1px solid #eef1f4; border-radius:12px; }
+  .tset-scope .tblscroll th{ position:sticky; top:0; background:#f6f8fa; z-index:1; }
+  .tset-scope .edcsel{ border:1.4px solid #dde2e7; border-radius:9px; padding:7px 9px; font-family:inherit; font-size:.85rem; background:#fff; min-width:170px; }
+  .tset-scope tr.unset td{ background:#fdf5f4; }
+  .tset-scope .rowinp{ border:1px solid #e3e8ee; border-radius:8px; padding:6px 9px; font-family:inherit; font-size:.85rem; width:100%; min-width:120px; }
+  .tset-scope .rowinp:focus{ outline:none; border-color:var(--pc-green); }
+  .tset-scope .stype{ font-size:.72rem; color:#9aa1aa; }
+</style>
+
+<div class="tset-scope" data-screen-label="TenderSettings">
+  <div class="head">
+    <div class="bar-accent"></div>
+    <div>
+      <h1><i class="fas fa-cash-register"></i> <span data-en="TENDER / EDC SETTINGS" data-th="ตั้งค่า Tender / EDC ต่อสาขา">ตั้งค่า Tender / EDC ต่อสาขา</span></h1>
+      <p data-en="Standard tenders opened on POS + which EDC each branch uses" data-th="Tender มาตรฐานที่เปิดบน POS + บันทึกว่าแต่ละสาขาใช้ EDC แบบไหน / ไม่ใช้">Tender มาตรฐานที่เปิดบน POS + บันทึกว่าแต่ละสาขาใช้ EDC แบบไหน / ไม่ใช้</p>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab on" id="tab-tender" onclick="window.TS.tab('tender')"><i class="fas fa-list"></i> <span data-en="Tender list" data-th="รายการ Tender">รายการ Tender</span></button>
+    <button class="tab" id="tab-edc" onclick="window.TS.tab('edc')"><i class="fas fa-credit-card"></i> <span data-en="EDC per branch" data-th="EDC ต่อสาขา">EDC ต่อสาขา</span> <span class="c" id="edcTabCount">0</span></button>
+    <button class="tab" id="tab-zone" onclick="window.TS.tab('zone')"><i class="fas fa-map-location-dot"></i> <span data-en="Zone / Area" data-th="โซน / Area">โซน / Area</span> <span class="c" id="zoneTabCount">0</span></button>
+    <button class="tab" id="tab-epay" onclick="window.TS.tab('epay')"><i class="fas fa-qrcode"></i> e-Payment <span class="c" id="epayTabCount">0</span></button>
+  </div>
+
+  <!-- ============ TAB: Tender list ============ -->
+  <div id="paneTender">
+    <style>
+      .tset-scope .wfrow{ display:flex; gap:12px; flex-wrap:wrap; }
+      .tset-scope .wfopt{ flex:1; min-width:260px; display:flex; gap:11px; align-items:flex-start; border:2px solid #e7eaee; border-radius:12px; padding:13px 15px; cursor:pointer; }
+      .tset-scope .wfopt.on{ border-color:#2e934a; background:#f2faf5; }
+      .tset-scope .wfopt.soon{ opacity:.6; cursor:not-allowed; }
+      .tset-scope .wfopt input{ margin-top:3px; }
+      .tset-scope .wfopt .wfsub{ font-size:.8rem; color:#6c757d; margin-top:3px; line-height:1.45; }
+      .tset-scope .soonbadge{ background:#fff4e0; color:#c9870a; font-size:.68rem; font-weight:700; border-radius:999px; padding:2px 8px; margin-left:6px; }
+    </style>
+    <div class="card">
+      <div class="cardhd"><h2><i class="fas fa-diagram-project"></i> ขั้นตอนอนุมัติ (Workflow)</h2></div>
+      <div class="wfrow">
+        <label class="wfopt on" id="wf-acct">
+          <input type="radio" name="tndwf" value="acct" checked onchange="window.TS.setWorkflow('acct')">
+          <div><b>สาขา → บัญชี → IT</b><div class="wfsub">สาขาแจ้ง+เหตุผล · บัญชีเลือกช่อง+อนุมัติ · IT เปิดบน POS</div></div>
+        </label>
+        <label class="wfopt" id="wf-area">
+          <input type="radio" name="tndwf" value="area" onchange="window.TS.setWorkflow('area')">
+          <div><b>สาขา → Area → บัญชี → IT</b> <span class="soonbadge" style="background:#eafaf1;color:#1d7a4d">ใช้ได้แล้ว</span><div class="wfsub">เพิ่มขั้น Area อนุมัติก่อนส่งบัญชี · Area เห็นเฉพาะสาขาในโซนของชื่อตัวเอง (จับคู่ชื่อ Area กับชื่อผู้ใช้ OP) — ต้องตั้งค่า zone→Area ก่อน</div></div>
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="legend">
+        <span><span class="badge b-std">มาตรฐาน</span> = เปิดบนเครื่อง POS หลักให้ใช้งานอยู่แล้ว</span>
+        <span><span class="badge b-man">พิเศษ/สำรอง</span> = สาขาต้องแจ้งขอเปิดเอง (หน้า “แจ้งเปิด-ปิด Tender”)</span>
+        <span><span class="badge b-if"><i class="fas fa-link"></i> Interface</span> = เครื่อง EDC ที่เชื่อมต่อกับ POS</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cardhd">
+        <h2><i class="fas fa-cash-register"></i> รายการ Tender</h2>
+        <div class="ha">
+          <button class="btn btn-o btn-sm" onclick="window.TS.reset()"><i class="fas fa-rotate-left"></i> คืนค่าเริ่มต้น</button>
+          <button class="btn btn-y btn-sm" onclick="window.TS.edit(null)"><i class="fas fa-plus"></i> เพิ่ม Tender</button>
+        </div>
+      </div>
+      <div id="tsTender"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: EDC per branch ============ -->
+  <div id="paneEdc" style="display:none;">
+    <div class="card">
+      <div class="cardhd">
+        <h2><i class="fas fa-credit-card"></i> EDC ที่แต่ละสาขาใช้</h2>
+        <div class="ha">
+          <button class="btn btn-o btn-sm" onclick="window.__dlEdcTpl()"><i class="fas fa-download"></i> Template</button>
+          <label class="btn btn-y btn-sm" style="cursor:pointer;margin:0"><i class="fas fa-file-import"></i> Import EDC<input type="file" accept=".csv,.xlsx" style="display:none" onchange="window.__edcImportPick(this)"></label>
+          <button class="btn btn-o btn-sm" onclick="window.TS.bulkKplus()"><i class="fas fa-wand-magic-sparkles"></i> ตั้งที่ยังไม่ระบุ = KPLUS</button>
+          <button class="btn btn-o btn-sm" onclick="window.TS.exportEdc()"><i class="fas fa-file-csv"></i> Export CSV</button>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#6c757d;margin:0 0 10px">Import: คอลัมน์ <b>Numeric Code (PCxxxx) · EDC Type (KPLUS/M-EDC/MALL/NONE) · Provider · TID · Model · SIM · Merchant Name · Install Date</b> — รับ .csv / .xlsx · กด <b>Template</b> เพื่อดาวน์โหลดไฟล์ตัวอย่าง</div>
+      <div class="chips" id="edcChips"></div>
+      <div class="toolbar">
+        <input class="inp search" id="edcSearch" placeholder="ค้นหารหัส/ชื่อสาขา..." oninput="window.TS.renderEdc()">
+        <select class="inp" id="edcFilter" onchange="window.TS.renderEdc()">
+          <option value="">ทุกประเภท EDC</option>
+          <option value="KPLUS">KPLUS (interface)</option>
+          <option value="M-EDC">M-EDC (TID manual)</option>
+          <option value="MALL">EDC ผ่านห้าง</option>
+          <option value="NONE">ไม่ใช้ EDC</option>
+          <option value="UNSET">ยังไม่ระบุ</option>
+        </select>
+      </div>
+      <div class="tblscroll">
+        <table>
+          <thead><tr><th>รหัส</th><th>สาขา</th><th>EDC ที่ใช้</th><th>ผู้ให้บริการ / ธนาคาร</th><th>หมายเหตุ</th></tr></thead>
+          <tbody id="edcBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: Zone / Area ============ -->
+  <div id="paneZone" style="display:none;">
+    <div class="card">
+      <div class="cardhd"><h2><i class="fas fa-user-shield"></i> ผูกผู้ใช้ OP กับโซน (Zone = key จับคู่)</h2><div class="ha"><button class="btn btn-g btn-sm" style="margin:0" onclick="window.__saveOpAreas&&window.__saveOpAreas()"><i class="fas fa-floppy-disk"></i> บันทึกการผูก</button></div></div>
+      <div style="font-size:.8rem;color:#6c757d;margin:0 0 10px">จับคู่ด้วย <b>เลขโซน</b> (คงที่ ไม่เพี้ยนเหมือนชื่อ) · ใส่ชื่อผู้ใช้ OP ที่ดูแลแต่ละโซน (คั่นด้วย ,) · กำหนดที่หน้า จัดการผู้ใช้ ก็ได้ · Area เห็นเฉพาะสาขาในโซนตัวเอง</div>
+      <div id="opAreaBox"></div>
+    </div>
+    <div class="card">
+      <div class="cardhd">
+        <h2><i class="fas fa-map-location-dot"></i> โซน / Area ผู้รับผิดชอบสาขา</h2>
+        <div class="ha">
+          <button class="btn btn-o btn-sm" onclick="window.__dlZoneTpl()"><i class="fas fa-download"></i> Template</button>
+          <label class="btn btn-y btn-sm" style="cursor:pointer;margin:0"><i class="fas fa-file-import"></i> Import (อัปเดทโซน)<input type="file" accept=".csv,.xlsx" style="display:none" onchange="window.__zoneImportPick(this)"></label>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#6c757d;margin:0 0 12px">ไฟล์ต้องมีคอลัมน์: <b>Alpha Code · Numeric Code (PCxxxx) · Store Name · Grade · ZONE · NAME (Area) · Tel.</b> — รับได้ทั้ง <b>.csv / .xlsx</b> · กด <b>Template</b> เพื่อดาวน์โหลดไฟล์ตัวอย่าง · นำเข้าแล้วอัปเดททับตามรหัสสาขา (เบอร์มือถือสาขาไม่ถูกแตะ)</div>
+      <div class="chips" id="zoneChips"></div>
+      <div class="toolbar">
+        <input class="inp search" id="zoneSearch" placeholder="ค้นหารหัส/ชื่อสาขา/Area..." oninput="window.__renderZone&&window.__renderZone()">
+        <select class="inp" id="zoneFilter" onchange="window.__renderZone&&window.__renderZone()"><option value="">ทุก Area</option></select>
+      </div>
+      <div class="tblscroll">
+        <table>
+          <thead><tr><th>รหัส</th><th>สาขา</th><th>โซน</th><th>Area</th><th>เกรด</th><th>เบอร์ Area</th><th>มือถือสาขา</th><th>TID</th><th>สถานะเครื่อง</th></tr></thead>
+          <tbody id="zoneBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: e-Payment ============ -->
+  <div id="paneEpay" style="display:none;">
+    <div class="card">
+      <div class="cardhd">
+        <h2><i class="fas fa-qrcode"></i> e-Payment ต่อสาขา (TrueWallet · Alipay · WeChat · ShopeePay)</h2>
+        <div class="ha">
+          <button class="btn btn-o btn-sm" onclick="window.__dlEpayTpl()"><i class="fas fa-download"></i> Template</button>
+          <label class="btn btn-y btn-sm" style="cursor:pointer;margin:0"><i class="fas fa-file-import"></i> Import e-Payment<input type="file" accept=".csv,.xlsx" style="display:none" onchange="window.__epayImportPick(this)"></label>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#6c757d;margin:0 0 12px">มีทุกสาขา · แก้ทีละสาขาได้ (ปุ่มดินสอ) หรือ <b>Import</b> ไฟล์ (.csv / .xlsx) ครบทุกช่อง (TrueWallet · Alipay · WeChat · ShopeePay) · กด <b>Template</b> เพื่อดาวน์โหลดไฟล์ตัวอย่าง · สาขาไหนไม่มีเลขขึ้น "ไม่พบ" สีแดง</div>
+      <div class="toolbar"><input class="inp search" id="epaySearch" placeholder="ค้นหารหัส/ชื่อสาขา..." oninput="window.__renderEpay&&window.__renderEpay()"></div>
+      <div class="tblscroll"><table><thead><tr><th>รหัส</th><th>สาขา</th><th>TrueWallet MID</th><th>TrueWallet ShopID</th><th>Alipay MID</th><th>Alipay Op ID</th><th>WeChat MID</th><th>WeChat Op ID</th><th>ShopeePay MID</th><th>ShopeePay ShopID</th><th></th></tr></thead><tbody id="epayBody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var LS='pc_tender_master', BLS='pc_branch_edc', WFLS='pc_tender_workflow';
+  function loadWf(){ try{ return localStorage.getItem(WFLS)||'acct'; }catch(e){ return 'acct'; } }
+  function renderWorkflow(){ var mode=loadWf(); var a=document.getElementById('wf-acct'), b=document.getElementById('wf-area'); if(a) a.classList.toggle('on', mode!=='area'); if(b) b.classList.toggle('on', mode==='area'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ---- Zone / Area (+ import Excel) ---- */
+  var AZLS='pc_area_zones';
+  function loadAZ(){ try{ return JSON.parse(localStorage.getItem(AZLS))||{}; }catch(e){ return {}; } }
+  function saveAZ(m){ try{ localStorage.setItem(AZLS, JSON.stringify(m)); }catch(e){} }
+  function renderZone(){
+    var body=document.getElementById('zoneBody'); if(!body) return;
+    var az=loadAZ(); var q=((document.getElementById('zoneSearch')||{}).value||'').trim().toLowerCase();
+    var fz=((document.getElementById('zoneFilter')||{}).value||'');
+    var bs=(window.PC_BRANCH_MASTER||[]);
+    var seen={}; var rows=bs.map(function(b){ seen[b.id]=1; var z=az[b.id]||{}; return {id:b.id, name:b.name||'', z:z}; });
+    Object.keys(az).forEach(function(id){ if(!seen[id]) rows.push({id:id, name:(az[id].store||''), z:az[id]}); });
+    rows=rows.filter(function(r){ return r.z.zone||r.z.area||r.z.mobile; });
+    if(fz) rows=rows.filter(function(r){ return String(r.z.area||'')===fz; });
+    if(q) rows=rows.filter(function(r){ return (r.id+' '+r.name+' '+(r.z.area||'')+' '+(r.z.store||'')).toLowerCase().indexOf(q)>-1; });
+    rows.sort(function(a,b){ return String(a.z.zone||'zz').localeCompare(String(b.z.zone||'zz')) || a.id.localeCompare(b.id); });
+    var byArea={}; Object.keys(az).forEach(function(id){ var a=az[id].area||'—'; byArea[a]=(byArea[a]||0)+1; });
+    var chips=document.getElementById('zoneChips'); if(chips){ chips.innerHTML=Object.keys(byArea).sort().map(function(a){ return '<span class="chip"><span class="n">'+byArea[a]+'</span> '+esc(a)+'</span>'; }).join(''); }
+    var fsel=document.getElementById('zoneFilter'); if(fsel && fsel.dataset.built!=='1'){ fsel.innerHTML='<option value="">ทุก Area</option>'+Object.keys(byArea).filter(function(a){return a!=='—';}).sort().map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join(''); fsel.dataset.built='1'; }
+    var tc=document.getElementById('zoneTabCount'); if(tc) tc.textContent=rows.length;
+    var _be; try{ _be=JSON.parse(localStorage.getItem('pc_branch_edc'))||{}; }catch(e){ _be={}; }
+    var _sl={}; try{ (JSON.parse(localStorage.getItem('pc_edc_status_log'))||[]).forEach(function(x){ if(!_sl[x.branchId]||x.ts>(_sl[x.branchId].ts||0)) _sl[x.branchId]=x; }); }catch(e){}
+    body.innerHTML = rows.length ? rows.map(function(r){ var _tid=(_be[r.id]||{}).tid||''; var _st=_sl[r.id]; var _stc=_st?(_st.ok?'<span style="color:#1d7a4d;font-weight:600">ปกติ</span>':'<span style="color:#c0392b;font-weight:600">มีปัญหา</span>'):'<span style="color:#9aa1aa">-</span>'; return '<tr><td class="tcode">'+esc(r.id)+'</td><td>'+esc(r.z.store||r.name)+'</td><td>'+esc(r.z.zone||'-')+'</td><td><b>'+esc(r.z.area||'-')+'</b></td><td>'+esc(r.z.grade||'-')+'</td><td>'+esc(r.z.tel||'-')+'</td><td>'+esc(r.z.mobile||'-')+'</td><td>'+(_tid?esc(_tid):'<span style="color:#c0392b;font-weight:600">ไม่มี TID</span>')+'</td><td>'+_stc+'</td></tr>'; }).join('') : '<tr><td colspan="9"><div class="empty">ไม่มีข้อมูล — กด Import Excel เพื่อนำเข้า</div></td></tr>';
+  }
+  window.__renderZone=renderZone;
+  function loadOpZones(){ try{ return JSON.parse(localStorage.getItem('pc_op_zones'))||{}; }catch(e){ return {}; } }
+  function renderOpAreas(){ var box=document.getElementById('opAreaBox'); if(!box) return; var az=loadAZ(); var zmap={}; Object.keys(az).forEach(function(id){ var z=String(az[id].zone||'').trim(); if(!z) return; if(!zmap[z]) zmap[z]={n:0,areas:{}}; zmap[z].n++; var a=(az[id].area||'').trim(); if(a) zmap[z].areas[a]=1; }); var m=loadOpZones(); var keys=Object.keys(zmap).sort(function(a,b){ return (parseInt(a,10)||99)-(parseInt(b,10)||99); }); var allRow='<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><div style="min-width:180px;font-weight:600"><span style="display:inline-block;text-align:center;background:#fff4e0;color:#9a6700;border-radius:7px;padding:1px 9px;margin-right:6px">ทุกโซน</span>All zones <span style="color:#9aa1aa;font-weight:400;font-size:.8rem">(ดูภาพรวมทุกสาขา)</span></div><input class="inp" data-opzone="ALL" style="flex:1;min-width:200px" placeholder="ชื่อผู้ใช้ OP ที่ดูทุกโซน (คั่น ,)" value="'+esc((m['ALL']||[]).join(', '))+'"></div>'; box.innerHTML = allRow + (keys.length ? keys.map(function(z){ var an=Object.keys(zmap[z].areas).join(' / '); return '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><div style="min-width:180px;font-weight:600"><span style="display:inline-block;min-width:24px;text-align:center;background:#eafaf1;color:#1d7a4d;border-radius:7px;padding:1px 7px;margin-right:6px">โซน '+esc(z)+'</span>'+esc(an||'-')+' <span style="color:#9aa1aa;font-weight:400;font-size:.8rem">('+zmap[z].n+' สาขา)</span></div><input class="inp" data-opzone="'+esc(z)+'" style="flex:1;min-width:200px" placeholder="ชื่อผู้ใช้ OP ที่ดูแลโซนนี้ (คั่น ,)" value="'+esc((m[z]||[]).join(', '))+'"></div>'; }).join('') : ''); }
+  window.__saveOpAreas=function(){ var box=document.getElementById('opAreaBox'); if(!box) return; var m={}; box.querySelectorAll('input[data-opzone]').forEach(function(inp){ var z=inp.getAttribute('data-opzone'); var us=(inp.value||'').split(',').map(function(s){return s.trim();}).filter(Boolean); if(us.length) m[z]=us; }); try{ localStorage.setItem('pc_op_zones', JSON.stringify(m)); }catch(e){} Swal.fire({icon:'success',title:'บันทึกการผูก OP กับโซนแล้ว',timer:1100,showConfirmButton:false}); };
+  async function inflateRaw(bytes){ var ds=new DecompressionStream('deflate-raw'); return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer()); }
+  async function parseXlsx(buf){
+    function u16(o){return buf[o]|(buf[o+1]<<8);} function u32(o){return (buf[o]|(buf[o+1]<<8)|(buf[o+2]<<16)|(buf[o+3]<<24))>>>0;}
+    var eocd=-1; for(var i=buf.length-22;i>=0;i--){ if(u32(i)===0x06054b50){ eocd=i; break; } }
+    var cdOff=u32(eocd+16), cdCnt=u16(eocd+10), p=cdOff, ents=[];
+    for(var k=0;k<cdCnt;k++){ if(u32(p)!==0x02014b50) break; var method=u16(p+10),cs=u32(p+20),nl=u16(p+28),el=u16(p+30),cl=u16(p+32),lho=u32(p+42); ents.push({name:new TextDecoder().decode(buf.slice(p+46,p+46+nl)),method:method,cs:cs,lho:lho}); p+=46+nl+el+cl; }
+    async function rd(e){ var ln=u16(e.lho+26),le=u16(e.lho+28),ds=e.lho+30+ln+le; var raw=buf.slice(ds,ds+e.cs); return e.method===0?raw:await inflateRaw(raw); }
+    var files={}; for(var j=0;j<ents.length;j++){ var e=ents[j]; if(/sharedStrings|sheet1\.xml$/.test(e.name)) files[e.name]=new TextDecoder().decode(await rd(e)); }
+    var sst=[]; var ss=files['xl/sharedStrings.xml']; if(ss){ var sis=ss.split('<si>').slice(1); sst=sis.map(function(si){ var t='',rr=/<t[^>]*>([\s\S]*?)<\/t>/g,mm; while((mm=rr.exec(si))) t+=mm[1]; return t.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'); }); }
+    var sh=files['xl/worksheets/sheet1.xml']||''; var rows=[]; var rowRe=/<row[^>]*>([\s\S]*?)<\/row>/g, rm;
+    while((rm=rowRe.exec(sh))){ var cells={}; var cRe=/<c([^>]*)>([\s\S]*?)<\/c>|<c([^>]*)\/>/g, c2;
+      while((c2=cRe.exec(rm[1]))){ var at=(c2[1]||c2[3]||''),inn=(c2[2]||''); var t=(/t="([^"]*)"/.exec(at)||[])[1]||''; var col=(/r="([A-Z]+)\d+"/.exec(at)||[])[1]||''; var vM=/<v>([\s\S]*?)<\/v>/.exec(inn); var val=''; if(t==='s'){ val=sst[+vM[1]]||''; } else if(t==='inlineStr'){ val=(/<t[^>]*>([\s\S]*?)<\/t>/.exec(inn)||[])[1]||''; } else if(vM){ val=vM[1]; } cells[col]=String(val).trim(); }
+      rows.push(cells); }
+    return rows;
+  }
+  /* ---- CSV/XLSX import helpers + template download ---- */
+  function csvToRows(text){
+    text=String(text||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    function parseLine(line){ var res=[],cur='',q=false; for(var i=0;i<line.length;i++){ var ch=line[i]; if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; } else { if(ch==='"') q=true; else if(ch===','){res.push(cur);cur='';} else cur+=ch; } } res.push(cur); return res; }
+    var COL=function(n){ var s=''; n++; while(n>0){ var mm=(n-1)%26; s=String.fromCharCode(65+mm)+s; n=Math.floor((n-1)/26); } return s; };
+    var out=[]; text.split('\n').forEach(function(ln){ if(ln==='') return; var cells=parseLine(ln); var obj={}; cells.forEach(function(v,idx){ obj[COL(idx)]=String(v==null?'':v).replace(/^\ufeff/,'').trim(); }); out.push(obj); });
+    return out;
+  }
+  async function readImportRows(file){
+    var name=(file.name||'').toLowerCase();
+    if(/\.csv$/.test(name)) return csvToRows(await file.text());
+    var buf=new Uint8Array(await file.arrayBuffer()); return await parseXlsx(buf);
+  }
+  function dlCSV(filename, rows){
+    var csv='\ufeff'+rows.map(function(r){ return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(','); }).join('\r\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  window.__dlZoneTpl=function(){ dlCSV('template_zone.csv',[['Alpha Code','Numeric Code','Store Name','Grade','ZONE','NAME','Tel.'],['CTW','PC1001','Central World','A','1','NONG','021234567']]); };
+  window.__dlEdcTpl=function(){ dlCSV('template_edc.csv',[['Numeric Code','EDC Type','Provider','TID','Model','SIM','Merchant Name','Install Date'],['PC1001','KPLUS','KBank','62842155','A80','0812345678','POTATO CORNER-CTW','2026-01-15']]); };
+  window.__dlEpayTpl=function(){ dlCSV('template_epayment.csv',[['Shop Code','TrueWallet MID','TrueWallet ShopID','Alipay MID','Alipay Operator ID','WeChat MID','WeChat Operator ID','ShopeePay MID','ShopeePay ShopID'],['PC1001','TW00123','TWSHOP1','ALI00123','ALIOP1','WC00123','WCOP1','SP00123','SPSHOP1']]); };
+
+  /* ---- EDC per-branch import (TID/SIM/merchant/provider ยกชุด) ---- */
+  async function doEdcImport(file){
+    try{ var rows=await readImportRows(file);
+      var hdr=-1,map={};
+      for(var i=0;i<rows.length;i++){ var v=rows[i]; var f={}; Object.keys(v).forEach(function(c){ var s=(v[c]||'').toLowerCase();
+        if(!f.pc && (/numeric/.test(s)||/shop\s*code/.test(s)||/รหัส/.test(s))) f.pc=c;
+        else if(/edc\s*type|ประเภท/.test(s)) f.edc=c;
+        else if(/provider|bank|ธนาคาร|ผู้ให้บริการ/.test(s)) f.prov=c;
+        else if(/^tid|เลขเครื่อง/.test(s)) f.tid=c;
+        else if(/model|รุ่น/.test(s)) f.model=c;
+        else if(/sim/.test(s)) f.sim=c;
+        else if(/merchant|ชื่อร้าน/.test(s)) f.mer=c;
+        else if(/install|วันที่ติด/.test(s)) f.date=c;
+      });
+      if(f.pc && (f.edc||f.tid||f.prov)){ hdr=i; map=f; break; } }
+      if(hdr<0){ Swal.fire({icon:'error',title:'อ่านไฟล์ไม่ได้',text:'ต้องมีคอลัมน์ Numeric Code (PCxxxx) + EDC Type/TID',confirmButtonColor:'#2e934a'}); return; }
+      var m=loadEdc(); var n=0; var who=(localStorage.getItem('pc_userName')||'Import');
+      for(var r=hdr+1;r<rows.length;r++){ var row=rows[r]; var pcv=(row[map.pc]||'').toUpperCase(); var mm=/PC\s*\d+/.exec(pcv); if(!mm) continue; var pc=mm[0].replace(/\s+/g,'');
+        var cur=m[pc]||{}; var G=function(c){ return c?((row[c]||'').trim()):''; };
+        if(map.edc){ var ev=G(map.edc).toUpperCase(); if(ev) cur.edc=ev; }
+        if(map.prov && G(map.prov)) cur.provider=G(map.prov);
+        if(map.tid && G(map.tid)) cur.tid=G(map.tid);
+        if(map.model && G(map.model)) cur.model=G(map.model);
+        if(map.sim && G(map.sim)) cur.sim=G(map.sim);
+        if(map.mer && G(map.mer)) cur.merchant=G(map.mer);
+        if(map.date && G(map.date)) cur.installDate=G(map.date);
+        cur.updatedAt=Date.now(); cur.updatedBy=who; m[pc]=cur; n++; }
+      saveEdc(m); renderEdc(); Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',html:'อัปเดท EDC <b>'+n+'</b> สาขา',confirmButtonColor:'#2e934a'});
+    }catch(e){ Swal.fire({icon:'error',title:'ผิดพลาด',text:String(e&&e.message||e),confirmButtonColor:'#2e934a'}); }
+  }
+  window.__edcImportPick=function(inp){ if(inp.files&&inp.files[0]) doEdcImport(inp.files[0]); inp.value=''; };
+
+  async function doZoneImport(file){
+    try{
+      var rows=await readImportRows(file);
+      var hdr=-1, map={};
+      for(var i=0;i<rows.length;i++){ var vals=rows[i]; var cols=Object.keys(vals); var found={};
+        cols.forEach(function(c){ var v=(vals[c]||'').toLowerCase();
+          if(/numeric/.test(v)||/shop code/.test(v)) found.pc=c;
+          else if(/alpha/.test(v)) found.alpha=c;
+          else if(/store/.test(v)||/shop name/.test(v)) found.store=c;
+          else if(/grade/.test(v)) found.grade=c;
+          else if(v==='zone') found.zone=c;
+          else if(v==='name') found.area=c;
+          else if(/tel/.test(v)) found.tel=c;
+        });
+        if(found.pc && (found.zone||found.area)){ hdr=i; map=found; break; }
+      }
+      if(hdr<0){ Swal.fire({icon:'error',title:'อ่านไฟล์ไม่ได้',text:'ไม่พบหัวตาราง (ต้องมี Numeric Code + ZONE/NAME)',confirmButtonColor:'#2e934a'}); return; }
+      var az=loadAZ(); var n=0;
+      for(var r=hdr+1;r<rows.length;r++){ var row=rows[r]; var pcv=(row[map.pc]||'').toUpperCase(); var m=/PC\s*\d+/.exec(pcv); if(!m) continue; var pc=m[0].replace(/\s+/g,'');
+        var cur=az[pc]||{mobile:''};
+        az[pc]={ zone:map.zone?(row[map.zone]||''):(cur.zone||''), area:map.area?(row[map.area]||''):(cur.area||''), tel:map.tel?((row[map.tel]||'').trim()):(cur.tel||''), alpha:map.alpha?(row[map.alpha]||''):(cur.alpha||''), grade:map.grade?(row[map.grade]||''):(cur.grade||''), store:map.store?(row[map.store]||''):(cur.store||''), mobile:cur.mobile||'' };
+        n++;
+      }
+      saveAZ(az); renderZone();
+      Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',html:'อัปเดทโซน/Area <b>'+n+'</b> สาขา',confirmButtonColor:'#2e934a'});
+    }catch(e){ Swal.fire({icon:'error',title:'ผิดพลาด',text:String(e&&e.message||e),confirmButtonColor:'#2e934a'}); }
+  }
+  window.__zoneImportPick=function(inp){ if(inp.files&&inp.files[0]) doZoneImport(inp.files[0]); inp.value=''; };
+
+  /* ---- e-Payment ต่อสาขา (แก้/Import) ---- */
+  var EPLS='pc_epay';
+  function loadEP(){ try{ return JSON.parse(localStorage.getItem(EPLS))||{}; }catch(e){ return {}; } }
+  function saveEP(m){ try{ localStorage.setItem(EPLS, JSON.stringify(m)); }catch(e){} }
+  function epRec(id){ var m=loadEP(); var cur=m[id]; var s=(window.PC_EPAY_SEED&&window.PC_EPAY_SEED.records)||{}; var base=cur||s[id]||{}; return {p1:base.p1||{},p2:base.p2||{},p3:base.p3||{},p4:base.p4||{}}; }
+  function renderEpay(){
+    var body=document.getElementById('epayBody'); if(!body) return;
+    var q=((document.getElementById('epaySearch')||{}).value||'').trim().toLowerCase();
+    var bs=(window.PC_BRANCH_MASTER||[]); var nf='<span style="color:#c0392b;font-weight:600">ไม่พบ</span>';
+    var rows=bs.filter(function(b){ return !q || (b.id+' '+(b.name||'')).toLowerCase().indexOf(q)>-1; });
+    var tc=document.getElementById('epayTabCount'); if(tc) tc.textContent=bs.length;
+    body.innerHTML = rows.map(function(b){ var e=epRec(b.id); var p1=e.p1||{},p2=e.p2||{},p3=e.p3||{},p4=e.p4||{}; var cell=function(v){ return v?esc(v):nf; }; var wm=p4.mid||p2.mid||'', ws=p4.shopid||p2.shopid||'';
+      return '<tr><td class="tcode">'+esc(b.id)+'</td><td>'+esc(b.name||'')+'</td><td>'+cell(p1.mid)+'</td><td>'+cell(p1.shopid)+'</td><td>'+cell(p2.mid)+'</td><td>'+cell(p2.shopid)+'</td><td>'+cell(wm)+'</td><td>'+cell(ws)+'</td><td>'+cell(p3.mid)+'</td><td>'+cell(p3.shopid)+'</td><td><button class="iconbtn" onclick="window.__epayEdit(\''+esc(b.id)+'\')"><i class="fas fa-pen"></i></button></td></tr>';
+    }).join('');
+  }
+  window.__renderEpay=renderEpay;
+  window.__epayEdit=function(id){ var e=epRec(id); var p1=e.p1||{},p2=e.p2||{},p3=e.p3||{},p4=e.p4||{}; var wm=p4.mid||p2.mid||'', ws=p4.shopid||p2.shopid||'';
+    Swal.fire({ title:'e-Payment · '+id, width:460, html:'<div style="text-align:left;font-family:Kanit,sans-serif;max-height:60vh;overflow:auto">'
+      +'<label style="font-size:.8rem;font-weight:600">TrueWallet — MID</label><input id="ep1m" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(p1.mid||'')+'">'
+      +'<label style="font-size:.8rem;font-weight:600">TrueWallet — ShopID</label><input id="ep1s" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(p1.shopid||'')+'">'
+      +'<label style="font-size:.8rem;font-weight:600">Alipay — MID</label><input id="ep2m" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(p2.mid||'')+'">'
+      +'<label style="font-size:.8rem;font-weight:600">Alipay — Operator ID</label><input id="ep2s" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(p2.shopid||'')+'">'
+      +'<label style="font-size:.8rem;font-weight:600">WeChat Pay — MID</label><input id="ep4m" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(wm)+'">'
+      +'<label style="font-size:.8rem;font-weight:600">WeChat Pay — Operator ID</label><input id="ep4s" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(ws)+'">'
+      +'<label style="font-size:.8rem;font-weight:600">ShopeePay — MID</label><input id="ep3m" class="swal2-input" style="margin:4px 0 8px;width:100%" value="'+esc(p3.mid||'')+'">'
+      +'<label style="font-size:.8rem;font-weight:600">ShopeePay — ShopID</label><input id="ep3s" class="swal2-input" style="margin:4px 0 0;width:100%" value="'+esc(p3.shopid||'')+'"></div>',
+      showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'บันทึก', cancelButtonText:'ยกเลิก', focusConfirm:false,
+      preConfirm:function(){ return { p1:{mid:document.getElementById('ep1m').value.trim(),shopid:document.getElementById('ep1s').value.trim()}, p2:{mid:document.getElementById('ep2m').value.trim(),shopid:document.getElementById('ep2s').value.trim()}, p4:{mid:document.getElementById('ep4m').value.trim(),shopid:document.getElementById('ep4s').value.trim()}, p3:{mid:document.getElementById('ep3m').value.trim(),shopid:document.getElementById('ep3s').value.trim()} }; }
+    }).then(function(res){ if(!res.isConfirmed) return; var m=loadEP(); var prev=m[id]||{}; res.value.updatedAt=Date.now(); m[id]=Object.assign({},prev,res.value); saveEP(m); renderEpay(); Swal.fire({icon:'success',title:'บันทึกแล้ว',timer:900,showConfirmButton:false}); });
+  };
+  async function doEpayImport(file){
+    try{ var rows=await readImportRows(file);
+      var hdr=-1,map={};
+      for(var i=0;i<rows.length;i++){ var v=rows[i]; var f={}; Object.keys(v).forEach(function(c){ var s=(v[c]||'').toLowerCase();
+        if(!f.pc && (/shop\s*code/.test(s)||/numeric/.test(s)||/รหัส/.test(s))) f.pc=c;
+        else if(/true\s*wallet.*mid|tw.*mid/.test(s)) f.twm=c;
+        else if(/true\s*wallet.*shop|tw.*shop/.test(s)) f.tws=c;
+        else if(/alipay.*mid/.test(s)) f.alm=c;
+        else if(/alipay.*(op|operator)/.test(s)) f.als=c;
+        else if(/wechat.*mid/.test(s)) f.wcm=c;
+        else if(/wechat.*(op|operator)/.test(s)) f.wcs=c;
+        else if(/shopee.*mid/.test(s)) f.spm=c;
+        else if(/shopee.*shop/.test(s)) f.sps=c;
+        else if(/operat/.test(s) && !f.als) f.als=c; /* backward compat: bare "Operator ID" = Alipay */
+      });
+        if(f.pc && (f.twm||f.tws||f.alm||f.als||f.wcm||f.wcs||f.spm||f.sps)){ hdr=i; map=f; break; } }
+      if(hdr<0){ Swal.fire({icon:'error',title:'อ่านไฟล์ไม่ได้',text:'ต้องมี Shop Code + คอลัมน์ e-Payment (MID/Operator ID)',confirmButtonColor:'#2e934a'}); return; }
+      var m=loadEP(); var n=0;
+      for(var r=hdr+1;r<rows.length;r++){ var row=rows[r]; var pcv=(row[map.pc]||'').toUpperCase(); var mm=/PC\s*\d+/.exec(pcv); if(!mm) continue; var pc=mm[0].replace(/\s+/g,'');
+        var cur=m[pc]||JSON.parse(JSON.stringify(epRec(pc))); cur.p1=cur.p1||{};cur.p2=cur.p2||{};cur.p3=cur.p3||{};cur.p4=cur.p4||{};
+        var G=function(c){ return (c!=null)?((row[c]||'').trim()):null; };
+        if(map.twm!=null) cur.p1.mid=G(map.twm); if(map.tws!=null) cur.p1.shopid=G(map.tws);
+        if(map.alm!=null) cur.p2.mid=G(map.alm); if(map.als!=null) cur.p2.shopid=G(map.als);
+        if(map.wcm!=null) cur.p4.mid=G(map.wcm); if(map.wcs!=null) cur.p4.shopid=G(map.wcs);
+        if(map.spm!=null) cur.p3.mid=G(map.spm); if(map.sps!=null) cur.p3.shopid=G(map.sps);
+        cur.updatedAt=Date.now(); m[pc]=cur; n++; }
+      saveEP(m); renderEpay(); Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',html:'อัปเดท e-Payment <b>'+n+'</b> สาขา',confirmButtonColor:'#2e934a'});
+    }catch(e){ Swal.fire({icon:'error',title:'ผิดพลาด',text:String(e&&e.message||e),confirmButtonColor:'#2e934a'}); }
+  }
+  window.__epayImportPick=function(inp){ if(inp.files&&inp.files[0]) doEpayImport(inp.files[0]); inp.value=''; };
+
+  /* ---- tender master ---- */
+  function deflt(){ return (window.PC_TENDER_MASTER||[]).slice(); }
+  function load(){ try{ var m=JSON.parse(localStorage.getItem(LS)); if(Array.isArray(m)&&m.length) return m; }catch(e){} return deflt(); }
+  function save(a){ try{ localStorage.setItem(LS, JSON.stringify(a)); }catch(e){} }
+  function iconFor(t){ if(t.kind==='manual'){ if(/qr|prompt/i.test(t.name))return 'fa-qrcode'; if(/edc|tid|m-edc/i.test(t.name+t.code))return 'fa-credit-card'; return 'fa-building'; }
+    if(t.saleMode==='Delivery') return 'fa-motorcycle'; if(/cash/i.test(t.name))return 'fa-money-bill-wave'; if(t.iface)return 'fa-credit-card'; return 'fa-wallet'; }
+
+  function rowHTML(t,i){
+    return '<tr>'
+      +'<td class="tcode">'+esc(t.code)+'</td>'
+      +'<td><div class="tname"><span class="ic"><i class="fas '+(t.icon||iconFor(t))+'"></i></span>'+esc(t.name)+'</div></td>'
+      +'<td>'+(t.kind==='manual'?'<span class="badge b-man">พิเศษ/สำรอง</span>':'<span class="badge b-std">มาตรฐาน</span>')+'</td>'
+      +'<td>'+(t.iface?'<span class="badge b-if"><i class="fas fa-link"></i> interface</span>':'<span class="note">—</span>')+'</td>'
+      +'<td><span class="note">'+esc(t.note||'—')+'</span></td>'
+      +'<td><div class="rowacts"><button class="iconbtn" title="แก้ไข" onclick="window.TS.edit('+i+')"><i class="fas fa-pen"></i></button>'
+      +'<button class="iconbtn del" title="ลบ" onclick="window.TS.del('+i+')"><i class="fas fa-trash"></i></button></div></td>'
+      +'</tr>';
+  }
+  function tableHTML(label,icon,rows){
+    var body = rows.length ? rows.map(function(x){ return rowHTML(x.t,x.i); }).join('')
+      : '<tr><td colspan="6"><div class="empty">ยังไม่มีรายการในกลุ่มนี้</div></td></tr>';
+    return '<div class="grp"><i class="fas '+icon+'"></i>'+esc(label)+'<span class="cnt">'+rows.length+'</span></div>'
+      +'<table><thead><tr><th>Code</th><th>Tender Name</th><th>ประเภท</th><th>Interface</th><th>หมายเหตุ</th><th></th></tr></thead>'
+      +'<tbody>'+body+'</tbody></table>';
+  }
+  function renderTender(){
+    var view=document.getElementById('tsTender'); if(!view) return;
+    var all=load(); var idx=all.map(function(t,i){ return {t:t,i:i}; });
+    var manual=idx.filter(function(x){ return x.t.kind==='manual'; });
+    var isEpay=function(t){ return /wechat|alipay|truemoney|shopeepay|line\s*pay/i.test(t.name||''); };
+    var epay=idx.filter(function(x){ return x.t.kind!=='manual' && isEpay(x.t); });
+    var stTA=idx.filter(function(x){ return x.t.kind!=='manual' && !isEpay(x.t) && x.t.saleMode==='Take Away'; });
+    var stDLV=idx.filter(function(x){ return x.t.kind!=='manual' && !isEpay(x.t) && x.t.saleMode==='Delivery'; });
+    view.innerHTML =
+      tableHTML('ช่องทางมาตรฐาน · Take Away','fa-bag-shopping',stTA)
+      +'<div style="height:18px"></div>'+tableHTML('ช่องทางมาตรฐาน · Delivery','fa-motorcycle',stDLV)
+      +'<div style="height:18px"></div>'+tableHTML('e-payment (มีทุกสาขา)','fa-wallet',epay)
+      +'<div style="height:18px"></div>'+tableHTML('ช่องทางพิเศษ / สำรอง — สาขาขอเปิดเอง','fa-star',manual);
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  /* ---- EDC per branch ---- */
+  var EDC_META={
+    'KPLUS':{label:'KPLUS (รูดบัตร interface POS)', cls:'b-if',    icon:'fa-credit-card'},
+    'M-EDC':{label:'M-EDC (เครื่อง TID · manual)',  cls:'b-man',   icon:'fa-credit-card'},
+    'MALL' :{label:'EDC ผ่านห้าง',                  cls:'b-man',   icon:'fa-building'},
+    'NONE' :{label:'ไม่ใช้ EDC (เงินสด/QR)',         cls:'b-none',  icon:'fa-ban'},
+    ''     :{label:'ยังไม่ระบุ',                     cls:'b-unset', icon:'fa-circle-question'}
+  };
+  var EDC_KEYS=['KPLUS','M-EDC','MALL','NONE'];
+  function branches(){ return (window.PC_BRANCH_MASTER||[]).slice(); }
+  function loadEdc(){ try{ return JSON.parse(localStorage.getItem(BLS))||{}; }catch(e){ return {}; } }
+  function saveEdc(m){ try{ localStorage.setItem(BLS, JSON.stringify(m)); }catch(e){} }
+  function edcOf(id){ var m=loadEdc(); return m[id]||{edc:'',provider:'',note:''}; }
+
+  function renderEdcChips(){
+    var box=document.getElementById('edcChips'); if(!box) return;
+    var m=loadEdc(); var bs=branches();
+    var c={KPLUS:0,'M-EDC':0,MALL:0,NONE:0,unset:0};
+    bs.forEach(function(b){ var e=(m[b.id]&&m[b.id].edc)||''; if(c[e]!==undefined) c[e]++; else c.unset++; });
+    box.innerHTML =
+      '<div class="chip all"><span class="n">'+bs.length+'</span> ทั้งหมด</div>'
+      +'<div class="chip if"><span class="n">'+c.KPLUS+'</span> KPLUS</div>'
+      +'<div class="chip man"><span class="n">'+(c['M-EDC']+c.MALL)+'</span> EDC สำรอง/ห้าง</div>'
+      +'<div class="chip none"><span class="n">'+c.NONE+'</span> ไม่ใช้ EDC</div>'
+      +'<div class="chip unset"><span class="n">'+c.unset+'</span> ยังไม่ระบุ</div>';
+    var tc=document.getElementById('edcTabCount'); if(tc) tc.textContent=bs.length;
+  }
+  function edcRow(b){
+    var e=edcOf(b.id);
+    var opts='<option value="">— ยังไม่ระบุ —</option>'+EDC_KEYS.map(function(k){
+      return '<option value="'+k+'"'+(e.edc===k?' selected':'')+'>'+esc(EDC_META[k].label)+'</option>'; }).join('');
+    return '<tr class="'+(e.edc?'':'unset')+'" data-id="'+esc(b.id)+'">'
+      +'<td class="tcode">'+esc(b.id)+'</td>'
+      +'<td><div style="font-weight:600">'+esc(b.name||b.id)+'</div><div class="stype">'+esc(b.nameTH||'')+(b.type?' · '+esc(b.type):'')+'</div></td>'
+      +'<td><select class="edcsel" onchange="window.TS.setEdc(\''+esc(b.id)+'\',\'edc\',this.value)">'+opts+'</select></td>'
+      +'<td><input class="rowinp" value="'+esc(e.provider||'')+'" placeholder="เช่น KBank / SCB" onchange="window.TS.setEdc(\''+esc(b.id)+'\',\'provider\',this.value)"></td>'
+      +'<td><input class="rowinp" value="'+esc(e.note||'')+'" placeholder="หมายเหตุ / Serial" onchange="window.TS.setEdc(\''+esc(b.id)+'\',\'note\',this.value)"></td>'
+      +'</tr>';
+  }
+  function renderEdc(){
+    var body=document.getElementById('edcBody'); if(!body) return;
+    var q=((document.getElementById('edcSearch')||{}).value||'').trim().toLowerCase();
+    var f=(document.getElementById('edcFilter')||{}).value||'';
+    var m=loadEdc();
+    var rows=branches().filter(function(b){
+      if(q && (b.id+' '+(b.name||'')+' '+(b.nameTH||'')).toLowerCase().indexOf(q)===-1) return false;
+      if(f){ var e=(m[b.id]&&m[b.id].edc)||''; if(f==='UNSET'){ if(e) return false; } else if(e!==f) return false; }
+      return true;
+    });
+    body.innerHTML = rows.length ? rows.map(edcRow).join('') : '<tr><td colspan="5"><div class="empty">ไม่พบสาขาตามเงื่อนไข</div></td></tr>';
+    renderEdcChips();
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  var curTab='tender';
+  window.TS={
+    tab:function(t){
+      curTab=t;
+      document.getElementById('tab-tender').classList.toggle('on', t==='tender');
+      document.getElementById('tab-edc').classList.toggle('on', t==='edc');
+      var _tz=document.getElementById('tab-zone'); if(_tz) _tz.classList.toggle('on', t==='zone');
+      document.getElementById('paneTender').style.display = t==='tender'?'':'none';
+      document.getElementById('paneEdc').style.display = t==='edc'?'':'none';
+      var _pz=document.getElementById('paneZone'); if(_pz) _pz.style.display = t==='zone'?'':'none';
+      var _pe=document.getElementById('paneEpay'); if(_pe) _pe.style.display = t==='epay'?'':'none';
+      var _te=document.getElementById('tab-epay'); if(_te) _te.classList.toggle('on', t==='epay');
+      if(t==='edc') renderEdc();
+      if(t==='zone') renderZone();
+      if(t==='epay') renderEpay();
+    },
+    setEdc:function(id, field, value){
+      var m=loadEdc(); m[id]=m[id]||{edc:'',provider:'',note:''}; m[id][field]=value; saveEdc(m);
+      if(field==='edc'){
+        renderEdcChips();
+        var tr=document.querySelector('#edcBody tr[data-id="'+id+'"]'); if(tr) tr.classList.toggle('unset', !value);
+        var f=(document.getElementById('edcFilter')||{}).value||''; if(f) renderEdc();
+      }
+    },
+    renderEdc:renderEdc,
+    bulkKplus:function(){
+      Swal.fire({icon:'question',title:'ตั้งสาขาที่ยังไม่ระบุ = KPLUS?',text:'ใช้กับสาขาที่ยังไม่ได้เลือก EDC เท่านั้น',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'ตั้งค่า',cancelButtonText:'ยกเลิก'})
+        .then(function(res){ if(!res.isConfirmed) return; var m=loadEdc(); var n=0;
+          branches().forEach(function(b){ var e=(m[b.id]&&m[b.id].edc)||''; if(!e){ m[b.id]=m[b.id]||{provider:'',note:''}; m[b.id].edc='KPLUS'; n++; } });
+          saveEdc(m); renderEdc(); Swal.fire({icon:'success',title:'ตั้งค่าแล้ว '+n+' สาขา',timer:1300,showConfirmButton:false}); });
+    },
+    exportEdc:function(){
+      var m=loadEdc();
+      var rows=[['รหัสสาขา','ชื่อสาขา','ประเภท','EDC ที่ใช้','ผู้ให้บริการ/ธนาคาร','หมายเหตุ']];
+      branches().forEach(function(b){ var e=m[b.id]||{}; rows.push([b.id, b.name||'', b.type||'', (EDC_META[e.edc||'']||{}).label||'ยังไม่ระบุ', e.provider||'', e.note||'']); });
+      var csv='\ufeff'+rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download='branch_edc.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    },
+    edit:function(i){
+      var all=load();
+      var t = (i===null||i===undefined) ? {code:'',name:'',saleMode:'Take Away',kind:'standard',iface:false,note:''} : all[i];
+      var isNew = (i===null||i===undefined);
+      Swal.fire({
+        title: isNew?'เพิ่ม Tender':'แก้ไข Tender', width:480,
+        html:
+          '<div style="text-align:left;font-family:Kanit,sans-serif;">'
+          +'<label style="font-size:.82rem;font-weight:600;color:#5a616b;">Tender Code *</label>'
+          +'<input id="ts_code" class="swal2-input" style="margin:5px 0 12px;width:100%;font-family:JetBrains Mono,monospace;" value="'+esc(t.code)+'" placeholder="เช่น T006, SPF, T007">'
+          +'<label style="font-size:.82rem;font-weight:600;color:#5a616b;">Tender Name *</label>'
+          +'<input id="ts_name" class="swal2-input" style="margin:5px 0 12px;width:100%;" value="'+esc(t.name)+'" placeholder="เช่น PROMPTPAY|KPLUS">'
+          +'<label style="font-size:.82rem;font-weight:600;color:#5a616b;">Sale Mode</label>'
+          +'<select id="ts_sm" class="swal2-select" style="margin:5px 0 12px;width:100%;display:block;">'
+            +'<option value="Take Away"'+(t.saleMode==='Take Away'?' selected':'')+'>Take Away</option>'
+            +'<option value="Delivery"'+(t.saleMode==='Delivery'?' selected':'')+'>Delivery</option></select>'
+          +'<label style="font-size:.82rem;font-weight:600;color:#5a616b;">ประเภท</label>'
+          +'<select id="ts_kind" class="swal2-select" style="margin:5px 0 12px;width:100%;display:block;">'
+            +'<option value="standard"'+(t.kind!=='manual'?' selected':'')+'>มาตรฐาน (เปิดบน POS หลัก)</option>'
+            +'<option value="manual"'+(t.kind==='manual'?' selected':'')+'>พิเศษ/สำรอง (สาขาขอเปิดเอง)</option></select>'
+          +'<label style="display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;color:#3a4150;margin:4px 0 12px;cursor:pointer;">'
+            +'<input type="checkbox" id="ts_if" '+(t.iface?'checked':'')+' style="width:18px;height:18px;"> เป็นเครื่อง EDC ที่ interface กับ POS</label>'
+          +'<label style="font-size:.82rem;font-weight:600;color:#5a616b;">หมายเหตุ</label>'
+          +'<textarea id="ts_note" class="swal2-textarea" style="margin:5px 0 0;width:100%;" placeholder="คำอธิบายการใช้งาน">'+esc(t.note||'')+'</textarea>'
+          +'</div>',
+        showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:isNew?'เพิ่ม':'บันทึก', cancelButtonText:'ยกเลิก', focusConfirm:false,
+        preConfirm:function(){
+          var code=(document.getElementById('ts_code').value||'').trim();
+          var name=(document.getElementById('ts_name').value||'').trim();
+          if(!code||!name){ Swal.showValidationMessage('กรอก Tender Code และ Name ให้ครบ'); return false; }
+          return { code:code, name:name, saleMode:document.getElementById('ts_sm').value, kind:document.getElementById('ts_kind').value,
+            iface:document.getElementById('ts_if').checked, note:(document.getElementById('ts_note').value||'').trim() };
+        }
+      }).then(function(res){
+        if(!res.isConfirmed) return; var v=res.value; v.icon=iconFor(v);
+        var arr=load(); if(isNew) arr.push(v); else arr[i]=v; save(arr); renderTender();
+        Swal.fire({icon:'success',title:isNew?'เพิ่มแล้ว':'บันทึกแล้ว',timer:1100,showConfirmButton:false});
+      });
+    },
+    del:function(i){
+      var all=load(); var t=all[i]; if(!t) return;
+      Swal.fire({icon:'warning',title:'ลบ Tender นี้?',html:'<b>'+esc(t.code)+'</b> · '+esc(t.name),showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'})
+        .then(function(res){ if(res.isConfirmed){ all.splice(i,1); save(all); renderTender(); } });
+    },
+    reset:function(){
+      Swal.fire({icon:'warning',title:'คืนค่าเริ่มต้น?',text:'รายการ Tender จะกลับเป็นค่ามาตรฐานทั้งหมด',showCancelButton:true,confirmButtonColor:'#9a6700',confirmButtonText:'คืนค่า',cancelButtonText:'ยกเลิก'})
+        .then(function(res){ if(res.isConfirmed){ try{ localStorage.removeItem(LS); }catch(e){} renderTender(); Swal.fire({icon:'success',title:'คืนค่าแล้ว',timer:1000,showConfirmButton:false}); } });
+    },
+    setWorkflow:function(mode){
+      try{ localStorage.setItem(WFLS, mode==='area'?'area':'acct'); }catch(e){} renderWorkflow();
+      if(mode==='area'){ Swal.fire({icon:'success',title:'เปิดโหมด Area แล้ว',html:'ขั้นตอน: สาขา → <b>Area</b> อนุมัติ → บัญชี → IT<br><small>Area เห็นเฉพาะสาขาในโซนของชื่อตัวเอง (จับคู่ชื่อ Area กับชื่อ OP ในหน้าสิทธิ์)</small>',confirmButtonColor:'#2e934a'}); }
+      else { Swal.fire({icon:'success',title:'ใช้โหมด สาขา → บัญชี → IT',timer:1200,showConfirmButton:false}); }
+    }
+  };
+
+  window.initTenderSettings=function(){ renderTender(); renderEdcChips(); renderWorkflow(); renderOpAreas(); window.TS.tab('tender'); };
+})();
+</script>

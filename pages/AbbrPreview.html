@@ -1,0 +1,240 @@
+<div class="container-fluid px-0" style="font-family:'Kanit',sans-serif">
+<div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+<div class="d-flex align-items-center justify-content-center" style="width:46px;height:46px;border-radius:12px;background:#1a1d20;color:#ffc107;font-size:1.2rem"><i class="fas fa-arrow-right-arrow-left"></i></div>
+<div>
+<h4 class="fw-bold mb-0" style="letter-spacing:-.3px">รายการที่จะเปลี่ยนตัวย่อ</h4>
+<div class="small text-muted">ตรวจก่อนยืนยัน — คัดลอก Item Code / คำใหม่ ไปวาง Excel หรือระบบหลังบ้านได้ทุกช่อง</div>
+</div>
+<button class="btn btn-outline-dark fw-bold ms-auto" onclick="window.apGoBack()"><i class="fas fa-arrow-left me-1"></i>กลับหน้างาน IT</button>
+</div>
+<div id="apHead"></div>
+<div id="apBody"></div>
+</div>
+<script>
+(function () {
+  var ROWS = [], P = null, REQ = null, EXC = { codes: {}, texts: {} };
+  var FILT = { s1: '', s2: '', e1: '', e2: '' };   /* ตัวกรองวันที่ที่หัวตาราง */
+  function excKey() { return 'pc_abbr_exc_' + String((P && (P.olds ? P.olds.join('_') : P.oldA)) || '') + '_' + String((P && P.newA) || ''); }
+  function excLoad() {
+    EXC = { codes: {}, texts: {} };
+    var src = null;
+    if (REQ && window.PC_Abbr && PC_Abbr.reqGetExclude) src = PC_Abbr.reqGetExclude(REQ.id);
+    if (!src || (!src.exclude.length && !src.excludeText.length)) {
+      try { src = JSON.parse(localStorage.getItem(excKey())) || null; } catch (e) { src = null; }
+      if (src && !src.exclude) src = { exclude: src.codes || [], excludeText: src.texts || [] };
+    }
+    ((src && src.exclude) || []).forEach(function (c) { EXC.codes[String(c).trim()] = 1; });
+    ((src && src.excludeText) || []).forEach(function (t) { EXC.texts[String(t).trim().toLowerCase()] = 1; });
+  }
+  function excArrays() {
+    return { exclude: Object.keys(EXC.codes), excludeText: Object.keys(EXC.texts) };
+  }
+  function excSave() {
+    var a = excArrays();
+    try { localStorage.setItem(excKey(), JSON.stringify(a)); } catch (e) {}
+    if (REQ && window.PC_Abbr && PC_Abbr.reqSetExclude) PC_Abbr.reqSetExclude(REQ.id, a.exclude, a.excludeText);
+  }
+  function isExc(r) {
+    if (!r) return false;
+    if (r.code && EXC.codes[String(r.code).trim()]) return true;
+    return !!EXC.texts[String(r.from || '').trim().toLowerCase()];
+  }
+  function setExc(r, on) {
+    if (!r) return;
+    if (r.code) { if (on) EXC.codes[String(r.code).trim()] = 1; else delete EXC.codes[String(r.code).trim()]; }
+    else { var k = String(r.from || '').trim().toLowerCase(); if (on) EXC.texts[k] = 1; else delete EXC.texts[k]; }
+  }
+  function liveRows() { return ROWS.filter(function (r) { return !isExc(r); }); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function jsArg(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function req(){
+    var id = window.__abbrReqId || localStorage.getItem('pc_abbr_page_req') || '';
+    var list = (window.PC_Abbr && PC_Abbr.reqList) ? PC_Abbr.reqList() : [];
+    return list.filter(function (x) { return x.id === id; })[0] || list.filter(function (x) { return String(x.status||'').toUpperCase()==='PENDING'; })[0] || null;
+  }
+  /* ---- แปลง preview() 5 กลุ่ม → แถวตารางเดียว ---- */
+  function build(p) {
+    var out = [];
+    var IS = p.itemStart || {}, IE = p.itemEnd || {}, ID = p.itemDates || {};   /* itemCode → ช่วงเวลาจากตารางราคารายสาขา + ปุ่มโปร */
+    var startOf = function (code, own) { var c = String(code || '').trim(); return own || (ID[c] && ID[c].start) || IS[c] || ''; };
+    var endOf = function (code, own) { var c = String(code || '').trim(); return own || (ID[c] && ID[c].end) || IE[c] || ''; };
+    (p.subsets || []).forEach(function (s) { out.push({ grp:'ชุดผง', code:s.code||'', field:'ตัวย่อชุดผง', from:s.from, to:s.to, ref:s.fromName||'', ty:'Subset', st:s.status||'', dt:startOf(s.code), dt2:endOf(s.code), note:s.status||'' }); });
+    (p.items || []).forEach(function (it) {
+      out.push({ grp:'ข้อมูลหลักสินค้า', code:it.code||'', field:'ชื่อ (EN)', from:it.fromEn, to:it.toEn, ref:it.category||'', ty:it.itemType||'', st:it.status||'', dt:startOf(it.code, it.start), dt2:endOf(it.code, it.end), note:[it.itemType,it.status].filter(Boolean).join(' · ') });
+      if (it.fromTh && it.fromTh !== it.toTh) out.push({ grp:'ข้อมูลหลักสินค้า', code:it.code||'', field:'ชื่อ (TH)', from:it.fromTh, to:it.toTh, ref:it.category||'', ty:it.itemType||'', st:it.status||'', dt:startOf(it.code, it.start), dt2:endOf(it.code, it.end), note:[it.itemType,it.status].filter(Boolean).join(' · ') });
+    });
+    (p.promoKitchen || []).forEach(function (k) { out.push({ grp:'ชื่อครัวปุ่มโปร', code:'', field:'Kitchen Name', from:k.from, to:k.to, ref:k.campaign||'', dt:k.start||'', dt2:k.end||'', note:k.live?'ขึ้น POS แล้ว':'' }); });
+    (p.promoShort || []).forEach(function (s) { out.push({ grp:'ชื่อปุ่ม POS', code:'', field:'Short Name', from:s.from, to:s.to, ref:s.campaign||'', dt:s.start||'', dt2:s.end||'', note:'' }); });
+    (p.rowItems || []).forEach(function (r) { out.push({ grp:'งานที่ยังไม่ปิด', code:r.code||'', dt:r.start||startOf(r.code), dt2:r.end||endOf(r.code), field:'ชื่อสินค้าในแถวโปร', from:r.from, to:r.to, ref:r.campaign||r.shortName||'', note:r.stage||'' }); });
+    (p.newProducts || []).forEach(function (n) {
+      out.push({ grp:'สินค้าที่ IT สร้างไว้', code:n.code||'', field:'ชื่อ (EN)', from:n.fromEn, to:n.toEn, ref:'', ty:n.itemType||'', st:n.status||'', dt:startOf(n.code, n.start), dt2:endOf(n.code, n.end), note:[n.itemType,n.status].filter(Boolean).join(' · ') });
+      if (n.fromTh && n.fromTh !== n.toTh) out.push({ grp:'สินค้าที่ IT สร้างไว้', code:n.code||'', field:'ชื่อ (TH)', from:n.fromTh, to:n.toTh, ref:'', ty:n.itemType||'', st:n.status||'', dt:startOf(n.code, n.start), dt2:endOf(n.code, n.end), note:[n.itemType,n.status].filter(Boolean).join(' · ') });
+    });
+    return out;
+  }
+  function chip(label, val, cls) {
+    return '<div class="px-3 py-2 rounded-3 ' + cls + '"><div class="small" style="opacity:.75;font-size:.72rem">' + esc(label) + '</div><div class="fw-bold" style="font-size:1.15rem;line-height:1.15">' + esc(val) + '</div></div>';
+  }
+  function head() {
+    var groups = {}; ROWS.forEach(function (r) { groups[r.grp] = (groups[r.grp] || 0) + 1; });
+    var h = '<div class="p-3 rounded-4 mb-3" style="background:#fff;border:1px solid #e9edf1">' +
+      '<div class="d-flex align-items-center gap-3 flex-wrap mb-3">' +
+        '<div class="d-flex align-items-center gap-2">' +
+          '<span class="px-3 py-2 rounded-3 fw-bold" style="background:#fdecea;color:#c0392b;font-size:1.05rem">' + esc(P.olds ? P.olds.join(' + ') : P.oldA) + '</span>' +
+          '<i class="fas fa-arrow-right text-muted"></i>' +
+          '<span class="px-3 py-2 rounded-3 fw-bold" style="background:#eafaf1;color:#1d7a4d;font-size:1.05rem">' + esc(P.newA) + '</span>' +
+        '</div>' +
+        (REQ ? '<div class="small text-muted">คำขอ <b>' + esc(REQ.id) + '</b> · ยื่นโดย ' + esc(REQ.by || '-') + ' · ' + esc(String(REQ.at || '').slice(0, 10)) + (REQ.reason ? ' · ' + esc(REQ.reason) : '') + '</div>' : '') +
+        '<div class="ms-auto d-flex gap-2 flex-wrap">' +
+          '<button class="btn btn-sm btn-dark fw-bold" onclick="window.apCopyDoc(this)"><i class="fas fa-copy me-1"></i>คัดลอกทั้งเอกสาร</button>' +
+          '<button class="btn btn-sm btn-outline-dark fw-bold" onclick="window.apCopyCol(this,\'code\')"><i class="fas fa-barcode me-1"></i>คัดลอก Item Code ทั้งหมด</button>' +
+          '<button class="btn btn-sm btn-outline-dark fw-bold" onclick="window.apCopyCol(this,\'to\')"><i class="fas fa-font me-1"></i>คัดลอกคำใหม่ทั้งหมด</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="d-flex gap-2 flex-wrap">' + chip('จะเปลี่ยน', liveRows().length + ' รายการ', 'bg-dark text-white') +
+        (ROWS.length - liveRows().length ? chip('ตัดออก (ไม่เปลี่ยน)', (ROWS.length - liveRows().length) + ' รายการ', 'text-white') .replace('class="px-3 py-2 rounded-3 text-white"', 'class="px-3 py-2 rounded-3 text-white" style="background:#c0392b"') : '') +
+        Object.keys(groups).map(function (g) { return chip(g, groups[g], 'bg-light text-dark border'); }).join('') + '</div>' +
+      ((P.warnings || []).length ? '<div class="mt-3 p-3 rounded-3" style="background:#fff7e6;border:1px solid #f3e0b8;font-size:.83rem;color:#8a6100">' + P.warnings.map(function (w) { return '<div><i class="fas fa-triangle-exclamation me-2"></i>' + esc(w) + '</div>'; }).join('') + '</div>' : '') +
+      '</div>';
+    document.getElementById('apHead').innerHTML = h;
+  }
+  /* วันที่เริ่มของปุ่ม/สินค้า → YYYY-MM-DD สำหรับเทียบช่วง (รับ DD/MM/YYYY ด้วย) */
+  function dnum(v) {
+    var t = String(v || '').trim(); if (!t) return '';
+    var m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (m) { var y = +m[3]; if (y > 2400) y -= 543; return y + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2); }
+    m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (m) { var y2 = +m[1]; if (y2 > 2400) y2 -= 543; return y2 + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2); }
+    return t;
+  }
+  function dshow(v) { var d = dnum(v); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return v || ''; var p = d.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function rowHTML(r, i) {
+    var cp = function (v, cls) { return '<button class="pct-btn ' + cls + '" type="button" title="คัดลอก" onclick="window.apCopy(this,\'' + jsArg(v) + '\')"><i class="fas fa-copy"></i></button>'; };
+    var ex = isExc(r);
+    return '<tr data-i="' + i + '"' + (ex ? ' style="opacity:.5;background:#fff5f5"' : '') + '>' +
+      '<td class="cfit text-center"><input type="checkbox" class="form-check-input" ' + (ex ? '' : 'checked ') + 'title="ติ๊ก = เปลี่ยนตัวย่อ · ติ๊กออก = ไม่เปลี่ยนรายการนี้" onchange="window.apToggle(' + i + ', this.checked)"></td>' +
+      '<td class="cfit"><span class="badge rounded-pill" style="background:#eef1f4;color:#3a4150;font-weight:600">' + esc(r.grp) + '</span></td>' +
+      '<td class="cfit"><div class="d-flex align-items-center gap-2"><code class="ap-code" style="font-size:.85rem;color:#1a1d20">' + (r.code ? esc(r.code) : '<span class="text-muted">—</span>') + '</code>' + (r.code ? cp(r.code, '') : '') + '</div></td>' +
+      '<td class="cfit small text-muted">' + esc(r.field) + '</td>' +
+      '<td class="wrap"><span class="ap-from" style="color:#c0392b">' + esc(r.from) + '</span></td>' +
+      '<td class="wrap"><div class="d-flex align-items-center gap-2"><span class="ap-to fw-bold" style="color:' + (ex ? '#8a9099;text-decoration:line-through' : '#1d7a4d') + '">' + esc(r.to) + '</span>' + (ex ? '<span class="badge" style="background:#fdecea;color:#c0392b">ไม่เปลี่ยน</span>' : cp(r.to, '')) + '</div></td>' +
+      '<td class="wrap small">' + esc(r.ref || '—') + '</td>' +
+      '<td class="cfit small" style="white-space:nowrap">' + (r.dt ? esc(dshow(r.dt)) : '<span class="text-muted">—</span>') + '</td>' +
+      '<td class="cfit small" style="white-space:nowrap">' + (r.dt2 ? esc(dshow(r.dt2)) : '<span class="text-muted">—</span>') + '</td>' +
+      '<td class="cfit small text-muted">' + esc(r.note || '') + '</td>' +
+      '<td class="cfit"><button class="pct-btn" type="button" title="คัดลอกทั้งแถว (TAB — วาง Excel ได้)" onclick="window.apCopyRow(this)"><i class="fas fa-table-list"></i></button></td>' +
+    '</tr>';
+  }
+  function table() {
+    var q = (document.getElementById('apQ') || {}).value || '', g = (document.getElementById('apG') || {}).value || '';
+    var fTy = (document.getElementById('apTy') || {}).value || '', fSt = (document.getElementById('apSt') || {}).value || '';
+    var fM = (document.getElementById('apM') || {}).value || '';
+    var view = ROWS.filter(function (r) {
+      if (g && r.grp !== g) return false;
+      if (fTy && String(r.ty || '') !== fTy) return false;
+      if (fSt && String(r.st || '').toUpperCase() !== fSt.toUpperCase()) return false;
+      if (fM) { var dm = dnum(r.dt); if (!dm || dm.slice(0, 7) !== fM) return false; }
+      if (FILT.s1 || FILT.s2) { var d = dnum(r.dt); if (!d) return false; if (FILT.s1 && d < FILT.s1) return false; if (FILT.s2 && d > FILT.s2) return false; }
+      if (FILT.e1 || FILT.e2) { var d2 = dnum(r.dt2); if (!d2) return false; if (FILT.e1 && d2 < FILT.e1) return false; if (FILT.e2 && d2 > FILT.e2) return false; }
+      if (!q) return true;
+      var s = (r.code + ' ' + r.from + ' ' + r.to + ' ' + r.ref + ' ' + r.field).toLowerCase();
+      return s.indexOf(q.toLowerCase()) >= 0;
+    });
+    window.__apView = view;
+    var groups = {}; ROWS.forEach(function (r) { groups[r.grp] = 1; });
+    document.getElementById('apBody').innerHTML =
+      '<div class="p-3 rounded-4" style="background:#fff;border:1px solid #e9edf1">' +
+      '<div class="d-flex gap-2 flex-wrap align-items-center mb-2">' +
+        '<select id="apG" class="form-select form-select-sm" style="width:auto" onchange="window.apRender()"><option value="">ทุกกลุ่ม</option>' +
+          Object.keys(groups).map(function (k) { return '<option value="' + esc(k) + '"' + (g === k ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select>' +
+        '<select id="apTy" class="form-select form-select-sm" style="width:auto" onchange="window.apRender()"><option value="">ทุกชนิดสินค้า</option>' +
+          [['Item Set','Item Set'],['Single Item','Single Item'],['Subset','ชุดผง (Subset)']].map(function (k) { return '<option value="' + k[0] + '"' + (fTy === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select>' +
+        '<select id="apSt" class="form-select form-select-sm" style="width:auto" onchange="window.apRender()"><option value="">ทุก Status</option>' +
+          ['Active','Inactive'].map(function (k) { return '<option value="' + k + '"' + (fSt === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>' +
+        '<label class="d-flex align-items-center gap-1 small text-muted" style="white-space:nowrap">เดือน<input type="month" id="apM" class="form-control form-control-sm" style="width:auto" value="' + esc(fM) + '" onchange="window.apRender()"></label>' +
+        ((FILT.s1 || FILT.s2 || FILT.e1 || FILT.e2) ? '<span class="badge" style="background:#eef1f4;color:#3a4150">กรองวันที่ที่หัวตาราง</span>' : '') +
+        (FILT.s1 || FILT.s2 || FILT.e1 || FILT.e2 || fM ? '<button class="btn btn-sm btn-outline-secondary" onclick="window.apClearDate()"><i class="fas fa-eraser me-1"></i>ล้างวันที่</button>' : '') +
+        '<div class="pct-search-wrap d-flex align-items-center" style="border:1.4px solid #dde2e7;border-radius:9px;overflow:hidden;background:#fff"><i class="fas fa-search px-2 text-muted"></i><input id="apQ" value="' + esc(q) + '" placeholder="ค้นหา code / ชื่อ / แคมเปญ" style="border:none;outline:none;padding:6px 8px;font-family:inherit;font-size:.84rem;min-width:220px"></div>' +
+        '<button class="btn btn-sm btn-outline-danger fw-bold" onclick="window.apExcView(true)" title="ตัดทุกแถวที่กรองอยู่ตอนนี้ออกจากรายการเปลี่ยน"><i class="fas fa-ban me-1"></i>ตัดที่กรองอยู่ออก (' + view.length + ')</button>' +
+        (ROWS.length - liveRows().length ? '<button class="btn btn-sm btn-outline-secondary fw-bold" onclick="window.apExcClear()"><i class="fas fa-rotate-left me-1"></i>คืนที่ตัดออก (' + (ROWS.length - liveRows().length) + ')</button>' : '') +
+        '<span class="ms-auto small text-muted">แสดง ' + view.length + ' / ' + ROWS.length + ' รายการ</span>' +
+      '</div>' +
+      '<div class="pct-wrap" style="max-height:62vh"><table class="pct" id="apTable"><thead><tr class="pct-h">' +
+        ['เปลี่ยน','กลุ่ม','Item Code','ช่อง','ค่าเดิม','คำใหม่','แคมเปญ / หมวด','วันที่เริ่ม','วันที่สิ้นสุด','สถานะ',''].map(function (h) { return '<th>' + h + '</th>'; }).join('') +
+      '</tr><tr class="pct-fh">' +
+        '<th></th><th></th><th></th><th></th><th></th><th></th><th></th>' +
+        '<th><div class="d-flex flex-column gap-1">' +
+          '<input type="date" class="form-control form-control-sm" style="min-width:132px" value="' + esc(FILT.s1) + '" title="วันที่เริ่ม ตั้งแต่" onchange="window.apF(\'s1\', this.value)">' +
+          '<input type="date" class="form-control form-control-sm" style="min-width:132px" value="' + esc(FILT.s2) + '" title="วันที่เริ่ม ถึง" onchange="window.apF(\'s2\', this.value)">' +
+        '</div></th>' +
+        '<th><div class="d-flex flex-column gap-1">' +
+          '<input type="date" class="form-control form-control-sm" style="min-width:132px" value="' + esc(FILT.e1) + '" title="วันที่สิ้นสุด ตั้งแต่" onchange="window.apF(\'e1\', this.value)">' +
+          '<input type="date" class="form-control form-control-sm" style="min-width:132px" value="' + esc(FILT.e2) + '" title="วันที่สิ้นสุด ถึง" onchange="window.apF(\'e2\', this.value)">' +
+        '</div></th>' +
+        '<th></th><th></th>' +
+      '</tr></thead><tbody>' + (view.length ? view.map(function (r) { return rowHTML(r, ROWS.indexOf(r)); }).join('') : '<tr><td colspan="11" class="pct-empty"><i class="fas fa-inbox"></i>ไม่มีรายการตามที่กรอง</td></tr>') + '</tbody></table></div>' +
+      '</div>';
+    var qi = document.getElementById('apQ');
+    if (qi) { qi.addEventListener('input', function () { clearTimeout(window.__apT); window.__apT = setTimeout(window.apRender, 220); }); }
+  }
+  function flash(btn) {
+    if (!btn) return; var old = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check" style="color:#1d7a4d"></i>';
+    setTimeout(function () { btn.innerHTML = old; }, 1100);
+  }
+  function put(text, btn) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function(){fallback(text)});
+      else fallback(text);
+    } catch (e) { fallback(text); }
+    flash(btn);
+    function fallback(t) { var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (x) {} ta.remove(); }
+  }
+  window.apClearDate = function () { FILT = { s1: '', s2: '', e1: '', e2: '' }; var e = document.getElementById('apM'); if (e) e.value = ''; window.apRender(); };
+  window.apF = function (k, v) { FILT[k] = v || ''; window.apRender(); };
+  window.apCopy = function (btn, v) { put(v, btn); };
+  window.apCopyRow = function (btn) {
+    var tr = btn.closest('tr'); if (!tr) return;
+    var r = ROWS[Number(tr.getAttribute('data-i'))]; if (!r) return;
+    put([r.code, r.field, r.from, r.to, r.ref, dshow(r.dt), dshow(r.dt2), r.note].join('\t'), btn);
+  };
+  window.apCopyCol = function (btn, key) {
+    var seen = {}, vals = [];
+    liveRows().forEach(function (r) { var v = r[key]; if (!v || seen[v]) return; seen[v] = 1; vals.push(v); });
+    put(vals.join('\n'), btn);
+  };
+  window.apCopyDoc = function (btn) {
+    var head = ['กลุ่ม','Item Code','ช่อง','ค่าเดิม','คำใหม่','แคมเปญ/หมวด','วันที่เริ่ม','วันที่สิ้นสุด','สถานะ'].join('\t');
+    put([head].concat(liveRows().map(function (r) { return [r.grp, r.code, r.field, r.from, r.to, r.ref, dshow(r.dt), dshow(r.dt2), r.note].join('\t'); })).join('\n'), btn);
+  };
+  window.apGoBack = function () { if (typeof window.loadPage === 'function') window.loadPage('ITWork'); };
+  window.apToggle = function (i, on) { setExc(ROWS[i], !on); excSave(); table(); head(); };
+  window.apExcView = function () {
+    var q = (document.getElementById('apQ') || {}).value || '';
+    var rows = window.__apView || [];
+    if (!rows.length) return;
+    var go = function () { rows.forEach(function (r) { setExc(r, true); }); excSave(); table(); head(); };
+    if (window.Swal) Swal.fire({ icon: 'warning', title: 'ตัด ' + rows.length + ' รายการออก?', text: 'รายการที่ตัดออกจะไม่ถูกเปลี่ยนตัวย่อ (คืนได้ภายหลัง)' + (q ? ' — กรองด้วยคำว่า "' + q + '"' : ''), showCancelButton: true, confirmButtonText: 'ตัดออก', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#c0392b' }).then(function (r) { if (r.isConfirmed) go(); });
+    else go();
+  };
+  window.apExcClear = function () { EXC = { codes: {}, texts: {} }; excSave(); table(); head(); };
+  window.apRender = function () { table(); head(); };
+  window.initAbbrPreview = function () {
+    var box = document.getElementById('apBody');
+    REQ = req();
+    if (!REQ || !window.PC_Abbr) {
+      box.innerHTML = '<div class="p-4 rounded-4 text-center" style="background:#fff;border:1px solid #e9edf1"><div class="mb-2" style="font-size:2rem;color:#dde2e7"><i class="fas fa-inbox"></i></div><div class="fw-bold">ไม่พบคำขอเปลี่ยนตัวย่อที่รอดำเนินการ</div><div class="small text-muted mt-1">เปิดหน้านี้จากปุ่ม “ดูรายการที่จะเปลี่ยน” ในหน้างาน IT แท็บเปลี่ยนตัวย่อ</div></div>';
+      return;
+    }
+    /* ใบที่ยุบรวมหลายตัวย่อ (CFS + SCF → CFSQ) — รวม preview ของทุกตัวย่อในใบเดียว */
+    var _olds = (PC_Abbr.reqOlds ? PC_Abbr.reqOlds(REQ) : [REQ.oldA]);
+    P = (_olds.length > 1 && PC_Abbr.previewMulti)
+      ? PC_Abbr.previewMulti(_olds, REQ.newA, { withShortName: !!REQ.withShortName, includeLive: REQ.includeLive !== false })
+      : PC_Abbr.preview(REQ.oldA, REQ.newA, { withShortName: !!REQ.withShortName, includeLive: REQ.includeLive !== false });
+    ROWS = build(P);
+    excLoad();
+    head(); table();
+  };
+  if (document.readyState !== 'loading') setTimeout(window.initAbbrPreview, 0);
+})();
+</script>

@@ -1,0 +1,56 @@
+<div class="p-4" style="background:#f4f6f9;min-height:100vh;font-family:'Kanit',sans-serif;">
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <h3 class="fw-bold m-0" style="color:#1a1d20;"><i class="fas fa-file-import me-2 text-success"></i>ตั้งค่า Import (นำเข้าจาก Excel)</h3>
+  </div>
+  <p class="text-muted mb-4" style="font-size:.9rem;">เปิด/ปิดปุ่ม “นำเข้าจาก Excel” (ดาวน์โหลด Template + Import จากไฟล์) บนฟอร์มแจ้งโปรโมชั่น — มีผลเฉพาะหน้า <b>Item Set (Create Promotion)</b> เท่านั้น · ตั้งค่าซิงค์ทุกเครื่อง</p>
+
+  <div style="max-width:640px;background:#fff;border:2px solid #000;border-radius:14px;box-shadow:4px 4px 0 rgba(0,0,0,.08);padding:22px 24px;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <div class="fw-bold" style="font-size:1.05rem;color:#1a1d20;">ฟังก์ชัน Import บนฟอร์ม Item Set</div>
+        <div class="text-muted" style="font-size:.84rem;">เปิด = โชว์แถบ “นำเข้าจาก Excel” บนหน้า Item Set · ปิด = ซ่อน (ค่าเริ่มต้น: ปิด)</div>
+      </div>
+      <label class="pc-switch" style="position:relative;display:inline-block;width:64px;height:34px;flex:none;">
+        <input type="checkbox" id="impToggle" onchange="window.impSetEnabled(this.checked)" style="opacity:0;width:0;height:0;">
+        <span id="impSlider" style="position:absolute;cursor:pointer;inset:0;background:#c8ccd2;border-radius:34px;transition:.2s;"></span>
+        <span id="impKnob" style="position:absolute;height:26px;width:26px;left:4px;top:4px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
+      </label>
+    </div>
+    <div id="impStatus" class="mt-3 p-2 rounded" style="font-size:.85rem;font-weight:700;"></div>
+  </div>
+
+  <div style="max-width:640px;margin-top:16px;background:#fff7e0;border:1px dashed #d9a400;border-radius:12px;padding:14px 18px;color:#7a5b00;font-size:.84rem;">
+    <i class="fas fa-circle-info me-1"></i>หน้าฟอร์มอื่น (Coupon · Bill Discount · Voucher) ถอดฟังก์ชัน Import ออกถาวรแล้ว — การตั้งค่านี้ควบคุมเฉพาะหน้า Item Set
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY = 'pc_import_enabled';
+  function isOn(){ try{ return localStorage.getItem(KEY) === '1'; }catch(e){ return false; } }
+  function paint(){
+    var on = isOn();
+    var cb = document.getElementById('impToggle'); if(cb) cb.checked = on;
+    var sl = document.getElementById('impSlider'); var kn = document.getElementById('impKnob');
+    if(sl) sl.style.background = on ? '#2e934a' : '#c8ccd2';
+    if(kn) kn.style.left = on ? '34px' : '4px';
+    var st = document.getElementById('impStatus');
+    if(st){
+      st.innerHTML = on
+        ? '<i class="fas fa-circle-check me-1"></i>เปิดใช้งาน — แถบ Import จะโชว์บนหน้า Item Set'
+        : '<i class="fas fa-ban me-1"></i>ปิดใช้งาน — แถบ Import ถูกซ่อน';
+      st.style.background = on ? '#eafaf1' : '#f1f3f5';
+      st.style.color = on ? '#15623c' : '#6c757d';
+      st.style.border = '1px solid ' + (on ? '#bfe6cf' : '#dee2e6');
+    }
+  }
+  window.impSetEnabled = function(v){
+    try{ localStorage.setItem(KEY, v ? '1' : '0'); }catch(e){}
+    paint();
+    try{ if(window.Swal) Swal.fire({ icon:'success', title: v ? 'เปิด Import แล้ว' : 'ปิด Import แล้ว', text:'มีผลกับหน้า Item Set · เปิดหน้า Item Set ใหม่เพื่อให้เห็นผล', timer:1600, showConfirmButton:false }); }catch(e){}
+  };
+  window.initImportSettings = function(){ paint(); };
+  // self-init (page loaded via innerHTML)
+  try{ window.initImportSettings(); }catch(e){}
+})();
+</script>

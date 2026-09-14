@@ -1,0 +1,311 @@
+<!-- ============================================================
+     pages/StaffDiscount.html — รหัสส่วนลดพนักงาน (Staff Discount · FRC)
+     entry: initStaffDiscount()
+     โมเดล (ยืนยันกับ user · ทำให้เหมือนหน้าบัตรสมาชิก):
+       1) เลือกบริษัท FRC → "เพิ่มเงื่อนไขส่วนลด" (เหมือนเพิ่มบัตร)
+          · แนบรายชื่อพนักงานมาเลยได้ (optional) · IT มาดูว่าต้องเซตอะไรเข้าระบบ
+       2) หลังขึ้นระบบแล้ว → Area/สาขา "ขอเพิ่มพนักงาน" ใต้เงื่อนไข
+     ตารางแยกจากโปรโมชัน (ไม่แตะ pc_mock_store_v28):
+       • pc_staff_conditions — เงื่อนไข (เหมือน "ประเภทบัตร")
+       • pc_staff_discounts  — คำขอพนักงาน (เหมือน "โค้ดบัตร")
+     บริษัท FRC ดึงจาก PC_BRANCH_MASTER.company (สาขาแฟรนไชส์)
+     ============================================================ -->
+<style>
+  .sd-scope { background:#f4f6f9; min-height:100vh; padding:24px 26px 60px; font-family:'Kanit',sans-serif; color:#3b4753; }
+  .sd-scope .sd-head { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+  .sd-scope .sd-head .ic { width:52px; height:52px; border-radius:14px; background:#eafaf1; color:#1f8a4e; display:grid; place-items:center; font-size:1.35rem; flex:none; }
+  .sd-scope .sd-head h1 { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; letter-spacing:.2px; color:#1a1d20; margin:0; line-height:1.1; }
+  .sd-scope .sd-head .sub { font-size:.9rem; color:#8a9099; font-weight:600; margin-top:3px; }
+
+  .sd-scope .cbar { background:#0e5c37; border-radius:16px; padding:18px 22px; margin-bottom:22px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; box-shadow:0 6px 20px rgba(14,92,55,.18); }
+  .sd-scope .cbar .cbico { width:44px; height:44px; border-radius:12px; background:rgba(255,255,255,.16); color:#fff; display:grid; place-items:center; font-size:1.15rem; flex:none; }
+  .sd-scope .cbar .cbl { font-size:.62rem; letter-spacing:1.4px; text-transform:uppercase; color:rgba(255,255,255,.7); font-weight:700; margin-bottom:3px; }
+  .sd-scope .cbar .cbsel { flex:1; min-width:260px; position:relative; }
+  .sd-scope .cbar input.cbin { width:100%; border:0; border-radius:11px; padding:12px 15px; font-family:inherit; font-size:1.02rem; font-weight:700; color:#14202b; }
+  .sd-scope .cbar input.cbin:focus { outline:3px solid rgba(255,255,255,.5); }
+  .sd-scope .cbar .cbmeta { color:#fff; font-weight:700; font-size:.9rem; display:flex; align-items:center; gap:8px; }
+  .sd-scope .cbar .cbbadge { background:rgba(255,255,255,.9); color:#0e5c37; font-size:.66rem; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.4px; }
+  .sd-scope .cbmenu { display:none; position:absolute; left:0; right:0; top:100%; margin-top:6px; background:#fff; border:1px solid #e6eaef; border-radius:12px; box-shadow:0 14px 34px rgba(20,32,43,.22); max-height:330px; overflow:auto; z-index:60; }
+  .sd-scope .cbmenu.show { display:block; }
+  .sd-scope .cbmenu .ci { padding:11px 15px; cursor:pointer; font-size:.92rem; font-weight:600; color:#14202b; display:flex; justify-content:space-between; gap:10px; align-items:center; border-bottom:1px solid #f2f4f7; }
+  .sd-scope .cbmenu .ci:last-child { border-bottom:0; }
+  .sd-scope .cbmenu .ci:hover { background:#eafaf1; }
+  .sd-scope .cbmenu .ci .cnt { color:#8a9099; font-size:.78rem; font-weight:700; white-space:nowrap; }
+  .sd-scope .cbmenu .ci.empty { color:#9aa5b1; cursor:default; font-weight:500; justify-content:flex-start; }
+
+  .sd-scope .card2 { background:#fff; border:1px solid #e6eaef; border-radius:16px; box-shadow:0 1px 2px rgba(20,32,43,.05),0 4px 16px rgba(20,32,43,.04); margin-bottom:22px; overflow:hidden; }
+  .sd-scope .card2 .ch { display:flex; align-items:center; gap:10px; padding:15px 22px; border-bottom:1px solid #eef1f4; font-weight:700; font-size:1.02rem; color:#14202b; font-family:'Montserrat',sans-serif; }
+  .sd-scope .card2 .ch i.lead { color:#1f8a4e; }
+  .sd-scope .card2 .ch .r { margin-left:auto; }
+  .sd-scope .card2 .cb { padding:20px 22px; }
+  .sd-scope .disabled-note { padding:30px; text-align:center; color:#9aa5b1; font-weight:600; }
+
+  .sd-scope .btnp { background:#1f8a4e; color:#fff; border:0; border-radius:11px; padding:10px 20px; font-weight:800; font-size:.94rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:.13s; white-space:nowrap; }
+  .sd-scope .btnp:hover { background:#176b3a; }
+  .sd-scope .btns { background:#fff; color:#5a616b; border:2px solid #e3e7eb; border-radius:11px; padding:9px 16px; font-weight:700; cursor:pointer; font-size:.9rem; }
+  .sd-scope .btns:hover { border-color:#c9d0d8; }
+  .sd-scope .btnsm { background:#eafaf1; color:#176b3a; border:1px solid #bfe6cd; border-radius:9px; padding:7px 13px; font-weight:700; font-size:.82rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .sd-scope .btnsm:hover { background:#d7f2e0; }
+
+  .sd-scope .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .sd-scope .srch { flex:1; min-width:200px; position:relative; }
+  .sd-scope .srch i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#aab0b8; }
+  .sd-scope .srch input { width:100%; border:2px solid #e3e7eb; border-radius:11px; padding:10px 12px 10px 40px; font-family:inherit; font-weight:600; }
+  .sd-scope .srch input:focus { outline:none; border-color:#1f8a4e; }
+
+  .sd-scope .cbadge { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:800; padding:2px 9px; border-radius:20px; letter-spacing:.3px; }
+  .sd-scope .cbadge.bill { background:#fff3e0; color:#a06d13; } .sd-scope .cbadge.item { background:#f3eefe; color:#6d3bd1; }
+  .sd-scope .cbadge.frc { background:#eef4ff; color:#2c4a82; } .sd-scope .cbadge.coco { background:#eafaf1; color:#1f6b3f; }
+  .sd-scope .st { display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:800; padding:3px 11px; border-radius:20px; }
+  .sd-scope .st.wait { background:rgba(63,111,209,.14); color:#2c4a82; } .sd-scope .st.ready { background:rgba(31,138,78,.14); color:#1f8a4e; }
+  .sd-scope .st.pend { background:rgba(201,138,30,.16); color:#a06d13; } .sd-scope .st.appr { background:rgba(31,138,78,.14); color:#1f8a4e; }
+
+  .sd-scope .condgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px; }
+  .sd-scope .condcard { border:1px solid #e6eaef; border-radius:14px; padding:16px 17px; background:#fcfdfe; display:flex; flex-direction:column; gap:10px; }
+  .sd-scope .condcard .cc-nm { font-weight:700; font-size:1rem; color:#14202b; line-height:1.35; }
+  .sd-scope .condcard .cc-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.76rem; color:#8a9099; }
+  .sd-scope .condcard .cc-code { font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; background:#eafaf1; padding:1px 8px; border-radius:6px; font-size:.78rem; }
+  .sd-scope .condcard .cc-foot { display:flex; align-items:center; gap:8px; margin-top:2px; flex-wrap:wrap; }
+  .sd-scope .condcard .cc-cnt { font-size:.74rem; color:#8a9099; font-weight:700; }
+  .sd-scope .xbtn { background:#fbe9e7; color:#c0392b; border:0; border-radius:8px; width:32px; height:32px; cursor:pointer; }
+  .sd-scope .xbtn:hover { background:#f6d4d0; }
+  .sd-scope .empty { padding:40px; text-align:center; color:#9aa5b1; }
+
+  .sd-scope table.tb { width:100%; border-collapse:collapse; font-size:.9rem; }
+  .sd-scope table.tb thead th { background:#14202b; color:#fff; font-weight:600; font-size:.76rem; text-align:left; padding:12px 14px; white-space:nowrap; position:sticky; top:0; }
+  .sd-scope table.tb tbody td { padding:12px 14px; border-top:1px solid #eef1f4; vertical-align:middle; }
+  .sd-scope table.tb tbody tr:hover { background:#fafbfc; }
+  .sd-scope .mono { font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; }
+  .sd-scope .tbwrap { border:1px solid #eef1f4; border-radius:12px; overflow:auto; max-height:56vh; }
+</style>
+
+<div class="sd-scope">
+  <div class="sd-head">
+    <div class="ic"><i class="fas fa-user-tag"></i></div>
+    <div>
+      <h1>เงื่อนไขส่วนลดพนักงาน FRC (BD)</h1>
+      <div class="sub">Admin FRC / BD — เพิ่มเงื่อนไขส่วนลดให้บริษัท FRC แล้วส่งให้ IT ตั้งค่าเข้าระบบ</div>
+    </div>
+  </div>
+
+  <!-- บริษัท FRC -->
+  <div class="cbar">
+    <div class="cbico"><i class="fas fa-building"></i></div>
+    <div class="cbsel">
+      <div class="cbl">บริษัท FRC</div>
+      <input id="sdCoInp" class="cbin" placeholder="คลิกเพื่อเลือก / พิมพ์ค้นหาบริษัทแฟรนไชส์…" oninput="window.sdCoFilter()" onfocus="window.sdCoOpen()" autocomplete="off">
+      <div id="sdCoMenu" class="cbmenu"></div>
+    </div>
+    <div class="cbmeta" id="sdCoMeta"><span class="cbbadge">ยังไม่เลือกบริษัท</span></div>
+  </div>
+
+  <!-- เงื่อนไขส่วนลด (เหมือนบัตร) -->
+  <div class="card2">
+    <div class="ch"><i class="fas fa-percent lead"></i> เงื่อนไขส่วนลดของบริษัท <span id="sdCondCount" style="font-family:'Kanit';font-weight:500;font-size:.8rem;color:#8a9099"></span>
+      <span class="r"><button class="btnp" id="sdAddCondBtn" onclick="window.sdAddCondition()"><i class="fas fa-plus"></i> เพิ่มเงื่อนไข (แจ้ง IT)</button></span></div>
+    <div class="cb" id="sdCondWrap"><div class="condgrid" id="sdCondList"></div></div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var CO_KEY='pc_staff_active_company', COND_KEY='pc_staff_conditions', EMP_KEY='pc_staff_discounts';
+    /* เห็นเฉพาะสาขาแฟรนไชส์ประเภท DOCO · DODO · DODO-M (งานสาขา) */
+    function isFrcType(t){ t=String(t||'').toUpperCase().trim(); return t==='DOCO'||t==='DODO'||t==='DODO-M'; }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function loadA(k){ try{ return JSON.parse(localStorage.getItem(k))||[]; }catch(e){ return []; } }
+    function saveA(k,a){ try{ localStorage.setItem(k,JSON.stringify(a)); }catch(e){} }
+    function fmtDate(iso){ var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); return m?(m[3]+'/'+m[2]+'/'+m[1].slice(2)):'-'; }
+    function branches(){ var b=(window.PC_BRANCH_MASTER||[]).slice();
+      try{ var ml=JSON.parse(localStorage.getItem('pc_master_lists')||'null'); if(ml&&Array.isArray(ml.branches)){ var s={}; b.forEach(function(x){s[String(x.id)]=1;}); ml.branches.forEach(function(x){ if(x&&x.id&&!s[String(x.id)]){ b.push(x); s[String(x.id)]=1; } }); } }catch(e){}
+      return b; }
+    function frcCompanies(){ var m={}; branches().forEach(function(b){ if(isFrcType(b.type)&&b.company){ m[b.company]=(m[b.company]||0)+1; } });
+      return Object.keys(m).sort().map(function(c){ return {company:c,count:m[c]}; }); }
+    function companyBranches(co){ return branches().filter(function(b){ return b.company===co && isFrcType(b.type); }); }
+
+    var ACTIVE_CO='';
+    function setCo(co){ ACTIVE_CO=co||''; try{ localStorage.setItem(CO_KEY,ACTIVE_CO); }catch(e){} }
+
+    /* ---------- company dropdown (custom · เชื่อถือได้กว่า datalist) ---------- */
+    var CO_FILTERED=[];
+    window.sdCoOpen=function(){ document.getElementById('sdCoMenu').classList.add('show'); window.sdCoFilter(true); };
+    window.sdCoClose=function(){ var m=document.getElementById('sdCoMenu'); if(m) m.classList.remove('show'); };
+    window.sdCoFilter=function(showAll){
+      var raw=(document.getElementById('sdCoInp').value||'').trim().toLowerCase();
+      var q=(showAll===true)?'':raw;
+      var list=frcCompanies();
+      CO_FILTERED = q ? list.filter(function(x){ return x.company.toLowerCase().indexOf(q)>-1; }) : list;
+      var m=document.getElementById('sdCoMenu'); if(!m) return;
+      m.classList.add('show');
+      m.innerHTML = CO_FILTERED.length
+        ? CO_FILTERED.map(function(x,i){ return '<div class="ci" onmousedown="window.sdCoPick('+i+')"><span>'+esc(x.company)+'</span><span class="cnt">'+x.count+' สาขา</span></div>'; }).join('')
+        : '<div class="ci empty">ไม่พบบริษัท</div>';
+    };
+    window.sdCoPick=function(i){
+      var x=CO_FILTERED[i]; if(!x) return;
+      document.getElementById('sdCoInp').value=x.company; setCo(x.company); window.sdCoClose();
+      document.getElementById('sdCoMeta').innerHTML='<i class="fas fa-store"></i> '+x.count+' สาขา <span class="cbadge">FRC</span>';
+      window.sdRenderConditions(); window.sdRenderEmp();
+    };
+
+    /* ---------- STEP 1: add condition (เหมือนเพิ่มบัตร) ---------- */
+    window.sdAddCondition=function(){
+      if(!ACTIVE_CO){ Swal.fire('เลือกบริษัทก่อน','กรุณาเลือกบริษัท FRC ด้านบน','warning'); return; }
+      Swal.fire({
+        title:'เพิ่มเงื่อนไขส่วนลด', width:560, confirmButtonColor:'#1f8a4e', confirmButtonText:'ส่งแจ้ง IT', showCancelButton:true, cancelButtonText:'ยกเลิก',
+        html:'<div style="text-align:left;font-size:14px">'+
+          '<div style="background:#eafaf1;border:1px solid #bfe6cd;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:13px">บริษัท: <b>'+esc(ACTIVE_CO)+'</b></div>'+
+          '<label style="font-weight:700;display:block;margin:2px 0 4px">ชื่อเงื่อนไขส่วนลด *</label>'+
+          '<input id="scName" class="swal2-input" style="width:100%;margin:0 0 12px" placeholder="เช่น Staff Discount 50%">'+
+          '<div style="display:flex;gap:10px">'+
+            '<div style="flex:1"><label style="font-weight:700;display:block;margin:2px 0 4px">Type Promotion *</label>'+
+            '<select id="scType" class="swal2-select" style="width:100%;margin:0"><option value="Bill Discount Online">Bill Discount Online</option><option value="Item Coupon Online">Item Coupon Online</option></select></div>'+
+            '<div style="width:150px"><label style="font-weight:700;display:block;margin:2px 0 4px">มูลค่า *</label>'+
+            '<div style="display:flex;gap:6px"><input id="scValue" type="number" min="0" class="swal2-input" style="margin:0;width:100%" placeholder="50"><select id="scUnit" class="swal2-select" style="margin:0;width:70px"><option value="%">%</option><option value="฿">฿</option></select></div></div>'+
+          '</div>'+
+          '<div style="display:flex;gap:10px;margin-top:12px">'+
+            '<div style="flex:1"><label style="font-weight:700;display:block;margin:2px 0 4px">วันที่เริ่ม</label><input id="scFrom" type="date" class="swal2-input" style="margin:0;width:100%"></div>'+
+            '<div style="flex:1"><label style="font-weight:700;display:block;margin:2px 0 4px">วันที่สิ้นสุด</label><input id="scTo" type="date" class="swal2-input" style="margin:0;width:100%"></div>'+
+          '</div>'+
+          '<label style="font-weight:700;display:block;margin:14px 0 4px">รายชื่อพนักงาน (แจ้งมาเลยได้ · ไม่บังคับ)</label>'+
+          '<textarea id="scEmps" class="swal2-textarea" style="width:100%;margin:0;min-height:90px;font-size:13px" placeholder="1 บรรทัด/คน — ชื่อ, รหัสพนักงาน, รหัสสาขา&#10;เช่น  สมชาย ใจดี, 50421, PC1001"></textarea>'+
+          '<div style="font-size:12px;color:#8a9099;margin-top:4px">เว้นว่างได้ — ค่อยให้ Area เพิ่มพนักงานทีหลัง</div>'+
+          '<label style="font-weight:700;display:block;margin:14px 0 4px">แนบไฟล์รายละเอียด/รายชื่อ (ไม่บังคับ)</label>'+
+          '<input id="scFile" type="file" class="swal2-file" style="width:100%;margin:0" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg,.doc,.docx">'+
+        '</div>',
+        preConfirm:function(){
+          var name=(document.getElementById('scName').value||'').trim();
+          var val=(document.getElementById('scValue').value||'').trim();
+          if(!name){ Swal.showValidationMessage('กรอกชื่อเงื่อนไข'); return false; }
+          if(val===''){ Swal.showValidationMessage('กรอกมูลค่าส่วนลด'); return false; }
+          var base = { name:name, typeP:document.getElementById('scType').value, val:Number(val)||0, unit:document.getElementById('scUnit').value,
+            from:document.getElementById('scFrom').value||'', to:document.getElementById('scTo').value||'', emps:(document.getElementById('scEmps').value||'') };
+          var fEl=document.getElementById('scFile'); var f=fEl&&fEl.files&&fEl.files[0];
+          if(!f) return base;
+          if(f.size>3*1024*1024){ Swal.showValidationMessage('ไฟล์ใหญ่เกิน 3MB'); return false; }
+          return new Promise(function(resolve){ var r=new FileReader(); r.onload=function(){ base.fileName=f.name; base.fileData=r.result; resolve(base); }; r.onerror=function(){ resolve(base); }; r.readAsDataURL(f); });
+        }
+      }).then(function(res){
+        if(!res.isConfirmed) return; var v=res.value;
+        var condId='sc'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+        var conds=loadA(COND_KEY);
+        conds.unshift({ id:condId, company:ACTIVE_CO, name:v.name, typePromotion:v.typeP, value:v.val, unit:v.unit, from:v.from, to:v.to,
+          status:'WAIT_IT', code:'', staffType:'FRC', fileName:v.fileName||'', fileData:v.fileData||'', createdAt:new Date().toISOString(),
+          createdBy:(function(){ try{ return localStorage.getItem('pc_userName')||''; }catch(e){ return ''; } })() });
+        saveA(COND_KEY, conds);
+        // แนบรายชื่อพนักงานที่แจ้งมาเลย
+        var added=0; var lines=String(v.emps||'').split('\n').map(function(s){return s.trim();}).filter(Boolean);
+        if(lines.length){ var emps=loadA(EMP_KEY);
+          lines.forEach(function(ln){ var p=ln.split(',').map(function(s){return s.trim();}); var nm=p[0]||''; var cd=p[1]||''; var brId=p[2]||''; if(!nm) return;
+            var b=companyBranches(ACTIVE_CO).find(function(x){ return String(x.id)===brId; })||{};
+            emps.unshift({ id:'sd'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), company:ACTIVE_CO, conditionId:condId, typeName:v.name, typeCode:'', typePromotion:v.typeP,
+              empName:nm, empCode:cd, branchId:String(b.id||brId||''), branchName:b.nameTH||b.name||String(b.id||brId||'-'),
+              status:'PENDING', createdAt:new Date().toISOString() }); added++; });
+          saveA(EMP_KEY, emps);
+        }
+        Swal.fire({icon:'success', title:'ส่งแจ้ง IT แล้ว', html:'<b>'+esc(v.name)+'</b> · '+esc(v.typeP)+(added?('<br>แนบพนักงาน '+added+' คน'):'')+'<br><span style="color:#8a9099;font-size:.85rem">IT จะดูและตั้งค่าเข้าระบบ</span>', timer:2400, showConfirmButton:false});
+        window.sdRenderConditions(); window.sdRenderEmp();
+      });
+    };
+    window.sdDeleteCondition=function(id){ Swal.fire({icon:'warning',title:'ลบเงื่อนไขนี้?',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(function(r){ if(!r.isConfirmed) return; saveA(COND_KEY, loadA(COND_KEY).filter(function(x){return x.id!==id;})); window.sdRenderConditions(); }); };
+    window.sdConfigCondition=function(id){ Swal.fire({title:'IT ตั้งค่าเข้าระบบ',input:'text',inputLabel:'ใส่ Type Code (เช่น BD165 / IC0590)',inputPlaceholder:'BDxxxx / ICxxxx',showCancelButton:true,confirmButtonColor:'#1f8a4e',confirmButtonText:'บันทึก · พร้อมใช้',cancelButtonText:'ยกเลิก'}).then(function(r){ if(!r.isConfirmed) return; var code=(r.value||'').trim().toUpperCase(); var all=loadA(COND_KEY); var c=all.find(function(x){return x.id===id;}); if(!c) return; c.code=code; c.status=code?'READY':'WAIT_IT'; saveA(COND_KEY,all);
+        // อัปเดต typeCode ให้พนักงานใต้เงื่อนไขนี้
+        var emps=loadA(EMP_KEY); emps.forEach(function(e){ if(e.conditionId===id) e.typeCode=code; }); saveA(EMP_KEY,emps);
+        window.sdRenderConditions(); window.sdRenderEmp(); }); };
+
+    function companyConditions(){ return loadA(COND_KEY).filter(function(c){ return c.company===ACTIVE_CO; }); }
+    window.sdViewFile=function(id){ var c=loadA(COND_KEY).find(function(x){return x.id===id;}); if(!c||!c.fileData){ Swal.fire('ไม่มีไฟล์แนบ','',"info"); return; }
+      if(/^data:image/.test(c.fileData)){ var w=window.open(''); if(w) w.document.write('<title>'+esc(c.fileName)+'</title><img src="'+c.fileData+'" style="max-width:100%">'); return; }
+      var a=document.createElement('a'); a.href=c.fileData; a.download=c.fileName||'attachment'; a.click(); };
+    window.sdRenderConditions=function(){
+      var wrap=document.getElementById('sdCondWrap');
+      document.getElementById('sdAddCondBtn').style.display = ACTIVE_CO ? '' : 'none';
+      if(!ACTIVE_CO){ wrap.innerHTML='<div class="disabled-note"><i class="fas fa-arrow-up me-1"></i> เลือกบริษัท FRC ด้านบนก่อน</div>'; document.getElementById('sdCondCount').textContent=''; return; }
+      wrap.innerHTML='<div class="condgrid" id="sdCondList"></div>';
+      var list=document.getElementById('sdCondList'); var conds=companyConditions(); var emps=loadA(EMP_KEY);
+      document.getElementById('sdCondCount').textContent='· '+conds.length+' เงื่อนไข';
+      if(!conds.length){ list.innerHTML='<div class="empty" style="grid-column:1/-1"><i class="fas fa-percent fa-lg" style="opacity:.4;display:block;margin-bottom:8px"></i>ยังไม่มีเงื่อนไข — กด “เพิ่มเงื่อนไข (แจ้ง IT)”</div>'; return; }
+      list.innerHTML=conds.map(function(c){
+        var tp=/item/i.test(c.typePromotion)?'item':'bill';
+        var stCls=c.status==='READY'?'ready':'wait'; var stTxt=c.status==='READY'?('<i class="fas fa-circle-check"></i> พร้อมใช้'):'<i class="fas fa-clock"></i> รอ IT ตั้งค่า';
+        var n=emps.filter(function(e){ return e.conditionId===c.id; }).length;
+        return '<div class="condcard">'+
+          '<div class="cc-nm">'+esc(c.name)+'</div>'+
+          '<div class="cc-row"><span class="cbadge '+tp+'">'+esc(c.typePromotion)+'</span><span><i class="fas fa-tag me-1"></i>'+esc(c.value)+' '+esc(c.unit)+'</span>'+((c.from||c.to)?('<span><i class="far fa-calendar me-1"></i>'+fmtDate(c.from)+' – '+fmtDate(c.to)+'</span>'):'')+'</div>'+
+          (c.fileName?('<div class="cc-row"><span class="btnsm" style="cursor:pointer;padding:4px 11px" onclick="window.sdViewFile(\''+c.id+'\')"><i class="fas fa-paperclip"></i> '+esc(String(c.fileName).slice(0,28))+'</span></div>'):'')+
+          '<div class="cc-foot"><span class="st '+stCls+'">'+stTxt+'</span>'+(c.code?('<span class="cc-code">'+esc(c.code)+'</span>'):'')+'<span class="cc-cnt" style="margin-left:auto">'+n+' พนักงาน</span></div>'+
+          '<div class="cc-foot">'+
+            (c.status==='READY'?('<span style="font-size:.78rem;color:#1f8a4e;font-weight:700"><i class="fas fa-circle-check me-1"></i>IT ตั้งค่าแล้ว · '+n+' พนักงาน</span>'):('<span style="font-size:.78rem;color:#a06d13;font-weight:700"><i class="fas fa-hourglass-half me-1"></i>รอ IT ตั้งค่าเข้าระบบ</span>'))+
+            '<button class="xbtn" style="margin-left:auto" title="ลบ" onclick="window.sdDeleteCondition(\''+c.id+'\')"><i class="fas fa-trash-alt"></i></button>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    };
+
+    /* ---------- STEP 2: Area add employee ---------- */
+    window.sdAddEmployee=function(condId){
+      var c=companyConditions().find(function(x){ return x.id===condId; }); if(!c) return;
+      var brs=companyBranches(ACTIVE_CO);
+      var brOpts='<option value="">— เลือกสาขา —</option>'+brs.map(function(b){ return '<option value="'+esc(b.id)+'">'+esc(b.id+' · '+(b.nameTH||b.name||''))+'</option>'; }).join('');
+      Swal.fire({ title:'Area — เพิ่มพนักงาน', width:520, confirmButtonColor:'#1f8a4e', confirmButtonText:'บันทึก', showCancelButton:true, cancelButtonText:'ยกเลิก',
+        html:'<div style="text-align:left;font-size:14px">'+
+          '<div style="background:#eafaf1;border:1px solid #bfe6cd;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:13px">เงื่อนไข: <b>'+esc(c.name)+'</b>'+(c.code?(' · '+esc(c.code)):'')+'</div>'+
+          '<label style="font-weight:700;display:block;margin:2px 0 4px">สังกัดสาขา *</label><select id="seBr" class="swal2-select" style="width:100%;margin:0 0 12px">'+brOpts+'</select>'+
+          '<label style="font-weight:700;display:block;margin:2px 0 4px">ชื่อ-นามสกุลพนักงาน *</label><input id="seName" class="swal2-input" style="width:100%;margin:0 0 12px" placeholder="เช่น สมชาย ใจดี">'+
+          '<label style="font-weight:700;display:block;margin:2px 0 4px">รหัสพนักงาน *</label><input id="seCode" class="swal2-input" style="width:100%;margin:0" placeholder="เช่น 50421">'+
+        '</div>',
+        preConfirm:function(){ var brId=document.getElementById('seBr').value||''; var nm=(document.getElementById('seName').value||'').trim(); var cd=(document.getElementById('seCode').value||'').trim();
+          if(!brId){ Swal.showValidationMessage('เลือกสาขา'); return false; } if(!nm){ Swal.showValidationMessage('กรอกชื่อพนักงาน'); return false; } if(!cd){ Swal.showValidationMessage('กรอกรหัสพนักงาน'); return false; }
+          return {brId:brId,nm:nm,cd:cd}; }
+      }).then(function(res){ if(!res.isConfirmed) return; var v=res.value;
+        var b=companyBranches(ACTIVE_CO).find(function(x){ return String(x.id)===v.brId; })||{};
+        var all=loadA(EMP_KEY);
+        if(all.find(function(r){ return r.empCode===v.cd&&r.conditionId===condId&&r.status!=='REMOVED'; })){ Swal.fire('มีคำขอนี้แล้ว','รหัสพนักงาน '+esc(v.cd)+' ขอสิทธิ์เงื่อนไขนี้ไว้แล้ว','info'); return; }
+        all.unshift({ id:'sd'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), company:ACTIVE_CO, conditionId:condId, typeName:c.name, typeCode:c.code||'', typePromotion:c.typePromotion,
+          empName:v.nm, empCode:v.cd, branchId:String(b.id||v.brId), branchName:b.nameTH||b.name||String(b.id||v.brId), status:'PENDING', createdAt:new Date().toISOString() });
+        saveA(EMP_KEY, all);
+        Swal.fire({icon:'success', title:'เพิ่มพนักงานแล้ว', html:'<b>'+esc(v.nm)+'</b> ('+esc(v.cd)+')', timer:1700, showConfirmButton:false});
+        window.sdRenderConditions(); window.sdRenderEmp();
+      });
+    };
+
+    window.sdEmpSetStatus=function(id){ var all=loadA(EMP_KEY); var r=all.find(function(x){return x.id===id;}); if(!r) return; r.status=(r.status==='APPROVED')?'PENDING':'APPROVED'; saveA(EMP_KEY,all); window.sdRenderEmp(); };
+    window.sdEmpDelete=function(id){ Swal.fire({icon:'warning',title:'ลบคำขอพนักงานนี้?',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(function(r){ if(!r.isConfirmed) return; saveA(EMP_KEY, loadA(EMP_KEY).filter(function(x){return x.id!==id;})); window.sdRenderConditions(); window.sdRenderEmp(); }); };
+    window.sdRenderEmp=function(){
+      var body=document.getElementById('sdEmpBody'); if(!body) return;
+      if(!ACTIVE_CO){ body.innerHTML='<tr><td colspan="7" class="empty">เลือกบริษัท FRC ด้านบนก่อน</td></tr>'; document.getElementById('sdEmpCount').textContent=''; return; }
+      var q=(document.getElementById('sdSearch').value||'').trim().toLowerCase();
+      var rows=loadA(EMP_KEY).filter(function(r){ return r.company===ACTIVE_CO; });
+      if(q) rows=rows.filter(function(r){ return (r.empName+' '+r.empCode+' '+r.branchName+' '+r.branchId+' '+r.typeName).toLowerCase().indexOf(q)>-1; });
+      document.getElementById('sdEmpCount').textContent='· '+rows.length+' คน';
+      if(!rows.length){ body.innerHTML='<tr><td colspan="7" class="empty"><i class="fas fa-users fa-lg" style="opacity:.4;display:block;margin-bottom:8px"></i>ยังไม่มีคำขอพนักงาน</td></tr>'; return; }
+      body.innerHTML=rows.map(function(r){ var stCls=r.status==='APPROVED'?'appr':'pend'; var stTxt=r.status==='APPROVED'?'<i class="fas fa-circle-check"></i> อนุมัติแล้ว':'<i class="fas fa-clock"></i> รออนุมัติ';
+        return '<tr><td>'+fmtDate(r.createdAt)+'</td><td><b>'+esc(r.empName)+'</b></td><td class="mono">'+esc(r.empCode)+'</td>'+
+          '<td>'+esc(r.branchName)+'<div style="font-size:.7rem;color:#9aa5b1">'+esc(r.branchId)+'</div></td>'+
+          '<td>'+esc(r.typeName)+(r.typeCode?(' <span class="mono">'+esc(r.typeCode)+'</span>'):'')+'</td>'+
+          '<td><span class="st '+stCls+'" style="cursor:pointer" onclick="window.sdEmpSetStatus(\''+r.id+'\')">'+stTxt+'</span></td>'+
+          '<td><button class="xbtn" title="ลบ" onclick="window.sdEmpDelete(\''+r.id+'\')"><i class="fas fa-trash-alt"></i></button></td></tr>';
+      }).join('');
+    };
+
+    window.sdExport=function(){ if(!ACTIVE_CO){ Swal.fire('เลือกบริษัทก่อน','','info'); return; }
+      var rows=loadA(EMP_KEY).filter(function(r){ return r.company===ACTIVE_CO; });
+      if(!rows.length){ Swal.fire('ไม่มีข้อมูล','ยังไม่มีคำขอพนักงานให้ export','info'); return; }
+      var head=['วันที่','ชื่อพนักงาน','รหัสพนักงาน','รหัสสาขา','ชื่อสาขา','บริษัท','เงื่อนไข','Type Code','Type Promotion','สถานะ'];
+      var lines=[head.join(',')];
+      rows.forEach(function(r){ lines.push([fmtDate(r.createdAt),r.empName,r.empCode,r.branchId,r.branchName,r.company,r.typeName,r.typeCode,r.typePromotion,(r.status==='APPROVED'?'อนุมัติแล้ว':'รออนุมัติ')].map(function(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(',')); });
+      var blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='staff-discount-'+ACTIVE_CO+'.csv'; a.click();
+    };
+
+    // ปิด dropdown เมื่อคลิกที่อื่น
+    if(!window.__sdDocClick){ window.__sdDocClick=true; document.addEventListener('mousedown', function(e){ var sel=document.querySelector('.sd-scope .cbsel'); if(sel && !sel.contains(e.target)) window.sdCoClose&&window.sdCoClose(); }); }
+
+    window.initStaffDiscountBD=function(){
+      var list=frcCompanies();
+      var last=''; try{ last=localStorage.getItem(CO_KEY)||''; }catch(e){}
+      if(last && list.find(function(x){return x.company===last;})){ var hit=list.find(function(x){return x.company===last;}); document.getElementById('sdCoInp').value=last; setCo(last); document.getElementById('sdCoMeta').innerHTML='<i class="fas fa-store"></i> '+hit.count+' สาขา <span class="cbadge">FRC</span>'; }
+      window.sdRenderConditions();
+    };
+    if(document.getElementById('sdCondWrap') && !window.__sdbdInit){ window.__sdbdInit=true; try{ window.initStaffDiscountBD(); }catch(e){} }
+  })();
+</script>

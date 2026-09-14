@@ -1,0 +1,831 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าข้อมูลหลัก (Master Data)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:none; margin:0 auto; padding:22px 24px 96px; }
+  .bv-head{ background:#2e934a; color:#fff; border-radius:18px; padding:20px 24px; margin-bottom:22px; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.3rem; font-weight:700; margin:0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .bv-head .sub{ opacity:.72; font-size:.9rem; margin-top:5px; }
+
+  .pills{ display:flex; gap:8px; margin:20px 0 16px; flex-wrap:wrap; }
+  .pill{ border:1.5px solid #d8dde2; background:#fff; border-radius:999px; padding:9px 18px; font-weight:600; font-size:.92rem; color:#5a616b; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  .pill:hover{ border-color:#b6bcc4; }
+  .pill.on{ background:var(--pc-black); color:#fff; border-color:var(--pc-black); }
+  .pill.on i{ color:var(--pc-yellow); }
+  .sect{ display:none; }
+  .sect.on{ display:block; }
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); padding:18px 20px; }
+  .lead{ font-size:.86rem; color:#6b7280; margin:0 0 14px; }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{ background:#f6f8fa; text-align:left; padding:9px 10px; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; color:#8a9099; border-bottom:1px solid #e7eaee; }
+  td{ padding:7px 8px; border-bottom:1px solid #eef1f4; vertical-align:middle; }
+  .cell{ width:100%; border:1.5px solid transparent; border-radius:8px; padding:7px 9px; font-family:inherit; font-size:.9rem; background:#f6f8fa; }
+  .cell:focus{ outline:none; border-color:var(--pc-green); background:#fff; }
+  .cell.mono{ font-family:'JetBrains Mono',monospace; }
+  .rowdel{ width:32px; height:32px; border:0; border-radius:8px; background:#fdecec; color:#c0392b; cursor:pointer; }
+  .rowdel:hover{ background:#fbd9d9; }
+  .addrow{ margin-top:12px; border:1.5px dashed #cfd5db; background:#fff; border-radius:10px; padding:10px 16px; font-family:inherit; font-weight:600; color:#5a616b; cursor:pointer; }
+  .addrow:hover{ border-color:var(--pc-green); color:var(--pc-green); }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:14px; }
+  .chip{ display:flex; align-items:center; gap:9px; background:#f1f4f7; border:1px solid #e2e6ea; border-radius:10px; padding:8px 8px 8px 14px; font-weight:600; font-size:.92rem; }
+  .chip button{ width:26px; height:26px; border:0; border-radius:7px; background:#fff; color:#c0392b; cursor:pointer; }
+  .chip button:hover{ background:#fdecec; }
+  .addchip{ display:flex; gap:8px; }
+  .addchip input{ flex:1; border:1.5px solid #d8dde2; border-radius:10px; padding:10px 13px; font-family:inherit; }
+  .addchip input:focus{ outline:none; border-color:var(--pc-green); }
+  .addchip button{ background:var(--pc-green); color:#fff; border:0; border-radius:10px; padding:10px 18px; font-weight:700; font-family:inherit; cursor:pointer; }
+
+  .subset{ border:1px solid #e7eaee; border-radius:13px; padding:14px 16px; margin-bottom:14px; }
+  .subset-hd{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+  .subset-hd .ssc{ width:130px; }
+  .subset-hd .ssn{ flex:1; }
+  .flav-row{ display:flex; gap:8px; align-items:center; margin-bottom:7px; }
+  .flav-row .fn{ flex:1; } .flav-row .fa{ width:110px; } .flav-row .fc{ width:130px; }
+  .map-row{ display:flex; gap:8px; align-items:center; margin-bottom:7px; }
+  .map-row .mc{ width:160px; } .map-row select{ flex:1; border:1.5px solid #d8dde2; border-radius:8px; padding:8px 10px; font-family:inherit; background:#fff; }
+  .mini{ font-size:.7rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; margin:14px 0 8px; }
+
+  .savebar{ position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97); backdrop-filter:saturate(1.2) blur(6px); border-top:1px solid #e7ebef; padding:10px 18px; box-shadow:0 -2px 14px rgba(0,0,0,.05); z-index:30; }
+  .savebar .inner{ max-width:1040px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .savebar .cur{ font-size:.8rem; color:#8a9099; }
+  .btn-save{ background:var(--pc-green); color:#fff; border:0; border-radius:11px; padding:10px 22px; font-weight:700; font-size:.95rem; cursor:pointer; box-shadow:0 3px 10px rgba(46,147,74,.28); white-space:nowrap; }
+  .btn-save:hover{ background:#00632f; }
+  /* savebar: hidden — save via edit form only */
+  .savebar{ display:none!important; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:28px; }
+  .pager{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .pager .pg{ border:1.4px solid #dde2e7; background:#fff; border-radius:8px; min-width:34px; height:34px; padding:0 9px; font-family:inherit; font-weight:600; color:#3a4150; cursor:pointer; }
+  .pager .pg:hover:not(:disabled){ border-color:#b6bcc4; } .pager .pg.on{ background:#1a1d20; color:#fff; border-color:#1a1d20; }
+  .pager .pg:disabled{ opacity:.4; cursor:not-allowed; }
+  .pager .pp{ border:1.4px solid #dde2e7; border-radius:8px; padding:7px 10px; font-family:inherit; font-size:.86rem; }
+  .pager .info{ font-size:.84rem; color:#8a9099; }
+  .pager .gap{ flex:1; }
+  .io-bar{ display:flex; gap:8px; margin:-4px 0 14px; }
+  .io-btn{ background:#fff; border:1.5px solid #d8dde2; border-radius:10px; padding:8px 14px; font-family:inherit; font-weight:600; font-size:.86rem; color:#3a4150; cursor:pointer; }
+  .io-btn:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+  .imp-ov{ position:fixed; inset:0; background:rgba(20,22,25,.6); display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  .imp-ov.show{ display:flex; }
+  .imp{ background:#fff; border-radius:18px; width:780px; max-width:100%; max-height:92vh; overflow:auto; box-shadow:0 30px 80px rgba(0,0,0,.4); }
+  .imp-hd{ background:var(--pc-black); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:2; }
+  .imp-hd h3{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.02rem; margin:0; flex:1; }
+  .imp-hd h3 i{ color:var(--pc-yellow); margin-right:8px; }
+  .imp-hd .x{ width:34px; height:34px; border:0; border-radius:10px; background:rgba(255,255,255,.14); color:#fff; cursor:pointer; }
+  .imp-bd{ padding:18px 20px; }
+  .imp-hint{ font-size:.84rem; color:#6b7280; margin-bottom:9px; }
+  .imp-hint b{ color:var(--pc-black); }
+  .imp-file{ border:2px dashed #cfd5db; border-radius:12px; padding:14px; width:100%; font-family:inherit; }
+  .imp-ta{ width:100%; min-height:110px; border:1.5px solid #d8dde2; border-radius:12px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:.82rem; margin-top:12px; resize:vertical; }
+  .imp-ta:focus{ outline:none; border-color:var(--pc-green); }
+  .imp-or{ text-align:center; color:#aab0b8; font-size:.82rem; font-weight:600; margin:12px 0 0; }
+  .imp-chk{ background:#1a1d20; color:#fff; border:0; border-radius:11px; padding:11px 20px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:14px; }
+  .imp-chk:hover{ background:#000; }
+  .imp-sum{ display:flex; gap:10px; flex-wrap:wrap; margin:16px 0 10px; }
+  .imp-pill{ font-size:.82rem; font-weight:700; border-radius:9px; padding:6px 12px; }
+  .imp-pill.ok{ background:#eafaf1; color:#1d7a4d; } .imp-pill.skip{ background:#fdecec; color:#c0392b; }
+  .imp-tbl{ width:100%; border-collapse:collapse; font-size:.84rem; }
+  .imp-tbl th{ background:#f6f8fa; text-align:left; padding:7px 9px; font-size:.68rem; text-transform:uppercase; color:#8a9099; border-bottom:1px solid #e7eaee; }
+  .imp-tbl td{ padding:7px 9px; border-bottom:1px solid #eef1f4; }
+  .imp-tbl tr.bad td{ background:#fdf3f3; }
+  .st-chip{ font-size:.72rem; font-weight:700; border-radius:6px; padding:2px 8px; }
+  .st-chip.ok{ background:#eafaf1; color:#1d7a4d; } .st-chip.bad{ background:#fdecec; color:#c0392b; }
+  .imp-foot{ position:sticky; bottom:0; background:#fff; border-top:1px solid #e7eaee; padding:14px 20px; display:flex; justify-content:flex-end; gap:10px; }
+  .imp-submit{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:12px 22px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .imp-submit:disabled{ background:#cfd5db; cursor:not-allowed; }
+
+  /* ── Shop Master: left rail + CMPOS-style shop table ── */
+  .layout{ display:flex; gap:18px; align-items:flex-start; }
+  .rail{ width:214px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+  .rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+  .rail-item{ display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+  .rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+  .rail-item:hover{ background:#f4f6f9; }
+  .rail-item.on{ background:var(--pc-black); color:#fff; }
+  .rail-item.on i{ color:var(--pc-yellow); }
+  .rail-main{ flex:1; min-width:0; }
+  .brscroll thead tr.filt-row th{ top:0; background:#eef1f4; color:#5a616b; border-bottom:0; box-shadow:none; padding:7px 8px; text-transform:none; letter-spacing:0; }
+  .brscroll thead tr.head-row th{ top:46px; }
+  .fcell{ width:100%; border:1.4px solid #dde2e7; border-radius:8px; padding:7px 9px; font-family:inherit; font-size:.82rem; background:#fff; font-weight:500; color:#3a4150; }
+  .fcell:focus{ outline:none; border-color:var(--pc-green); }
+  .shopdetail td{ padding:0; background:#f6f9fc; }
+  .sd-inner{ padding:14px 16px; display:grid; grid-template-columns:repeat(4,1fr); gap:11px 14px; border-left:4px solid var(--pc-yellow); }
+  .sd-fld label{ display:block; font-size:.64rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#8a9099; margin-bottom:3px; }
+  .actbtn{ width:32px; height:32px; border:0; border-radius:9px; cursor:pointer; }
+  /* ── full-page Shop edit ── */
+  .ef-head{ display:flex; align-items:center; gap:14px; background:var(--pc-black); color:#fff; border-radius:14px; padding:13px 18px; margin-bottom:16px; }
+  .ef-back{ width:40px; height:40px; border:0; border-radius:10px; background:rgba(255,255,255,.12); color:#fff; cursor:pointer; font-size:1rem; }
+  .ef-back:hover{ background:rgba(255,255,255,.22); }
+  .ef-ttl{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.04rem; display:flex; align-items:center; gap:9px; }
+  .ef-ttl i{ color:var(--pc-yellow); }
+  .ef-sub{ font-size:.82rem; opacity:.72; margin-top:2px; }
+  .ef-save{ margin-left:auto; background:var(--pc-green); color:#fff; border:0; border-radius:11px; padding:11px 22px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  .ef-save:hover{ background:#00632f; }
+  .ef-save.idle{ background:#cfd5db !important; box-shadow:none !important; }
+  .ef-icon-btn{ background:#f1f4f7; color:#5a616b; border:0; border-radius:11px; width:42px; padding:11px 0; font-size:1rem; cursor:pointer; }
+  .ef-icon-btn:hover{ background:#e4e8ec; color:#1a1d20; }
+  .ef-card{ border:1px solid #e7eaee; border-radius:13px; padding:14px 16px; margin-bottom:14px; background:#fff; }
+  .ef-cardttl{ font-size:.72rem; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #eef1f4; }
+  .ef-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px 14px; }
+  .ef-fld{ display:flex; flex-direction:column; min-width:0; }
+  .ef-fld.wide{ grid-column:span 2; }
+  .ef-fld label{ font-size:.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#8a9099; margin-bottom:4px; }
+  .ef-in{ border:1.4px solid #dde2e7; border-radius:9px; padding:9px 11px; font-family:inherit; font-size:.9rem; background:#fff; width:100%; }
+  .ef-in.mono{ font-family:'JetBrains Mono',monospace; }
+  .ef-in:focus{ outline:none; border-color:var(--pc-green); }
+  .ef-days{ display:flex; flex-wrap:wrap; gap:10px; }
+  .ef-day{ display:flex; align-items:center; gap:9px; border:1.4px solid #e2e6ea; border-radius:10px; padding:7px 12px; }
+  .ef-day .dl{ font-weight:600; font-size:.85rem; width:34px; }
+  .ef-dtog{ border:0; border-radius:7px; padding:5px 14px; font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; min-width:54px; }
+  .ef-dtog.on{ background:#fdecea; color:#c0392b; } .ef-dtog.off{ background:#eafaf1; color:#1d7a4d; }
+  .ef-foot{ display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .bchip{ display:inline-block; font-size:.72rem; font-weight:700; border-radius:6px; padding:2px 7px; background:#eef4ff; color:#2c4a82; }
+  .bchip.all{ background:#f1f4f7; color:#9aa1aa; }
+  .ef-brands{ display:flex; flex-wrap:wrap; gap:10px; }
+  .ef-brand{ display:flex; align-items:center; gap:7px; border:1.4px solid #e2e6ea; border-radius:9px; padding:7px 12px; font-size:.88rem; cursor:pointer; }
+  .ef-brand input{ width:16px; height:16px; }
+  @media(max-width:880px){ .ef-row{ grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bv-head">
+    <h1><i class="fas fa-store"></i>Shop Information <span style="opacity:.5;font-weight:400">»</span> Shop Master</h1>
+    <div class="sub">ข้อมูลร้าน/สาขา (Shop Master) — Shop Code · Shop Name · Company · Store Format · Type/Group/Class · กรองรายคอลัมน์แบบ Backoffice · กดดินสอเพื่อแก้เครื่อง POS / เลขสรรพากร / สถานะ</div>
+  </div>
+
+  <div class="layout"><aside class="rail" id="rail"></aside><div class="rail-main">
+
+  <div class="sect on" data-s="branches"><div class="card">
+    <p class="lead">รายชื่อสาขาในระบบ (<span id="brTotal">165</span> สาขา) — กรองรายคอลัมน์ที่หัวตาราง · กดดินสอ (Action) เพื่อแก้ข้อมูลร้านแบบเต็มหน้า</p>
+    <div id="shopListWrap">
+    <div class="io-bar"><button class="io-btn" onclick="downloadTpl('branches')"><i class="fas fa-file-arrow-down me-1"></i>เทมเพลต CSV</button><button class="io-btn" onclick="openImport('branches')"><i class="fas fa-file-import me-1"></i>นำเข้าจำนวนมาก</button><button class="io-btn" style="margin-left:auto;border-color:#bfe6cf;color:#1d7a4d" onclick="addBranch()"><i class="fas fa-plus me-1"></i>เพิ่มสาขา</button></div>
+    <style>.brscroll{ overflow:auto; max-height:62vh; border:1px solid #eef1f4; border-radius:10px; }
+      .brscroll table{ border-collapse:separate; border-spacing:0; }
+      .brscroll thead th{ position:sticky; top:0; background:#1a1d20; color:#fff; z-index:5; border-bottom:2px solid #2e934a; font-weight:600; box-shadow:0 3px 8px rgba(0,0,0,.18); white-space:nowrap; }
+      .cell-st{ border:1.4px solid #dde2e7; border-radius:7px; padding:6px 8px; font-family:inherit; font-size:.82rem; width:100%; font-weight:600; }
+      .cell-st.inact, .cell-st.closed{ color:#c0392b; } .cell-st.act, .cell-st.oper{ color:#1d7a4d; }</style>
+    <div class="brscroll"><table class="shoptbl" style="width:auto;min-width:0"><thead>
+      <tr class="filt-row">
+        <th style="width:104px" id="fId"></th>
+        <th style="width:96px" id="fBranchNo"></th>
+        <th style="width:150px" id="fName"></th>
+        <th style="width:150px" id="fNameTH"></th>
+        <th style="width:125px" id="fCompany"></th>
+        <th style="width:132px" id="fBrand"></th>
+        <th style="width:96px" id="fType"></th>
+        <th style="width:96px" id="fGroup"></th>
+        <th style="width:96px" id="fClass"></th>
+        <th style="width:104px" id="fActive"></th>
+        <th style="width:140px"><select class="fcell" onchange="brF('printer',this.value)"><option value="">เครื่องพิมพ์</option><option value="yes">มี</option><option value="no">ไม่มี</option></select></th>
+        <th style="width:62px"></th>
+      </tr>
+      <tr class="head-row"><th>Shop Code</th><th>สาขาที่ (Branch No.)</th><th>Shop Name 1</th><th>Shop name 2</th><th>Company</th><th>Store Format</th><th>Shop Type</th><th>Shop Group</th><th>Shop Class</th><th>Shop Flag</th><th>เครื่องพิมพ์</th><th>Action</th></tr>
+    </thead><tbody id="brBody"></tbody></table></div>
+    <div id="brCount" class="text-muted small" style="margin-top:8px"></div>
+    </div>
+    <div id="shopEditWrap" style="display:none"></div>
+  </div></div>
+
+  <div class="sect" data-s="company"><div class="card"><p class="lead"><i class="fas fa-building me-1"></i>บริษัท (Company) — รหัส/ชื่อบริษัทที่ใช้กับสาขา</p><div id="attr-company"></div></div></div>
+  <div class="sect" data-s="brand"><div class="card"><p class="lead"><i class="fas fa-tag me-1"></i>Store Format — ไลน์สินค้า/Store Format ของสาขา</p><div id="attr-brand"></div></div></div>
+  <div class="sect" data-s="group"><div class="card"><p class="lead"><i class="fas fa-layer-group me-1"></i>Shop Group — กลุ่มสาขา</p><div id="attr-group"></div></div></div>
+  <div class="sect" data-s="class"><div class="card"><p class="lead"><i class="fas fa-tags me-1"></i>Shop Class — คลาสสาขา</p><div id="attr-class"></div></div></div>
+  <div class="sect" data-s="type"><div class="card"><p class="lead"><i class="fas fa-store me-1"></i>Shop Type — ประเภทสาขา (COCO/DOCO/DODO…)</p><div id="attr-type"></div></div></div>
+
+  </div></div>
+
+  <div class="demo-note">— หน้าตัวอย่าง (Mockup) · บันทึกในเครื่องนี้ (localStorage: pc_master_lists, pc_subset_map) —</div>
+</div>
+
+<div class="imp-ov" id="impOv"><div class="imp">
+  <div class="imp-hd"><i class="fas fa-file-import"></i><h3 id="impTitle">นำเข้าข้อมูล</h3><button class="x" onclick="closeImport()"><i class="fas fa-times"></i></button></div>
+  <div class="imp-bd">
+    <div class="imp-hint" id="impHint"></div>
+    <input type="file" class="imp-file" id="impFile" accept=".csv,.txt" onchange="impFileLoad(this)">
+    <div class="imp-or">— หรือวางข้อมูลจาก Excel (คั่นด้วย , หรือ Tab) —</div>
+    <textarea class="imp-ta" id="impText"></textarea>
+    <button class="imp-chk" onclick="impValidate()"><i class="fas fa-magnifying-glass me-1"></i>ตรวจสอบข้อมูล</button>
+    <div id="impResult"></div>
+  </div>
+  <div class="imp-foot"><button class="io-btn" onclick="closeImport()">ยกเลิก</button><button class="imp-submit" id="impSubmitBtn" disabled onclick="impSubmit()"><i class="fas fa-check me-1"></i>นำเข้า</button></div>
+</div></div>
+
+<div class="savebar"><div class="inner">
+  <div class="cur"><i class="fas fa-circle-info me-1" style="color:#aab0b8"></i> แก้ไขแล้วกดบันทึก — มีผลกับฟอร์มแจ้งปัญหา/รายงานทันที</div>
+  <button class="btn-save" onclick="save()"><i class="fas fa-check me-1"></i>บันทึกข้อมูลหลัก</button>
+</div></div>
+
+<script src="js/branch-master.js"></script>
+<script src="js/rd-sticker.js"></script>
+<script>
+const ML_KEY='pc_master_lists', SUB_KEY='pc_subset_map', ML_VER=9;
+const DEF_ML={
+  branches:(window.PC_BRANCH_MASTER||[]).map(b=>({id:b.id,nameTH:b.nameTH,name:b.name,group:b.group,class:b.class,type:b.type,brand:b.brand||'Potato Corner',brands:Array.isArray(b.brands)?b.brands.slice():undefined,company:b.company||'',email:b.email||'',cashRdNumber:b.cashRdNumber||'',rdShopCode:b.rdShopCode||'',brandModel:b.brandModel||'',machineType:b.machineType||'',specMachine:b.specMachine||'',serialNumber:b.serialNumber||'',active:b.active||'Active',opStatus:b.opStatus||'Operating',masterStatus:b.masterStatus||'',address1:b.address||'',taxId:b.taxId||'',taWdOpen:b.taWdOpen||'',taWdClose:b.taWdClose||'',taWeOpen:b.taWeOpen||'',taWeClose:b.taWeClose||'',dlvOpen:b.dlvOpen||'',dlvClose:b.dlvClose||''})),
+  promoTypes:['Item Set','Bill Discount','Coupon','Voucher','Bundle'],
+  platforms:['Grab','LINE MAN','ShopeeFood','Robinhood','foodpanda'],
+  items:[
+    ['101001','Mega Fries','Fries',45],['101002','Jumbo Fries','Fries',39],['101003','Regular Fries','Fries',29],
+    ['101050','Flavored Mega Fries','Fries',49],['101051','Flavored Jumbo Fries','Fries',45],['101052','Cheese Fries','Fries',55],
+    ['104001','Large Chicken Pop','Chicken Pop',59],['104002','Regular Chicken Pop','Chicken Pop',45],['104070','Flavored Chicken Pop','Chicken Pop',49],
+    ['104003','Chicken Joint','Chicken Pop',49],['104004','Chicky Nuggets','Chicken Pop',55],['104005','Chicken Skin','Chicken Pop',45],
+    ['105001','Nugget 6pc','Nuggets',45],['105002','Nugget 9pc','Nuggets',65],
+    ['108001','Pizza Bag','Small Bites',39],['108002','Mozzarella Stick','Small Bites',49],['108003','Corn Cup','Small Bites',29],['108004','Cheesy Dip','Small Bites',19],
+    ['110001','Pepsi','Drinks',25],['110002','Pepsi Max','Drinks',25],['110003','Lime Soda','Drinks',35],['110004','Water Bottle','Drinks',15],['110005','Coke','Drinks',25],['110006','Coke Zero','Drinks',25],
+    ['107001','Super Fries Set','Item Set',149],['107002','Family Feast','Item Set',299],['107003','Snack Duo','Item Set',99],
+    ['101900','French Fries (เลิกขาย)','Fries',29],['104900','Old Chicken Pop (เลิกขาย)','Chicken Pop',45],['110900','Fanta (เลิกขาย)','Drinks',25],
+  ].map(r=>({code:r[0],name:r[1],cat:r[2],price:r[3],saleMode:'Take Away',status:'Active',selectable:'Y'})),
+};
+DEF_ML.items.forEach(it=>{ if(/เลิกขาย/.test(it.name)) it.selectable='N'; });
+const DEF_SUB={
+  subsets:{ 'SS-FF01':{ code:'SS-FF01', name:'ผงปรุงรสเฟรนช์ฟรายส์', flavors:[
+    {name:'ชีส',abbr:'FF1',code:'103001'},{name:'บาร์บีคิว',abbr:'FF2',code:'103002'},{name:'ซาวครีม',abbr:'FF3',code:'103003'},{name:'สาหร่าย',abbr:'FF4',code:'103004'},
+    {name:'ออริจินัล (เกลือ)',abbr:'FF5',code:'103005'},{name:'ต้มยำ',abbr:'FF6',code:'103006'},{name:'ลาบ',abbr:'FF7',code:'103007'},{name:'ชีสเข้มข้น',abbr:'FF8',code:'103008'} ] } },
+  map:{ '1070455':'SS-FF01', '1070456':'SS-FF01' }
+};
+function loadML(){ try{ const s=JSON.parse(localStorage.getItem(ML_KEY)); if(s&&s.branches){ if(!Array.isArray(s.items)) s.items=JSON.parse(JSON.stringify(DEF_ML.items)); if(s._ver===ML_VER) return s; return Object.assign(JSON.parse(JSON.stringify(DEF_ML)), {promoTypes:s.promoTypes||DEF_ML.promoTypes, platforms:s.platforms||DEF_ML.platforms, _ver:ML_VER}); } }catch(e){} const d=JSON.parse(JSON.stringify(DEF_ML)); d._ver=ML_VER; return d; }
+function loadSUB(){ try{ const s=JSON.parse(localStorage.getItem(SUB_KEY)); if(s&&s.subsets) return s; }catch(e){} return JSON.parse(JSON.stringify(DEF_SUB)); }
+let ML=loadML(), SUB=loadSUB();
+const _prevTypes = {}, _prevStatus = {}; (ML.branches||[]).forEach(b=>{ _prevTypes[b.id]=b.type; _prevStatus[b.id]=b.opStatus||'Operating'; });
+let brFilter = { id:'', branchNo:'', name:'', nameTH:'', company:'', brand:'', type:'', group:'', class:'', active:'', printer:'' };
+let brOpen = {};
+function getBrandMaster(){ try{ var a=JSON.parse(localStorage.getItem('pc_brand_master')); if(Array.isArray(a)&&a.length) return a.filter(function(x){return x.active!==0;}).map(function(x){return x.name;}); }catch(e){} return ['Potato Corner','Shakes & Fries','Catering','Event']; }
+function brandsOf(b){ return Array.isArray(b.brands)?b.brands:(b.brand&&b.brand!=='both'?[b.brand]:(b.brand==='both'?getBrandMaster():['Potato Corner'])); }
+function toggleShopBrand(i,name,on){ var b=ML.branches[i]; if(!b) return; var arr=brandsOf(b).slice(); var ix=arr.indexOf(name); if(on){ if(ix<0) arr.push(name); } else if(ix>=0) arr.splice(ix,1); b.brands=arr; delete b.brand; }
+function brF(k,v){ brFilter[k]=String(v||'').trim().toLowerCase(); renderBranches(); }
+function uniqVals(key){ return [...new Set((ML.branches||[]).map(b=>b[key]||(key==='brand'?'Potato Corner':'')).filter(Boolean))].sort(); }
+function brFillFilters(){
+  const mk=(id,key,label,dkey)=>{ const el=document.getElementById(id); if(!el) return; el.innerHTML=`<select class="fcell" onchange="brF('${key}',this.value)"><option value="">${label}</option>`+uniqVals(dkey||key).map(v=>`<option value="${esc(v)}" ${String(v).toLowerCase()===brFilter[key]?'selected':''}>${esc(v)}</option>`).join('')+`</select>`; };
+  const fb=document.getElementById('fBrand'); if(fb) fb.innerHTML=`<select class="fcell" onchange="brF('brand',this.value)"><option value="">Filter Store Format</option>`+getBrandMaster().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+`</select>`;
+  mk('fId','id','Shop Code'); mk('fBranchNo','branchNo','Branch No.','rdShopCode'); mk('fName','name','Shop Name 1'); mk('fNameTH','nameTH','Shop name 2'); mk('fCompany','company','Company');
+  mk('fType','type','Filter Shop Type'); mk('fGroup','group','Filter Shop Group'); mk('fClass','class','Filter Shop Class');
+  const fa=document.getElementById('fActive'); if(fa) fa.innerHTML=`<select class="fcell" onchange="brF('active',this.value)"><option value="">Filter Shop Flag</option><option value="Active" ${brFilter.active==='active'?'selected':''}>Active</option><option value="Inactive" ${brFilter.active==='inactive'?'selected':''}>Inactive</option></select>`;
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+const SECTIONS=[['branches','fa-store','Shop Master'],['company','fa-building','Company'],['brand','fa-tag','Store Format'],['group','fa-layer-group','Shop Group'],['class','fa-tags','Shop Class'],['type','fa-store-alt','Shop Type']];
+let curSect='branches';
+function renderRail(){ const r=document.getElementById('rail'); if(!r) return; r.innerHTML='<div class="rail-grp">Shop Information</div>'+SECTIONS.map(([s,ic,lb])=>`<div class="rail-item ${s===curSect?'on':''}" onclick="goSect('${s}')"><i class="fas ${ic}"></i>${lb}</div>`).join(''); }
+function goSect(s){ curSect=s; renderRail(); document.querySelectorAll('.sect').forEach(el=>el.classList.toggle('on', el.dataset.s===s)); }
+
+/* branches */
+// สรุปเครื่องพิมพ์รายสาขาจากทะเบียน (แคชเชียร์ EPSON / ครัว VPOS x1-2) + สถานะใช้งาน
+function printerSummary(id){
+  var assets=[]; try{ var s=JSON.parse(localStorage.getItem('pc_mock_store_v28')); if(s&&Array.isArray(s.assets)) assets=s.assets; }catch(e){}
+  if(!assets.length && window.PC_ASSET_SEED) assets=window.PC_ASSET_SEED;
+  var rows=assets.filter(function(a){return a.shopCode===id && /print/i.test(String(a.category||''));});
+  if(!rows.length) return '<span style="color:#c5cbd2">—</span>';
+  function grp(re,label){ var arr=rows.filter(function(a){return re.test(String(a.brand||''));}); if(!arr.length) return '';
+    var active=arr.filter(function(a){return /active/i.test(String(a.status||''));}).length; var ok=active>0;
+    var tip=arr.map(function(a){return (a.brand||'')+' '+(a.model||'')+(a.serial?(' / '+a.serial):'')+' ['+(a.status||'')+']';}).join(' · ');
+    return '<span title="'+esc(tip)+'" style="display:inline-block;background:'+(ok?'#eafaf1':'#fdecec')+';color:'+(ok?'#1d7a4d':'#c0392b')+';border-radius:6px;padding:1px 7px;margin:1px 2px;white-space:nowrap;font-size:.7rem">'+label+(arr.length>1?' x'+arr.length:'')+' '+(ok?'<i class="fas fa-check"></i>':'<i class="fas fa-triangle-exclamation"></i>')+'</span>'; }
+  return (grp(/epson/i,'แคชเชียร์')+grp(/vpos/i,'ครัว')) || '<span style="color:#c5cbd2">—</span>';
+}
+function hasPrinter(id){ var assets=[]; try{ var s=JSON.parse(localStorage.getItem('pc_mock_store_v28')); if(s&&Array.isArray(s.assets)) assets=s.assets; }catch(e){} if(!assets.length && window.PC_ASSET_SEED) assets=window.PC_ASSET_SEED; return assets.some(function(a){return a.shopCode===id && /print/i.test(String(a.category||''));}); }
+function renderBranches(){
+  const f=brFilter; let shown=0;
+  const hit=(val,q)=> !q || String(val||'').toLowerCase().includes(q);
+  const eq=(val,q)=> !q || String(val||'').toLowerCase()===q;
+  document.getElementById('brBody').innerHTML = ML.branches.map((b,i)=>{
+    const brs=brandsOf(b);
+    if(!eq(b.id,f.id)||!eq(b.rdShopCode,f.branchNo)||!eq(b.name,f.name)||!eq(b.nameTH,f.nameTH)||!eq(b.company,f.company)) return '';
+    if(f.brand && brs.map(x=>String(x).toLowerCase()).indexOf(f.brand)<0) return '';
+    if(!eq(b.type,f.type)||!eq(b.group,f.group)||!eq(b.class,f.class)||!eq(b.active||'Active',f.active)) return '';
+    if(f.printer && ((f.printer==='yes')!==hasPrinter(b.id))) return '';
+    shown++;
+    const act=b.active||'Active', st=b.opStatus||'Operating', open=!!brOpen[i];
+    const main=`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-weight:700;white-space:nowrap">${esc(b.id)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;white-space:nowrap;color:#5b636c">${esc(b.rdShopCode||'—')}</td>
+      <td style="white-space:normal">${esc(b.name)}</td>
+      <td style="white-space:normal">${esc(b.nameTH)}</td>
+      <td style="white-space:normal">${esc(b.company)}</td>
+      <td>${brs.length ? brs.join(' · ') : '—'}</td>
+      <td style="white-space:nowrap">${esc(b.type)}</td>
+      <td style="white-space:nowrap">${esc(b.group)}</td>
+      <td style="white-space:nowrap">${esc(b.class)}</td>
+      <td style="text-align:center"><span class="cell-st ${(b.active||'Active')==='Inactive'?'inact':'act'}" style="display:inline-block;border:0;padding:3px 9px;border-radius:999px;background:${(b.active||'Active')==='Inactive'?'#fdecec':'#eafaf1'}">${(b.active||'Active')==='Inactive'?'Inactive':'Active'}</span>${(b.active||'Active')==='Inactive'?`<div style="font-size:.66rem;color:#c0392b;margin-top:3px">${b.flagReason?esc(b.flagReason):(b.transferredTo?('โอนไป '+esc(b.transferredTo)):(/Permanently/i.test(b.masterStatus||'')?'ปิดถาวร':(/Transfer/i.test(b.masterStatus||'')?'ถูกโอน':esc(b.masterStatus||''))))}</div>`:''}</td>
+      <td style="white-space:nowrap">${printerSummary(b.id)}</td>
+      <td style="white-space:nowrap;text-align:center"><button class="actbtn" style="background:#fff4d6;color:#8a6d00" title="แก้ไขรายละเอียดร้าน (หน้าเต็ม)" onclick="openShopEdit(${i})"><i class="fas fa-pen"></i></button><button class="actbtn" style="background:#fdecec;color:#c0392b;margin-left:6px" title="ลบสาขา" onclick="delBranch(${i})"><i class="fas fa-trash"></i></button></td>
+    </tr>`;
+    return main;
+  }).join('');
+  const sh=document.getElementById('brCount'); if(sh) sh.textContent='แสดง '+shown+' / '+ML.branches.length+' สาขา';
+  const tt=document.getElementById('brTotal'); if(tt) tt.textContent=ML.branches.length;
+}
+function msHoursHTML(b){
+  var code=b&&b.id; var h={}; try{ h=(JSON.parse(localStorage.getItem('pc_branch_hours'))||{})[code]||{}; }catch(e){}
+  var fromBranch=!!h.updatedAt;
+  if(!fromBranch){ h={ taWdOpen:b.taWdOpen, taWdClose:b.taWdClose, taWeOpen:b.taWeOpen, taWeClose:b.taWeClose, dlvOpen:b.dlvOpen, dlvClose:b.dlvClose }; }
+  var rng=function(o,c,cl){ return cl?'<span style="color:#c0392b;font-weight:600">ปิดทำการ</span>':((o||'—')+' – '+(c||'—')); };
+  if(!(h.taWdOpen||h.taWeOpen||h.dlvOpen)){ return '<div style="color:#9aa1aa;font-size:.85rem;padding:4px 0">— ยังไม่มีเวลาทำการ (สาขาตั้งได้ที่เมนู “เวลาทำการร้าน”) —</div>'; }
+  var foot; if(fromBranch){ var p=function(n){return String(n).padStart(2,'0');}; var d=new Date(h.updatedAt); foot='<i class="fas fa-store me-1"></i>อัปเดตโดยสาขา · '+p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+(d.getFullYear()+543)+(h.updatedBy?(' · '+esc(h.updatedBy)):''); } else { foot='<i class="fas fa-file me-1"></i>จากข้อมูล Master (ไฟล์) · สาขาแก้ได้ที่เมนู “เวลาทำการร้าน”'; }
+  return '<div class="ef-row">'+
+    '<div class="ef-fld"><label>Take Away · จ–ศ</label><div class="ef-in" style="background:#f6f8fa">'+rng(h.taWdOpen,h.taWdClose,h.taWdClosed)+'</div></div>'+
+    '<div class="ef-fld"><label>Take Away · ส–อา</label><div class="ef-in" style="background:#f6f8fa">'+rng(h.taWeOpen,h.taWeClose,h.taWeClosed)+'</div></div>'+
+    '<div class="ef-fld"><label>Delivery</label><div class="ef-in" style="background:#f6f8fa">'+rng(h.dlvOpen,h.dlvClose,h.dlvClosed)+'</div></div>'+
+    '</div><div style="font-size:.76rem;color:#9aa1aa;margin-top:8px">'+foot+'</div>';
+}
+function brToggle(i){ brOpen[i]=!brOpen[i]; renderBranches(); }
+function delBranch(i){ if(confirm('ลบสาขานี้?')){ ML.branches.splice(i,1); brOpen={}; renderBranches(); brFillFilters(); } }
+function addBranch(){ ML.branches.unshift({id:'',nameTH:'',name:'',group:'',class:'',type:'',brand:'Potato Corner',company:'',email:'',cashRdNumber:'',rdShopCode:'',brandModel:'',machineType:'',specMachine:'',serialNumber:'',active:'Active',opStatus:'Operating'}); brOpen={}; renderBranches(); brFillFilters(); openShopEdit(0); }
+
+/* full-page Shop edit (in-content, ไม่ใช้ popup) */
+const PROVIDER_OPTS=['Please Select','INET','Frank Tax','TaxSiam','Other'];
+const VAT_OPTS=['Inclusive','Exclusive'];
+const ROUND_OPTS=['Standard','Round Up','Round Down','No Rounding'];
+var _shopDirty=false;
+function markDirty(){ _shopDirty=true; var s=document.getElementById('efSaveBtn'); if(s) s.classList.remove('idle'); }
+// Shop Master ดึงข้อมูลเครื่องจาก ทะเบียนอุปกรณ์ (ตัวหลัก) — อัตโนมัติตอนเปิดฟอร์ม
+function pullDeviceFromRegister(b){
+  if(!b||!b.id) return;
+  var assets=[]; try{ var s=JSON.parse(localStorage.getItem('pc_mock_store_v28')); if(s&&Array.isArray(s.assets)) assets=s.assets; }catch(e){}
+  if(!assets.length && window.PC_ASSET_SEED) assets=window.PC_ASSET_SEED;
+  if(!assets.length) return;
+  var rows=assets.filter(function(a){return a.shopCode===b.id && String(a.status||'').toUpperCase()==='ACTIVE';});
+  if(!rows.length) return;
+  var pos=rows.find(function(a){return /POS/i.test(a.category);});
+  var pc=rows.find(function(a){return /print/i.test(a.category)&&/epson/i.test(a.brand);});
+  var pk=rows.find(function(a){return /print/i.test(a.category)&&/vpos/i.test(a.brand);});
+  if(pos){ if(pos.brand) b.brandModel=pos.brand; if(pos.model&&pos.model!=='-') b.machineType=pos.model; if(pos.serial&&pos.serial!=='-') b.serialNumber=pos.serial; if(pos.spec&&pos.spec!=='-') b.specMachine=pos.spec; }
+  if(pc){ b.printerCashierModel=((pc.brand||'')+' '+(pc.model||'')).trim(); if(pc.serial&&pc.serial!=='-') b.printerCashierSerial=pc.serial; }
+  if(pk){ b.printerKitchenModel=((pk.brand||'')+' '+(pk.model||'')).trim(); if(pk.serial&&pk.serial!=='-') b.printerKitchenSerial=pk.serial; }
+}
+function openShopEdit(i, keep){
+  const b=ML.branches[i]; if(!b) return;
+  pullDeviceFromRegister(b);
+  const wrap=document.getElementById('shopEditWrap'); if(!wrap) return;
+  const fin=(label,key,o)=>`<div class="ef-fld${o&&o.wide?' wide':''}"><label>${esc(label)}</label><input class="ef-in${o&&o.mono?' mono':''}" value="${esc(b[key]||'')}" placeholder="${esc((o&&o.ph)||'—')}" oninput="ML.branches[${i}].${key}=this.value"></div>`;
+  const fsel=(label,key,opts)=>`<div class="ef-fld"><label>${esc(label)}</label><select class="ef-in" onchange="ML.branches[${i}].${key}=this.value">${opts.map(op=>`<option ${String(b[key]||opts[0])===op?'selected':''}>${esc(op)}</option>`).join('')}</select></div>`;
+  const brs=brandsOf(b), blist=getBrandMaster();
+  const brandSel=`<div class="ef-fld" style="grid-column:1/-1"><label>Store Format / ไลน์ที่สาขานี้ขาย (เลือกได้หลายไลน์)</label><div class="ef-brands">${blist.map(n=>`<label class="ef-brand"><input type="checkbox" value="${esc(n)}" ${brs.indexOf(n)>=0?'checked':''} onchange="toggleShopBrand(${i},'${esc(n).replace(/'/g,"\\'")}',this.checked)"> ${esc(n)}</label>`).join('')||'<span style="color:#9aa1aa;font-size:.85rem">ยังไม่มี Store Format — เพิ่มที่หน้า Product Data › Store Format</span>'}</div></div>`;
+  const days=[['mon','Mon'],['tue','Tue'],['wed','Wed'],['thu','Thu'],['fri','Fri'],['sat','Sat'],['sun','Sun']];
+  const dc=b.dayClosed||{};
+  if(!keep) _shopDirty=false;
+  const _rdTrigs = (window.RD ? RD.getTriggers().filter(t=>t.branchId===b.id) : []);
+  const _rdPending = _rdTrigs.some(t=>t.status==='pending');
+  const _rdWorking = _rdTrigs.some(t=>t.status!=='pending');
+  const cancelBtn = _rdPending
+    ? `<button class="io-btn" style="border-color:#f3c6c0;color:#c0392b" onclick="cancelRdRequest(${i})"><i class="fas fa-ban me-1"></i>ยกเลิกคำขอจดใหม่</button>`
+    : (_rdWorking
+      ? `<button class="io-btn" disabled title="คิวเริ่มทำงานแล้ว — ยกเลิกไม่ได้" style="opacity:.5;cursor:not-allowed"><i class="fas fa-lock me-1"></i>ยกเลิกคำขอ (คิวทำงานแล้ว)</button>`
+      : '');
+  wrap.innerHTML=`
+    <div class="ef-head">
+      <div><div class="ef-ttl"><i class="fas fa-pen-to-square"></i>แก้ไขข้อมูลร้าน — Edit Shop Master</div><div class="ef-sub">${esc(b.id||'(สาขาใหม่)')}${b.name?' · '+esc(b.name):''}</div></div>
+      <button class="ef-save" onclick="closeShopEdit()"><i class="fas fa-arrow-left me-1"></i>ย้อนกลับ</button>
+    </div>
+    <div class="ef-card"><div class="ef-cardttl"><i class="fas fa-store me-1"></i>ข้อมูลร้าน (Shop)</div><div class="ef-row">
+      ${fin('Shop Code','id',{mono:1})}${fin('Shop Name 1','name')}${fin('Shop name 2','nameTH')}${fin('Company','company')}
+      ${fin('Shop Type','type')}${fin('Shop Group','group')}${fin('Shop Class','class')}${fsel('Shop Flag (แสดงในระบบ)','active',['Active','Inactive'])}${fin('สถานะ/เหตุผล (Flag Reason)','flagReason')}
+      ${brandSel}
+    </div></div>
+    <div class="ef-card"><div class="ef-cardttl"><i class="fas fa-file-invoice me-1"></i>ที่อยู่ & ภาษี (Address & Tax)</div><div class="ef-row">
+      ${fsel('Provider Type','providerType',PROVIDER_OPTS)}${fin('Tax Identification','taxId',{mono:1})}${fin('Phone Number','phone')}${fsel('Vat Type','vatType',VAT_OPTS)}
+      ${fin('URL QR eTax','urlQrETax',{wide:1})}${fin('Link URL eTax','linkUrlETax',{wide:1})}
+      ${fin('Address 1','address1',{wide:1})}${fin('Address 2','address2',{wide:1})}
+      ${fin('Latitude','lat')}${fin('Longitude','long')}${fsel('Discount Rounding','discountRounding',ROUND_OPTS)}${fin('Service Charge Tax %','svcChargeTaxPct')}
+      ${fin('Account Address 1','acctAddr1',{wide:1})}${fin('Account Address 2','acctAddr2',{wide:1})}
+    </div></div>
+    <div class="ef-card"><div class="ef-cardttl"><i class="fas fa-calendar-xmark me-1"></i>สถานะ & วันหยุด (Status & Day Closed)</div>
+      <div class="ef-row" style="margin-bottom:14px">${fsel('สถานะ (Operating)','opStatus',['Operating','Closed'])}</div>
+      <div class="ef-days">${days.map(([k,l])=>`<div class="ef-day"><span class="dl">${l}</span><button class="ef-dtog ${dc[k]?'on':'off'}" onclick="toggleDay(${i},'${k}')">${dc[k]?'ปิด':'เปิด'}</button></div>`).join('')}</div>
+    </div>
+    <div class="ef-card"><div class="ef-cardttl"><i class="fas fa-clock me-1"></i>เวลาทำการ (อัปเดตโดยสาขา)</div>${msHoursHTML(b)}</div>
+    <div class="ef-card"><div class="ef-cardttl"><i class="fas fa-cash-register me-1"></i>เครื่อง POS & เลขสรรพากร (RD)${_rdPending?' <span style="font-size:.7rem;font-weight:700;color:#b3372b;background:#fdeceb;border:1px solid #f3c6c0;border-radius:999px;padding:2px 9px;margin-left:8px"><i class="fas fa-hourglass-half"></i> รอเลขใหม่</span>':''}</div><div class="ef-row">
+      ${fin('Cash RD Number','cashRdNumber',{mono:1})}${fin('สาขาที่ (Branch No.)','rdShopCode',{mono:1})}${fin('Brand/Model','brandModel')}${fin('Machine Type','machineType',{mono:1})}
+      ${fin('Spec Machine','specMachine',{wide:1})}${fin('Serial Number','serialNumber',{mono:1})}
+      <div style="grid-column:1/-1;border-top:1px dashed #eef1f4;margin-top:4px;padding-top:10px;font-weight:700;color:#5b636c;font-size:.82rem"><i class="fas fa-print me-1"></i>เครื่องพิมพ์ในร้าน (อุปกรณ์อื่น)</div>
+      ${fin('พิมพ์แคชเชียร์ (EPSON) Model','printerCashierModel')}${fin('แคชเชียร์ Serial','printerCashierSerial',{mono:1})}${fin('พิมพ์ครัว (VPOS) Model','printerKitchenModel')}${fin('ครัว Serial','printerKitchenSerial',{mono:1})}
+    </div>
+      <div class="ef-foot" style="margin-top:14px;border-top:1px dashed #eef1f4;padding-top:14px;align-items:center">
+        <span style="font-size:.78rem;color:#8a9099"><i class="fas fa-rotate me-1"></i>เปลี่ยน / ยกเลิก / จดเครื่องใหม่:</span>
+        <button class="io-btn" style="border-color:#cfe0d6;color:#1d7a4d" onclick="shopRDCase(${i})"><i class="fas fa-receipt me-1"></i>เปิดเคสสติ๊กเกอร์ (เลือกเคส)</button>
+        ${cancelBtn}
+      </div>
+    </div>
+    <div class="ef-foot">
+      <button class="ef-icon-btn" style="margin-left:auto" onclick="closeShopEdit()" title="ปิดฟอร์ม (ไม่บันทึก)"><i class="fas fa-xmark"></i></button>
+      <button id="efSaveBtn" class="ef-save${_shopDirty?'':' idle'}" onclick="saveShop(${i})"><i class="fas fa-check me-1"></i>บันทึก & กลับ</button>
+    </div>`;
+  document.getElementById('shopListWrap').style.display='none';
+  wrap.style.display='block';
+  wrap.oninput=markDirty; wrap.onchange=markDirty;
+  var _sb=document.querySelector('.savebar'); if(_sb) _sb.style.display='none';
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function closeShopEdit(){ const w=document.getElementById('shopEditWrap'); if(w){ w.style.display='none'; w.innerHTML=''; } const l=document.getElementById('shopListWrap'); if(l) l.style.display=''; var _sb=document.querySelector('.savebar'); if(_sb) _sb.style.display=''; renderBranches(); brFillFilters(); }
+function toggleDay(i,d){ const b=ML.branches[i]; if(!b) return; b.dayClosed=b.dayClosed||{}; b.dayClosed[d]=!b.dayClosed[d]; _shopDirty=true; openShopEdit(i,true); }
+function saveShop(i){ save(); closeShopEdit(); }
+function delShopFromEdit(i){ if(confirm('ลบสาขานี้?')){ ML.branches.splice(i,1); closeShopEdit(); } }
+function cancelRdRequest(i){ const b=ML.branches[i]; if(!b||!window.RD) return;
+  const trigs=RD.getTriggers();
+  if(trigs.some(t=>t.branchId===b.id && t.status!=='pending')){ Swal.fire({icon:'warning',title:'ยกเลิกไม่ได้',text:'คิวเริ่มทำงานแล้ว — ยกเลิกคำขอไม่ได้',confirmButtonColor:'#2e934a'}); return; }
+  Swal.fire({title:'ยกเลิกคำขอแจ้งยกเลิก/จดใหม่?',html:`สาขา <b>${esc(b.nameTH||b.id)}</b>`,icon:'question',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ยกเลิกคำขอ',cancelButtonText:'ปิด'}).then(r=>{ if(!r.isConfirmed) return; RD.setTriggers(trigs.filter(t=>!(t.branchId===b.id && t.status==='pending'))); Swal.fire({icon:'success',title:'ยกเลิกคำขอแล้ว',timer:1100,showConfirmButton:false}); openShopEdit(i,true); }); }
+
+/* items (item_master) — ตารางมี filter + แบ่งหน้า + เลือกจำนวนแถว */
+let itFilter={q:'',cat:'',status:'',sel:''}, itPage=1, itPer=10;
+function itFiltered(){ return (ML.items||[]).map((it,idx)=>({it,idx})).filter(({it})=>{
+  if(itFilter.cat && it.cat!==itFilter.cat) return false;
+  if(itFilter.status && (it.status||'Active')!==itFilter.status) return false;
+  if(itFilter.sel && (it.selectable||'Y')!==itFilter.sel) return false;
+  if(itFilter.q && !(`${it.code} ${it.name}`.toLowerCase().includes(itFilter.q))) return false;
+  return true; }); }
+function fillItCats(){ const el=document.getElementById('itCat'); if(!el) return; const cur=el.value; const cats=[...new Set((ML.items||[]).map(i=>i.cat).filter(Boolean))].sort(); el.innerHTML='<option value="">หมวด: ทั้งหมด</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join(''); el.value=cur; }
+function renderItems(){
+  const list=itFiltered(); const total=list.length; const pages=Math.max(1,Math.ceil(total/itPer));
+  if(itPage>pages) itPage=pages; if(itPage<1) itPage=1;
+  const start=(itPage-1)*itPer; const pageRows=list.slice(start,start+itPer);
+  document.getElementById('itBody').innerHTML = pageRows.map(({it,idx})=>{ const st=it.status||'Active', sel=it.selectable||'Y';
+    return `<tr>
+      <td><input class="cell mono" value="${esc(it.code)}" oninput="ML.items[${idx}].code=this.value"></td>
+      <td><input class="cell" value="${esc(it.name)}" oninput="ML.items[${idx}].name=this.value"></td>
+      <td><input class="cell" value="${esc(it.cat)}" oninput="ML.items[${idx}].cat=this.value"></td>
+      <td><input class="cell mono" value="${esc(it.price)}" oninput="ML.items[${idx}].price=this.value"></td>
+      <td><input class="cell" value="${esc(it.saleMode)}" oninput="ML.items[${idx}].saleMode=this.value"></td>
+      <td><select class="cell-st ${st==='Active'?'act':'inact'}" onchange="ML.items[${idx}].status=this.value;renderItems()"><option ${st==='Active'?'selected':''}>Active</option><option ${st==='Inactive'?'selected':''}>Inactive</option></select></td>
+      <td><select class="cell-st ${sel==='Y'?'act':'inact'}" onchange="ML.items[${idx}].selectable=this.value;renderItems()"><option value="Y" ${sel==='Y'?'selected':''}>แสดง</option><option value="N" ${sel==='N'?'selected':''}>ซ่อน</option></select></td>
+      <td><button class="rowdel" onclick="ML.items.splice(${idx},1);renderItems()"><i class="fas fa-trash"></i></button></td>
+    </tr>`; }).join('') || '<tr><td colspan="8" style="text-align:center;color:#aab0b8;padding:24px">ไม่พบสินค้าตามเงื่อนไข</td></tr>';
+  const ct=document.getElementById('itCount'); if(ct) ct.textContent='แสดง '+total+' / '+(ML.items||[]).length+' สินค้า';
+  renderItPager(pages,total,start,pageRows.length);
+}
+function itPageList(cur,pages){ const out=[]; for(let i=1;i<=pages;i++){ if(i===1||i===pages||Math.abs(i-cur)<=1) out.push(i); else if(out[out.length-1]!=='...') out.push('...'); } return out; }
+function renderItPager(pages,total,start,count){ const cur=itPage;
+  let h=`<button class="pg" ${cur<=1?'disabled':''} onclick="itPage--;renderItems()"><i class="fas fa-chevron-left"></i></button>`;
+  itPageList(cur,pages).forEach(n=>{ h+= n==='...' ? '<span class="info">…</span>' : `<button class="pg ${n===cur?'on':''}" onclick="itPage=${n};renderItems()">${n}</button>`; });
+  h+=`<button class="pg" ${cur>=pages?'disabled':''} onclick="itPage++;renderItems()"><i class="fas fa-chevron-right"></i></button>`;
+  h+='<span class="gap"></span>';
+  h+=`<select class="pp" onchange="itPer=+this.value;itPage=1;renderItems()">${[10,25,50,100].map(v=>`<option value="${v}" ${v===itPer?'selected':''}>${v} แถว/หน้า</option>`).join('')}</select>`;
+  h+= total?`<span class="info">${start+1}–${start+count} จาก ${total}</span>`:'';
+  document.getElementById('itPager').innerHTML=h;
+}
+function addItem(){ (ML.items||(ML.items=[])).unshift({code:'',name:'',cat:'',price:'',saleMode:'Take Away',status:'Active',selectable:'Y'}); itPage=1; renderItems(); fillItCats(); }
+
+// Recode — บริษัท/เครื่อง/ที่ตั้งเดิม · เปลี่ยนแค่รหัสร้าน (Shop Code) · ยกข้อมูลทุกอย่าง + ใช้สติ๊กเกอร์เดิม · ไม่ต้องแจ้งสรรพากร
+function shopRecode(i){ const b=ML.branches[i]; if(!b||!b.id) return Swal.fire('ยังไม่มีรหัสสาขา','กรอกรหัสสาขาก่อน','warning');
+  Swal.fire({ title:'เปลี่ยนรหัสร้านใหม่ (บริษัทเดิม)', width:540,
+    html:`<div style="text-align:left;font-size:14px">
+      <div style="background:#eaf6ef;border:1px solid #cfe7d8;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#1d6b43"><i class="fas fa-circle-check"></i> บริษัท/เครื่อง/ที่ตั้ง <b>เดิม</b> · <b>ใช้สติ๊กเกอร์เดิม</b> (ไม่ต้องแจ้งสรรพากร) · ยกข้อมูลทุกอย่างไปรหัสใหม่</div>
+      <div style="background:#f6f8fa;border-radius:8px;padding:8px 11px;margin-bottom:11px;font-size:12.5px;color:#5b636c">รหัสเดิม <b>${esc(b.id)}</b> → Closed/Inactive · สติ๊กเกอร์ <b>${esc(b.cashRdNumber||'—')}</b> · เครื่อง S/N <b>${esc(b.serialNumber||'—')}</b> ย้ายตามรหัสใหม่</div>
+      <label style="font-weight:600;display:block;margin:2px 0 4px">รหัสสาขาใหม่ (Shop Code) <span style="color:#c0392b">*</span></label>
+      <input id="rcCode" class="swal2-input" style="margin:0 0 10px;width:100%;font-family:monospace" placeholder="เช่น PC1090">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อร้านใหม่ (ถ้าเปลี่ยน)</label>
+      <input id="rcName" class="swal2-input" style="margin:0;width:100%" value="${esc(b.name||'')}"></div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'สร้างรหัสใหม่', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const c=(document.getElementById('rcCode').value||'').trim().toUpperCase(); if(!c){ Swal.showValidationMessage('กรอกรหัสสาขาใหม่'); return false; } if(ML.branches.some(x=>String(x.id).toUpperCase()===c)){ Swal.showValidationMessage('รหัสนี้มีอยู่แล้ว'); return false; } return {code:c, name:(document.getElementById('rcName').value||'').trim()}; } })
+  .then(r=>{ if(!r.isConfirmed) return; var v=r.value; var nb=JSON.parse(JSON.stringify(b));
+    nb.id=v.code; if(v.name) nb.name=v.name; nb.opStatus='Operating'; nb.active='Active'; nb.flagReason=''; nb.prevCode=b.id; nb.lastChange='recode-in'; nb.lastChangeAt=Date.now();
+    nb.codeHistory=(b.codeHistory||[]).concat([{from:b.id,to:v.code,at:Date.now(),reason:'recode (บริษัทเดิม)'}]);
+    b.opStatus='Closed'; b.active='Inactive'; b.recodedTo=v.code; b.flagReason='เปลี่ยนรหัส → '+v.code; b.lastChange='recode-out'; b.lastChangeAt=Date.now();
+    ML.branches.unshift(nb); save(); var ni=ML.branches.findIndex(x=>String(x.id)===v.code);
+    Swal.fire({icon:'success',title:'เปลี่ยนรหัสสำเร็จ',html:`สร้างสาขาใหม่ <b>${esc(v.code)}</b> (Operating) · ยกข้อมูลทั้งหมด · ใช้สติ๊กเกอร์เดิม <b>${esc(nb.cashRdNumber||'—')}</b><br><span style="font-size:12px;color:#1d6b43"><i class="fas fa-circle-check"></i> ไม่ต้องแจ้งสรรพากร — ไม่มีเคสสติ๊กเกอร์</span>`,confirmButtonColor:'#2e934a'}).then(()=>{ if(ni>=0) openShopEdit(ni); }); }); }
+// Transfer — โอนเจ้าของ · ออกรหัสใหม่ + สร้างสาขาใหม่ขึ้นระบบ · รหัสเก่า Closed/Inactive
+ function shopTransfer(i){ const b=ML.branches[i]; if(!b||!b.id) return Swal.fire('ยังไม่มีรหัสสาขา','กรอกรหัสสาขาก่อน','warning');
+  var tyOpts=['COCO','DOCO','DODO','DODO-M','EXPR','SE','FRC'];
+  Swal.fire({ title:'Transfer — โอนเป็นรหัสใหม่', width:560,
+    html:`<div style="text-align:left;font-size:14px"><div style="background:#fff7e6;border-radius:9px;padding:9px 12px;margin-bottom:11px;font-size:13px">โค้ดเก่า <b>${esc(b.id)}</b> จะถูกตั้ง <b>Closed/Inactive</b> (เก็บประวัติ) · สร้างสาขาใหม่ขึ้นระบบ</div>
+      <div style="display:flex;gap:9px"><div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">รหัสสาขาใหม่ <span style="color:#c0392b">*</span></label><input id="tfCode" class="swal2-input" style="margin:0;width:100%;font-family:monospace" placeholder="เช่น PC1079"></div><div style="width:150px"><label style="font-weight:600;display:block;margin:2px 0 4px">Type ใหม่</label><select id="tfType" class="swal2-input" style="margin:0;width:100%">${tyOpts.map(function(t){return '<option '+(b.type===t?'selected':'')+'>'+t+'</option>';}).join('')}</select></div></div>
+      <label style="font-weight:600;display:block;margin:10px 0 4px">บริษัทใหม่ <span style="color:#c0392b">*</span></label><input id="tfCo" class="swal2-input" style="margin:0 0 10px;width:100%" placeholder="ชื่อบริษัทใหม่" value="${esc(b.company||'')}">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">Cash RD No ใหม่</label><input id="tfCash" class="swal2-input" style="margin:0;width:100%;font-family:monospace" placeholder="เลขสรรพากรใหม่ (ถ้ามี)"></div>`,
+    showCancelButton:true, confirmButtonColor:'#9a6700', confirmButtonText:'โอน + สร้างสาขาใหม่', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const c=(document.getElementById('tfCode').value||'').trim().toUpperCase(); const co=(document.getElementById('tfCo').value||'').trim();
+      if(!c){ Swal.showValidationMessage('กรอกรหัสสาขาใหม่'); return false; } if(ML.branches.some(function(x){return String(x.id).toUpperCase()===c;})){ Swal.showValidationMessage('รหัสนี้มีอยู่แล้ว'); return false; } if(!co){ Swal.showValidationMessage('กรอกบริษัทใหม่'); return false; }
+      return {code:c, type:document.getElementById('tfType').value, co:co, cash:(document.getElementById('tfCash').value||'').trim()}; } })
+  .then(r=>{ if(!r.isConfirmed) return; var v=r.value; var nb=JSON.parse(JSON.stringify(b));
+    nb.id=v.code; nb.type=v.type; nb.company=v.co; nb.opStatus='Operating'; nb.active='Active'; nb.prevCode=b.id; nb.cashRdNumber=v.cash||''; nb.transferredTo=''; nb.rdHistory=[]; nb.lastChange='transfer-in'; nb.lastChangeAt=Date.now();
+    b.opStatus='Closed'; b.active='Inactive'; b.transferredTo=v.code; b.flagReason='Transfer → '+v.code; b.lastChange='transfer-out'; b.lastChangeAt=Date.now();
+    var _tr=(window.RD&&window.RD.addTrigger)?window.RD.addTrigger({branchId:b.id,oldType:b.type,newType:v.type,kind:'tocoCo',caseHint:'Transfer (โอนรหัส)'}):null;
+    ML.branches.unshift(nb); save(); var ni=ML.branches.findIndex(function(x){return String(x.id)===v.code;});
+    Swal.fire({icon:'success',title:'โอนสำเร็จ',html:`สร้างสาขาใหม่ <b>${esc(v.code)}</b> (Operating) · โค้ดเก่า <b>${esc(b.id)}</b> → Closed/Inactive`+(_tr?'<br><span style="font-size:12px;color:#6b3fa0"><i class="fas fa-receipt"></i> เปิดเคสสติ๊กเกอร์ (Transfer) — รอ Admin กดดำเนินการ</span>':''),confirmButtonColor:'#2e934a'}).then(()=>{ if(ni>=0) openShopEdit(ni); }); }); }
+/* ===== เปิดเคสสติ๊กเกอร์ (RD) — จัดกลุ่มตามผลต่อสติ๊กเกอร์ =====
+   กฎ: เปลี่ยนสติ๊กเกอร์เมื่อ (1) เปลี่ยนเครื่องใหม่ หรือ (2) เปลี่ยนบริษัท · สติ๊กเกอร์ไม่เดินทางตามเครื่อง */
+function rdBranchOptsHTML(b){ return ML.branches.filter(x=>x.id && String(x.id)!==String(b.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.id)+' · '+esc(x.nameTH||x.name||'')+(((x.active||'Active')==='Inactive')?' (Inactive)':'')+'</option>').join(''); }
+function rdFillFromSrc(srcId){ var s=ML.branches.find(x=>String(x.id)===String(srcId)); if(!s) return; var set=function(id,v){ var e=document.getElementById(id); if(e) e.value=v||''; }; set('mcBrand',s.brandModel); set('mcType',s.machineType); set('mcSerial',s.serialNumber); set('mcSpec',s.specMachine); }
+
+function shopRDCase(i){ var b=ML.branches[i]; if(!b||!b.id) return Swal.fire('ยังไม่มีรหัสสาขา','กรอกรหัสสาขาก่อน','warning');
+  Swal.fire({ title:'เปิดเคสสติ๊กเกอร์ (RD)', width:600,
+    html:'สาขา <b>'+esc(b.nameTH||b.id)+'</b> ('+esc(b.type||'—')+')<div style="font-size:12px;color:#8a9099;margin-top:5px">เลือกตามว่ากระทบสติ๊กเกอร์สรรพากรหรือไม่</div>', input:'select',
+    inputOptions:{
+      '🟢 ไม่เปลี่ยนสติ๊กเกอร์ (ใช้เลขเดิม)':{ recode:'เปลี่ยนรหัสร้านใหม่ — บริษัทเดิม', renovate_keep:'Renovate / ปรับปรุง — ใช้เครื่องเดิม', relocate_in:'Relocate — ย้ายในที่ตั้งเดิม' },
+      '🔴 เปลี่ยนสติ๊กเกอร์ (ยกเลิก ภ.พ.06.1 + ขอใหม่ ภ.พ.06)':{ broken:'เครื่องชำรุด/สูญหาย — เปลี่ยนเครื่อง', renovate_new:'Renovate / ปรับปรุง — เปลี่ยนเครื่องใหม่', relocate_out:'Relocate — ย้ายออกจากที่ตั้งเดิม', movein:'รับเครื่องย้ายมาจากสาขาอื่น', transfer:'โอนเปลี่ยนบริษัท (Transfer)' },
+      '🟠 ยกเลิกอย่างเดียว':{ close:'ปิดสาขา' }
+    },
+    inputPlaceholder:'เลือกเคส', showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'ถัดไป' })
+  .then(r=>{ if(!r.isConfirmed||!r.value) return; var k=r.value;
+    if(k==='recode') return shopRecode(i);
+    if(k==='transfer') return shopTransfer(i);
+    if(k==='renovate_keep'||k==='relocate_in') return rdKeepCase(i,k);
+    if(k==='close') return rdCloseCase(i);
+    return rdMachineCase(i,k); // broken / renovate_new / relocate_out / movein
+  });
+}
+
+// 🟢 ไม่กระทบสติ๊กเกอร์ — บันทึกประวัติเฉย ๆ (ใช้เครื่องเดิม / ย้ายในที่ตั้งเดิม)
+function rdKeepCase(i,k){ var b=ML.branches[i]; var addr=(k==='relocate_in');
+  Swal.fire({ title: k==='renovate_keep'?'Renovate — ใช้เครื่องเดิม':'Relocate — ย้ายในที่ตั้งเดิม', width:520,
+    html:'<div style="text-align:left;font-size:14px"><div style="background:#eaf6ef;border:1px solid #cfe7d8;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#1d6b43"><i class="fas fa-circle-check"></i> ใช้สติ๊กเกอร์เดิม · ไม่ต้องแจ้งสรรพากร (บันทึกประวัติไว้)</div>'
+      + (addr?'<label style="font-weight:600;display:block;margin:2px 0 4px">ที่อยู่ใหม่ (ถ้าเปลี่ยน)</label><input id="kcAddr" class="swal2-input" style="margin:0 0 8px;width:100%" value="'+esc(b.address1||'')+'">':'')
+      + '<label style="font-weight:600;display:block;margin:8px 0 4px">หมายเหตุ</label><input id="kcNote" class="swal2-input" style="margin:0;width:100%" placeholder="รายละเอียด (ถ้ามี)"></div>',
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'บันทึก', cancelButtonText:'ยกเลิก' })
+  .then(r=>{ if(!r.isConfirmed) return; if(addr){ var a=(document.getElementById('kcAddr').value||'').trim(); if(a) b.address1=a; }
+    b.lastChange=k; b.lastChangeAt=Date.now(); b.rdLog=(b.rdLog||[]).concat([{case:k,note:(document.getElementById('kcNote').value||''),at:Date.now()}]); save(); openShopEdit(i,true);
+    Swal.fire({icon:'success',title:'บันทึกแล้ว',html:'<span style="font-size:13px;color:#1d6b43">ไม่กระทบสติ๊กเกอร์ — ไม่มีเคสส่งสรรพากร</span>',confirmButtonColor:'#2e934a'}); }); }
+
+// 🔴 เปลี่ยนเครื่อง = ยกเลิก+ขอใหม่ · ระบุเครื่องใหม่ (กรอกเอง) + เครื่องเก่าไปไหน · สติ๊กเกอร์ขึ้น "รอเลขใหม่"
+function rdMachineCase(i,k){ var b=ML.branches[i];
+  var titleMap={ broken:'เครื่องชำรุด/สูญหาย — เปลี่ยนเครื่อง', renovate_new:'Renovate — เปลี่ยนเครื่องใหม่', relocate_out:'Relocate — ย้ายออกจากที่ตั้งเดิม', movein:'รับเครื่องย้ายมาจากสาขาอื่น' };
+  var brOpts=rdBranchOptsHTML(b);
+  var fromHTML=(k==='movein')?'<label style="font-weight:600;display:block;margin:2px 0 4px">เครื่องย้ายมาจากสาขา <span style="color:#c0392b">*</span></label><select id="mcFrom" class="swal2-input" style="margin:0 0 12px;width:100%" onchange="rdFillFromSrc(this.value)"><option value="">— เลือกสาขาต้นทาง —</option>'+brOpts+'</select>':'';
+  var addrHTML=(k==='relocate_out')?'<label style="font-weight:600;display:block;margin:8px 0 4px">ที่อยู่ใหม่</label><input id="mcAddr" class="swal2-input" style="margin:0 0 6px;width:100%" value="'+esc(b.address1||'')+'">':'';
+  Swal.fire({ title:titleMap[k]||'เปลี่ยนเครื่อง', width:620,
+    html:'<div style="text-align:left;font-size:13.5px">'
+      + '<div style="background:#fdeceb;border:1px solid #f3c6c0;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:12.5px;color:#b3372b"><i class="fas fa-triangle-exclamation"></i> ต้อง <b>ยกเลิกเลขเดิม (ภ.พ.06.1)</b> + <b>ขอเลขใหม่ (ภ.พ.06)</b> · สติ๊กเกอร์ใหม่ได้หลังสรรพากรอนุมัติ — ระบบขึ้นสถานะ <b>“รอเลขใหม่”</b></div>'
+      + fromHTML
+      + '<div style="font-weight:700;margin:2px 0 6px;color:#1a1d20"><i class="fas fa-cash-register"></i> เครื่อง POS '+(k==='movein'?'ที่ย้ายเข้ามา (ดึงจากต้นทาง — แก้ได้)':'ใหม่ (กรอกเอง)')+'</div>'
+      + '<div style="display:flex;gap:8px"><div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">Brand/Model</label><input id="mcBrand" class="swal2-input" style="margin:0;width:100%" placeholder="เช่น Toshiba"></div>'
+      + '<div style="width:175px"><label style="font-weight:600;display:block;margin:2px 0 4px">Machine Type</label><input id="mcType" class="swal2-input" style="margin:0;width:100%;font-family:monospace"></div></div>'
+      + '<div style="margin-top:8px"><label style="font-weight:600;display:block;margin:2px 0 4px">Serial Number <span style="color:#c0392b">*</span></label><input id="mcSerial" class="swal2-input" style="margin:0;width:100%;font-family:monospace"></div>'
+      + '<input id="mcSpec" type="hidden">'
+      + addrHTML
+      + '<div style="border-top:1px dashed #e6e9ee;margin:13px 0 0;padding-top:11px"><label style="font-weight:600;display:block;margin:2px 0 4px"><i class="fas fa-box-archive"></i> เครื่องเก่าของสาขานี้ไปไหน <span style="color:#c0392b">*</span></label>'
+      + '<select id="mcOldDest" class="swal2-input" style="margin:0 0 8px;width:100%" onchange="document.getElementById(\'mcOldBox\').style.display=this.value===\'branch\'?\'block\':\'none\'"><option value="destroy">🔨 ทำลาย</option><option value="scrap">♻️ ขายซาก</option><option value="stock">📦 เข้าคลังอุปกรณ์</option><option value="branch">🏬 ย้ายไปสาขาอื่น</option><option value="keep">🗄️ เก็บไว้ที่สาขา</option></select>'
+      + '<div id="mcOldBox" style="display:none"><select id="mcOldBranch" class="swal2-input" style="margin:0;width:100%"><option value="">— เลือกสาขาปลายทางของเครื่องเก่า —</option>'+brOpts+'</select></div></div></div>',
+    showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'เปิดเคส (ยกเลิก+ขอใหม่)', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ var sn=(document.getElementById('mcSerial').value||'').trim();
+      if(k==='movein' && !((document.getElementById('mcFrom')||{}).value||'')){ Swal.showValidationMessage('เลือกสาขาต้นทาง'); return false; }
+      if(!sn){ Swal.showValidationMessage('กรอก Serial Number ของเครื่องใหม่'); return false; }
+      var od=document.getElementById('mcOldDest').value; var ob=((document.getElementById('mcOldBranch')||{}).value)||'';
+      if(od==='branch' && !ob){ Swal.showValidationMessage('เลือกสาขาปลายทางของเครื่องเก่า'); return false; }
+      return { from:((document.getElementById('mcFrom')||{}).value)||'', brand:(document.getElementById('mcBrand').value||'').trim(), type:(document.getElementById('mcType').value||'').trim(), serial:sn, addr:((document.getElementById('mcAddr')||{}).value)||'', oldDest:od, oldBranch:ob }; } })
+  .then(r=>{ if(!r.isConfirmed) return; var v=r.value;
+    b.rdHistory=(b.rdHistory||[]).concat([{cashRdNumber:b.cashRdNumber||'',rdShopCode:b.rdShopCode||'',serialNumber:b.serialNumber||'',brandModel:b.brandModel||'',endedAt:Date.now(),reason:k,oldMachineDest:v.oldDest,oldMachineToBranch:v.oldBranch}]);
+    b.brandModel=v.brand; b.machineType=v.type; b.serialNumber=v.serial;
+    b.cashRdNumber=''; b.rdPending=true; if(v.addr) b.address1=v.addr;
+    b.lastChange=k; b.lastChangeAt=Date.now();
+    var kindMap={ broken:'broken', renovate_new:'renovate', relocate_out:'relocate', movein:'broken' };
+    var hintMap={ broken:'เครื่องชำรุด — เปลี่ยนเครื่อง', renovate_new:'Renovate — เปลี่ยนเครื่องใหม่', relocate_out:'Relocate — ย้ายออกจากที่ตั้งเดิม', movein:'รับเครื่องจากสาขา '+(v.from||'') };
+    var t=(window.RD&&window.RD.addTrigger)?RD.addTrigger({branchId:b.id,oldType:b.type,newType:b.type,kind:kindMap[k],caseHint:hintMap[k],newSerial:v.serial,oldMachineDest:v.oldDest,oldMachineToBranch:v.oldBranch,fromBranch:v.from}):null;
+    var pair='';
+    if(v.oldDest==='branch' && v.oldBranch && window.RD){ var d=ML.branches.find(x=>String(x.id)===String(v.oldBranch)); if(d){ RD.addTrigger({branchId:d.id,oldType:d.type,newType:d.type,kind:'broken',caseHint:'รับเครื่องเก่าจากสาขา '+b.id,fromBranch:b.id}); pair+='<br><span style="font-size:12px;color:#9a6700"><i class="fas fa-arrow-right"></i> เด้งเคสรับเครื่องที่สาขา '+esc(v.oldBranch)+' แล้ว</span>'; } }
+    if(k==='movein' && v.from && window.RD){ var s=ML.branches.find(x=>String(x.id)===String(v.from)); if(s){ RD.addTrigger({branchId:s.id,oldType:s.type,newType:s.type,kind:'closed',caseHint:'ปลด/ย้ายเครื่องออกไปสาขา '+b.id,toBranch:b.id}); pair+='<br><span style="font-size:12px;color:#9a6700"><i class="fas fa-arrow-left"></i> เด้งเคสปลดเครื่องที่ต้นทาง '+esc(v.from)+' แล้ว</span>'; } }
+    save(); openShopEdit(i,true);
+    Swal.fire({icon:'success',title:'เปิดเคสแล้ว — รอเลขใหม่',html:(t?'ยกเลิกเลขเดิม + ขอเลขใหม่ · <b>สถานะ: รอเลขใหม่</b>':'มีเคสรออยู่แล้ว')+pair,confirmButtonColor:'#2e934a'}); }); }
+
+// 🟠 ปิดสาขา — ยกเลิกสติ๊กเกอร์ + ระบุเครื่องไปไหน (ย้ายไปสาขาอื่น = เด้งเคสรับเครื่องอัตโนมัติ)
+function rdCloseCase(i){ var b=ML.branches[i]; var brOpts=rdBranchOptsHTML(b);
+  Swal.fire({ title:'ปิดสาขา — ยกเลิกสติ๊กเกอร์', width:540,
+    html:'<div style="text-align:left;font-size:13.5px"><div style="background:#fdeceb;border:1px solid #f3c6c0;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:12.5px;color:#b3372b"><i class="fas fa-store-slash"></i> สาขา <b>'+esc(b.nameTH||b.id)+'</b> → Closed/Inactive · แจ้ง <b>ยกเลิกสติ๊กเกอร์ (ภ.พ.06.1)</b></div>'
+      + '<label style="font-weight:600;display:block;margin:2px 0 4px"><i class="fas fa-box-archive"></i> เครื่อง POS ของสาขานี้ไปไหน <span style="color:#c0392b">*</span></label>'
+      + '<select id="clDest" class="swal2-input" style="margin:0 0 8px;width:100%" onchange="document.getElementById(\'clBox\').style.display=this.value===\'branch\'?\'block\':\'none\'"><option value="destroy">🔨 ทำลาย</option><option value="scrap">♻️ ขายซาก</option><option value="stock">📦 เข้าคลังอุปกรณ์</option><option value="branch">🏬 ย้ายไปใช้ต่อที่สาขาอื่น</option></select>'
+      + '<div id="clBox" style="display:none"><select id="clBranch" class="swal2-input" style="margin:0;width:100%"><option value="">— เลือกสาขาปลายทาง —</option>'+brOpts+'</select></div></div>',
+    showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ปิดสาขา + ยกเลิกสติ๊กเกอร์', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ var d=document.getElementById('clDest').value; var bb=((document.getElementById('clBranch')||{}).value)||''; if(d==='branch'&&!bb){ Swal.showValidationMessage('เลือกสาขาปลายทาง'); return false; } return {dest:d,branch:bb}; } })
+  .then(r=>{ if(!r.isConfirmed) return; var v=r.value;
+    b.opStatus='Closed'; b.active='Inactive'; b.flagReason='ปิดสาขา'; b.lastChange='close'; b.lastChangeAt=Date.now();
+    b.rdHistory=(b.rdHistory||[]).concat([{cashRdNumber:b.cashRdNumber||'',rdShopCode:b.rdShopCode||'',serialNumber:b.serialNumber||'',brandModel:b.brandModel||'',endedAt:Date.now(),reason:'close',oldMachineDest:v.dest,oldMachineToBranch:v.branch}]);
+    var t=(window.RD&&window.RD.addTrigger)?RD.addTrigger({branchId:b.id,oldType:b.type,newType:b.type,kind:'closed',caseHint:'ปิดสาขา (ยกเลิกสติ๊กเกอร์)',oldMachineDest:v.dest,oldMachineToBranch:v.branch}):null;
+    var pair='';
+    if(v.dest==='branch' && v.branch && window.RD){ var d=ML.branches.find(x=>String(x.id)===String(v.branch)); if(d){ RD.addTrigger({branchId:d.id,oldType:d.type,newType:d.type,kind:'broken',caseHint:'รับเครื่องจากสาขาปิด '+b.id,fromBranch:b.id}); pair='<br><span style="font-size:12px;color:#9a6700"><i class="fas fa-arrow-right"></i> เด้งเคสรับเครื่องที่สาขา '+esc(v.branch)+' (ยกเลิก+ขอใหม่) แล้ว</span>'; } }
+    save(); openShopEdit(i,true);
+    Swal.fire({icon:'success',title:'ปิดสาขาแล้ว',html:(t?'ยกเลิกสติ๊กเกอร์ (รอ Admin ดำเนินการ)':'มีเคสรออยู่แล้ว')+pair,confirmButtonColor:'#2e934a'}); }); }
+// ส่งสาขาเข้าคิวแจ้งยกเลิก/จดใหม่ (manual) — IT เลือกเหตุ
+function pushToRD(i){
+  const b=ML.branches[i]; if(!b||!b.id) return Swal.fire('ยังไม่มีรหัสสาขา','กรอกรหัสสาขาก่อน','warning');
+  if(!window.RD) return;
+  Swal.fire({title:'ส่งเข้าแจ้งยกเลิก/จดใหม่',html:`สาขา <b>${esc(b.nameTH||b.id)}</b> (${esc(b.type||'—')})`,input:'select',
+    inputOptions:{tocoCo:'เปลี่ยนประเภท → COCO (Re-License/Transfer)',broken:'เครื่องชำรุด — เปลี่ยนเครื่อง',renovate:'Renovate (ปรับปรุงร้าน)',relocate:'Relocate (เปลี่ยนพื้นที่)',closed:'ปิดสาขา'},
+    inputPlaceholder:'เลือกเหตุ',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'ส่งเข้าคิว'})
+  .then(r=>{ if(!r.isConfirmed||!r.value)return; const t=RD.addTrigger({branchId:b.id,oldType:b.type,newType:b.type,kind:r.value});
+    if(t){ openShopEdit(i,true); Swal.fire({icon:'success',title:'ส่งเข้าคิวแล้ว',html:'ไปที่หน้า “แจ้งยกเลิก/จดใหม่ → งานจาก Master” ให้ IT จับเคส',confirmButtonColor:'#2e934a'}); }
+    else Swal.fire({icon:'info',title:'มีงานรออยู่แล้ว',text:'สาขานี้มีงานเคสเดียวรอจับอยู่',confirmButtonColor:'#2e934a'}); });
+}
+
+/* chip lists */
+function renderChips(key, elId){
+  document.getElementById(elId).innerHTML = ML[key].map((v,i)=>`<span class="chip">${esc(v)}<button onclick="ML['${key}'].splice(${i},1);renderChips('${key}','${elId}')"><i class="fas fa-times"></i></button></span>`).join('') || '<span style="color:#aab0b8;font-size:.88rem">ยังไม่มีรายการ</span>';
+}
+function addChip(key, inputId){ const el=document.getElementById(inputId); const v=(el.value||'').trim(); if(!v) return; if(!ML[key].includes(v)) ML[key].push(v); el.value=''; renderChips(key, key==='promoTypes'?'ptChips':'pfChips'); }
+
+/* subsets */
+function renderSubsets(){
+  document.getElementById('subsets').innerHTML = Object.keys(SUB.subsets).map(key=>{
+    const ss=SUB.subsets[key];
+    const flavs=ss.flavors.map((f,fi)=>`<div class="flav-row">
+      <input class="cell fn" value="${esc(f.name)}" oninput="SUB.subsets['${key}'].flavors[${fi}].name=this.value" placeholder="ชื่อผง/รสชาติ">
+      <input class="cell fa" value="${esc(f.abbr)}" oninput="SUB.subsets['${key}'].flavors[${fi}].abbr=this.value" placeholder="ตัวย่อ เช่น FF1">
+      <input class="cell mono fc" value="${esc(f.code)}" oninput="SUB.subsets['${key}'].flavors[${fi}].code=this.value" placeholder="item code">
+      <button class="rowdel" onclick="SUB.subsets['${key}'].flavors.splice(${fi},1);renderSubsets()"><i class="fas fa-times"></i></button>
+    </div>`).join('');
+    return `<div class="subset">
+      <div class="subset-hd">
+        <input class="cell mono ssc" value="${esc(ss.code)}" oninput="SUB.subsets['${key}'].code=this.value" placeholder="SS Code">
+        <input class="cell ssn" value="${esc(ss.name)}" oninput="SUB.subsets['${key}'].name=this.value" placeholder="ชื่อ Subset">
+        <button class="rowdel" title="ลบ Subset" onclick="delSubset('${key}')"><i class="fas fa-trash"></i></button>
+      </div>
+      ${flavs}
+      <button class="addrow" style="margin-top:4px;padding:7px 13px" onclick="SUB.subsets['${key}'].flavors.push({name:'',abbr:'',code:''});renderSubsets()"><i class="fas fa-plus me-1"></i>เพิ่มผง</button>
+    </div>`;
+  }).join('') || '<p style="color:#aab0b8">ยังไม่มี Subset</p>';
+}
+function delSubset(key){ delete SUB.subsets[key]; Object.keys(SUB.map).forEach(bc=>{ if(SUB.map[bc]===key) delete SUB.map[bc]; }); renderSubsets(); renderMaps(); }
+function addSubset(){ let k='SS-'+Date.now().toString(36).toUpperCase().slice(-5); SUB.subsets[k]={code:k,name:'',flavors:[{name:'',abbr:'',code:''}]}; renderSubsets(); renderMaps(); }
+
+/* button-code -> subset map */
+function renderMaps(){
+  const opts=ssOptions();
+  document.getElementById('maps').innerHTML = Object.keys(SUB.map).map((bc,i)=>`<div class="map-row" data-bc="${esc(bc)}">
+    <input class="cell mono mc" value="${esc(bc)}" onchange="remapKey(this.dataset?'':'' )" oninput="updMapCode('${esc(bc)}',this.value)" placeholder="item code ปุ่ม">
+    <select onchange="SUB.map['${esc(bc)}']=this.value">${opts.map(o=>`<option value="${o}" ${SUB.map[bc]===o?'selected':''}>${o} · ${esc((SUB.subsets[o]||{}).name||'')}</option>`).join('')}</select>
+    <button class="rowdel" onclick="delete SUB.map['${esc(bc)}'];renderMaps()"><i class="fas fa-times"></i></button>
+  </div>`).join('') || '<p style="color:#aab0b8">ยังไม่มีการจับคู่</p>';
+}
+function ssOptions(){ return Object.keys(SUB.subsets); }
+function updMapCode(oldBc,newBc){ if(newBc===oldBc) return; const v=SUB.map[oldBc]; delete SUB.map[oldBc]; SUB.map[newBc]=v; }
+function addMap(){ const opts=ssOptions(); if(!opts.length){ Swal.fire({icon:'info',title:'เพิ่ม Subset ก่อน',confirmButtonColor:'#2e934a'}); return; } let bc='ใหม่-'+Date.now().toString(36).slice(-3); SUB.map[bc]=opts[0]; renderMaps(); }
+
+function save(){
+  ML.branches=ML.branches.filter(b=>(b.id||'').trim()||(b.nameTH||'').trim());
+  ML.items=(ML.items||[]).filter(it=>(it.code||'').trim()||(it.name||'').trim());
+  ML._ver=ML_VER;
+  // clean empty subset flavors
+  Object.values(SUB.subsets).forEach(ss=>{ ss.flavors=ss.flavors.filter(f=>(f.name||'').trim()||(f.code||'').trim()); });
+  localStorage.setItem(ML_KEY, JSON.stringify(ML));
+  localStorage.setItem(SUB_KEY, JSON.stringify(SUB));
+  // ตรวจจับการเปลี่ยน Type (แฟรนไชส์→COCO) → สร้างงานไหลเข้าแจ้งยกเลิก/จดใหม่
+  let trigMsg='';
+  if(window.RD){
+    const trigs=RD.triggersFromTypeChange(_prevTypes, ML.branches);
+    let added=0; trigs.forEach(t=>{ if(RD.addTrigger(t)) added++; });
+    // สถานะ Operating → Closed = trigger ปิดสาขา
+    ML.branches.forEach(b=>{ const ps=_prevStatus[b.id]; if(ps==='Operating' && (b.opStatus||'Operating')==='Closed'){ if(RD.addTrigger({branchId:b.id,oldType:b.type,newType:b.type,kind:'closed'})) added++; } });
+    ML.branches.forEach(b=>{ _prevTypes[b.id]=b.type; _prevStatus[b.id]=b.opStatus||'Operating'; });
+    if(added) trigMsg=`<br><span style="color:#6b3fa0;font-weight:600"><i class="fas fa-right-left"></i> สร้างงานแจ้งยกเลิก/จดใหม่ ${added} รายการ (จากเปลี่ยนประเภท/ปิดสาขา) — ไปจับเคสที่หน้า“แจ้งยกเลิก/จดใหม่”</span>`;
+  }
+  Swal.fire({icon:'success',title:'บันทึกแล้ว',html:'ข้อมูลหลักถูกบันทึก'+trigMsg,confirmButtonColor:'#2e934a'});
+}
+
+/* ── template download + import (สาขา / Subset) ───────────── */
+const TPL_SCHEMA={
+  branches:{ title:'สาขา', headers:['รหัส','ชื่อ (TH)','ชื่อ (EN)','Group','Class','Type','บริษัท','Cash RD Number','RD Shop Code','Brand/Model','Machine Type','Spec Machine','Serial Number','Brand (Potato Corner/Shakes & Fries)'],
+    sample:[['PC9001','สาขาใหม่ A','New Branch A','BKK','Indy','FRC','บริษัท ตัวอย่าง จำกัด','0105563000999','RD-NEW-01','Toshiba','4852-E70','Intel Celeron/Ram 8 GB /128 GB SSD','41VN999','Potato Corner'],['PC9002','สาขาใหม่ B','New Branch B','UPC','Indy','COCO','บริษัท ร็อคส์ พีซี จำกัด','','','','','','','Shakes & Fries']] },
+  subset:{ title:'Subset ↔ ผง', headers:['SS Code','Subset Name','ชื่อผง/รสชาติ','ตัวย่อ (Name 2)','item code','ผูกกับปุ่ม (item code, คั่น ;)'],
+    sample:[['SS-CHK01','ผงไก่ทอด','ออริจินัล','CK1','103201','104001;104002'],['SS-CHK01','ผงไก่ทอด','สไปซี่','CK2','103202','104001;104002']] },
+};
+function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function toCSV(headers, rows){ return [headers.join(',')].concat(rows.map(r=>r.map(csvCell).join(','))).join('\n'); }
+function downloadFile(name, text){ const blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),500); }
+function downloadTpl(sec){ const s=TPL_SCHEMA[sec]; downloadFile('master_'+sec+'_template.csv', toCSV(s.headers, s.sample)); }
+function splitLine(line,d){ const out=[]; let cur='',q=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(c==='"'){ if(q&&line[i+1]==='"'){cur+='"';i++;} else q=!q; } else if(c===d&&!q){ out.push(cur); cur=''; } else cur+=c; } out.push(cur); return out.map(s=>s.trim()); }
+function parseTable(text){ return String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim().length).map(l=> splitLine(l, l.indexOf('\t')>=0?'\t':',')); }
+
+let IMP_SEC=null, IMP_VALID=[];
+function openImport(sec){ IMP_SEC=sec; const s=TPL_SCHEMA[sec];
+  document.getElementById('impTitle').textContent='นำเข้า '+s.title;
+  document.getElementById('impHint').innerHTML='คอลัมน์ตามลำดับ: <b>'+s.headers.join(' · ')+'</b>';
+  document.getElementById('impText').value=''; document.getElementById('impResult').innerHTML=''; document.getElementById('impSubmitBtn').disabled=true; IMP_VALID=[];
+  document.getElementById('impOv').classList.add('show');
+}
+function closeImport(){ document.getElementById('impOv').classList.remove('show'); }
+function impFileLoad(input){ const f=input.files&&input.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{ document.getElementById('impText').value=String(e.target.result||'').replace(/^\ufeff/,''); impValidate(); }; r.readAsText(f); }
+function impValidate(){
+  let rows=parseTable(document.getElementById('impText').value);
+  if(!rows.length){ document.getElementById('impResult').innerHTML='<p style="color:#aab0b8;padding:10px">ยังไม่มีข้อมูล</p>'; document.getElementById('impSubmitBtn').disabled=true; return; }
+  const head=rows[0].map(s=>s.toLowerCase()).join(',');
+  if(head.includes('ss code')||head.includes('รหัส')||head.includes('item code')||head.includes('ชื่อ')) rows=rows.slice(1);
+  IMP_VALID=[]; const checked=rows.map((r,i)=>{
+    if(IMP_SEC==='branches'){ const id=(r[0]||'').trim(); const ok=!!id; if(ok) IMP_VALID.push({id,nameTH:(r[1]||'').trim(),name:(r[2]||'').trim(),group:(r[3]||'').trim(),class:(r[4]||'').trim(),type:(r[5]||'').trim(),company:(r[6]||'').trim(),cashRdNumber:(r[7]||'').trim(),rdShopCode:(r[8]||'').trim(),brandModel:(r[9]||'').trim(),machineType:(r[10]||'').trim(),specMachine:(r[11]||'').trim(),serialNumber:(r[12]||'').trim(),brand:(r[13]||'').trim()||'Potato Corner'}); return {prev:(id||'—')+' · '+((r[1]||'').trim()||'-'),ok,reason:ok?'พร้อมนำเข้า':'ไม่มีรหัสสาขา',line:i+1}; }
+    else { const ss=(r[0]||'').trim(); const fn=(r[2]||'').trim(); const abbr=(r[3]||'').trim(); const code=(r[4]||'').trim(); const ok=!!(ss&&(fn||code)); if(ok) IMP_VALID.push({ss,ssName:(r[1]||'').trim(),fn,abbr,code,btns:(r[5]||'').trim()}); return {prev:(ss||'—')+' · '+(fn||code||'-')+(abbr?' ['+abbr+']':''),ok,reason:ok?'พร้อมนำเข้า':'ต้องมี SS Code + ผง/โค้ด',line:i+1}; }
+  });
+  const ok=checked.filter(c=>c.ok).length, bad=checked.length-ok;
+  document.getElementById('impResult').innerHTML=`<div class="imp-sum"><span class="imp-pill ok"><i class="fas fa-check me-1"></i>พร้อมนำเข้า ${ok}</span>${bad?`<span class="imp-pill skip"><i class="fas fa-ban me-1"></i>ข้าม ${bad}</span>`:''}</div>
+    <table class="imp-tbl"><thead><tr><th>#</th><th>ข้อมูล</th><th>สถานะ</th></tr></thead><tbody>
+    ${checked.map(c=>`<tr class="${c.ok?'':'bad'}"><td>${c.line}</td><td>${esc(c.prev)}</td><td><span class="st-chip ${c.ok?'ok':'bad'}">${c.ok?'<i class="fas fa-check me-1"></i>':'<i class="fas fa-xmark me-1"></i>'}${c.reason}</span></td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('impSubmitBtn').disabled = ok===0;
+  document.getElementById('impSubmitBtn').innerHTML=`<i class="fas fa-check me-1"></i>นำเข้า ${ok} รายการ`;
+}
+function impSubmit(){
+  if(!IMP_VALID.length) return; let added=0, updated=0;
+  if(IMP_SEC==='branches'){
+    IMP_VALID.forEach(v=>{ const j=ML.branches.findIndex(b=>String(b.id)===String(v.id)); if(j>=0){ ML.branches[j]=v; updated++; } else { ML.branches.push(v); added++; } });
+    localStorage.setItem(ML_KEY, JSON.stringify(ML)); renderBranches();
+  } else {
+    const seen={};
+    IMP_VALID.forEach(v=>{ const ss=SUB.subsets[v.ss]||(SUB.subsets[v.ss]={code:v.ss,name:v.ssName||v.ss,flavors:[]}); if(v.ssName) ss.name=v.ssName;
+      if(!seen[v.ss]){ seen[v.ss]=true; } // keep existing flavors, append new
+      if((v.fn||v.code) && !ss.flavors.some(f=>f.code===v.code && f.name===v.fn)){ ss.flavors.push({name:v.fn,abbr:v.abbr||'',code:v.code}); added++; }
+      (v.btns||'').split(/[;,]/).map(s=>s.trim()).filter(Boolean).forEach(bc=>{ SUB.map[bc]=v.ss; });
+    });
+    localStorage.setItem(SUB_KEY, JSON.stringify(SUB)); renderSubsets(); renderMaps();
+  }
+  closeImport();
+  Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',html:`เพิ่ม <b>${added}</b> รายการ${updated?` · อัปเดต <b>${updated}</b>`:''} · บันทึกแล้ว`,confirmButtonColor:'#2e934a'});
+}
+
+/* ---- Shop attribute master tables (Company/Brand/Group/Class/Type) ---- */
+var SHOP_ATTRS=[
+  {k:'company',ml:'companies',  th:'Company',bk:'company'},
+  {k:'brand',  ml:'brandsTbl',  th:'Store Format',  bk:'brand'},
+  {k:'group',  ml:'shopGroups', th:'Group',  bk:'group'},
+  {k:'class',  ml:'shopClasses',th:'Class',  bk:'class'},
+  {k:'type',   ml:'shopTypes',  th:'Type',   bk:'type'}
+];
+var attrFilt={};
+function persistML(){ try{ localStorage.setItem(ML_KEY, JSON.stringify(ML)); }catch(e){} }
+function attrSeed(){
+  SHOP_ATTRS.forEach(function(a){
+    if(!Array.isArray(ML[a.ml])){
+      var out=[];
+      if(a.k==='brand'){ (getBrandMaster()||[]).forEach(function(n,i){ out.push({code:String(i+1).padStart(2,'0'),name1:n,name2:n}); }); if(!out.length) out.push({code:'01',name1:'Potato Corner',name2:'Potato Corner'}); }
+      else { var seen={}; (ML.branches||[]).forEach(function(b){ var v=String(b[a.bk]||'').trim(); if(v&&!seen[v]){ seen[v]=1; out.push({code:String(out.length+1).padStart(2,'0'),name1:v,name2:v}); } }); }
+      ML[a.ml]=out;
+    }
+  });
+  persistML();
+}
+function renderAttrBody(k){
+  var a=SHOP_ATTRS.find(function(x){return x.k===k;}); if(!a) return;
+  var tb=document.getElementById('attrbody-'+k); if(!tb) return;
+  var f=attrFilt[k]||{code:'',n1:'',n2:''};
+  var list=(ML[a.ml]||[]).map(function(r,idx){return {r:r,idx:idx};}).filter(function(o){var r=o.r;
+    return (!f.code||String(r.code||'').toLowerCase().indexOf(f.code)>=0) && (!f.n1||String(r.name1||'').toLowerCase().indexOf(f.n1)>=0) && (!f.n2||String(r.name2||'').toLowerCase().indexOf(f.n2)>=0); });
+  tb.innerHTML = list.length ? list.map(function(o){var r=o.r,idx=o.idx;
+    return '<tr>'
+      +'<td><input class="cell mono" value="'+esc(r.code||'')+'" oninput="ML[\''+a.ml+'\']['+idx+'].code=this.value;persistML()"></td>'
+      +'<td><input class="cell" value="'+esc(r.name1||'')+'" oninput="ML[\''+a.ml+'\']['+idx+'].name1=this.value;persistML()"></td>'
+      +'<td><input class="cell" value="'+esc(r.name2||'')+'" oninput="ML[\''+a.ml+'\']['+idx+'].name2=this.value;persistML()"></td>'
+      +'<td style="text-align:center"><button class="actbtn" style="background:#fdecec;color:#c0392b" title="ลบ" onclick="delAttr(\''+k+'\','+idx+')"><i class="fas fa-trash"></i></button></td>'
+      +'</tr>';
+  }).join('') : '<tr><td colspan="4" style="text-align:center;color:#9aa1aa;padding:18px">ไม่พบข้อมูล</td></tr>';
+  var c=document.getElementById('attrcount-'+k); if(c) c.textContent='ทั้งหมด '+(ML[a.ml]||[]).length+' รายการ';
+}
+function renderAttr(k){
+  var a=SHOP_ATTRS.find(function(x){return x.k===k;}); if(!a) return;
+  var host=document.getElementById('attr-'+k); if(!host) return;
+  attrFilt[k]=attrFilt[k]||{code:'',n1:'',n2:''};
+  host.innerHTML='<div class="brscroll"><table class="shoptbl" style="min-width:720px"><thead>'
+    +'<tr class="filt-row">'
+      +'<th style="width:150px"><input class="fcell" placeholder="Filter '+a.th+' Code" oninput="attrF(\''+k+'\',\'code\',this.value)"></th>'
+      +'<th><input class="fcell" placeholder="Filter '+a.th+' Name 1" oninput="attrF(\''+k+'\',\'n1\',this.value)"></th>'
+      +'<th><input class="fcell" placeholder="Filter '+a.th+' Name 2" oninput="attrF(\''+k+'\',\'n2\',this.value)"></th>'
+      +'<th style="width:80px"></th></tr>'
+    +'<tr class="head-row"><th>'+a.th+' Code</th><th>'+a.th+' Name 1</th><th>'+a.th+' Name 2</th><th>Action</th></tr>'
+    +'</thead><tbody id="attrbody-'+k+'"></tbody></table></div>'
+    +'<div style="display:flex;align-items:center;gap:12px;margin-top:10px"><button class="addrow" style="margin-top:0" onclick="addAttr(\''+k+'\')"><i class="fas fa-plus me-1"></i>เพิ่ม '+a.th+'</button><span id="attrcount-'+k+'" class="text-muted small"></span></div>';
+  renderAttrBody(k);
+}
+function attrF(k,field,v){ attrFilt[k]=attrFilt[k]||{code:'',n1:'',n2:''}; attrFilt[k][field]=(v||'').toLowerCase(); renderAttrBody(k); }
+function addAttr(k){ var a=SHOP_ATTRS.find(function(x){return x.k===k;}); ML[a.ml]=ML[a.ml]||[]; ML[a.ml].unshift({code:'',name1:'',name2:''}); persistML(); renderAttrBody(k); }
+function delAttr(k,i){ var a=SHOP_ATTRS.find(function(x){return x.k===k;}); (ML[a.ml]||[]).splice(i,1); persistML(); renderAttrBody(k); }
+
+// Store Format: ensure 'Event' + tag PCSE (pop-up) = Event
+(function ensureEventFormat(){
+  try{ var a=JSON.parse(localStorage.getItem('pc_brand_master'))||[]; if(Array.isArray(a)&&a.length&&!a.some(function(x){return String(x.name).toLowerCase()==='event';})&&!localStorage.getItem('pc_brand_event_added')){ a.push({name:'Event',active:1}); localStorage.setItem('pc_brand_master',JSON.stringify(a)); } if(!localStorage.getItem('pc_brand_event_added')) localStorage.setItem('pc_brand_event_added','1'); }catch(e){}
+  try{ if(!localStorage.getItem('pc_pcse_event_done')){ var changed=false; (ML.branches||[]).forEach(function(b){ if(/^PCSE/i.test(b.id||'')){ var arr=brandsOf(b).slice(); if(arr.indexOf('Event')<0){ b.brands=['Event']; delete b.brand; changed=true; } } }); if(changed) save(); localStorage.setItem('pc_pcse_event_done','1'); } }catch(e){}
+})();
+// Backfill: ดึงเครื่องพิมพ์ (EPSON=แคชเชียร์ / VPOS=ครัว) จากทะเบียนเครื่อง → Shop Master (รันครั้งเดียว)
+(function backfillPrinters(){
+  try{
+    if(localStorage.getItem('pc_printer_backfill')) return;
+    var assets=[]; try{ var s=JSON.parse(localStorage.getItem('pc_mock_store_v28')); if(s&&Array.isArray(s.assets)) assets=s.assets; }catch(e){}
+    if(!assets.length && window.PC_ASSET_SEED) assets=window.PC_ASSET_SEED;
+    if(!assets.length) return; // ยังไม่มีข้อมูลทะเบียนในเครื่องนี้ — ข้ามไว้ก่อน
+    var byShop={}; assets.forEach(function(a){ if(String(a.status||'').toUpperCase()!=='ACTIVE') return; (byShop[a.shopCode]=byShop[a.shopCode]||[]).push(a); });
+    var changed=false;
+    (ML.branches||[]).forEach(function(b){ (byShop[b.id]||[]).forEach(function(a){
+      var cat=String(a.category||'').toUpperCase(), brand=String(a.brand||'').toUpperCase();
+      if(cat.indexOf('PRINT')<0) return;
+      if(brand.indexOf('EPSON')>=0){ if(!b.printerCashierModel){ b.printerCashierModel=((a.brand||'')+' '+(a.model||'')).trim(); b.printerCashierSerial=a.serial||''; changed=true; } }
+      else if(brand.indexOf('VPOS')>=0){ if(!b.printerKitchenModel){ b.printerKitchenModel=((a.brand||'')+' '+(a.model||'')).trim(); b.printerKitchenSerial=a.serial||''; changed=true; } }
+    }); });
+    if(changed) save();
+    localStorage.setItem('pc_printer_backfill','1');
+  }catch(e){}
+})();
+renderRail(); goSect('branches');
+brFillFilters(); renderBranches(); attrSeed(); SHOP_ATTRS.forEach(function(a){ renderAttr(a.k); });
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

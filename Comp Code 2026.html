@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="build" content="p2-20260731e">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comp Code 2026 — คลังโค้ดแลกฟรี (IT)</title>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1d20"/><text x="50" y="44" font-size="30" text-anchor="middle" fill="#2e934a" font-family="monospace" font-weight="bold">CC</text><text x="50" y="70" font-size="13" text-anchor="middle" fill="#fff" font-family="sans-serif">2026</text></svg></template>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{ --black:#1a1d20; --yellow:#2e934a; --green:#2e934a; --bg:#eef1f4; --mut:#8a9099; --line:#e7eaee; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--black); margin:0; padding:0 0 60px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1040px; margin:0 auto; padding:20px 16px 0; }
+  .head{ background:var(--black); color:#fff; border-radius:16px; padding:20px 24px; border-left:9px solid var(--yellow); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.25rem; margin:0; display:flex; align-items:center; gap:11px; }
+  .head h1 i{ color:var(--yellow); }
+  .head .sub{ color:#c9ccd1; font-size:.84rem; margin-top:3px; }
+  .head .itonly{ margin-left:auto; background:rgba(46,147,74,.16); color:var(--yellow); font-weight:700; font-size:.74rem; border-radius:999px; padding:6px 13px; display:inline-flex; align-items:center; gap:6px; }
+
+  .note{ background:#eef6ff; border:1px solid #cfe0f5; border-left:4px solid #2f6dab; border-radius:12px; padding:12px 16px; font-size:.85rem; margin:16px 0; line-height:1.5; color:#2c4a82; }
+  .note b{ color:#1d3c66; }
+
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0; }
+  .stat{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:15px 17px; }
+  .stat .n{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.7rem; line-height:1; color:var(--black); }
+  .stat .n.green{ color:var(--green); } .stat .n.red{ color:#c0392b; } .stat .n.amber{ color:#c9870a; }
+  .stat .l{ font-size:.76rem; color:var(--mut); margin-top:7px; font-weight:600; }
+
+  .toolbar{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:16px; }
+  .flbl{ font-size:.66rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--mut); margin:0 0 7px 1px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
+  .chips:last-child{ margin-bottom:0; }
+  .chip{ border:1.5px solid #dde2e7; background:#fff; color:#5a616b; border-radius:999px; padding:6px 13px; font-family:inherit; font-size:.84rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .chip:hover{ border-color:#b6bcc4; }
+  .chip.on{ background:var(--black); color:#fff; border-color:transparent; }
+  .chip .n{ font-family:'JetBrains Mono',monospace; font-size:.72rem; background:#eef1f4; color:#3a3f45; border-radius:999px; padding:1px 7px; }
+  .chip.on .n{ background:rgba(255,255,255,.22); color:#fff; }
+
+  .lotgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:13px; }
+  .lot{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:15px 16px; border-top:4px solid var(--prodc,#888); }
+  .lot .lh{ display:flex; align-items:center; gap:10px; }
+  .lot .pbadge{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.82rem; color:#fff; background:var(--prodc,#888); border-radius:8px; padding:3px 9px; }
+  .lot .mname{ font-weight:700; font-size:1.02rem; }
+  .lot .pname{ font-size:.74rem; color:var(--mut); }
+  .lot .status{ margin-left:auto; font-size:.7rem; font-weight:700; border-radius:999px; padding:3px 10px; }
+  .status.active{ background:#eafaf1; color:#1d7a4d; } .status.expired{ background:#f1f3f5; color:#6c757d; } .status.upcoming{ background:#fff7e6; color:#9a6700; }
+  .lot .meta{ display:flex; flex-wrap:wrap; gap:7px; margin:11px 0 12px; }
+  .mtag{ font-size:.76rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; }
+  .mtag i{ color:#9aa1aa; }
+  .mtag.cnt b{ font-family:'JetBrains Mono',monospace; color:var(--black); }
+  .lot .acts{ display:flex; gap:8px; }
+  .btn{ border:0; border-radius:9px; font-family:inherit; font-weight:600; font-size:.82rem; padding:8px 13px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .btn-d{ background:var(--black); color:#fff; } .btn-d:hover{ background:#000; }
+  .btn-o{ background:#fff; border:1.5px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-send{ background:var(--green); color:#fff; } .btn-send:hover{ background:#00632f; } .btn-send:disabled{ background:#bcd6c6; cursor:default; }
+  #sendRow .sbtn{ border:1.5px solid #cfe0d6; background:#f3fbf6; color:#1d7a4d; border-radius:10px; padding:8px 14px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  #sendRow .sbtn:hover{ background:#e7f6ee; } #sendRow .sbtn.sent{ background:#eef1f4; color:#6c757d; border-color:#dde2e7; cursor:default; }
+  #sendRow .sbtn .n{ font-family:'JetBrains Mono',monospace; font-size:.72rem; background:#fff; border:1px solid #cfe0d6; border-radius:999px; padding:1px 7px; }
+  #dlRow .dbtn{ border:1.5px solid #d8dde3; background:#f6f8fa; color:#2b3138; border-radius:10px; padding:8px 14px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  #dlRow .dbtn:hover{ background:#eef1f4; border-color:#b6bcc4; }
+  #dlRow .dbtn i{ color:#3a4150; }
+  #dlRow .dbtn.all{ background:#1a1d20; border-color:transparent; color:#fff; } #dlRow .dbtn.all i{ color:#2e934a; }
+  #dlRow .dbtn .n{ font-family:'JetBrains Mono',monospace; font-size:.72rem; background:#fff; border:1px solid #d8dde3; border-radius:999px; padding:1px 7px; color:#2b3138; }
+  #toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:var(--black); color:#fff; padding:12px 20px; border-radius:12px; font-size:.9rem; font-weight:600; opacity:0; transition:.25s; z-index:80; box-shadow:0 8px 30px rgba(0,0,0,.3); }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .empty{ text-align:center; color:var(--mut); padding:40px; background:#fff; border:1px solid var(--line); border-radius:14px; }
+
+  /* modal */
+  .ov{ position:fixed; inset:0; background:rgba(20,22,26,.55); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .ov.show{ display:flex; }
+  .modal{ background:#fff; border-radius:16px; max-width:560px; width:100%; max-height:82vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal .mh{ background:var(--black); color:#fff; padding:14px 18px; display:flex; align-items:center; gap:10px; }
+  .modal .mh .x{ margin-left:auto; cursor:pointer; opacity:.8; } .modal .mh .x:hover{ opacity:1; }
+  .modal .mb{ padding:14px 18px; overflow:auto; }
+  .codelist{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .codelist .c{ font-family:'JetBrains Mono',monospace; font-size:.8rem; background:#f6f8fa; border:1px solid var(--line); border-radius:7px; padding:6px 9px; }
+  @media(max-width:560px){ .codelist{ grid-template-columns:1fr; } }
+  /* year switcher + add-year */
+  .head .yrbar{ margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .yrchip{ border:1.5px solid rgba(255,255,255,.25); background:transparent; color:#fff; border-radius:999px; padding:6px 15px; font-family:inherit; font-size:.9rem; font-weight:700; cursor:pointer; }
+  .yrchip.on{ background:var(--yellow); color:var(--black); border-color:transparent; }
+  .addyr{ background:var(--green); color:#fff; border:0; border-radius:999px; padding:7px 15px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .addyr:hover{ background:#00632f; }
+  /* history */
+  .hsec{ margin-top:26px; }
+  .hsec .htitle{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.02rem; display:flex; align-items:center; gap:9px; margin-bottom:12px; }
+  .hsec .htitle i{ color:var(--green); }
+  .htbl{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .htbl th{ background:var(--black); color:#fff; font-size:.74rem; font-weight:700; text-align:left; padding:10px 13px; }
+  .htbl td{ padding:10px 13px; border-top:1px solid var(--line); font-size:.86rem; }
+  .htbl tr:hover td{ background:#f8fafb; }
+  .hpill{ font-size:.72rem; font-weight:700; border-radius:999px; padding:3px 10px; }
+  .hpill.pend{ background:#fff7e6; color:#9a6700; } .hpill.done{ background:#eafaf1; color:#1d7a4d; }
+  .hempty{ color:var(--mut); padding:16px; text-align:center; font-size:.86rem; }
+  /* call-to-action: ต้องกดส่งให้ IT */
+  .sendnote{ display:flex; align-items:flex-start; gap:10px; background:#fff7e6; border:1px solid #f0e2bc; border-left:4px solid #c9870a; border-radius:12px; padding:11px 15px; margin:9px 0 11px; font-size:.88rem; color:#7a5800; line-height:1.5; }
+  .sendnote.done{ background:#eafaf1; border:1px solid #cfe9da; border-left-color:#1d7a4d; color:#1d6b43; }
+  .sendnote i{ margin-top:2px; font-size:1rem; }
+  .sendnote b{ color:#5a4200; } .sendnote.done b{ color:#155c38; }
+  /* send / upload modal */
+  .sendsum{ background:#f6f8fa; border:1px solid var(--line); border-radius:11px; padding:9px 14px; margin-bottom:12px; }
+  .ssrow{ display:flex; justify-content:space-between; align-items:center; padding:5px 0; font-size:.9rem; border-bottom:1px solid #eef1f4; }
+  .ssrow:last-child{ border-bottom:0; } .ssrow span{ color:#6c757d; }
+  .vchk{ display:flex; align-items:flex-start; gap:9px; border-radius:10px; padding:10px 13px; font-size:.87rem; margin-bottom:13px; line-height:1.45; }
+  .vchk.ok{ background:#eafaf1; color:#1d7a4d; } .vchk.warn{ background:#eaf4ee; color:#9a6700; } .vchk i{ margin-top:2px; }
+  .vchk b{ color:inherit; }
+  .fld{ display:block; font-size:.82rem; font-weight:600; color:#5a616b; margin-bottom:11px; }
+  .fld input{ display:block; width:100%; margin-top:5px; border:1.5px solid #dde2e7; border-radius:10px; padding:10px 12px; font-family:inherit; font-size:.95rem; box-sizing:border-box; }
+  .fld input:focus{ outline:none; border-color:var(--green); }
+  .serr{ color:#c0392b; font-size:.83rem; min-height:18px; margin-bottom:6px; font-weight:600; }
+  .sendacts{ display:flex; gap:9px; justify-content:flex-end; }
+  .ayhint{ background:#eef6ff; border:1px solid #cfe0f5; border-radius:11px; padding:11px 14px; font-size:.85rem; color:#2c4a82; line-height:1.5; margin-bottom:13px; } .ayhint i{ color:#2f6dab; }
+  .aydrop{ border:2px dashed #cfd5db; border-radius:13px; padding:24px 16px; text-align:center; cursor:pointer; color:#5a616b; font-size:.9rem; display:flex; flex-direction:column; align-items:center; gap:7px; transition:.15s; }
+  .aydrop:hover, .aydrop.over{ border-color:var(--green); background:#f3fbf6; } .aydrop .aysub{ font-size:.74rem; color:#9aa1aa; }
+  .ayload{ text-align:center; color:#6c757d; padding:14px; font-size:.88rem; }
+  .ayprodbar{ display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
+  .aypp{ background:#f1f4f7; border-radius:8px; padding:4px 11px; font-size:.82rem; color:#5a616b; } .aypp b{ font-family:'JetBrains Mono',monospace; color:var(--black); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1><i class="fas fa-clock-rotate-left"></i><span id="hTitle">History · คลังโค้ดแลกฟรี 2026</span></h1>
+      <div class="sub">คลังโค้ดแลกฟรี (Complimentary) — แยกจากตารางโปรโมชัน MKT/OP</div>
+    </div>
+    <div class="yrbar" id="yrBar"></div>
+  </div>
+
+  <div class="note"><i class="fas fa-circle-info"></i> <b>วิธีใช้:</b> &nbsp;① ดูโค้ดแลกฟรีของแต่ละสินค้า/เดือนด้านล่าง (ดาวน์โหลด/ดูตัวอย่างได้) &nbsp;→&nbsp; ② กดปุ่ม <b>“ส่ง [สินค้า]”</b> เพื่อส่งให้ IT นำโค้ดเข้าระบบจริง (Backoffice/POS) &nbsp;·&nbsp; เพิ่มรอบปีใหม่ได้ที่ปุ่ม “เพิ่มรอบปี” มุมขวาบน</div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <div class="flbl"><i class="fas fa-box"></i> สินค้า</div>
+    <div class="chips" id="prodChips"></div>
+    <div class="flbl"><i class="fas fa-calendar"></i> เดือน (ล็อต)</div>
+    <div class="chips" id="monthChips"></div>
+    <div class="flbl" style="margin-top:13px"><i class="fas fa-file-arrow-down"></i> ดาวน์โหลดรวมรายสินค้า · 1 สินค้า = 1 ไฟล์ (รวมทั้ง 12 เดือน · วันหมดอายุตามแต่ละเดือนในไฟล์)</div>
+    <div class="chips" id="dlRow"></div>
+    <div class="flbl" style="margin-top:13px"><i class="fas fa-paper-plane"></i> ส่งเข้า IT (เปิดเคส) · 1 สินค้า = 1 ไฟล์ รวมทุกเดือน</div>
+    <div id="sendNotice" class="sendnote"></div>
+    <div class="chips" id="sendRow"></div>
+  </div>
+
+  <div class="lotgrid" id="lotGrid"></div>
+
+</div>
+
+<div class="ov" id="ov" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="mh"><i class="fas fa-list-ol"></i><span id="mTitle">โค้ด</span><span class="x" onclick="closeModal()"><i class="fas fa-xmark"></i></span></div>
+    <div class="mb" id="mBody"></div>
+  </div>
+</div>
+
+<script src="data/comp-codes-2026.js?v=p2-20260731e"></script>
+<script>
+'use strict';
+// ฐานปีฐาน (จากไฟล์) + ปีที่เพิ่มรอบ (localStorage)
+// เริ่มจากว่าง: ไม่มีรอบปีฝังมา (PC_COMP_CODES=null) → user เปิดรอบปีเองทุกปีผ่านปุ่ม "เพิ่มโค้ดประจำปี"
+var BASE_YEAR_DATA = (window.PC_COMP_CODES && (window.PC_COMP_CODES.lots||[]).length) ? window.PC_COMP_CODES : null;
+function loadExtraYears(){ try{ return JSON.parse(localStorage.getItem('pc_comp_codes_extra'))||{}; }catch(e){ return {}; } }
+// บีบอัดโค้ดก่อนเก็บ localStorage (ตัด prefix ร่วมของล็อต + รวม suffix เป็นสตริงเดียว) กัน quota เต็มเมื่อโค้ดเยอะ (30k+)
+function _lcp(arr){ if(!arr.length) return ''; var p=String(arr[0]); for(var i=1;i<arr.length;i++){ var s=String(arr[i]),j=0; while(j<p.length&&p.charCodeAt(j)===s.charCodeAt(j))j++; p=p.slice(0,j); if(!p)break; } return p; }
+function packYear(d){ if(!d) return d; return {year:d.year,products:(d.products||[]).slice(),monthDates:d.monthDates||{},lots:(d.lots||[]).map(function(l){ var codes=l.codes||[]; var pfx=_lcp(codes); return {product:l.product,month:l.month,start:l.start,expire:l.expire,count:(l.count!=null?l.count:codes.length),pfx:pfx,sfx:codes.map(function(c){return String(c).slice(pfx.length);}).join('\n')}; })}; }
+function unpackYear(d){ if(!d) return d; return {year:d.year,products:(d.products||[]).slice(),monthDates:d.monthDates||{},lots:(d.lots||[]).map(function(l){ if(l.codes) return l; var pfx=l.pfx||'', sfx=(l.sfx==null?'':l.sfx); var arr=sfx===''?[]:sfx.split('\n'); return {product:l.product,month:l.month,start:l.start,expire:l.expire,count:(l.count!=null?l.count:arr.length),codes:arr.map(function(s){return pfx+s;})}; })}; }
+function saveExtraYears(o){ try{ var packed={}; Object.keys(o||{}).forEach(function(y){ var d=o[y]; var hasRaw=((d&&d.lots)||[]).some(function(l){return l.codes;}); packed[y]=hasRaw?packYear(d):d; }); localStorage.setItem('pc_comp_codes_extra', JSON.stringify(packed)); return true; }catch(e){ toast('พื้นที่ไม่พอ — โค้ดเยอะเกิน'); return false; } }
+function allYears(){ var ex=loadExtraYears(); var ys=Object.keys(ex).map(Number); if(BASE_YEAR_DATA) ys.push(Number(BASE_YEAR_DATA.year)); return [...new Set(ys)].sort(function(a,b){return b-a;}); }
+function dataForYear(y){ if(BASE_YEAR_DATA && Number(y)===Number(BASE_YEAR_DATA.year)) return BASE_YEAR_DATA; var ex=loadExtraYears(); return unpackYear(ex[y])||{year:y,products:[],lots:[],monthDates:{}}; }
+/* ===== รอบปีที่อัปแล้ว "ยังไม่กดส่งให้ IT" = ชั่วคราว · ล้างทิ้งถ้าไม่ยืนยัน ===== */
+function pendingYears(){ try{ return (JSON.parse(localStorage.getItem('pc_comp_pending'))||[]).map(Number); }catch(e){ return []; } }
+function savePendingYears(a){ try{ localStorage.setItem('pc_comp_pending', JSON.stringify([...new Set((a||[]).map(Number))])); }catch(e){} }
+function markPendingYear(y){ var a=pendingYears(); a.push(Number(y)); savePendingYears(a); }
+function clearPendingYear(y){ savePendingYears(pendingYears().filter(function(x){ return x!==Number(y); })); }
+function isYearSent(y){ return loadReqs().some(function(r){ return r.source==='comp' && Number(r.compYear)===Number(y); }); }
+function isYearPending(y){ return pendingYears().indexOf(Number(y))>=0 && !isYearSent(y); }
+/* ล้างรอบปีที่อัปไว้แต่ไม่ได้กดส่งให้ IT (ค้างจากครั้งก่อน) — เรียกครั้งเดียวตอนโหลดหน้า
+   กฎ: รอบปีที่เพิ่มเองทุกปี (extra year) ถ้ายัง "ไม่มีการส่งให้ IT" = ข้อมูลชั่วคราว → ล้างทิ้ง
+   (ครอบคลุมทั้งรอบที่ markhจากรุ่นใหม่ และข้อมูลเก่าที่อัปค้างไว้ก่อนมีระบบ flag) */
+function purgeUnsentPending(){
+  var ex=loadExtraYears(), removed=0;
+  Object.keys(ex).forEach(function(y){
+    if(BASE_YEAR_DATA && Number(y)===Number(BASE_YEAR_DATA.year)) return; // ปีฐานในระบบ — ไม่แตะ
+    if(isYearSent(y)) return;                                            // ส่งให้ IT แล้ว = ถาวร
+    delete ex[y]; removed++;
+  });
+  if(removed){ try{ localStorage.setItem('pc_comp_codes_extra', JSON.stringify(ex)); }catch(e){} }
+  savePendingYears([]);
+  return removed;
+}
+var __purgedYears = purgeUnsentPending();
+var YEAR = allYears()[0] || null;
+var DATA = YEAR ? dataForYear(YEAR) : {year:null,products:[],lots:[],monthDates:{}};
+var PNAME = { LFF:'Large French Fries', JFF:'Jumbo French Fries', MFF:'Mega French Fries', GFF:'Giga French Fries', LCK:'Large Chicken' };
+var PCOLOR = { LFF:'#c9870a', JFF:'#d35400', MFF:'#2f6dab', GFF:'#1d7a4d', LCK:'#8e44ad' };
+var TH_M = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+var fProd = 'ALL', fMonth = 'ALL';
+var TODAY = new Date().toISOString().slice(0,10);
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+function fmtD(iso){ if(!iso) return '—'; var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'/'+m[2]+'/'+(+m[1]+543)):iso; }
+function lotStatus(l){ if(l.start && TODAY < l.start) return 'upcoming'; if(l.expire && TODAY > l.expire) return 'expired'; return 'active'; }
+var STLBL = { active:'ใช้ได้', expired:'หมดอายุ', upcoming:'ยังไม่เริ่ม' };
+
+function filtered(){ return (DATA.lots||[]).filter(function(l){ return (fProd==='ALL'||l.product===fProd) && (fMonth==='ALL'||String(l.month)===String(fMonth)); }); }
+
+function renderStats(){
+  var lots=DATA.lots||[];
+  var total=lots.reduce(function(a,l){return a+l.count;},0);
+  var active=lots.filter(function(l){return lotStatus(l)==='active';}).reduce(function(a,l){return a+l.count;},0);
+  var expired=lots.filter(function(l){return lotStatus(l)==='expired';}).reduce(function(a,l){return a+l.count;},0);
+  var seenD={}, dupAll=0; lots.forEach(function(l){ (l.codes||[]).forEach(function(c){ var u=String(c).toUpperCase(); if(seenD[u]) dupAll++; else seenD[u]=1; }); });
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="n">'+total.toLocaleString()+'</div><div class="l">โค้ดทั้งหมด · '+lots.length+' ล็อต</div></div>'+
+    '<div class="stat"><div class="n green">'+active.toLocaleString()+'</div><div class="l">ใช้ได้ตอนนี้</div></div>'+
+    '<div class="stat"><div class="n red">'+expired.toLocaleString()+'</div><div class="l">หมดอายุแล้ว</div></div>'+
+    '<div class="stat"><div class="n '+(!total?'':(dupAll?'red':'green'))+'" '+(!total?'style="color:#cfd5db"':'')+'>'+(!total?'—':(dupAll?dupAll.toLocaleString():'ไม่ซ้ำ'))+'</div><div class="l">'+(!total?'ตรวจซ้ำ (ยังไม่มีข้อมูล)':(dupAll?'โค้ดซ้ำในระบบ':'ตรวจซ้ำแล้ว · ไม่ซ้ำ'))+'</div></div>'+
+    '<div class="stat"><div class="n amber">'+(DATA.products||[]).length+' × 12</div><div class="l">สินค้า × เดือน</div></div>';
+}
+
+function renderChips(){
+  var lots=DATA.lots||[];
+  function cnt(pred){ return lots.filter(pred).reduce(function(a,l){return a+l.count;},0); }
+  var ph='<button class="chip'+(fProd==='ALL'?' on':'')+'" onclick="setProd(\'ALL\')">ทั้งหมด <span class="n">'+cnt(function(){return true;}).toLocaleString()+'</span></button>';
+  (DATA.products||[]).forEach(function(p){ ph+='<button class="chip'+(fProd===p?' on':'')+'" onclick="setProd(\''+p+'\')" title="'+esc(PNAME[p]||p)+'">'+p+' <span class="n">'+cnt(function(l){return l.product===p;}).toLocaleString()+'</span></button>'; });
+  document.getElementById('prodChips').innerHTML=ph;
+  var mh='<button class="chip'+(fMonth==='ALL'?' on':'')+'" onclick="setMonth(\'ALL\')">ทั้งปี</button>';
+  for(var m=1;m<=12;m++){ (function(m){ mh+='<button class="chip'+(String(fMonth)===String(m)?' on':'')+'" onclick="setMonth('+m+')">'+TH_M[m]+'</button>'; })(m); }
+  document.getElementById('monthChips').innerHTML=mh;
+}
+
+/* ===== ผูกโค้ด Voucher (VCxxxx) ให้รอบปี Comp อัตโนมัติ =====
+   button (ตัวย่อ LFF/JFF/MFF/GFF/LCK) → pc_voucher_comp_map → รหัส Voucher
+   ลำดับหา: ตารางคู่รหัสที่บันทึกไว้ → Voucher master (pc_vouchers) → ทะเบียนโค้ดโปร (PC_PROMO_CODES) → ค่าตั้งต้น */
+var VC_FALLBACK={ LFF:'VC0041', JFF:'VC0042', MFF:'VC0043', GFF:'VC0044', LCK:'VC0045' };
+var VC_SIZE={ L:'large', J:'jumbo', M:'mega', G:'giga' };
+function promoSeed(){
+  var out=null;
+  try{ if(window.PC_PROMO_CODES) out=window.PC_PROMO_CODES; }catch(e){}
+  if(!out){ try{ if(window.parent && window.parent!==window && window.parent.PC_PROMO_CODES) out=window.parent.PC_PROMO_CODES; }catch(e){} }
+  if(!out){ try{ if(window.top && window.top!==window && window.top.PC_PROMO_CODES) out=window.top.PC_PROMO_CODES; }catch(e){} }
+  return out||[];
+}
+function vcMapLoad(){ try{ return JSON.parse(localStorage.getItem('pc_voucher_comp_map'))||{}; }catch(e){ return {}; } }
+function vcMapSave(m){ try{ localStorage.setItem('pc_voucher_comp_map', JSON.stringify(m||{})); }catch(e){} }
+function vcFromMaster(sh){
+  var want=String(sh||'').toUpperCase(); if(!want) return '';
+  var size=VC_SIZE[want.charAt(0)]||'', kind=/CK$/.test(want)?'chicken':(/FF$/.test(want)?'fri':'');
+  function pick(list, getCode, getName, getPrefix){
+    for(var i=0;i<list.length;i++){ var o=list[i]; if(!o) continue;
+      var pf=String(getPrefix(o)||'').toUpperCase();
+      if(pf===want){ var c1=String(getCode(o)||''); if(/^VC\d{3,5}$/i.test(c1)) return c1.toUpperCase(); }
+    }
+    if(!size || !kind) return '';
+    for(var j=0;j<list.length;j++){ var q=list[j]; if(!q) continue;
+      var nm=String(getName(q)||'').toLowerCase(), cd=String(getCode(q)||'');
+      if(!/^VC\d{3,5}$/i.test(cd)) continue;
+      if(nm.indexOf('comp')<0) continue;
+      if(size && nm.indexOf(size)<0) continue;
+      if(kind && nm.indexOf(kind)<0) continue;
+      return cd.toUpperCase();
+    }
+    return '';
+  }
+  var vs=[]; try{ vs=JSON.parse(localStorage.getItem('pc_vouchers'))||[]; }catch(e){}
+  var hit=pick(vs, function(o){return o.code||o.vcCode||o.typeCode;}, function(o){return o.name;}, function(o){return o.prefix||o.shortName;});
+  if(hit) return hit;
+  return pick(promoSeed(), function(o){return o.code;}, function(o){return o.name;}, function(o){return o.button;});
+}
+function compVcOf(sh){
+  var key=String(sh||'').toUpperCase(); if(!key) return '';
+  var m=vcMapLoad();
+  if(m[key] && /^VC\d{3,5}$/i.test(m[key])) return String(m[key]).toUpperCase();
+  var vc=vcFromMaster(key) || VC_FALLBACK[key] || '';
+  if(vc){ m[key]=vc; vcMapSave(m); }
+  return vc;
+}
+function compVcName(vc){
+  if(!vc) return '';
+  var vs=[]; try{ vs=JSON.parse(localStorage.getItem('pc_vouchers'))||[]; }catch(e){}
+  var f=vs.find(function(o){ return o && String(o.code||o.vcCode||'').toUpperCase()===vc; });
+  if(f&&f.name) return f.name;
+  var g=promoSeed().find(function(o){ return o && String(o.code||'').toUpperCase()===vc; });
+  return (g&&g.name)||'';
+}
+function vcRowHTML(p){
+  var vc=compVcOf(p);
+  return vc
+    ? '<span class="mono" style="color:#7a3ea8;font-weight:700">'+vc+'</span>'+(compVcName(vc)?' <span style="color:#8a9099;font-weight:400;font-size:.78rem">'+esc(compVcName(vc))+'</span>':'')
+    : '<span style="color:#c0392b;font-weight:700">ยังไม่ผูกโค้ด Voucher</span>';
+}
+/* ===== ส่งเข้า IT — 1 สินค้า = 1 ไฟล์ (รวม 12 เดือน) → เปิดเคสเข้าคิวงานโค้ด IT ===== */
+function loadReqs(){ try{ return JSON.parse(localStorage.getItem('pc_code_requests'))||[]; }catch(e){ return []; } }
+function saveReqs(a){ try{ localStorage.setItem('pc_code_requests', JSON.stringify(a)); return true; }catch(e){ toast('พื้นที่ไม่พอ (โค้ดเยอะ) — ลองส่งทีละสินค้า'); return false; } }
+function sentCampaign(p){ return 'Comp Code '+p+' '+YEAR; }
+function isSent(p){ return loadReqs().some(function(r){ return r.campaign===sentCampaign(p); }); }
+function renderSend(){
+  var el=document.getElementById('sendRow'); if(!el) return;
+  var pend = isYearPending(YEAR) ? '<div class="vchk warn" style="width:100%;margin:0 0 10px"><i class="fas fa-triangle-exclamation"></i><div>รอบปีนี้<b>ยังไม่ได้ส่งให้ IT</b> — เป็นข้อมูลชั่วคราว หากออกจากหน้าโดยไม่กด “ยืนยันแจ้งงาน IT” ระบบจะ<b>ล้างทิ้ง</b></div></div>' : '';
+  var prods=(DATA.products||[]);
+  var unsent=prods.filter(function(p){ return !isSent(p); });
+  if(!prods.length){ el.innerHTML=pend; }
+  else if(!unsent.length){
+    el.innerHTML=pend+'<button class="sbtn sent" disabled><i class="fas fa-circle-check"></i>ส่งครบทุกสินค้าแล้ว</button>';
+  } else {
+    var cnt=(DATA.lots||[]).filter(function(l){return unsent.indexOf(l.product)>=0;}).reduce(function(a,l){return a+l.count;},0);
+    el.innerHTML=pend+'<button class="sbtn" style="background:#2e934a;color:#fff;border-color:transparent;padding:11px 20px;font-size:.92rem" onclick="sendAll()">'+
+      '<i class="fas fa-paper-plane"></i>ยืนยันกดแจ้งงาน IT ('+unsent.length+' สินค้า) <span class="n" style="background:rgba(255,255,255,.22);border-color:transparent;color:#fff">'+cnt.toLocaleString()+'</span></button>';
+  }
+  // แบนเนอร์เตือน: เพิ่มแล้วต้องกดส่งให้ IT ระบบจึงนำเข้า Backoffice/POS
+  var unsent=(DATA.products||[]).filter(function(p){ return !isSent(p); }).length;
+  var nt=document.getElementById('sendNotice');
+  if(nt){ if(!(DATA.products||[]).length){ nt.style.display='none'; nt.innerHTML=''; }
+    else if(unsent>0){ nt.style.display=''; nt.className='sendnote';
+      nt.innerHTML='<i class="fas fa-triangle-exclamation"></i><div><b>เพิ่มโค้ดแล้วต้องกด “ส่งให้ IT” ทุกสินค้า</b> ระบบถึงจะนำโค้ดเข้า Backoffice/POS จริง · ยังไม่ได้ส่ง <b>'+unsent+'</b> สินค้า (กดปุ่มสีเขียวด้านล่าง) — ส่งแล้วเคสจะเข้าหน้างาน IT อัตโนมัติ</div>';
+    } else { nt.style.display=''; nt.className='sendnote done';
+      nt.innerHTML='<i class="fas fa-circle-check"></i><div>ส่งครบทุกสินค้าให้ IT แล้ว · ติดตามสถานะการรับงานได้ที่ตาราง “ประวัติการส่ง” ด้านล่าง</div>';
+    } }
+}
+function sendAll(){
+  var prods=(DATA.products||[]).filter(function(p){ return !isSent(p); });
+  if(!prods.length) return;
+  var items=prods.map(function(p){
+    var lots=(DATA.lots||[]).filter(function(l){return l.product===p;}).sort(function(a,b){return a.month-b.month;});
+    var raw=[]; lots.forEach(function(l){ l.codes.forEach(function(c){ raw.push({code:c, month:l.month, expire:l.expire, redeemed:false}); }); });
+    var seen={}, codes=[], dupN=0; raw.forEach(function(o){ var up=String(o.code).trim().toUpperCase(); if(seen[up]){ dupN++; } else { seen[up]=1; codes.push(o); } });
+    return { p:p, lots:lots, codes:codes, dupN:dupN };
+  });
+  window.__sendAllCtx=items;
+  var totCodes=items.reduce(function(a,it){return a+it.codes.length;},0);
+  var totDup=items.reduce(function(a,it){return a+it.dupN;},0);
+  var rows=items.map(function(it){ return '<div class="ssrow"><span>'+esc(PNAME[it.p]||it.p)+' ('+it.p+') → '+vcRowHTML(it.p)+'</span><b class="mono">'+it.codes.length.toLocaleString()+' โค้ด'+(it.dupN?' <span style="color:#c0392b;font-weight:400">ตัดซ้ำ '+it.dupN+'</span>':'')+'</b></div>'; }).join('');
+  var noVc=items.filter(function(it){ return !compVcOf(it.p); });
+  var vcHTML = noVc.length
+    ? '<div class="vchk warn"><i class="fas fa-link-slash"></i><div>ยังไม่ได้ผูกรหัส Voucher ให้ <b>'+noVc.map(function(x){return x.p;}).join(' · ')+'</b> — ส่งได้ แต่หน้าติดตามสถานะจะไม่มีเลข Voucher ให้ IT อ้างอิง</div></div>'
+    : '<div class="vchk ok"><i class="fas fa-link"></i><div>ผูกรหัส Voucher ครบทุกสินค้าแล้ว</div></div>';
+  var dupHTML = totDup
+    ? '<div class="vchk warn"><i class="fas fa-clone"></i><div>ตรวจพบโค้ดซ้ำ <b>'+totDup.toLocaleString()+'</b> ตัว — ระบบจะตัดออกให้อัตโนมัติ ส่งจริง <b>'+totCodes.toLocaleString()+'</b> โค้ด</div></div>'
+    : '<div class="vchk ok"><i class="fas fa-circle-check"></i><div>ตรวจสอบแล้ว ไม่มีโค้ดซ้ำ · พร้อมส่ง</div></div>';
+  dupHTML = vcHTML + dupHTML;
+  document.getElementById('mTitle').textContent='แจ้งงานให้ IT';
+  document.getElementById('mBody').innerHTML=
+    '<div class="sendsum"><div class="ssrow"><span>จำนวนสินค้า</span><b>'+items.length+' สินค้า (รวม 12 เดือน/สินค้า)</b></div>'+rows+
+      '<div class="ssrow"><span>รวมโค้ดที่ส่ง</span><b class="mono">'+totCodes.toLocaleString()+' โค้ด</b></div>'+
+      '<div class="ssrow"><span>ครอบคลุม</span><b>'+YEAR+'</b></div></div>'+
+    dupHTML+
+    '<div class="flbl" style="margin:4px 0 9px"><i class="fas fa-user-pen"></i> ผู้ส่ง: <b>'+esc((function(){try{return localStorage.getItem('pc_userName')||localStorage.getItem('pc_role')||'-';}catch(e){return '-';}})())+'</b> <span style="color:#8a9099;font-weight:400">(บันทึกอัตโนมัติจากผู้ล็อกอิน)</span></div>'+
+    '<div class="sendacts"><button class="btn btn-o" onclick="closeModal()">ยกเลิก</button>'+
+      '<button class="btn btn-send" onclick="confirmSendAll()"><i class="fas fa-paper-plane"></i> ยืนยัน แจ้งงาน</button></div>';
+  document.getElementById('ov').classList.add('show');
+}
+function confirmSendAll(){
+  var items=window.__sendAllCtx; if(!items) return;
+  var by=(function(){try{return localStorage.getItem('pc_userName')||localStorage.getItem('pc_role')||'-';}catch(e){return '-';}})();
+  var n=0, tot=0, failed=[];
+  items.forEach(function(it){ if(isSent(it.p)) return;
+    if(doSend(it.p, it.lots, it.codes, it.dupN, by, true)){ n++; tot+=it.codes.length; } else { failed.push(it.p); } });
+  closeModal();
+  if(failed.length) toast('⚠️ ส่งได้ '+n+' สินค้า · ยังไม่สำเร็จ '+failed.join(' · ')+' (พื้นที่จัดเก็บไม่พอ) — ลบคำขอเก่าที่ IT รับแล้วออก แล้วกดส่งซ้ำ');
+  else toast('✅ แจ้งงานให้ IT แล้ว · '+n+' สินค้า · '+tot.toLocaleString()+' โค้ด');
+  renderSend(); renderHistory();
+}
+function sendProduct(p){
+  if(isSent(p)) return;
+  var lots=(DATA.lots||[]).filter(function(l){return l.product===p;}).sort(function(a,b){return a.month-b.month;});
+  if(!lots.length) return;
+  var raw=[]; lots.forEach(function(l){ l.codes.forEach(function(c){ raw.push({code:c, month:l.month, expire:l.expire, redeemed:false}); }); });
+  // เช็คโค้ดซ้ำในไฟล์ (case-insensitive: 1z = 1Z) → ตัดซ้ำออก ส่งเฉพาะที่ไม่ซ้ำ
+  var seen={}, codes=[], dupN=0; raw.forEach(function(o){ var up=String(o.code).trim().toUpperCase(); if(seen[up]){ dupN++; } else { seen[up]=1; codes.push(o); } });
+  window.__sendCtx={ p:p, lots:lots, codes:codes, dupN:dupN };
+  var dupHTML = dupN
+    ? '<div class="vchk warn"><i class="fas fa-clone"></i><div>ตรวจพบโค้ดซ้ำ <b>'+dupN.toLocaleString()+'</b> ตัว — ระบบจะตัดออกให้อัตโนมัติ ส่งจริง <b>'+codes.length.toLocaleString()+'</b> โค้ด</div></div>'
+    : '<div class="vchk ok"><i class="fas fa-circle-check"></i><div>ตรวจสอบแล้ว ไม่มีโค้ดซ้ำ · พร้อมส่ง</div></div>';
+  document.getElementById('mTitle').textContent='ส่ง '+p+' ให้ IT';
+  document.getElementById('mBody').innerHTML=
+    '<div class="sendsum"><div class="ssrow"><span>สินค้า</span><b>'+esc(PNAME[p]||p)+' ('+p+')</b></div>'+
+      '<div class="ssrow"><span>รหัส Voucher ที่ผูก</span><b>'+vcRowHTML(p)+'</b></div>'+
+      '<div class="ssrow"><span>จำนวนโค้ดที่ส่ง</span><b class="mono">'+codes.length.toLocaleString()+' โค้ด</b></div>'+
+      '<div class="ssrow"><span>ครอบคลุม</span><b>12 เดือน · '+YEAR+'</b></div></div>'+
+    dupHTML+
+    '<div class="flbl" style="margin:4px 0 9px"><i class="fas fa-user-pen"></i> ผู้ส่ง: <b>'+esc((function(){try{return localStorage.getItem('pc_userName')||localStorage.getItem('pc_role')||'-';}catch(e){return '-';}})())+'</b> <span style="color:#8a9099;font-weight:400">(บันทึกอัตโนมัติจากผู้ล็อกอิน)</span></div>'+
+    '<div id="sErr" class="serr"></div>'+
+    '<div class="sendacts"><button class="btn btn-o" onclick="closeModal()">ยกเลิก</button>'+
+      '<button class="btn btn-send" onclick="confirmSend()"><i class="fas fa-paper-plane"></i> ยืนยันส่งให้ IT</button></div>';
+  document.getElementById('ov').classList.add('show');
+  setTimeout(function(){ var e=document.getElementById('sEmp'); if(e) e.focus(); },80);
+}
+function confirmSend(){
+  var ctx=window.__sendCtx; if(!ctx) return;
+  var by=(function(){try{return localStorage.getItem('pc_userName')||localStorage.getItem('pc_role')||'-';}catch(e){return '-';}})();
+  doSend(ctx.p, ctx.lots, ctx.codes, ctx.dupN, by);
+  closeModal();
+}
+function doSend(p, lots, codes, dupN, reporter, quiet){
+  /* เก็บโค้ดเป็นสตริงล้วน + แถบเดือน (codeRuns) แทน object ต่อโค้ด — เดิม 1 โค้ด ≈ 106 ไบต์
+     ทำให้รอบปีใหญ่ (หลายหมื่นโค้ด) เขียน localStorage ไม่พอแล้วเงียบ */
+  var _flat=[], _runs=[], _curM=null, _n=0;
+  (codes||[]).forEach(function(c){
+    var cd=(c&&c.code!==undefined)?c.code:c, mm=(c&&c.month)||0;
+    _flat.push(cd);
+    if(mm!==_curM){ if(_curM!==null) _runs.push([_curM,_n]); _curM=mm; _n=0; }
+    _n++;
+  });
+  if(_curM!==null) _runs.push([_curM,_n]);
+  var all=loadReqs(); var mx=1000; all.forEach(function(x){ var n=parseInt(String(x.id||'').replace(/\D/g,'')); if(n>mx)mx=n; });
+  var _vc=compVcOf(p);
+  all.unshift({ id:'CR-'+(mx+1), type:'ADD', kind:'Item coupon', kindShort:'comp', proStatus:'Normal',
+    campaign:sentCampaign(p), button:p, promoCode:_vc, vcCode:_vc, vcName:compVcName(_vc), voucherCat:'comp',
+    start:lots[0].start, end:lots[lots.length-1].expire, proExpire:'รายเดือน (12 ล็อต)', startDate:lots[0].start,
+    codes:_flat, codeRuns:_runs, count:_flat.length, dupRemoved:dupN, compYear:YEAR, compMonths:lots.map(function(l){return {month:l.month,start:l.start,expire:l.expire,count:l.count};}),
+    status:'CONFIRMED', itStatus:'PENDING', source:'comp', reporter:reporter, createdAt:Date.now() });
+  if(saveReqs(all)){ clearPendingYear(YEAR);
+    // แจ้งเตือน IT อัตโนมัติ (email/chat/LINE ตามที่ตั้งใน System Settings) — เหมือน flow แจ้งเพิ่มโค้ดปกติ
+    try{ var _N=(window.PC_notify||(window.parent&&window.parent.PC_notify)||(window.top&&window.top.PC_notify));
+      if(_N) _N('code_add_request', { text:'แจ้งเพิ่มโค้ด Voucher Comp “'+p+' '+YEAR+'” '+codes.length.toLocaleString()+' โค้ด (12 เดือน) — รอ IT ดำเนินการ', campaign:sentCampaign(p), item:p, type:'Voucher Comp', count:codes.length }); }catch(e){}
+    // ⭐ ซิงค์ขึ้น cloud ทันที — หน้านี้เป็น iframe · ตัว wrap setItem ของ cloud-store อยู่ที่ top window เท่านั้น
+    //    เขียน key ซ้ำผ่าน localStorage ของ top/parent เพื่อกระตุ้น auto-sync (เส้นทางเดียวกับที่ MKT ส่งโค้ดปกติใช้) + pushAll สำรอง
+    try{ var _val=localStorage.getItem('pc_code_requests'); var _W=null;
+      try{ if(window.top&&window.top.localStorage) _W=window.top; }catch(e){}
+      try{ if(!_W&&window.parent&&window.parent.localStorage) _W=window.parent; }catch(e){}
+      if(_W){ try{ _W.localStorage.setItem('pc_code_requests', _val); }catch(e){} }
+      var _CL=null;
+      try{ if(_W&&_W.PC_CLOUD) _CL=_W.PC_CLOUD; }catch(e){}
+      try{ if(!_CL&&window.PC_CLOUD) _CL=window.PC_CLOUD; }catch(e){}
+      if(_CL&&_CL.pushAll) _CL.pushAll();
+    }catch(e){}
+    if(!quiet){ toast('✅ ส่ง '+p+' เข้า IT แล้ว · แจ้งเตือน IT แล้ว · '+_flat.length.toLocaleString()+' โค้ด'+(dupN?' (ตัดซ้ำ '+dupN.toLocaleString()+')':'')); renderSend(); renderHistory(); }
+    return true; }
+  return false;
+}
+var _toastT;
+function toast(msg){ var t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('show'); clearTimeout(_toastT); _toastT=setTimeout(function(){ t.classList.remove('show'); },2600); }
+
+function renderLots(){
+  var list=filtered().slice().sort(function(a,b){ return a.month-b.month || (a.product<b.product?-1:1); });
+  var g=document.getElementById('lotGrid');
+  if(!list.length){ var noYear=!YEAR||!(DATA.lots||[]).length; g.innerHTML=noYear?'':'<div class="empty"><i class="fas fa-box-open fa-2x" style="opacity:.4;display:block;margin-bottom:10px"></i>ไม่มีล็อตตามตัวกรอง</div>'; return; }
+  g.innerHTML=list.map(function(l){
+    var st=lotStatus(l), col=PCOLOR[l.product]||'#888';
+    return '<div class="lot" style="--prodc:'+col+'">'+
+      '<div class="lh"><span class="pbadge">'+esc(l.product)+'</span><div><div class="mname">'+TH_M[l.month]+' '+YEAR+'</div><div class="pname">'+esc(PNAME[l.product]||l.product)+'</div></div>'+
+      '<span class="status '+st+'">'+STLBL[st]+'</span></div>'+
+      '<div class="meta"><span class="mtag cnt"><i class="fas fa-hashtag"></i><b>'+l.count.toLocaleString()+'</b> โค้ด</span>'+
+        '<span class="mtag"><i class="fas fa-calendar-day"></i>เริ่ม '+fmtD(l.start)+'</span>'+
+        '<span class="mtag"><i class="fas fa-calendar-xmark"></i>หมดอายุ '+fmtD(l.expire)+'</span></div>'+
+      '<div class="acts"><button class="btn btn-o" onclick="view(\''+l.product+'\','+l.month+')"><i class="fas fa-eye"></i>ดูตัวอย่าง</button></div>'+
+      '</div>';
+  }).join('');
+}
+
+function lotOf(p,m){ return (DATA.lots||[]).find(function(l){ return l.product===p && String(l.month)===String(m); }); }
+function setProd(p){ fProd=p; renderChips(); renderLots(); }
+function setMonth(m){ fMonth=m; renderChips(); renderLots(); }
+
+function downloadCsv(csv,name){
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+}
+function dl(p,m){ var l=lotOf(p,m); if(!l) return;
+  var csv='\uFEFFcode,product,month,start_date,expire_date\n'+l.codes.map(function(c){return c+','+p+','+m+','+l.start+','+l.expire;}).join('\n')+'\n';
+  downloadCsv(csv,'CompCode_'+p+'_'+YEAR+'-'+String(m).padStart(2,'0')+'.csv');
+}
+/* ===== ดาวน์โหลดรวมรายสินค้า — 12 เดือนในไฟล์เดียว · วันหมดอายุตามล็อตแต่ละเดือน ===== */
+function dlProduct(p){
+  var lots=(DATA.lots||[]).filter(function(l){return l.product===p;}).sort(function(a,b){return a.month-b.month;});
+  if(!lots.length) return;
+  var rows=[]; lots.forEach(function(l){ (l.codes||[]).forEach(function(c){ rows.push(c+','+p+','+l.month+','+l.start+','+l.expire); }); });
+  var csv='\uFEFFcode,product,month,start_date,expire_date\n'+rows.join('\n')+'\n';
+  downloadCsv(csv,'CompCode_'+p+'_'+YEAR+'_12M.csv');
+  toast('⬇️ '+p+' รวม '+lots.length+' เดือน · '+rows.length.toLocaleString()+' โค้ด');
+}
+function dlAllProducts(){
+  var lots=(DATA.lots||[]).slice().sort(function(a,b){return (a.product<b.product?-1:(a.product>b.product?1:a.month-b.month));});
+  if(!lots.length) return;
+  var rows=[]; lots.forEach(function(l){ (l.codes||[]).forEach(function(c){ rows.push(c+','+l.product+','+l.month+','+l.start+','+l.expire); }); });
+  var csv='\uFEFFcode,product,month,start_date,expire_date\n'+rows.join('\n')+'\n';
+  downloadCsv(csv,'CompCode_ALL_'+YEAR+'_12M.csv');
+  toast('⬇️ ทุกสินค้า · '+rows.length.toLocaleString()+' โค้ด (ไฟล์เดียว)');
+}
+function renderDownloads(){
+  var el=document.getElementById('dlRow'); if(!el) return;
+  var prods=(DATA.products||[]);
+  if(!prods.length){ el.innerHTML='<span style="color:#8a9099;font-size:.84rem">ยังไม่มีข้อมูลให้ดาวน์โหลด</span>'; return; }
+  var html=prods.map(function(p){
+    var lots=(DATA.lots||[]).filter(function(l){return l.product===p;});
+    var cnt=lots.reduce(function(a,l){return a+l.count;},0);
+    return '<button class="dbtn" onclick="dlProduct(\''+p+'\')" title="'+esc(PNAME[p]||p)+' — รวม '+lots.length+' เดือน"><i class="fas fa-download"></i>'+p+' รวม '+lots.length+' เดือน <span class="n">'+cnt.toLocaleString()+'</span></button>';
+  }).join('');
+  html+='<button class="dbtn all" onclick="dlAllProducts()"><i class="fas fa-layer-group"></i> ทุกสินค้ารวมไฟล์เดียว</button>';
+  el.innerHTML=html;
+}
+function view(p,m){ var l=lotOf(p,m); if(!l) return;
+  document.getElementById('mTitle').textContent=p+' · '+TH_M[m]+' '+YEAR+' — '+l.count.toLocaleString()+' โค้ด (แสดง 60 ตัวอย่าง)';
+  document.getElementById('mBody').innerHTML='<div class="codelist">'+l.codes.slice(0,60).map(function(c){return '<span class="c">'+esc(c)+'</span>';}).join('')+'</div>';
+  document.getElementById('ov').classList.add('show');
+}
+function closeModal(){ document.getElementById('ov').classList.remove('show'); }
+
+/* ===== สลับปี + เพิ่มรอบปี ===== */
+function renderYearBar(){
+  var bar=document.getElementById('yrBar'); if(!bar) return;
+  bar.innerHTML = allYears().map(function(y){ return '<button class="yrchip'+(Number(y)===Number(YEAR)?' on':'')+'" onclick="switchYear('+y+')">'+y+'</button>'; }).join('')
+    + '<button class="addyr" onclick="openAddYear()"><i class="fas fa-plus"></i>เพิ่มโค้ดประจำปี</button>';
+}
+function switchYear(y){ YEAR=Number(y); DATA=dataForYear(YEAR); fProd='ALL'; fMonth='ALL';
+  var t=document.getElementById('hTitle'); if(t) t.textContent='History · คลังโค้ดแลกฟรี '+(YEAR||'');
+  renderYearBar(); renderStats(); renderChips(); renderDownloads(); renderLots(); renderSend(); renderHistory();
+}
+/* เพิ่มรอบปี: วาง/อัป CSV — code,product,month,start_date,expire_date (1 ไฟล์รวมทุกสินค้า/ทุกเดือน) */
+/* เพิ่มรอบปี: อัปโหลดไฟล์ (.xlsx แต่ละชีท=สินค้า / .csv) — อ่านโค้ดจาก pattern 1LFF2601xxxx
+   แยกสินค้า/เดือน/ปีอัตโนมัติ + ตรวจโค้ดซ้ำ */
+var CODE_RE=/^\d([A-Za-z]{2,4})(\d{2})(\d{2})[A-Za-z0-9]{2,}$/;
+function pad2(n){ return String(n).padStart(2,'0'); }
+function isoD(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function extractCodes(cells){
+  var map={}, prods={}, years={}, seen={}, dup=0, total=0;
+  cells.forEach(function(raw){ var c=String(raw==null?'':raw).trim(); if(!c) return;
+    var m=c.match(CODE_RE); if(!m) return; var mm=+m[3]; if(mm<1||mm>12) return;
+    var prod=m[1].toUpperCase(), yy=+m[2], up=c.toUpperCase();
+    total++; if(seen[up]){ dup++; return; } seen[up]=1;
+    var key=prod+'|'+mm; (map[key]=map[key]||[]).push(c); prods[prod]=1; years[2000+yy]=(years[2000+yy]||0)+1;
+  });
+  return { map:map, prods:Object.keys(prods).sort(), years:years, dup:dup, total:total, uniq:total-dup };
+}
+function dominantYear(years){ var best=null,bn=-1; Object.keys(years).forEach(function(y){ if(years[y]>bn){ bn=years[y]; best=+y; } }); return best||2026; }
+function buildYearData(ext, year){
+  var monthDates={}; for(var mm=1;mm<=12;mm++){ monthDates[mm]={ start:year+'-'+pad2(mm)+'-01', expire:isoD(new Date(year,mm+3,0)) }; }
+  var lots=[]; Object.keys(ext.map).forEach(function(k){ var pr=k.split('|')[0], mm=+k.split('|')[1], codes=ext.map[k];
+    lots.push({ product:pr, month:mm, start:monthDates[mm].start, expire:monthDates[mm].expire, count:codes.length, codes:codes }); });
+  lots.sort(function(a,b){ return a.product<b.product?-1:(a.product>b.product?1:a.month-b.month); });
+  return { year:Number(year), products:ext.prods, monthDates:monthDates, lots:lots };
+}
+function openAddYear(){
+  window.__ayExt=null;
+  document.getElementById('mTitle').textContent='เพิ่มโค้ดประจำปี';
+  document.getElementById('mBody').innerHTML=
+    '<div class="ayhint"><i class="fas fa-circle-info"></i> อัปโหลดไฟล์โค้ดที่ได้รับจาก MKT — รองรับ <b>.xlsx</b> (แต่ละชีท = สินค้า) หรือ <b>.csv</b> · ระบบจะอ่านโค้ด แยกสินค้า/เดือน/ปี และ<b>ตรวจโค้ดซ้ำ</b>ให้อัตโนมัติ</div>'+
+    '<div class="aydrop" id="ayDrop"><i class="fas fa-file-arrow-up" style="font-size:1.6rem;color:#9aa1aa"></i><div>ลากไฟล์มาวาง หรือ <b>คลิกเพื่อเลือกไฟล์</b></div><div class="aysub">.xlsx / .csv</div><input type="file" id="ayFile" accept=".xlsx,.csv" style="display:none"></div>'+
+    '<div id="ayPreview"></div>'+
+    '<div class="sendacts" style="margin-top:14px"><button class="btn btn-o" onclick="closeModal()">ยกเลิก</button>'+
+      '<button class="btn btn-send" id="ayConfirm" onclick="ayConfirm()" disabled style="opacity:.5"><i class="fas fa-plus"></i> เพิ่มโค้ดประจำปีนี้</button></div>';
+  document.getElementById('ov').classList.add('show');
+  var drop=document.getElementById('ayDrop'), fi=document.getElementById('ayFile');
+  drop.onclick=function(){ fi.click(); };
+  fi.onchange=function(){ if(fi.files[0]) ayRead(fi.files[0]); };
+  drop.ondragover=function(e){ e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave=function(){ drop.classList.remove('over'); };
+  drop.ondrop=function(e){ e.preventDefault(); drop.classList.remove('over'); if(e.dataTransfer.files[0]) ayRead(e.dataTransfer.files[0]); };
+}
+function ayBtn(on){ var b=document.getElementById('ayConfirm'); if(b){ b.disabled=!on; b.style.opacity=on?1:.5; } }
+function ayPickYear(y){ var i=document.getElementById('ayYear'); if(i) i.value=y; document.querySelectorAll('.ayyrchip').forEach(function(b){ var on=b.textContent.trim()===String(y); b.style.background=on?'#2e934a':'#fff'; b.style.color=on?'#fff':'#1d7a4d'; }); }
+function ayRead(file){
+  var prev=document.getElementById('ayPreview'); prev.innerHTML='<div class="ayload"><i class="fas fa-spinner fa-spin"></i> กำลังอ่านไฟล์...</div>';
+  var name=(file.name||'').toLowerCase(), rd=new FileReader();
+  rd.onload=function(e){
+    var cells=[];
+    try{
+      if(/\.xlsx$/.test(name) && typeof XLSX!=='undefined'){
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        wb.SheetNames.forEach(function(sn){ XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false}).forEach(function(r){ (r||[]).forEach(function(v){ if(v) cells.push(v); }); }); });
+      } else { cells=String(e.target.result).split(/[\s,;]+/); }
+    }catch(err){ prev.innerHTML='<div class="vchk warn"><i class="fas fa-triangle-exclamation"></i><div>อ่านไฟล์ไม่สำเร็จ — ลองบันทึกเป็น .csv แล้วอัปใหม่</div></div>'; ayBtn(false); return; }
+    var ext=extractCodes(cells);
+    if(!ext.total){ prev.innerHTML='<div class="vchk warn"><i class="fas fa-triangle-exclamation"></i><div>ไม่พบโค้ดในไฟล์ — โค้ดต้องอยู่ในรูปแบบ เช่น <b>1LFF2601xxxx</b></div></div>'; window.__ayExt=null; ayBtn(false); return; }
+    window.__ayExt=ext;
+    var year=dominantYear(ext.years);
+    var dupHTML = ext.dup
+      ? '<div class="vchk warn"><i class="fas fa-clone"></i><div>พบโค้ด<b>ซ้ำ '+ext.dup.toLocaleString()+'</b> ตัว — ระบบจะตัดออกให้ เหลือส่งจริง <b>'+ext.uniq.toLocaleString()+'</b> โค้ด</div></div>'
+      : '<div class="vchk ok"><i class="fas fa-circle-check"></i><div>ตรวจแล้ว <b>ไม่มีโค้ดซ้ำ</b> · ทั้งหมด '+ext.total.toLocaleString()+' โค้ด</div></div>';
+    var perProd = ext.prods.map(function(p){ var c=0; Object.keys(ext.map).forEach(function(k){ if(k.split('|')[0]===p) c+=ext.map[k].length; }); return '<span class="aypp">'+esc(p)+' <b>'+c.toLocaleString()+'</b></span>'; }).join('');
+    prev.innerHTML=dupHTML+
+      '<label class="fld" style="margin-top:2px">ปีของรอบนี้ (ค.ศ.) <span style="font-weight:400;color:#9aa1aa">— เลือกปี / แก้ได้</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px">'+[year-2,year-1,year,year+1,year+2].map(function(yy){return '<button type="button" class="ayyrchip" onclick="ayPickYear('+yy+')" style="border:1.5px solid #cfe0d6;background:'+(String(yy)===String(year)?'#2e934a':'#fff')+';color:'+(String(yy)===String(year)?'#fff':'#1d7a4d')+';border-radius:999px;padding:5px 13px;font-family:inherit;font-weight:700;cursor:pointer">'+yy+'</button>';}).join('')+'</div><input id="ayYear" inputmode="numeric" maxlength="4" value="'+year+'" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,4)"></label>'+
+      '<div class="ayprodbar">'+perProd+'</div>';
+    ayBtn(true);
+  };
+  if(/\.xlsx$/.test(name)) rd.readAsArrayBuffer(file); else rd.readAsText(file);
+}
+function ayConfirm(){
+  var ext=window.__ayExt; if(!ext) return;
+  var year=((document.getElementById('ayYear')||{}).value||'').replace(/\D/g,'').slice(0,4);
+  if(!/^\d{4}$/.test(year)){ alert('ปีต้องเป็นตัวเลข 4 หลัก'); return; }
+  if(BASE_YEAR_DATA && Number(year)===Number(BASE_YEAR_DATA.year)){ alert('ปี '+year+' เป็นปีฐานในระบบอยู่แล้ว — ใช้ปีอื่น'); return; }
+  if(allYears().some(function(yy){return Number(yy)===Number(year);})){ if(!confirm('มีรอบปี '+year+' อยู่แล้ว — เขียนทับด้วยข้อมูลใหม่?')) return; }
+  var data=buildYearData(ext, year), exy=loadExtraYears(); exy[year]=data;
+  if(saveExtraYears(exy)){ markPendingYear(year); closeModal(); toast('✅ เพิ่มรอบปี '+year+' · '+ext.uniq.toLocaleString()+' โค้ด'+(ext.dup?' (ตัดซ้ำ '+ext.dup.toLocaleString()+')':'')+' · ⚠️ ยังไม่ส่ง — กด “ยืนยัน” มิฉะนั้นจะถูกล้างเมื่อออกจากหน้า'); switchYear(Number(year)); }
+}
+
+/* ===== ประวัติการส่ง (อ่านจาก pc_code_requests source=comp) ===== */
+function renderHistory(){
+  var w=document.getElementById('histWrap'); if(!w) return;
+  var rows=loadReqs().filter(function(r){ return r.source==='comp'; }).sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+  if(!rows.length){ w.innerHTML='<div class="htbl"><div class="hempty"><i class="fas fa-inbox" style="opacity:.5"></i> ยังไม่มีงานที่ส่ง — กด “ส่ง” ที่สินค้าด้านบน</div></div>'; return; }
+  function fmtDT(t){ if(!t) return '—'; var d=new Date(t); var p=function(n){return String(n).padStart(2,'0');}; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+(d.getFullYear()+543)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+  var _hT=rows.length,_hD=rows.filter(function(r){return r.itStatus==='DONE';}).length;
+  var _hSum='<div style="display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap;font-size:.82rem"><span style="background:#eef1f4;border-radius:8px;padding:5px 12px;font-weight:700">รวม '+_hT+' คำขอ</span><span style="background:#fff7e6;color:#9a6700;border-radius:8px;padding:5px 12px;font-weight:700">รอ IT '+(_hT-_hD)+'</span><span style="background:#eafaf1;color:#1d7a4d;border-radius:8px;padding:5px 12px;font-weight:700">เพิ่มเสร็จ '+_hD+'</span></div>';
+  w.innerHTML=_hSum+'<table class="htbl"><thead><tr><th>เลขคำขอ</th><th>ไฟล์ (สินค้า · ปี)</th><th>จำนวนโค้ด</th><th>ผู้ส่ง</th><th>เวลาส่ง</th><th>สถานะ IT</th><th></th></tr></thead><tbody>'+
+    rows.map(function(r){ var done=r.itStatus==='DONE';
+      return '<tr><td class="mono">'+esc(r.id)+'</td><td><b>'+esc(r.button||'')+'</b> · '+esc(r.compYear||'')+'</td><td class="mono">'+(r.count||0).toLocaleString()+(r.dupRemoved?' <span style="color:#c0392b;font-size:.75rem">(ตัดซ้ำ '+r.dupRemoved+')</span>':'')+'</td><td>'+esc(r.reporter||'—')+'</td><td>'+fmtDT(r.createdAt)+'</td><td><span class="hpill '+(done?'done':'pend')+'">'+(done?'IT รับแล้ว':'รอ IT')+'</span></td>'+
+        '<td style="white-space:nowrap;text-align:right"><button class="btn btn-o" style="padding:6px 11px" onclick="viewReq(\''+esc(r.id)+'\')"><i class="fas fa-eye"></i> ดูข้อมูล</button> <button class="btn btn-d" style="padding:6px 11px" onclick="dlReq(\''+esc(r.id)+'\')" title="ดาวน์โหลดไฟล์"><i class="fas fa-download"></i></button></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+/* ===== History: ดูรายละเอียด (อ่านอย่างเดียว) + ดาวน์โหลดไฟล์ที่ส่งแล้ว ===== */
+function fmtDT(t){ if(!t) return '—'; var d=new Date(t); var p=function(n){return String(n).padStart(2,'0');}; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+(d.getFullYear()+543)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+function reqById(id){ return loadReqs().find(function(r){ return r.id===id; }); }
+function codeStr(c){ return (c && typeof c==='object') ? c.code : c; }
+function dlReq(id){ var r=reqById(id); if(!r) return;
+  var startByM={}; (r.compMonths||[]).forEach(function(x){ startByM[x.month]=x.start; });
+  var csv='\uFEFFcode,product,month,start_date,expire_date\n'+(r.codes||[]).map(function(c){ var code=codeStr(c); var m=(c&&c.month)||''; var ex=(c&&c.expire)||''; var st=startByM[m]||r.start||''; return code+','+(r.button||'')+','+m+','+st+','+ex; }).join('\n')+'\n';
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='CompCode_'+(r.button||'')+'_'+(r.compYear||'')+'.csv'; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+}
+function viewReq(id){ var r=reqById(id); if(!r) return; var done=r.itStatus==='DONE';
+  var months=(r.compMonths||[]).slice().sort(function(a,b){ return a.month-b.month; });
+  var monthRows=months.map(function(x){ return '<tr><td>'+TH_M[x.month]+' '+(r.compYear||'')+'</td><td class="mono">'+(x.count||0).toLocaleString()+'</td><td>'+fmtD(x.start)+'</td><td>'+fmtD(x.expire)+'</td></tr>'; }).join('') || '<tr><td colspan="4" class="hempty">—</td></tr>';
+  var sample=(r.codes||[]).slice(0,40).map(function(c){ return '<span class="c">'+esc(codeStr(c))+'</span>'; }).join('');
+  document.getElementById('mTitle').textContent='Comp Code '+(r.button||'')+' '+(r.compYear||'')+' · '+esc(r.id);
+  document.getElementById('mBody').innerHTML=
+    '<div style="display:flex;align-items:center;gap:10px;background:'+(done?'#eafaf1':'#fff7e6')+';border:1px solid '+(done?'#cfe9da':'#f0e2bc')+';border-radius:11px;padding:11px 14px;margin-bottom:13px">'+
+      '<i class="fas '+(done?'fa-circle-check':'fa-hourglass-half')+'" style="color:'+(done?'#1d7a4d':'#9a6700')+';font-size:1.1rem"></i>'+
+      '<div><div style="font-weight:700">'+(done?'IT รับเรื่องแล้ว':'ส่งแล้ว — รอ IT ดำเนินการ')+'</div>'+
+        '<div style="font-size:.78rem;color:#6c757d">ส่งเรียบร้อยแล้ว · แก้ไขไม่ได้ ดูข้อมูลได้อย่างเดียว</div></div></div>'+
+    '<div class="flbl" style="margin:0 0 7px"><i class="fas fa-clipboard-check"></i> ส่วนตรวจสอบ</div>'+
+    '<div class="meta" style="margin-bottom:14px">'+
+      '<span class="mtag cnt"><i class="fas fa-hashtag"></i><b>'+(r.count||0).toLocaleString()+'</b> โค้ดที่ส่ง</span>'+
+      (r.dupRemoved?'<span class="mtag" style="color:#c0392b"><i class="fas fa-clone"></i>ตัดซ้ำ '+r.dupRemoved.toLocaleString()+'</span>':'<span class="mtag" style="color:#1d7a4d"><i class="fas fa-circle-check"></i>ไม่มีโค้ดซ้ำ</span>')+
+      '<span class="mtag"><i class="fas fa-layer-group"></i>'+months.length+' ล็อต/เดือน</span>'+
+      '<span class="mtag"><i class="fas fa-user"></i>'+esc(r.reporter||'—')+'</span>'+
+      '<span class="mtag"><i class="fas fa-clock"></i>'+fmtDT(r.createdAt)+'</span></div>'+
+    '<div class="flbl" style="margin:0 0 7px"><i class="fas fa-table-list"></i> รายเดือน (ล็อต)</div>'+
+    '<table class="htbl" style="margin-bottom:14px"><thead><tr><th>เดือน</th><th>จำนวน</th><th>เริ่ม</th><th>หมดอายุ</th></tr></thead><tbody>'+monthRows+'</tbody></table>'+
+    '<div class="flbl" style="margin:0 0 7px"><i class="fas fa-list-ol"></i> ตัวอย่างโค้ด (40 ตัวแรก)</div>'+
+    '<div class="codelist">'+sample+'</div>'+
+    '<div style="margin-top:15px;display:flex;gap:8px"><button class="btn btn-d" onclick="dlReq(\''+esc(r.id)+'\')"><i class="fas fa-download"></i> ดาวน์โหลดไฟล์ (.csv)</button></div>';
+  document.getElementById('ov').classList.add('show');
+}
+
+(function(){ var t=document.getElementById('hTitle'); if(t) t.textContent='History · คลังโค้ดแลกฟรี '+(YEAR||''); })();
+renderYearBar(); renderStats(); renderChips(); renderDownloads(); renderLots(); renderSend(); renderHistory();
+if(__purgedYears){ setTimeout(function(){ toast('🧹 ล้างข้อมูลที่อัปไว้แต่ยังไม่ได้กดส่งให้ IT ('+__purgedYears+' รอบปี) — กรุณาอัปใหม่แล้วกด “ยืนยัน”'); }, 400); }
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

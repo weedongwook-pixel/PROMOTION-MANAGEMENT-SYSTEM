@@ -1,0 +1,682 @@
+<style>
+/* ===== Dashboard v3 — mature analytics look (SVG charts + clean numbers) ===== */
+.dash2{ --d-ink:#14202b; --d-text:#3b4753; --d-soft:#67727e; --d-faint:#9aa5b1;
+  --d-line:#e6eaef; --d-panel:#ffffff; --d-bg:#f4f6f9;
+  --d-green:#1f8a4e; --d-blue:#3f6fd1; --d-amber:#c98a1e; --d-red:#cf4a52; --d-slate:#9aa6b4;
+  --d-shadow:0 2px 4px rgba(20,32,43,.04), 0 10px 26px rgba(20,32,43,.07), 0 24px 54px rgba(20,32,43,.06);
+  --d-radius:22px;
+  font-family:'Kanit',sans-serif; color:var(--d-text); padding:24px 26px 60px; background:var(--d-bg); min-height:100vh; }
+.dash2 .num{ font-family:'Montserrat',sans-serif; font-feature-settings:"tnum"; }
+.dash2 .mono{ font-family:'JetBrains Mono',monospace; }
+
+/* header — flat, restrained */
+.dash2 .d-head{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:#0e5c37; color:#fff;
+  border-radius:var(--d-radius); padding:20px 24px; margin-bottom:24px; }
+.dash2 .d-head .eyebrow{ font-size:.64rem; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.62); font-weight:600; }
+.dash2 .d-head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; margin:2px 0 0; letter-spacing:.2px; line-height:1.1; }
+.dash2 .d-head .sub{ margin:4px 0 0; font-size:.9rem; color:rgba(255,255,255,.7); font-weight:600; }
+.dash2 .d-headright{ margin-left:auto; display:flex; align-items:center; gap:12px; }
+.dash2 .d-datepill{ display:flex; align-items:center; gap:11px; background:#fff; border:1px solid var(--d-line); border-radius:12px; padding:9px 16px 9px 11px; box-shadow:var(--d-shadow); }
+.dash2 .d-datepill .cal{ width:36px; height:36px; border-radius:10px; background:#eafaf1; color:#1f8a4e; display:grid; place-items:center; font-size:1rem; flex:none; }
+.dash2 .d-datepill .meta{ display:flex; flex-direction:column; line-height:1.2; }
+.dash2 .d-datepill .lbl{ font-size:.6rem; letter-spacing:1.3px; text-transform:uppercase; color:#9aa5b1; font-weight:700; }
+.dash2 .d-datepill .num{ font-size:1.05rem; font-weight:700; color:var(--d-ink); font-family:'Montserrat',sans-serif; }
+.dash2 .d2-dark-btn{ width:44px; height:44px; border-radius:12px; border:1px solid var(--d-line); background:#fff; color:#1f8a4e; cursor:pointer; font-size:1.05rem; display:grid; place-items:center; box-shadow:var(--d-shadow); transition:background .15s, border-color .15s, transform .15s; }
+.dash2 .d2-dark-btn:hover{ background:#eafaf1; border-color:#cdeed9; transform:translateY(-1px); }
+
+.dash2 .sec-lbl{ display:flex; align-items:center; gap:8px; font-size:.66rem; letter-spacing:1.4px; text-transform:uppercase; color:var(--d-faint); font-weight:700; margin:0 0 12px; }
+
+/* KPI stat cards — clean numbers */
+.dash2 .stat-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:26px; }
+@media(max-width:1300px){ .dash2 .stat-grid{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:680px){ .dash2 .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+.dash2 .stat{ position:relative; background:var(--d-panel); border:1px solid var(--d-line); border-radius:var(--d-radius); padding:18px 18px 16px; box-shadow:var(--d-shadow); transition:border-color .15s; }
+.dash2 .stat:hover{ border-color:#d3dae2; }
+.dash2 .stat .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.dash2 .stat .ico{ width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:.92rem; background:#f1f4f7; color:var(--d-soft); }
+.dash2 .stat .dot{ width:7px; height:7px; border-radius:50%; }
+.dash2 .stat .v{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:2rem; line-height:1; letter-spacing:-.5px; color:var(--d-ink); }
+.dash2 .stat .t{ font-size:.76rem; color:var(--d-soft); margin-top:7px; font-weight:500; }
+.dash2 .stat .x{ font-size:.68rem; color:var(--d-faint); margin-top:10px; padding-top:9px; border-top:1px solid var(--d-line); }
+.dash2 .stat .x b{ color:var(--d-text); font-weight:600; }
+.dash2 .stat .v{ font-family:'Montserrat',sans-serif; }
+.dash2 .stat .vrow{ display:flex; align-items:flex-end; gap:9px; }
+.dash2 .trendpill{ display:inline-flex; align-items:center; gap:2px; font-size:.72rem; font-weight:800; padding:3px 9px 3px 5px; border-radius:20px; line-height:1; }
+.dash2 .trendpill.up{ background:rgba(207,74,82,.16); color:#cf4a52; }
+.dash2 .trendpill.dn{ background:rgba(31,138,78,.16); color:#1f8a4e; }
+.dash2 .trendpill.flat{ background:#eef1f4; color:#9aa5b1; }
+.dash2 .trendpill svg{ width:14px; height:14px; }
+/* legend chips (reference style) */
+.dash2 .d2legend{ display:flex; gap:20px; flex-wrap:wrap; padding:2px 4px 14px; }
+.dash2 .d2legend .lg{ display:flex; align-items:center; gap:7px; font-size:.74rem; color:var(--d-soft); font-weight:600; }
+.dash2 .d2legend .lg .sw{ width:13px; height:13px; border-radius:3px; }
+
+/* cards */
+.dash2 .d-card{ background:var(--d-panel); border:1px solid var(--d-line); border-radius:var(--d-radius); box-shadow:var(--d-shadow); overflow:hidden; height:100%; }
+.dash2 .d-card .ch{ display:flex; align-items:center; gap:9px; padding:18px 24px; border-bottom:1px solid var(--d-line); font-weight:700; font-size:1.05rem; color:var(--d-ink); font-family:'Montserrat',sans-serif; letter-spacing:.1px; }
+.dash2 .d-card .ch i{ color:var(--d-green); font-size:.92rem; }
+.dash2 .d-card .ch .more{ margin-left:auto; font-size:.7rem; color:var(--d-faint); font-weight:400; }
+.dash2 .d-card .cb{ padding:18px 20px; }
+
+/* dept workflow — ring + numbers */
+.dash2 .dept{ border:1px solid var(--d-line); border-radius:12px; padding:16px; background:#fcfdfe; cursor:pointer; transition:border-color .15s, box-shadow .15s; height:100%; display:flex; flex-direction:column; }
+.dash2 .dept:hover{ border-color:#d3dae2; box-shadow:var(--d-shadow); }
+.dash2 .dept .dh{ display:flex; align-items:center; gap:11px; margin-bottom:14px; }
+.dash2 .dept .dico{ width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:.85rem; }
+.dash2 .dept .dh b{ font-family:'Montserrat'; font-weight:700; font-size:.98rem; color:var(--d-ink); }
+.dash2 .dept .dh small{ display:block; font-size:.64rem; letter-spacing:.3px; text-transform:uppercase; color:var(--d-faint); font-weight:600; }
+.dash2 .dept .body{ display:flex; align-items:center; gap:14px; }
+.dash2 .dept .figs{ flex:1; }
+.dash2 .dept .figs .big{ font-family:'Montserrat'; font-weight:700; font-size:1.5rem; line-height:1; color:var(--d-ink); }
+.dash2 .dept .figs .big small{ font-size:.62rem; color:var(--d-faint); font-weight:500; display:block; margin-top:4px; font-family:'Kanit'; }
+.dash2 .dept .meta{ display:flex; justify-content:space-between; font-size:.7rem; margin-top:12px; padding-top:11px; border-top:1px solid var(--d-line); color:var(--d-soft); }
+.dash2 .d2ring text{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:15px; fill:var(--d-ink); }
+
+/* svg chart shared */
+.dash2 .d2chart-outer{ position:relative; }
+.dash2 .d2chart-scroll{ overflow-x:auto; overflow-y:hidden; padding-top:6px; }
+.dash2 .d2chart-scroll::-webkit-scrollbar{ height:8px; }
+.dash2 .d2chart-scroll::-webkit-scrollbar-thumb{ background:var(--d-line); border-radius:6px; }
+.dash2 .d2svg{ display:block; }
+.dash2 .d2grid{ stroke:var(--d-line); stroke-width:1; }
+.dash2 .d2axis{ stroke:#d3dae2; stroke-width:1; }
+.dash2 .d2yl{ fill:var(--d-faint); font-size:10px; font-family:'Montserrat',sans-serif; text-anchor:end; }
+.dash2 .d2xl{ fill:var(--d-faint); font-size:10.5px; text-anchor:middle; font-family:'Kanit',sans-serif; }
+.dash2 .d2xl.cur{ fill:var(--d-green); font-weight:700; }
+.dash2 .d2col{ fill:#d5dce4; transition:fill .14s; }
+.dash2 .d2col.cur{ fill:#aab6c2; }
+.dash2 .d2curband{ fill:rgba(31,138,78,.06); }
+.dash2 .d2line{ fill:none; stroke-width:2; }
+.dash2 .d2line.it{ stroke:var(--d-blue); } .dash2 .d2line.op{ stroke:var(--d-green); }
+.dash2 .d2dot{ stroke:#fff; stroke-width:1.3; }
+.dash2 .d2dot.it{ fill:var(--d-blue); } .dash2 .d2dot.op{ fill:var(--d-green); }
+.dash2 .d2tt{ position:absolute; pointer-events:none; opacity:0; transition:opacity .1s; background:#14202b; color:#fff; padding:8px 11px; border-radius:9px; font-size:.7rem; line-height:1.5; white-space:nowrap; z-index:20; box-shadow:0 6px 18px rgba(0,0,0,.28); transform:translate(-50%,-100%); }
+.dash2 .d2tt b{ color:#7fd6a1; }
+.dash2 .d2legend{ display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+.dash2 .d2legend span{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; color:var(--d-soft); }
+.dash2 .d2legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+.dash2 .d2legend .barleg{ width:11px; height:11px; border-radius:2px; }
+
+/* donut (by type) */
+.dash2 .donut-wrap{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+.dash2 .d2donut{ flex:0 0 148px; }
+.dash2 .d2donut .ctr-v{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:22px; fill:var(--d-ink); }
+.dash2 .d2donut .ctr-l{ font-size:9px; fill:var(--d-faint); font-family:'Kanit'; letter-spacing:1px; }
+.dash2 .tlegend{ flex:1; min-width:200px; }
+.dash2 .tlegend .tl{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--d-line); }
+.dash2 .tlegend .tl:last-child{ border-bottom:none; }
+.dash2 .tlegend .sw{ width:10px; height:10px; border-radius:3px; flex:0 0 10px; }
+.dash2 .tlegend .nm{ flex:1; font-size:.82rem; color:var(--d-text); }
+.dash2 .tlegend .ct{ font-family:'Montserrat'; font-weight:700; font-size:.92rem; color:var(--d-ink); }
+.dash2 .tlegend .pc{ font-size:.68rem; color:var(--d-faint); width:38px; text-align:right; }
+
+/* funnel (single month) */
+.dash2 .ovhead{ margin-bottom:16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.dash2 .ovmon{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.1rem; color:var(--d-ink); }
+.dash2 .ovsub{ font-size:.74rem; color:var(--d-soft); }
+.dash2 .curtag{ font-size:.58rem; background:var(--d-green); color:#fff; padding:2px 9px; border-radius:11px; font-weight:700; letter-spacing:.5px; }
+.dash2 .funnel{ display:flex; flex-direction:column; gap:15px; }
+.dash2 .fn .fh{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.dash2 .fn .fl{ font-size:.82rem; font-weight:500; color:var(--d-text); }
+.dash2 .fn .fr{ display:inline-flex; align-items:baseline; gap:9px; }
+.dash2 .fn .fv{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; color:var(--d-ink); }
+.dash2 .fn .fp{ font-size:.7rem; color:var(--d-soft); }
+.dash2 .fnbar{ height:10px; border-radius:6px; background:var(--d-line); overflow:hidden; }
+.dash2 .fnbar>i{ display:block; height:100%; border-radius:6px; transition:width .45s ease; }
+
+/* month filter */
+.dash2 .d-monthbar{ display:flex; align-items:center; gap:12px; background:var(--d-panel); border:1px solid var(--d-line); border-radius:12px; padding:11px 16px; box-shadow:var(--d-shadow); margin-bottom:18px; flex-wrap:wrap; }
+.dash2 .d-monthbar .mb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:.86rem; color:var(--d-ink); }
+.dash2 .d-monthbar .mb-title i{ color:var(--d-green); }
+.dash2 .d-monsel{ font-family:'Kanit',sans-serif; font-size:.83rem; border:1px solid var(--d-line); border-radius:8px; padding:7px 12px; background:#fcfdfe; color:var(--d-ink); cursor:pointer; min-width:200px; }
+.dash2 .d-monsel:focus{ outline:none; border-color:var(--d-green); }
+.dash2 .d-monsel-sm{ padding:5px 11px; font-size:.78rem; min-width:140px; }
+.dash2 .d-monthbar .mb-hint{ margin-left:auto; font-size:.7rem; color:var(--d-faint); }
+.dash2 .scope-tag{ font-size:.66rem; font-weight:600; padding:2px 9px; border-radius:20px; background:rgba(31,138,78,.1); color:var(--d-green); }
+
+/* horizontal type bars (reject) */
+.dash2 .type-row{ margin-bottom:13px; } .dash2 .type-row:last-child{ margin-bottom:0; }
+.dash2 .type-row .tr-h{ display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:5px; color:var(--d-text); }
+.dash2 .type-row .tr-h .n{ font-family:'Montserrat'; font-weight:700; }
+.dash2 .tbar{ height:9px; border-radius:5px; background:var(--d-line); overflow:hidden; }
+.dash2 .tbar>i{ display:block; height:100%; border-radius:5px; }
+
+/* feed */
+.dash2 .feed .it{ display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--d-line); }
+.dash2 .feed .it:last-child{ border-bottom:none; }
+.dash2 .feed .fi{ width:34px; height:34px; flex:0 0 34px; border-radius:9px; display:grid; place-items:center; font-size:.82rem; }
+.dash2 .feed .ft{ flex:1; min-width:0; }
+.dash2 .feed .ft b{ font-size:.82rem; font-weight:500; display:block; line-height:1.3; color:var(--d-text); }
+.dash2 .feed .ft .sub{ font-size:.71rem; color:var(--d-soft); margin-top:2px; }
+.dash2 .feed .ft .code{ font-family:'JetBrains Mono'; font-size:.68rem; background:#f1f4f7; border:1px solid var(--d-line); padding:1px 6px; border-radius:5px; color:var(--d-green); }
+.dash2 .feed .badge2{ font-size:.61rem; padding:2px 8px; border-radius:20px; font-weight:600; align-self:flex-start; }
+
+/* quick status */
+.dash2 .qs{ display:flex; flex-direction:column; gap:9px; }
+.dash2 .qs .q{ display:flex; align-items:center; gap:12px; padding:10px 13px; border-radius:10px; background:#fcfdfe; border:1px solid var(--d-line); }
+.dash2 .qs .qi{ width:34px; height:34px; flex:0 0 34px; border-radius:9px; display:grid; place-items:center; font-size:.85rem; }
+.dash2 .qs .ql{ flex:1; font-size:.79rem; color:var(--d-soft); }
+.dash2 .qs .qv{ font-family:'Montserrat'; font-weight:700; font-size:1.2rem; }
+
+/* changes — clean cards with accent */
+.dash2 .chg{ display:flex; align-items:center; gap:14px; padding:15px 17px; border-radius:12px; background:var(--d-panel); border:1px solid var(--d-line); border-left-width:4px; }
+.dash2 .chg i{ font-size:1.3rem; } .dash2 .chg h3{ font-family:'Montserrat'; font-weight:700; margin:0; font-size:1.5rem; color:var(--d-ink); }
+.dash2 .chg small{ font-size:.7rem; color:var(--d-soft); font-weight:500; }
+
+.dash2 .empty{ text-align:center; color:var(--d-faint); padding:26px 10px; font-size:.83rem; }
+.dash2 .spin-wrap{ text-align:center; padding:34px; }
+
+/* ===== DARK ===== */
+.dash2.dark{ --d-ink:#eef2f6; --d-text:#cdd5dd; --d-soft:#93a0ac; --d-faint:#66727e; --d-line:#2b323a; --d-panel:#1c2127; --d-bg:#14181c;
+  --d-shadow:0 1px 3px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3); }
+.dash2.dark .stat .ico{ background:#262c33; }
+.dash2.dark .dept, .dash2.dark .qs .q{ background:#232830; }
+.dash2.dark .d2col{ fill:#3a434d; } .dash2.dark .d2col.cur{ fill:#57636f; }
+.dash2.dark .feed .ft .code{ background:#232830; color:#7fd6a1; }
+.dash2.dark .d2donut .ctr-v{ fill:#eef2f6; } .dash2.dark .d2ring text{ fill:#eef2f6; }
+</style>
+
+<div class="dash2">
+  <div class="d-head">
+    <div>
+      <div class="eyebrow">Potato Corner · Operations</div>
+      <h1>Promotion Dashboard</h1>
+      <div class="sub">ภาพรวมการทำงานโปรโมชัน — MKT · IT · OP</div>
+    </div>
+    <div class="d-headright">
+      <div class="d-datepill">
+        <span class="cal"><i class="far fa-calendar-check"></i></span>
+        <span class="meta"><span class="lbl">วันนี้</span><span class="num" id="d2Today"></span></span>
+      </div>
+      <button id="d2DarkBtn" class="d2-dark-btn" onclick="window.d2ToggleDark()" title="สลับโหมดมืด/สว่าง"><i class="fas fa-moon"></i></button>
+    </div>
+  </div>
+
+  <div class="stat-grid" id="d2Stats">
+    <div class="spin-wrap" style="grid-column:1/-1;"><div class="spinner-border text-success"></div></div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-people-arrows"></i> การทำงานแต่ละฝ่าย <span id="d2DeptScope" class="scope-tag"></span> <span class="more">คลิกการ์ดเพื่อดูระยะเวลา</span></div>
+        <div class="cb"><div class="row g-3" id="d2Dept"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-monthbar">
+    <div class="mb-title"><i class="fas fa-calendar-day"></i> เจาะรายเดือน</div>
+    <select id="d2Mon" class="d-monsel" onchange="window.d2ApplyMonth(this.value)"></select>
+    <span class="mb-hint">เลือกเดือนเพื่อดูภาพรวม + ความเคลื่อนไหว เฉพาะเดือนนั้น · เลือก "ทั้งหมด" = ภาพรวมทั้งปี</span>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-chart-column"></i> ภาพรวมการทำงานรายเดือน <span class="more">ปุ่ม → IT เสร็จ → OP ยืนยัน</span></div>
+        <div class="cb" id="d2Overview"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-xl-8">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-shapes"></i> โปรโมชันแยกตามประเภท <select id="d2TypeMon" class="d-monsel d-monsel-sm" onchange="window.d2Type(this.value)" style="margin-left:auto;"></select></div>
+        <div class="cb" id="d2Type"></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-gauge-high"></i> สรุปสถานะงาน <span class="more">รวม</span></div>
+        <div class="cb"><div class="qs" id="d2Quick"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="d-card">
+        <div class="ch"><i class="fas fa-bolt"></i> ความเคลื่อนไหวล่าสุด <span id="d2FeedScope" class="scope-tag"></span></div>
+        <div class="cb"><div class="feed" id="d2Feed"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-card mb-4">
+    <div class="ch"><i class="fas fa-flag"></i> การเปลี่ยนแปลงระยะเวลา / ยกเลิก <span id="d2ChgScope" class="scope-tag"></span></div>
+    <div class="cb"><div class="row g-3" id="d2Changes"></div></div>
+  </div>
+
+  <div class="d-card">
+    <div class="ch"><i class="fas fa-rotate-left"></i> หัวข้อที่ถูก OP ตีกลับ (Reject Tracking)</div>
+    <div class="cb" id="d2Rejects"></div>
+  </div>
+</div>
+
+<script>
+  window.gotoPage = function (pg) { if (typeof loadPage === 'function') loadPage(pg); };
+
+  window.d2ToggleDark = function () {
+    const d = document.querySelector('.dash2'); if (!d) return;
+    const on = d.classList.toggle('dark');
+    try { localStorage.setItem('pc_dash_dark', on ? '1' : '0'); } catch (e) {}
+    const ic = document.querySelector('#d2DarkBtn i'); if (ic) ic.className = on ? 'fas fa-sun' : 'fas fa-moon';
+  };
+
+  window.d2RunCountUp = function (scope) {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    (scope || document).querySelectorAll('[data-cu]').forEach(function (el) {
+      if (el.__cuStarted) return; el.__cuStarted = true;
+      var to = parseFloat(el.getAttribute('data-cu')) || 0;
+      el.textContent = to.toLocaleString();   // ← real value ALWAYS shown up front (never stuck at 0)
+      if (reduce || to === 0 || (document.hidden)) return;
+      // enhancement: animate 0→N only if rAF is alive. rAF callback runs before paint,
+      // so if it fires the first painted frame is the animation start; if it never fires, final stays.
+      var dur = 1100, t0 = null;
+      function step(ts) { if (!t0) t0 = ts; var p = Math.min(1, (ts - t0) / dur); var e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(to * e).toLocaleString(); if (p < 1) requestAnimationFrame(step); else el.textContent = to.toLocaleString(); }
+      requestAnimationFrame(step);
+    });
+  };
+
+  /* ---------- small helpers ---------- */
+  function niceStep(x){ if(x<=1) return 1; var p=Math.pow(10,Math.floor(Math.log10(x))); var f=x/p; var nf = f<=1?1:f<=2?2:f<=5?5:10; return nf*p; }
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  function leadTime(d) { if (d === null || d === undefined) return '—'; if (d < 1) return 'ภายในวันเดียว'; return d.toFixed(1) + ' วัน'; }
+  function branchCount() { try { if (Array.isArray(window.PC_BRANCH_MASTER)) return window.PC_BRANCH_MASTER.length; } catch (e) {} return 0; }
+
+  /* ---------- SVG: progress ring ---------- */
+  function d2Ring(pctVal, color, size) {
+    size = size || 62; var sw = 6; var R = (size - sw) / 2; var c = 2 * Math.PI * R; var off = c * (1 - Math.max(0, Math.min(100, pctVal)) / 100);
+    var cx = size / 2;
+    return '<svg class="d2ring" viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' +
+      '<circle cx="' + cx + '" cy="' + cx + '" r="' + R + '" fill="none" stroke="var(--d-line)" stroke-width="' + sw + '"/>' +
+      '<circle cx="' + cx + '" cy="' + cx + '" r="' + R + '" fill="none" stroke="' + color + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + off + '" transform="rotate(-90 ' + cx + ' ' + cx + ')"/>' +
+      '<text x="' + cx + '" y="' + cx + '" text-anchor="middle" dominant-baseline="central">' + pctVal + '%</text></svg>';
+  }
+
+  /* ---------- SVG: combo chart (columns=buttons, lines=IT/OP) ---------- */
+  window.d2ComboChart = function (rows, cur) {
+    var n = rows.length; if (!n) return '<div class="empty">ยังไม่มีข้อมูล</div>';
+    var colW = 58, padL = 40, padR = 14, padT = 16, padB = 34, plotH = 200;
+    var W = padL + padR + n * colW, H = padT + plotH + padB;
+    var maxV = Math.max(1); rows.forEach(function (r) { maxV = Math.max(maxV, r.buttons, r.itDone, r.opOk); });
+    var step = niceStep(maxV / 4), top = Math.max(step, Math.ceil(maxV / step) * step);
+    var y = function (v) { return padT + plotH - (v / top) * plotH; };
+    var x = function (i) { return padL + i * colW + colW / 2; };
+    var g = '', band = '', cols = '', hot = '', xl = '';
+    for (var s = 0; s <= Math.round(top / step); s++) { var val = s * step, yy = y(val); g += '<line class="d2grid" x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '"/><text class="d2yl" x="' + (padL - 7) + '" y="' + (yy + 3) + '">' + val + '</text>'; }
+    var barW = 16, ptsIt = [], ptsOp = [];
+    rows.forEach(function (r, i) {
+      var cx = x(i), isCur = r.month === cur;
+      if (isCur) band += '<rect class="d2curband" x="' + (padL + i * colW) + '" y="' + padT + '" width="' + colW + '" height="' + plotH + '"/>';
+      var by = y(r.buttons);
+      cols += '<rect class="d2col' + (isCur ? ' cur' : '') + '" x="' + (cx - barW / 2) + '" y="' + by + '" width="' + barW + '" height="' + (padT + plotH - by) + '" rx="3"/>';
+      ptsIt.push([cx, y(r.itDone)]); ptsOp.push([cx, y(r.opOk)]);
+      hot += '<rect x="' + (padL + i * colW) + '" y="' + padT + '" width="' + colW + '" height="' + plotH + '" fill="transparent" style="cursor:pointer" onclick="window.d2ApplyMonth(\'' + r.month + '\')" onmousemove="window.d2Tip(event,\'' + r.month + '\')" onmouseleave="window.d2TipHide()"/>';
+      xl += '<text class="d2xl' + (isCur ? ' cur' : '') + '" x="' + cx + '" y="' + (padT + plotH + 17) + '">' + window.d2MonLbl(r.month) + '</text>';
+    });
+    var path = function (p) { return p.map(function (q, i) { return (i ? 'L' : 'M') + q[0] + ' ' + q[1]; }).join(' '); };
+    var lines = '<path class="d2line it" d="' + path(ptsIt) + '"/><path class="d2line op" d="' + path(ptsOp) + '"/>';
+    var dots = ''; ptsIt.forEach(function (p) { dots += '<circle class="d2dot it" cx="' + p[0] + '" cy="' + p[1] + '" r="3"/>'; }); ptsOp.forEach(function (p) { dots += '<circle class="d2dot op" cx="' + p[0] + '" cy="' + p[1] + '" r="3"/>'; });
+    var axis = '<line class="d2axis" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '"/>';
+    var baseY = padT + plotH;
+    var areaPath = function (p) { if (!p.length) return ''; var d = 'M' + p[0][0] + ' ' + baseY; p.forEach(function (q) { d += ' L' + q[0] + ' ' + q[1]; }); d += ' L' + p[p.length - 1][0] + ' ' + baseY + ' Z'; return d; };
+    var defs = '<defs>' +
+      '<linearGradient id="d2gIt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3f6fd1" stop-opacity="0.32"/><stop offset="100%" stop-color="#3f6fd1" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="d2gOp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1f8a4e" stop-opacity="0.30"/><stop offset="100%" stop-color="#1f8a4e" stop-opacity="0"/></linearGradient>' +
+      '</defs>';
+    var areas = '<path d="' + areaPath(ptsIt) + '" fill="url(#d2gIt)"/><path d="' + areaPath(ptsOp) + '" fill="url(#d2gOp)"/>';
+    return '<svg class="d2svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '">' + defs + g + band + areas + cols + axis + lines + dots + xl + hot + '</svg>';
+  };
+  window.d2Tip = function (ev, month) {
+    var outer = document.getElementById('d2chartOuter'), tt = document.getElementById('d2tt'); if (!outer || !tt) return;
+    var r = (window.d2rowsMap || {})[month]; if (!r) return;
+    tt.innerHTML = '<b>' + window.d2MonLbl(month) + '</b> · ' + r.campaigns + ' แคมเปญ<br>ปุ่ม ' + r.buttons + ' · IT ' + r.itDone + ' · OP ' + r.opOk;
+    var box = outer.getBoundingClientRect();
+    tt.style.left = (ev.clientX - box.left) + 'px'; tt.style.top = (ev.clientY - box.top - 12) + 'px'; tt.style.opacity = '1';
+  };
+  window.d2TipHide = function () { var tt = document.getElementById('d2tt'); if (tt) tt.style.opacity = '0'; };
+
+  /* ---------- SVG: donut ---------- */
+  window.d2Donut = function (segs) {
+    var total = segs.reduce(function (a, s) { return a + s.count; }, 0);
+    var cx = 74, cy = 74, R = 60, r = 40, a0 = -Math.PI / 2, paths = '';
+    if (!total) return '';
+    if (segs.filter(function (s) { return s.count > 0; }).length === 1) {
+      var only = segs.filter(function (s) { return s.count > 0; })[0];
+      paths = '<circle cx="' + cx + '" cy="' + cy + '" r="' + ((R + r) / 2) + '" fill="none" stroke="' + only.color + '" stroke-width="' + (R - r) + '"/>';
+    } else {
+      segs.forEach(function (s) {
+        if (!s.count) return; var frac = s.count / total, a1 = a0 + frac * 2 * Math.PI, large = (a1 - a0) > Math.PI ? 1 : 0;
+        var x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0), x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+        var xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1), xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
+        paths += '<path d="M' + x0 + ' ' + y0 + ' A' + R + ' ' + R + ' 0 ' + large + ' 1 ' + x1 + ' ' + y1 + ' L' + xi1 + ' ' + yi1 + ' A' + r + ' ' + r + ' 0 ' + large + ' 0 ' + xi0 + ' ' + yi0 + ' Z" fill="' + s.color + '"/>';
+        a0 = a1;
+      });
+    }
+    return '<svg class="d2donut" viewBox="0 0 148 148" width="148" height="148">' + paths +
+      '<text class="ctr-v" x="74" y="72" text-anchor="middle" dominant-baseline="central">' + total + '</text>' +
+      '<text class="ctr-l" x="74" y="90" text-anchor="middle">โปรฯ</text></svg>';
+  };
+
+  window.initDashboard = function () {
+    const el = document.getElementById('d2Today');
+    if (el) el.textContent = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+    try { if (localStorage.getItem('pc_dash_dark') === '1') { const dd = document.querySelector('.dash2'); if (dd) dd.classList.add('dark'); const ic = document.querySelector('#d2DarkBtn i'); if (ic) ic.className = 'fas fa-sun'; } } catch (e) {}
+
+    let ops = null, npd = null;
+    const done = () => {
+      if (!ops || !npd) return;
+      window._ops = ops; window._npd = npd;
+      window.d2Stats(ops, npd);
+      window.d2BuildMonths(ops.monthly || []);
+      window.d2ApplyMonth('all');
+      window.d2BuildTypeMonths(ops.monthly || []);
+      window.d2Type(window.d2CurMonth());
+      window.d2Quick(ops);
+      window.d2Rejects(ops.rejectIssues || []);
+    };
+    google.script.run.withSuccessHandler(function (o) { window._ops = o; ops = o; done(); }).getOpsOverview();
+    google.script.run.withSuccessHandler(function (s) { npd = s || { npd: {}, flavor: {}, recent: [] }; done(); }).getNpdFlavorSummary();
+  };
+
+  /* ---- KPI stat cards ---- */
+  window.d2Stats = function (o, n) {
+    const k = o.kpi;
+    const cards = [
+      { v: k.total, t: 'แคมเปญทั้งหมด', i: 'fa-bullhorn', c: '#1f8a4e', x: `<b>${o.totals.buttons}</b> ปุ่มทั้งหมด` },
+      { v: k.pendingIT, t: 'งานรอ IT ทำปุ่ม', i: 'fa-clock', c: '#c98a1e', x: `ทำเสร็จแล้ว <b>${o.dept.it.complete}</b>` },
+      { v: (n.npd && n.npd.total) || 0, t: 'สินค้าใหม่ (NPD)', i: 'fa-box-open', c: '#3f6fd1', x: `<b>${n.npdItems || 0}</b> รายการสินค้า` },
+      { v: (n.flavor && n.flavor.total) || 0, t: 'ผงรสชาติใหม่', i: 'fa-mortar-pestle', c: '#8258c4', x: `<b>${n.flavorGroups || 0}</b> กลุ่ม CMPOS` },
+      { v: branchCount(), t: 'สาขาในระบบ', i: 'fa-store', c: '#4b8a9a', x: 'ทั่วประเทศ' },
+    ];
+    document.getElementById('d2Stats').innerHTML = cards.map(c => `
+      <div class="stat">
+        <div class="top"><div class="ico"><i class="fas ${c.i}"></i></div><span class="dot" style="background:${c.c};"></span></div>
+        <div class="v num" data-cu="${c.v}">0</div>
+        <div class="t">${c.t}</div>
+        <div class="x">${c.x}</div>
+      </div>`).join('');
+    window.d2RunCountUp(document.getElementById('d2Stats'));
+  };
+
+  /* ---- dept workflow (scoped) — rings + numbers ---- */
+  window.d2Dept = function (s) {
+    const itPct = pct(s.it.complete, s.it.complete + s.it.pending);
+    const opPct = pct(s.op.approved, s.op.approved + s.op.waiting);
+    document.getElementById('d2Dept').innerHTML = `
+      <div class="col-md-4">
+        <div class="dept" onclick="window.showDeptTiming('mkt')">
+          <div class="dh"><div class="dico" style="background:rgba(31,138,78,.12);color:#1f8a4e;"><i class="fas fa-bullhorn"></i></div><div><b>MKT</b><small>เสนอโปรโมชัน</small></div></div>
+          <div class="body"><div class="figs"><div class="big num">${s.mkt.campaigns}<small>แคมเปญที่แจ้งเข้า</small></div></div>
+            <div class="figs" style="text-align:right"><div class="big num">${s.mkt.buttons}<small>ปุ่มทั้งหมด</small></div></div></div>
+          <div class="meta"><span>แจ้งล่วงหน้าเฉลี่ย</span><span style="color:var(--d-ink);font-weight:600;">${leadTime(s.avgLeadDays)}</span></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="dept" onclick="window.showDeptTiming('it')">
+          <div class="dh"><div class="dico" style="background:rgba(63,111,209,.12);color:#3f6fd1;"><i class="fas fa-microchip"></i></div><div><b>IT</b><small>ตั้งค่าปุ่ม POS</small></div></div>
+          <div class="body">${d2Ring(itPct, '#3f6fd1')}<div class="figs"><div class="big num">${s.it.complete}/${s.it.complete + s.it.pending}<small>ทำเสร็จ / ทั้งหมด</small></div></div></div>
+          <div class="meta"><span style="color:#c98a1e;font-weight:600;">ค้าง ${s.it.pending}</span><span>เฉลี่ย ${leadTime(s.avgItDays)}</span></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="dept" onclick="window.showDeptTiming('op')">
+          <div class="dh"><div class="dico" style="background:rgba(31,138,78,.12);color:#1f8a4e;"><i class="fas fa-clipboard-check"></i></div><div><b>OP</b><small>ตรวจสอบ</small></div></div>
+          <div class="body">${d2Ring(opPct, '#1f8a4e')}<div class="figs"><div class="big num">${s.op.approved}/${s.op.approved + s.op.waiting}<small>ตรวจแล้ว / ทั้งหมด</small></div></div></div>
+          <div class="meta"><span style="color:#1f8a4e;font-weight:600;">ผ่าน ${s.op.cleanPass}</span><span style="color:#cf4a52;font-weight:600;">ตีกลับ ${s.op.rejects}</span></div>
+        </div>
+      </div>`;
+  };
+
+  /* ---- month helpers (unchanged behaviour) ---- */
+  window.d2MonLbl = function (mm) {
+    const THMON = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const p = String(mm).split('-'); const mo = parseInt(p[1], 10); const yr = (p[0] || '').slice(2);
+    return (THMON[mo] || p[1] || '') + (yr ? ' ' + yr : '');
+  };
+  window.d2CurMonth = function () { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  window.d2MonthSeq = function (monthly) {
+    const START = '2026-05'; const cur = window.d2CurMonth(); let end = cur;
+    (monthly || []).forEach(m => { if (m.month && String(m.month) >= START && String(m.month) > end) end = String(m.month); });
+    const seq = []; let [y, mo] = START.split('-').map(Number); const [ey, em] = end.split('-').map(Number); let gg = 0;
+    while ((y < ey || (y === ey && mo <= em)) && gg++ < 240) { seq.push(y + '-' + String(mo).padStart(2, '0')); mo++; if (mo > 12) { mo = 1; y++; } }
+    return seq;
+  };
+  window.d2ScopeFor = function (val) {
+    const o = window._ops || {};
+    if (val === 'all' || !val) return { mkt: { campaigns: o.totals.campaigns, buttons: o.totals.buttons }, it: o.dept.it, op: o.dept.op, avgItDays: o.avgItDays, avgOpDays: o.avgOpDays, avgLeadDays: o.avgLeadDays, label: 'ทุกเดือน' };
+    const m = (o.monthly || []).find(x => x.month === val);
+    if (!m) return { mkt: { campaigns: 0, buttons: 0 }, it: { complete: 0, pending: 0 }, op: { approved: 0, waiting: 0, rejects: 0, cleanPass: 0 }, avgItDays: null, avgOpDays: null, avgLeadDays: null, label: window.d2MonLbl(val) };
+    return { mkt: m.mkt, it: m.it, op: m.op, avgItDays: m.avgItDays, avgOpDays: m.avgOpDays, avgLeadDays: m.avgLeadDays, label: window.d2MonLbl(val) };
+  };
+  window.d2BuildMonths = function (monthly) {
+    const sel = document.getElementById('d2Mon'); if (!sel) return;
+    const seq = window.d2MonthSeq(monthly).slice().reverse();
+    sel.innerHTML = '<option value="all">ทั้งหมด (ภาพรวมทั้งปี)</option>' + seq.map(m => `<option value="${m}">Promotion ${m} · ${window.d2MonLbl(m)}</option>`).join('');
+    sel.value = 'all';
+  };
+  window.d2ApplyMonth = function (val) {
+    window.__d2mon = val;
+    const sel = document.getElementById('d2Mon'); if (sel && sel.value !== val) sel.value = val;
+    window.d2Overview(val);
+    const s = window.d2ScopeFor(val);
+    window.d2Dept(s);
+    const dt = document.getElementById('d2DeptScope'); if (dt) dt.textContent = s.label;
+    window.d2Feed(window._npd, val);
+    window.d2Changes(val);
+  };
+
+  /* ---- drill-down modal (unchanged) ---- */
+  function d2EnsureModalCss() {
+    if (document.getElementById('dtmodal-css')) return;
+    const st = document.createElement('style'); st.id = 'dtmodal-css';
+    st.textContent = `
+      .dt-popup{ border-radius:16px !important; padding:24px !important; }
+      .dtmodal{ font-family:'Kanit',sans-serif; text-align:left; }
+      .dtmodal .dt-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+      .dtmodal .dt-stat{ background:#f4f6f9; border:1px solid #e6eaef; border-radius:12px; padding:13px 10px; text-align:center; }
+      .dtmodal .dt-stat .v{ display:block; font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.4rem; line-height:1; color:#14202b; }
+      .dtmodal .dt-stat .l{ font-size:.66rem; color:#67727e; margin-top:5px; display:block; }
+      .dtmodal .dt-tablewrap{ max-height:50vh; overflow:auto; border:1px solid #e6eaef; border-radius:12px; }
+      .dtmodal table.dt-tbl{ width:100%; border-collapse:collapse; font-size:.82rem; }
+      .dtmodal .dt-tbl thead th{ position:sticky; top:0; background:#14202b; color:#fff; font-weight:600; font-size:.68rem; padding:11px 13px; text-align:left; white-space:nowrap; }
+      .dtmodal .dt-tbl tbody td{ padding:10px 13px; border-top:1px solid #eef1f4; }
+      .dtmodal .dt-tbl tbody tr:nth-child(even){ background:#fafbfc; }
+      .dtmodal .dt-camp{ font-weight:600; color:#14202b; }
+      .dtmodal .dt-type{ display:inline-block; font-size:.66rem; padding:2px 9px; border-radius:20px; background:#eef1f4; color:#67727e; white-space:nowrap; }
+      .dtmodal .dt-date{ font-family:'JetBrains Mono',monospace; font-size:.74rem; color:#67727e; white-space:nowrap; }
+      .dtmodal .dt-na{ font-size:.74rem; color:#9aa5b1; }
+      .dtmodal .dt-dur{ display:inline-block; font-size:.68rem; font-weight:700; padding:3px 11px; border-radius:20px; white-space:nowrap; }
+      .dtmodal .dt-dur.g{ background:rgba(31,138,78,.13); color:#1f8a4e; }
+      .dtmodal .dt-dur.a{ background:rgba(201,138,30,.18); color:#a06d13; }
+      .dtmodal .dt-dur.r{ background:rgba(207,74,82,.13); color:#cf4a52; }
+      .dtmodal .dt-dur.n{ background:#eef1f4; color:#9aa5b1; }
+      .dtmodal .dt-empty{ padding:34px; text-align:center; color:#9aa5b1; }`;
+    document.head.appendChild(st);
+  }
+  window.showDeptTiming = function (dept) {
+    google.script.run.withSuccessHandler(function (rows) {
+      d2EnsureModalCss();
+      const cfg = {
+        mkt: { icon: 'fa-bullhorn', title: 'MKT — ระยะเวลากรอกแจ้งล่วงหน้า', col: 'กรอกล่วงหน้า', pick: r => r.leadDays, c1: 'วันที่กรอก', v1: r => r.submittedDate, c2: 'วันเริ่มโปร', v2: r => r.startDate },
+        it: { icon: 'fa-microchip', title: 'IT — ระยะเวลาขึ้นปุ่ม POS', col: 'ใช้เวลาทำปุ่ม', pick: r => r.itDays, c1: 'รับแจ้ง', v1: r => r.submittedDate, c2: 'IT เสร็จ', v2: r => r.itDoneDate || (r.itStatus !== 'COMPLETE' ? 'ยังไม่เสร็จ' : null) },
+        op: { icon: 'fa-clipboard-check', title: 'OP — ระยะเวลาตรวจสอบ', col: 'ใช้เวลาตรวจ', pick: r => r.opDays, c1: 'IT เสร็จ', v1: r => r.itDoneDate, c2: 'OP ตรวจ', v2: r => r.opDoneDate || (r.opStatus !== 'APPROVED' ? 'รอตรวจ' : null) }
+      }[dept];
+      const fmtD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? (m[3] + '/' + m[2] + '/' + m[1].slice(2)) : null; };
+      const cell = (s) => { if (s === null || s === undefined || s === '') return '<span class="dt-na">—</span>'; const d = fmtD(s); return d ? `<span class="dt-date">${d}</span>` : `<span class="dt-na">${s}</span>`; };
+      const durBadge = (d) => (d === null || d === undefined) ? '<span class="dt-dur n">—</span>' : (d <= 0 ? '<span class="dt-dur g">ภายในวันเดียว</span>' : (d <= 3 ? `<span class="dt-dur a">${d} วัน</span>` : `<span class="dt-dur r">${d} วัน</span>`));
+      const picks = rows.map(r => cfg.pick(r)).filter(d => d !== null && d !== undefined && d >= 0);
+      const nn = picks.length;
+      const avg = nn ? (picks.reduce((a, b) => a + b, 0) / nn) : null;
+      const sameDayPct = nn ? Math.round(picks.filter(d => d <= 0).length / nn * 100) : 0;
+      const mx = nn ? Math.max(...picks) : null;
+      const sorted = rows.slice().sort((a, b) => { const x = cfg.pick(a), y = cfg.pick(b); const xn = (x == null), yn = (y == null); if (xn && yn) return 0; if (xn) return 1; if (yn) return -1; return y - x; });
+      const body = sorted.map(r => `
+        <tr><td class="dt-camp">${r.campaign}</td>
+          <td><span class="dt-type">${r.type || '-'}</span></td>
+          <td>${cell(cfg.v1(r))}</td><td>${cell(cfg.v2(r))}</td><td>${durBadge(cfg.pick(r))}</td></tr>`).join('');
+      const stat = (v, l) => `<div class="dt-stat"><span class="v">${v}</span><span class="l">${l}</span></div>`;
+      Swal.fire({
+        title: '', width: '880px', showCloseButton: true, confirmButtonColor: '#14202b', confirmButtonText: 'ปิด',
+        customClass: { popup: 'dt-popup' },
+        html: `<div class="dtmodal">
+          <div style="display:flex;align-items:center;gap:13px;margin-bottom:18px;">
+            <div style="width:46px;height:46px;border-radius:12px;background:rgba(31,138,78,.12);display:grid;place-items:center;color:#1f8a4e;font-size:1.2rem;flex:0 0 46px;"><i class="fas ${cfg.icon}"></i></div>
+            <div><div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:1.1rem;color:#14202b;">${cfg.title}</div>
+              <div style="font-size:.74rem;color:#67727e;">${cfg.col} · เรียงจากใช้เวลานานสุด</div></div>
+          </div>
+          <div class="dt-stats">
+            ${stat(avg === null ? '—' : avg.toFixed(1), 'เฉลี่ย (วัน)')}
+            ${stat(nn, 'จำนวนงาน')}
+            ${stat(sameDayPct + '%', 'ภายในวันเดียว')}
+            ${stat(mx === null ? '—' : mx, 'นานสุด (วัน)')}
+          </div>
+          <div class="dt-tablewrap">
+            <table class="dt-tbl"><thead><tr><th>แคมเปญ</th><th>ประเภท</th><th>${cfg.c1}</th><th>${cfg.c2}</th><th>${cfg.col}</th></tr></thead>
+            <tbody>${body || '<tr><td colspan="5" class="dt-empty">ไม่มีข้อมูล</td></tr>'}</tbody></table>
+          </div>
+        </div>`
+      });
+    }).getWorkflowTimings();
+  };
+
+  /* ---- by type (donut) ---- */
+  window.d2BuildTypeMonths = function (monthly) {
+    const sel = document.getElementById('d2TypeMon'); if (!sel) return;
+    const seq = window.d2MonthSeq(monthly).slice().reverse();
+    sel.innerHTML = '<option value="all">ทั้งหมด (ทุกเดือน)</option>' + seq.map(m => `<option value="${m}">${window.d2MonLbl(m)}</option>`).join('');
+    sel.value = window.d2CurMonth();
+  };
+  window.d2Type = function (val) {
+    const o = window._ops || {};
+    let byType;
+    if (!val || val === 'all') byType = o.byType || [];
+    else { const m = (o.monthly || []).find(x => x.month === val); byType = (m && m.byType) || []; }
+    const sel = document.getElementById('d2TypeMon'); if (sel && val && sel.value !== val) sel.value = val;
+    const colors = { 'Item Set': '#1f8a4e', 'Coupon': '#3fae5b', 'Bill Discount': '#4b8a9a', 'Voucher': '#c98a1e', 'Price Promotion': '#3f6fd1', 'Other': '#9aa6b4' };
+    const box = document.getElementById('d2Type');
+    if (!byType.length) { box.innerHTML = '<div class="empty">' + ((val && val !== 'all') ? 'เดือนนี้ยังไม่มีโปรโมชัน' : 'ยังไม่มีข้อมูลโปรโมชัน') + '</div>'; return; }
+    const segs = byType.map(t => ({ label: t.type, count: t.count, color: colors[t.type] || '#9aa6b4' }));
+    const total = segs.reduce((a, s) => a + s.count, 0);
+    const legend = segs.map(s => `
+      <div class="tl"><span class="sw" style="background:${s.color};"></span>
+        <span class="nm">${s.label}</span><span class="ct">${s.count}</span><span class="pc">${pct(s.count, total)}%</span></div>`).join('');
+    box.innerHTML = `<div class="donut-wrap">${window.d2Donut(segs)}<div class="tlegend">${legend}</div></div>`;
+  };
+
+  /* ---- overview: combo chart (all) / funnel (single) ---- */
+  window.d2Overview = function (val) {
+    const box = document.getElementById('d2Overview');
+    const o = window._ops || {}; const monthly = o.monthly || [];
+    const byMon = {}; monthly.forEach(m => { byMon[m.month] = m; });
+    const cur = window.d2CurMonth();
+    const pick = mm => { const m = byMon[mm] || {}; return { month: mm, buttons: (m.mkt ? m.mkt.buttons : 0) || 0, campaigns: (m.mkt ? m.mkt.campaigns : 0) || 0, itDone: m.it ? m.it.complete : 0, opOk: m.op ? m.op.approved : 0 }; };
+
+    if (!val || val === 'all') {
+      const rows = window.d2MonthSeq(monthly).map(pick);
+      window.d2rowsMap = {}; rows.forEach(r => window.d2rowsMap[r.month] = r);
+      const totB = rows.reduce((a, r) => a + r.buttons, 0), totI = rows.reduce((a, r) => a + r.itDone, 0), totO = rows.reduce((a, r) => a + r.opOk, 0);
+      box.innerHTML = `
+        <div class="d2legend">
+          <span class="lg"><span class="sw" style="background:#c5cdd6;"></span> ปุ่มทั้งหมด (${totB})</span>
+          <span class="lg"><span class="sw" style="background:#3f6fd1;"></span> IT ทำเสร็จ (${totI})</span>
+          <span class="lg"><span class="sw" style="background:#1f8a4e;"></span> OP ยืนยัน (${totO})</span>
+          <span class="lg" style="margin-left:auto;color:var(--d-faint);">คลิกเดือนเพื่อเจาะ · เดือนนี้ไฮไลต์</span>
+        </div>
+        <div class="d2chart-outer" id="d2chartOuter"><div class="d2chart-scroll" id="d2chartScroll">${window.d2ComboChart(rows, cur)}</div><div class="d2tt" id="d2tt"></div></div>`;
+      const w = document.getElementById('d2chartScroll'); if (w) w.scrollLeft = w.scrollWidth;
+      return;
+    }
+
+    const r = pick(val);
+    const W = v => Math.max(2, Math.round(v / Math.max(1, r.buttons) * 100));
+    const fr = (label, val2, color, denom) => `
+      <div class="fn"><div class="fh"><span class="fl">${label}</span>
+        <span class="fr">${denom ? `<span class="fp">${pct(val2, denom)}%</span>` : ''}<span class="fv num">${val2}</span></span></div>
+        <div class="fnbar"><i style="width:${W(val2)}%;background:${color};"></i></div></div>`;
+    box.innerHTML = `
+      <div class="ovhead">
+        <span class="ovmon">${window.d2MonLbl(val)}</span>
+        ${val === cur ? '<span class="curtag">เดือนปัจจุบัน</span>' : ''}
+        <span class="ovsub">Promotion ${val} · ${r.campaigns} แคมเปญ · ${r.buttons} ปุ่ม</span>
+      </div>
+      <div class="funnel">
+        ${fr('ปุ่มทั้งหมด', r.buttons, '#9aa6b4', 0)}
+        ${fr('IT ทำเสร็จ', r.itDone, '#3f6fd1', r.buttons)}
+        ${fr('OP ยืนยัน', r.opOk, '#1f8a4e', r.buttons)}
+      </div>
+      ${r.buttons === 0 ? '<div class="empty" style="padding:16px 0 0;"><i class="far fa-folder-open me-1"></i>เดือนนี้ยังไม่มีการแจ้งปุ่ม</div>' : ''}`;
+  };
+
+  /* ---- feed ---- */
+  window.d2Feed = function (n, month) {
+    const box = document.getElementById('d2Feed');
+    let recent = (n && n.recent) || [];
+    if (month && month !== 'all') recent = recent.filter(r => r.month === month);
+    recent = recent.slice(0, 12);
+    const scopeEl = document.getElementById('d2FeedScope'); if (scopeEl) scopeEl.textContent = (month && month !== 'all') ? window.d2MonLbl(month) : 'ล่าสุด';
+    if (!recent.length) { box.innerHTML = '<div class="empty"><i class="far fa-clock me-1"></i>' + ((month && month !== 'all') ? 'เดือนนี้ยังไม่มีความเคลื่อนไหว' : 'ยังไม่มีความเคลื่อนไหว') + '</div>'; return; }
+    const meta = (r) => {
+      const st = String(r.status || 'PENDING').toUpperCase();
+      const isFlv = r.kind === 'ผงรสชาติ';
+      if (st === 'CONFIRMED') return { ic: 'fa-check', fg: '#1f8a4e', label: (isFlv ? 'ผงรสชาติ' : 'สินค้าใหม่') + 'ขึ้นปุ่มเสร็จ', badge: 'ยืนยันแล้ว', bc: 'background:rgba(31,138,78,.13);color:#1f8a4e;' };
+      if (st === 'REJECTED') return { ic: 'fa-rotate-left', fg: '#cf4a52', label: 'OP ตีกลับ' + (isFlv ? ' (ผงรสชาติ)' : ' (สินค้าใหม่)'), badge: 'ตีกลับ', bc: 'background:rgba(207,74,82,.13);color:#cf4a52;' };
+      return { ic: isFlv ? 'fa-mortar-pestle' : 'fa-box-open', fg: isFlv ? '#8258c4' : '#3f6fd1', label: 'แจ้ง' + (isFlv ? 'ผงรสชาติใหม่' : 'สินค้าใหม่'), badge: 'รอตรวจ', bc: 'background:rgba(201,138,30,.16);color:#a06d13;' };
+    };
+    box.innerHTML = recent.map(r => {
+      const m = meta(r);
+      return `<div class="it">
+        <div class="fi" style="background:${m.fg}1f;color:${m.fg};"><i class="fas ${m.ic}"></i></div>
+        <div class="ft"><b>${m.label}</b>
+          <div class="sub">${r.project || '-'} <span class="code">${r.id}</span></div></div>
+        <span class="badge2" style="${m.bc}">${m.badge}</span></div>`;
+    }).join('');
+  };
+
+  /* ---- quick status ---- */
+  window.d2Quick = function (o) {
+    const d = o.dept;
+    const items = [
+      { i: 'fa-check', fg: '#1f8a4e', l: 'ทำปุ่มเสร็จแล้ว', v: d.it.complete },
+      { i: 'fa-clock', fg: '#c98a1e', l: 'รอ IT ดำเนินการ', v: d.it.pending },
+      { i: 'fa-thumbs-up', fg: '#1f8a4e', l: 'OP ยืนยันแล้ว', v: d.op.approved },
+      { i: 'fa-hourglass-half', fg: '#3f6fd1', l: 'รอ OP ตรวจ', v: d.op.waiting },
+      { i: 'fa-rotate-left', fg: '#cf4a52', l: 'ถูกตีกลับ (ครั้ง)', v: d.op.rejects },
+    ];
+    document.getElementById('d2Quick').innerHTML = items.map(q => `
+      <div class="q"><div class="qi" style="background:${q.fg}1c;color:${q.fg};"><i class="fas ${q.i}"></i></div>
+        <div class="ql">${q.l}</div><div class="qv num" style="color:${q.fg};">${q.v}</div></div>`).join('');
+  };
+
+  /* ---- changes (scoped) ---- */
+  window.d2Changes = function (val) {
+    const o = window._ops || {};
+    let c, label;
+    if (!val || val === 'all') { c = o.changes || { EXTENDED: 0, REDUCED: 0, CANCELLED: 0 }; label = 'ทุกเดือน'; }
+    else { const m = (o.monthly || []).find(x => x.month === val); c = (m && m.changes) || { EXTENDED: 0, REDUCED: 0, CANCELLED: 0 }; label = window.d2MonLbl(val); }
+    const tag = document.getElementById('d2ChgScope'); if (tag) tag.textContent = label;
+    const items = [
+      { t: 'ขยายเวลา (EXTENDED)', v: c.EXTENDED || 0, col: '#3f6fd1', i: 'fa-calendar-plus' },
+      { t: 'ลดเวลา (REDUCED)', v: c.REDUCED || 0, col: '#c98a1e', i: 'fa-calendar-minus' },
+      { t: 'ยกเลิก (CANCELLED)', v: c.CANCELLED || 0, col: '#cf4a52', i: 'fa-ban' },
+    ];
+    document.getElementById('d2Changes').innerHTML = items.map(x => `
+      <div class="col-md-4"><div class="chg" style="border-left-color:${x.col};">
+        <i class="fas ${x.i}" style="color:${x.col};"></i><div><h3 class="num">${x.v}</h3><small>${x.t}</small></div></div></div>`).join('');
+  };
+
+  /* ---- rejects ---- */
+  window.d2Rejects = function (issues) {
+    const box = document.getElementById('d2Rejects');
+    if (!issues.length) { box.innerHTML = '<div class="empty"><i class="fas fa-circle-check me-1" style="color:#1f8a4e;"></i>ยังไม่มีการตีกลับ — งานผ่านการตรวจสอบครั้งแรกทั้งหมด</div>'; return; }
+    const total = issues.reduce((a, i) => a + i.count, 0), max = Math.max(1, ...issues.map(i => i.count));
+    box.innerHTML = `<div class="mb-3 small fw-bold" style="color:var(--d-soft);">ตีกลับทั้งหมด ${total} ครั้ง · แยกตามหัวข้อ</div>` + issues.map(i => `
+      <div class="type-row">
+        <div class="tr-h"><span><i class="fas fa-triangle-exclamation me-1" style="color:#cf4a52;"></i>${i.issue}</span><span class="n">${i.count} ครั้ง</span></div>
+        <div class="tbar"><i style="width:${Math.round(i.count / max * 100)}%;background:#cf4a52;"></i></div>
+      </div>`).join('');
+  };
+</script>

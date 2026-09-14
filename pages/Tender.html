@@ -1,0 +1,522 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  .tnd-scope{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --blue:#2f5fb3; font-family:'Kanit',sans-serif; background:#eef1f4; color:var(--pc-black); min-height:100vh; padding:24px 24px 50px; }
+  .tnd-scope *{ box-sizing:border-box; }
+  .tnd-scope .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .tnd-scope .topbar{ background:var(--pc-green); color:#fff; padding:18px 22px; border-radius:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .tnd-scope .topbar .tt h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.18rem; margin:0; display:flex; align-items:center; gap:10px; }
+  .tnd-scope .topbar .tt h1 i{ color:var(--pc-yellow); }
+  .tnd-scope .topbar .tt p{ margin:3px 0 0; font-size:.82rem; color:rgba(255,255,255,.82); }
+  .tnd-scope .topbar .bar-accent{ width:8px; align-self:stretch; min-height:42px; background:var(--pc-yellow); border-radius:5px; }
+  .tnd-scope .roles{ margin-left:auto; display:flex; gap:7px; }
+  .tnd-scope .role{ border:0; background:rgba(255,255,255,.12); color:#fff; font-family:inherit; font-weight:600; font-size:.86rem; border-radius:10px; padding:9px 15px; cursor:pointer; display:flex; align-items:center; gap:7px; }
+  .tnd-scope .role.on{ background:var(--pc-yellow); color:var(--pc-black); }
+  .tnd-scope .role:hover:not(.on){ background:rgba(255,255,255,.24); }
+
+  .tnd-scope .wrap{ padding:18px 0 0; }
+  .tnd-scope .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:18px; }
+  .tnd-scope .card h2{ font-size:1.06rem; font-weight:700; margin:0 0 3px; display:flex; align-items:center; gap:9px; }
+  .tnd-scope .card h2 i{ color:var(--pc-green); }
+  .tnd-scope .card .sub{ color:#6c757d; font-size:.94rem; margin:0 0 15px; line-height:1.5; }
+
+  .tnd-scope .flow{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; background:#f1f7f3; border:1px solid #d6eade; border-radius:12px; padding:11px 15px; margin-bottom:18px; }
+  .tnd-scope .flow .fstep{ display:flex; align-items:center; gap:8px; font-size:.84rem; font-weight:600; color:#3a4150; }
+  .tnd-scope .flow .fstep .fn{ width:23px; height:23px; border-radius:50%; background:var(--pc-green); color:#fff; font-size:.74rem; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; }
+  .tnd-scope .flow .farrow{ color:#9aa1aa; }
+
+  .tnd-scope .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .tnd-scope .fld{ margin-bottom:14px; }
+  .tnd-scope .fld label{ display:block; font-size:.82rem; font-weight:600; color:#5a616b; margin-bottom:6px; }
+  .tnd-scope .fld label .req{ color:#c0392b; }
+  .tnd-scope .inp, .tnd-scope select.inp, .tnd-scope textarea.inp{ width:100%; border:1.6px solid #dde2e7; border-radius:11px; padding:11px 13px; font-family:inherit; font-size:.96rem; background:#fff; color:var(--pc-black); }
+  .tnd-scope .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .tnd-scope textarea.inp{ resize:vertical; min-height:74px; }
+
+  .tnd-scope .seg{ display:flex; gap:8px; background:#f1f4f7; border-radius:12px; padding:5px; margin-bottom:16px; max-width:360px; }
+  .tnd-scope .seg button{ flex:1; border:0; background:transparent; font-family:inherit; font-weight:600; font-size:.92rem; color:#5a616b; border-radius:9px; padding:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; }
+  .tnd-scope .seg button.on{ background:#fff; color:var(--pc-green); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .tnd-scope .seg button.on.close{ color:#c0392b; }
+
+  .tnd-scope .tlist{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+  .tnd-scope .topt{ border:1.8px solid #e0e5ea; background:#fafbfc; border-radius:14px; padding:15px 16px; cursor:pointer; transition:.13s; text-align:left; }
+  .tnd-scope .topt:hover{ border-color:#bcdcc9; background:#f3fbf6; }
+  .tnd-scope .topt.on{ border-color:var(--pc-green); background:#f3fbf6; box-shadow:0 2px 12px rgba(46,147,74,.13); }
+  .tnd-scope .topt .th{ display:flex; align-items:center; gap:11px; }
+  .tnd-scope .topt .ti{ width:42px; height:42px; border-radius:11px; background:#e3f3ea; color:var(--pc-green); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+  .tnd-scope .topt.on .ti{ background:var(--pc-green); color:#fff; }
+  .tnd-scope .topt .tn{ font-weight:700; font-size:1.08rem; line-height:1.15; }
+  .tnd-scope .topt .tc{ font-family:'JetBrains Mono',monospace; font-size:.82rem; font-weight:700; color:#5a616b; margin-top:3px; }
+  .tnd-scope .topt .td{ font-size:.9rem; color:#55606a; margin-top:9px; line-height:1.5; }
+  .tnd-scope .topt .tradio{ margin-left:auto; width:20px; height:20px; border-radius:50%; border:2px solid #cfd5db; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .tnd-scope .topt.on .tradio{ border-color:var(--pc-green); background:var(--pc-green); }
+  .tnd-scope .topt.on .tradio::after{ content:''; width:8px; height:8px; border-radius:50%; background:#fff; }
+
+  .tnd-scope .stats{ display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+  .tnd-scope .stat{ flex:1; min-width:110px; border:1px solid #e7eaee; border-radius:12px; padding:12px 14px; text-align:center; background:#fff; }
+  .tnd-scope .stat .n{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.6rem; line-height:1; }
+  .tnd-scope .stat .l{ font-size:.82rem; color:#6c757d; margin-top:6px; font-weight:600; }
+  .tnd-scope .stat.warn .n{ color:#c9870a; } .tnd-scope .stat.ok .n{ color:var(--pc-green); } .tnd-scope .stat.bad .n{ color:#c0392b; } .tnd-scope .stat.blue .n{ color:var(--blue); }
+
+  .tnd-scope .btn{ border:0; border-radius:12px; font-family:inherit; font-weight:700; font-size:1rem; padding:14px 24px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; }
+  .tnd-scope .btn-g{ background:var(--pc-green); color:#fff; } .tnd-scope .btn-g:disabled{ background:#cfd5db; cursor:not-allowed; }
+  .tnd-scope .btn-r{ background:#c0392b; color:#fff; } .tnd-scope .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .tnd-scope .btn-o:hover{ border-color:#b6bcc4; }
+  .tnd-scope .btn-y{ background:var(--pc-yellow); color:var(--pc-black); }
+  .tnd-scope .btn-sm{ padding:9px 16px; font-size:.86rem; border-radius:10px; }
+
+  .tnd-scope .reqcard{ border:1px solid #e7eaee; border-radius:14px; padding:16px 18px; margin-bottom:13px; background:#fff; border-left:5px solid var(--lc,#c9870a); }
+  .tnd-scope .reqcard .rtop{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .tnd-scope .reqcard .rnm{ font-weight:700; font-size:1.04rem; display:flex; align-items:center; gap:9px; }
+  .tnd-scope .reqcard .rnm .tdot{ width:30px; height:30px; border-radius:9px; background:#e3f3ea; color:var(--pc-green); display:flex; align-items:center; justify-content:center; font-size:.95rem; }
+  .tnd-scope .reqid{ font-family:'JetBrains Mono',monospace; font-size:.74rem; font-weight:700; color:#5a616b; background:#eef1f4; border:1px solid #e0e5ea; border-radius:6px; padding:2px 8px; }
+  .tnd-scope .rmeta{ display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+  .tnd-scope .mtag{ font-size:.88rem; font-weight:600; color:#4a5158; background:#f1f4f7; border-radius:7px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; }
+  .tnd-scope .mtag i{ color:#9aa1aa; }
+  .tnd-scope .pill{ font-size:.72rem; font-weight:700; border-radius:999px; padding:4px 12px; white-space:nowrap; }
+  .tnd-scope .pill.submitted{ background:#eaf4ee; color:#9a6700; } .tnd-scope .pill.approved{ background:#e7f0ff; color:#2c4a82; }
+  .tnd-scope .pill.done{ background:#eafaf1; color:#1d7a4d; } .tnd-scope .pill.rejected{ background:#fdecea; color:#c0392b; }
+  .tnd-scope .pill.open{ background:#eafaf1; color:#1d7a4d; } .tnd-scope .pill.close{ background:#fdecea; color:#c0392b; }
+  .tnd-scope .rnote{ background:#fafbfc; border:1px solid #eef1f4; border-radius:10px; padding:11px 14px; font-size:.94rem; color:#3a4150; margin-top:11px; line-height:1.5; }
+  .tnd-scope .rnote.rej{ background:#fdf2f0; border-color:#f3c6bf; color:#a3372a; }
+  .tnd-scope .racts{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+
+  .tnd-scope .steps{ display:flex; align-items:flex-start; margin-top:17px; }
+  .tnd-scope .stp{ flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; position:relative; }
+  .tnd-scope .stp .dot{ width:32px; height:32px; border-radius:50%; background:#e7eaee; color:#aab0b8; display:flex; align-items:center; justify-content:center; font-size:.82rem; z-index:1; }
+  .tnd-scope .stp .slbl{ font-size:.74rem; font-weight:600; color:#9aa1aa; text-align:center; line-height:1.25; }
+  .tnd-scope .stp::before{ content:''; position:absolute; top:15px; left:-50%; width:100%; height:3px; background:#e7eaee; z-index:0; }
+  .tnd-scope .stp:first-child::before{ display:none; }
+  .tnd-scope .stp.done .dot{ background:var(--pc-green); color:#fff; } .tnd-scope .stp.done .slbl{ color:#1d7a4d; } .tnd-scope .stp.done::before{ background:var(--pc-green); }
+  .tnd-scope .stp.active .dot{ background:var(--pc-yellow); color:var(--pc-black); box-shadow:0 0 0 4px #fdf0c8; } .tnd-scope .stp.active .slbl{ color:#9a6700; } .tnd-scope .stp.active::before{ background:var(--pc-green); }
+  .tnd-scope .stp.rej .dot{ background:#c0392b; color:#fff; } .tnd-scope .stp.rej .slbl{ color:#c0392b; } .tnd-scope .stp.rej::before{ background:var(--pc-green); }
+
+  .tnd-scope .tgrp{ display:flex; align-items:center; gap:9px; font-size:.8rem; font-weight:700; color:#8a9099; text-transform:uppercase; letter-spacing:.4px; margin:16px 0 10px; }
+  .tnd-scope .tgrp:first-child{ margin-top:2px; }
+  .tnd-scope .tgrp i{ color:var(--pc-green); }
+  .tnd-scope .tgrp .ln{ flex:1; height:1px; background:#e7eaee; }
+  .tnd-scope .filterbar{ display:flex; gap:9px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+  .tnd-scope .filterbar select.inp{ width:auto; padding:8px 12px; font-size:.88rem; }
+  .tnd-scope .empty{ text-align:center; color:#9aa1aa; padding:44px 18px; font-size:.95rem; }
+  .tnd-scope .empty i{ font-size:2.1rem; display:block; margin-bottom:12px; opacity:.5; }
+  @media(max-width:680px){ .tnd-scope .grid2{ grid-template-columns:1fr; } .tnd-scope .steps{ display:none; } }
+  @media(max-width:560px){
+    .tnd-scope{ padding:14px 11px 44px; }
+    .tnd-scope .topbar{ padding:14px 15px; gap:12px; }
+    .tnd-scope .roles{ margin-left:0; width:100%; }
+    .tnd-scope .role{ flex:1; justify-content:center; padding:11px 8px; font-size:.94rem; }
+    .tnd-scope .card{ padding:15px 14px; border-radius:14px; }
+    .tnd-scope .card h2{ font-size:1.14rem; }
+    .tnd-scope .card .sub{ font-size:.96rem; }
+    .tnd-scope .flow{ padding:12px; }
+    .tnd-scope .flow .fstep{ font-size:.9rem; }
+    .tnd-scope .tlist{ grid-template-columns:1fr; }
+    .tnd-scope .topt{ padding:15px 16px; }
+    .tnd-scope .topt .tn{ font-size:1.14rem; }
+    .tnd-scope .topt .tc{ font-size:.88rem; }
+    .tnd-scope .topt .td{ font-size:.95rem; }
+    .tnd-scope .seg{ max-width:none; }
+    .tnd-scope .seg button{ font-size:1rem; padding:12px; }
+    .tnd-scope .inp, .tnd-scope select.inp, .tnd-scope textarea.inp{ font-size:1.02rem; padding:13px 14px; }
+    .tnd-scope .fld label{ font-size:.9rem; }
+    .tnd-scope .btn{ width:100%; font-size:1.06rem; padding:15px; }
+    .tnd-scope .racts .btn{ flex:1; min-width:120px; }
+    .tnd-scope .stat{ min-width:calc(50% - 5px); }
+    .tnd-scope .stat .n{ font-size:1.5rem; }
+    .tnd-scope .mtag{ font-size:.9rem; }
+    .tnd-scope .reqcard{ padding:15px; }
+    .tnd-scope .reqcard .rnm{ font-size:1.1rem; }
+  }
+</style>
+
+<div class="tnd-scope" data-screen-label="Tender">
+  <div class="topbar">
+    <div class="bar-accent"></div>
+    <div class="tt">
+      <h1><i class="fas fa-cash-register"></i> <span id="tndTitle" data-en="OPEN / CLOSE TENDER" data-th="แจ้งเปิด-ปิด Tender">แจ้งเปิด-ปิด Tender</span></h1>
+      <p id="tndSubtitle" data-en="Branch requests a POS payment tender → Accounting approves → IT opens → branch notified" data-th="สาขาแจ้งเปิด/ปิดช่องทางรับชำระบน POS → บัญชีอนุมัติ → IT เปิด → แจ้งสาขา">สาขาแจ้งเปิด/ปิดช่องทางรับชำระบน POS → บัญชีอนุมัติ → IT เปิด → แจ้งสาขา</p>
+    </div>
+    <div class="roles" id="tndRoles"></div>
+  </div>
+
+  <div class="wrap" id="tndView"></div>
+</div>
+
+<script>
+(function(){
+  var LS = 'pc_tender_requests';
+  var SEED_VER = 2;
+
+  // tender catalog มาจาก master กลาง (data/tender-master.js) — แก้ได้ที่หน้า "ตั้งค่า Tender"
+  function masterTenders(){
+    try{ if(typeof window.PC_getTenderMaster==='function') return window.PC_getTenderMaster(); }catch(e){}
+    return (window.PC_TENDER_MASTER||[]).slice();
+  }
+  function tid(t){ return t.code+'|'+t.saleMode; }
+  var LEGACY_TID={ 'T007':'T007|Take Away', 'QRPP':'PPR|Take Away', 'EDCM':'CodeALI|Take Away' };
+  function tenderById(id){ id=LEGACY_TID[id]||id; var m=masterTenders();
+    return m.filter(function(t){ return tid(t)===id; })[0] || m.filter(function(t){ return t.code===id; })[0] || null; }
+
+  var ROLES = [
+    { key:'branch', label:'สาขา',  en:'Branch',     icon:'fa-store' },
+    { key:'acct',   label:'บัญชี', en:'Accounting', icon:'fa-file-invoice-dollar' },
+    { key:'it',     label:'IT',    en:'IT',         icon:'fa-screwdriver-wrench' },
+  ];
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || []; }catch(e){ return []; } }
+  function save(a){ try{ localStorage.setItem(LS, JSON.stringify(a)); }catch(e){} }
+  function branches(){ return (window.PC_BRANCH_MASTER || []).slice(); }
+  function loadAZ(){ try{ return JSON.parse(localStorage.getItem('pc_area_zones'))||{}; }catch(e){ return {}; } }
+  function areaOf(id){ var z=loadAZ()[id]||{}; return { area:String(z.area||''), zone:String(z.zone||'') }; }
+  function wfMode(){ try{ return localStorage.getItem('pc_tender_workflow')||'acct'; }catch(e){ return 'acct'; } }
+  function opZoneMap(){ try{ return JSON.parse(localStorage.getItem('pc_op_zones'))||{}; }catch(e){ return {}; } }
+  function myScope(){ var role=(localStorage.getItem('pc_role')||''); if(['Admin','IT','ACC','Admin HQ'].indexOf(role)>=0) return null; var user=(localStorage.getItem('pc_userName')||'').trim().toLowerCase(); var m=opZoneMap(); var zs=[]; Object.keys(m).forEach(function(z){ if((m[z]||[]).some(function(u){ return String(u).trim().toLowerCase()===user; })) zs.push(String(z).trim()); }); return { user:user, zones:zs }; }
+  function areaMatch(r){ var sc=myScope(); if(sc===null) return true; if(!sc.user) return false; if(sc.zones.indexOf('ALL')>-1) return true; var info=areaOf(r.branchId); var z=String(info.zone||'').trim(); var a=String(info.area||'').trim().toLowerCase(); if(z && sc.zones.indexOf(z)>-1) return true; if(a && a===sc.user) return true; return false; }
+  function fmtTs(ts){ if(!ts) return '-'; var d=new Date(ts); var p=function(n){return (n<10?'0':'')+n;}; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+  function nextId(){ var a=load(); var max=0; a.forEach(function(r){ var m=/TND-(\d+)/.exec(r.id||''); if(m){ var n=+m[1]; if(n>max) max=n; } }); return 'TND-'+String(max+1).padStart(4,'0'); }
+
+  function seed(){
+    var ver=0; try{ ver=+localStorage.getItem('pc_tender_seed_ver')||0; }catch(e){}
+    if(ver>=SEED_VER) return;
+    if(load().length===0){
+      var now=Date.now(), day=86400000;
+      save([
+        { id:'TND-0001', branchId:'PC1042', branchName:'', tenderId:'T007', action:'OPEN',
+          reason:'เครื่อง EDC ของธนาคารยังติดตั้งไม่เสร็จ ขอเปิดรับผ่านเครื่อง TID ชั่วคราว',
+          requester:'นภัสสร (สาขา)', ts:now-day*2, status:'SUBMITTED' },
+        { id:'TND-0002', branchId:'PC1007', branchName:'', tenderId:'QRPP', action:'OPEN',
+          reason:'ลูกค้าขอชำระผ่าน QR PromptPay เพิ่มเติม', requester:'ธีรพงศ์ (สาขา)',
+          ts:now-day*3, status:'APPROVED', approvedBy:'สุภาวดี (บัญชี)', approveTs:now-day*2 },
+        { id:'TND-0003', branchId:'PC1015', branchName:'', tenderId:'EDCM', action:'OPEN',
+          reason:'สาขาในห้าง รับเงินฝากผ่านห้าง ต้องเปิด EDC Manual', requester:'อรพรรณ (สาขา)',
+          ts:now-day*6, status:'DONE', approvedBy:'สุภาวดี (บัญชี)', approveTs:now-day*5,
+          openedBy:'ศุภชัย (IT)', openTs:now-day*4 },
+      ]);
+    }
+    try{ localStorage.setItem('pc_tender_seed_ver', String(SEED_VER)); }catch(e){}
+  }
+
+  function branchName(r){
+    if(r.branchName) return r.branchName;
+    var b=branches().filter(function(x){return x.id===r.branchId;})[0];
+    return b ? b.name : (r.branchId||'-');
+  }
+
+  // ---- step tracker -----------------------------------------------------
+  function stepHTML(r){
+    var act = r.action==='CLOSE' ? 'ปิด' : 'เปิด';
+    var labels, stClass;
+    if(wfMode()==='area'){
+      labels = ['แจ้งคำขอ\n(สาขา)','Area อนุมัติ','บัญชีอนุมัติ','IT '+act+'บน POS','แจ้งสาขา'];
+      stClass = ['','','','',''];
+      if(r.status==='PENDING_AREA'){ stClass=['done','active','','','']; }
+      else if(r.status==='SUBMITTED'){ stClass=['done','done','active','','']; }
+      else if(r.status==='APPROVED'){ stClass=['done','done','done','active','']; }
+      else if(r.status==='DONE'){ stClass=['done','done','done','done','done']; }
+      else if(r.status==='REJECTED'){ if(r.areaRejected){ stClass=['done','rej','','','']; labels[1]='Area ตีกลับ'; } else { stClass=['done','done','rej','','']; labels[2]='บัญชีตีกลับ'; } }
+    } else {
+      labels = ['แจ้งคำขอ\n(สาขา)','บัญชีอนุมัติ','IT '+act+'บน POS','แจ้งสาขา'];
+      stClass = ['','','',''];
+      if(r.status==='SUBMITTED'){ stClass=['done','active','','']; }
+      else if(r.status==='APPROVED'){ stClass=['done','done','active','']; }
+      else if(r.status==='DONE'){ stClass=['done','done','done','done']; }
+      else if(r.status==='REJECTED'){ stClass=['done','rej','','']; labels[1]='บัญชีตีกลับ'; }
+      else if(r.status==='PENDING_AREA'){ stClass=['done','active','','']; }
+    }
+    var h='<div class="steps">';
+    labels.forEach(function(l,i){
+      var ic = stClass[i]==='done' ? '<i class="fas fa-check"></i>' : (stClass[i]==='rej' ? '<i class="fas fa-xmark"></i>' : (i+1));
+      h+='<div class="stp '+stClass[i]+'"><div class="dot">'+ic+'</div><div class="slbl">'+esc(l).replace(/\n/g,'<br>')+'</div></div>';
+    });
+    return h+'</div>';
+  }
+
+  function statusPill(r){
+    var map={ PENDING_AREA:['submitted','รอ Area อนุมัติ'], SUBMITTED:['submitted','รออนุมัติ (บัญชี)'], APPROVED:['approved','รอ IT เปิด'], DONE:['done','เสร็จสิ้น · แจ้งสาขาแล้ว'], REJECTED:['rejected','ตีกลับ'] };
+    var m=map[r.status]||['submitted',r.status];
+    return '<span class="pill '+m[0]+'">'+esc(m[1])+'</span>';
+  }
+  function leftColor(r){ return r.status==='DONE'?'#1d7a4d':r.status==='REJECTED'?'#c0392b':r.status==='APPROVED'?'#2c4a82':'#c9870a'; }
+
+  // ---- tender picker (จาก master กลาง) ---------------------------------
+  function tcard(t){
+    return '<button type="button" class="topt" data-tid="'+esc(tid(t))+'" onclick="window.TND.pick(\''+esc(tid(t))+'\')">'
+      +'<div class="th"><span class="ti"><i class="fas '+(t.icon||'fa-wallet')+'"></i></span>'
+      +'<div><div class="tn">'+esc(t.name)+'</div><div class="tc">'+esc(t.code)+' · '+esc(t.saleMode)+(t.iface?' · EDC interface':'')+'</div></div>'
+      +'<span class="tradio"></span></div>'
+      +(t.note?'<div class="td">'+esc(t.note)+'</div>':'')+'</button>';
+  }
+  function tgrp(label,icon){ return '<div class="tgrp"><i class="fas '+icon+'"></i>'+esc(label)+'<span class="ln"></span></div>'; }
+  function tenderPicker(){
+    var m=masterTenders();
+    var manual=m.filter(function(t){return t.kind==='manual';});
+    var stTA=m.filter(function(t){return t.kind!=='manual'&&t.saleMode==='Take Away';});
+    var stDLV=m.filter(function(t){return t.kind!=='manual'&&t.saleMode==='Delivery';});
+    var cards=function(list){ return '<div class="tlist">'+list.map(tcard).join('')+'</div>'; };
+    var h='<div id="tndTenderPick">';
+    if(manual.length) h+=tgrp('ช่องทางพิเศษ — สาขาขอเปิดเอง','fa-star')+cards(manual);
+    if(stDLV.length) h+=tgrp('ช่องทางมาตรฐาน · Delivery','fa-motorcycle')+cards(stDLV);
+    return h+'</div>';
+  }
+
+  // ---- request card -----------------------------------------------------
+  function reqCard(r, role){
+    var pendingChan=!r.tenderId;
+    var t=tenderById(r.tenderId)||{name:'',code:'',saleMode:'',icon:'fa-cash-register'};
+    var tname=pendingChan ? ('ขอ'+(r.action==='CLOSE'?'ปิด':'เปิด')+'ช่องทางรับชำระ') : t.name;
+    var _tw=(role==='branch')?'ช่องทาง':' Tender';
+    var actPill = r.action==='CLOSE' ? '<span class="pill close">ปิด'+_tw+'</span>' : '<span class="pill open">เปิด'+_tw+'</span>';
+    var h='<div class="reqcard" style="--lc:'+leftColor(r)+'">';
+    h+='<div class="rtop">';
+    h+='<div style="flex:1; min-width:200px;">';
+    h+='<div class="rnm"><span class="tdot"><i class="fas '+t.icon+'"></i></span>'+esc(tname)+' <span class="reqid">'+esc(r.id)+'</span></div>';
+    h+='<div class="rmeta">'+actPill
+      +'<span class="mtag"><i class="fas fa-store"></i>'+esc(branchName(r))+' · '+esc(r.branchId)+'</span>'+(wfMode()==='area'?(function(){ var z=areaOf(r.branchId); return '<span class="mtag"><i class="fas fa-user-shield"></i>'+esc(z.area||'ยังไม่กำหนด Area')+(z.zone?' · โซน '+esc(z.zone):'')+'</span>'; })():'')
+      +(pendingChan?'<span class="mtag" style="color:#c9870a"><i class="fas fa-hourglass-half"></i>รอบัญชีเลือกช่อง</span>':'<span class="mtag"><i class="fas fa-barcode"></i>'+esc(t.code)+'</span>')
+      +'<span class="mtag"><i class="fas fa-user"></i>'+esc(r.requester||'-')+'</span>'
+      +'<span class="mtag"><i class="fas fa-clock"></i>'+fmtTs(r.ts)+'</span></div>';
+    h+='</div>';
+    h+='<div>'+statusPill(r)+'</div>';
+    h+='</div>';
+
+    if(r.reason) h+='<div class="rnote"><b>เหตุผล:</b> '+esc(r.reason)+'</div>';
+    if(r.status==='REJECTED' && r.rejectReason) h+='<div class="rnote rej"><b><i class="fas fa-rotate-left me-1"></i>เหตุผลที่ตีกลับ:</b> '+esc(r.rejectReason)+'</div>';
+    if(r.status==='DONE') h+='<div class="rnote"><i class="fas fa-circle-check text-success me-1"></i>IT '+(r.action==='CLOSE'?'ปิด':'เปิด')+'บน POS โดย <b>'+esc(r.openedBy||'IT')+'</b> · '+fmtTs(r.openTs)+' — แจ้งสาขาเรียบร้อย</div>';
+
+    h+=stepHTML(r);
+
+    // contextual actions
+    var acts='';
+    if(role==='area' && r.status==='PENDING_AREA'){
+      acts='<button class="btn btn-g btn-sm" onclick="window.TND.areaApprove(\''+r.id+'\')"><i class="fas fa-check"></i> อนุมัติ (ส่งบัญชี)</button>'
+          +'<button class="btn btn-r btn-sm" onclick="window.TND.areaReject(\''+r.id+'\')"><i class="fas fa-xmark"></i> ตีกลับ</button>';
+    } else if(role==='acct' && r.status==='SUBMITTED'){
+      acts='<button class="btn btn-g btn-sm" onclick="window.TND.approve(\''+r.id+'\')"><i class="fas fa-check"></i> อนุมัติ</button>'
+          +'<button class="btn btn-r btn-sm" onclick="window.TND.reject(\''+r.id+'\')"><i class="fas fa-xmark"></i> ตีกลับ</button>';
+    } else if(role==='it' && r.status==='APPROVED'){
+      acts='<button class="btn btn-g btn-sm" onclick="window.TND.open(\''+r.id+'\')"><i class="fas fa-toggle-on"></i> ยืนยัน'+(r.action==='CLOSE'?'ปิด':'เปิด')+'บน POS + แจ้งสาขา</button>';
+    } else if(role==='branch' && r.status==='REJECTED'){
+      acts='<button class="btn btn-y btn-sm" onclick="window.TND.resubmit(\''+r.id+'\')"><i class="fas fa-paper-plane"></i> แก้ไข & ส่งใหม่</button>';
+    }
+    if(role==='branch' && (r.status==='SUBMITTED'||r.status==='REJECTED')){
+      acts+='<button class="btn btn-o btn-sm" onclick="window.TND.del(\''+r.id+'\')"><i class="fas fa-trash"></i> ลบ</button>';
+    }
+    if(acts) h+='<div class="racts">'+acts+'</div>';
+
+    return h+'</div>';
+  }
+
+  function listHTML(rows, role, emptyMsg){
+    if(!rows.length) return '<div class="empty"><i class="fas fa-inbox"></i>'+esc(emptyMsg||'ไม่มีรายการ')+'</div>';
+    return rows.map(function(r){ return reqCard(r, role); }).join('');
+  }
+
+  // ---- views ------------------------------------------------------------
+  function flowBar(){
+    var steps= wfMode()==='area'
+      ? ['แจ้งคำขอ (สาขา)','Area อนุมัติ','บัญชีเลือกช่อง + อนุมัติ','IT เปิด/ปิด POS','แจ้งสาขา']
+      : ['แจ้งคำขอ (สาขา)','บัญชีเลือกช่อง + อนุมัติ','IT เปิด/ปิด POS','แจ้งสาขา'];
+    return '<div class="flow">'+steps.map(function(s,i){
+      return (i?'<span class="farrow"><i class="fas fa-arrow-right"></i></span>':'')+'<span class="fstep"><span class="fn">'+(i+1)+'</span>'+esc(s)+'</span>';
+    }).join('')+'</div>';
+  }
+
+  function branchView(){
+    var rows=load().slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    var brOpts=branches().map(function(b){ return '<option value="'+esc(b.id)+'">'+esc(b.id)+' · '+esc(b.name)+'</option>'; }).join('');
+    var h=flowBar();
+    h+='<div class="card">';
+    h+='<h2><i class="fas fa-plus-circle"></i> แจ้งเปิด / ปิดช่องทางรับชำระเงิน</h2>';
+    h+='<p class="sub">ใช้เมื่อ<b>เครื่อง EDC ของสาขามีปัญหา</b> — แจ้งขอเปิด/ปิดช่องทางรับชำระสำรองบน POS พร้อมเหตุผล บัญชีจะเลือกช่องที่เหมาะสมให้</p>';
+
+    h+='<div class="seg" id="tndActSeg">'
+      +'<button class="on" data-act="OPEN" onclick="window.TND.act(\'OPEN\')"><i class="fas fa-toggle-on"></i> เปิดช่องทาง</button>'
+      +'<button data-act="CLOSE" onclick="window.TND.act(\'CLOSE\')"><i class="fas fa-toggle-off"></i> ปิดช่องทาง</button></div>';
+
+    h+='<div class="grid2"><div class="fld"><label>สาขา <span class="req">*</span></label>'
+      +'<select class="inp" id="tndBranch"><option value="">— เลือกสาขา —</option>'+brOpts+'</select></div>'
+      +'<div class="fld"><label>ผู้แจ้ง</label><input class="inp" id="tndRequester" placeholder="ชื่อผู้แจ้ง"></div></div>';
+
+    h+='<div class="fld"><label>เหตุผลที่ขอเปิด/ปิด <span class="req">*</span></label>'
+      +'<textarea class="inp" id="tndReason" placeholder="เช่น เครื่อง EDC ติดตั้งไม่ทัน ขอเปิดรับผ่านเครื่อง TID ชั่วคราว"></textarea></div>';
+
+    h+='<button class="btn btn-g" id="tndSubmit" onclick="window.TND.submit()"><i class="fas fa-paper-plane"></i> '+(wfMode()==='area'?'ส่งให้ Area อนุมัติ':'ส่งให้บัญชีอนุมัติ')+'</button>';
+    h+='</div>';
+
+    h+='<div class="card"><h2><i class="fas fa-clock-rotate-left"></i> คำขอทั้งหมด <span class="reqid">'+rows.length+'</span></h2>';
+    h+='<p class="sub">ติดตามสถานะคำขอที่แจ้งไว้</p>';
+    h+=listHTML(rows,'branch','ยังไม่มีคำขอ — เริ่มแจ้งด้านบน');
+    h+='</div>';
+    return h;
+  }
+
+  function queueView(role){
+    var all=load().slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    var cnt={ sub:0, app:0, done:0, rej:0 };
+    all.forEach(function(r){ if(r.status==='SUBMITTED')cnt.sub++; else if(r.status==='APPROVED')cnt.app++; else if(r.status==='DONE')cnt.done++; else if(r.status==='REJECTED')cnt.rej++; });
+
+    var pending, history, pendTitle, pendIcon, pendEmpty;
+    if(role==='area'){
+      pending = all.filter(function(r){ return r.status==='PENDING_AREA' && areaMatch(r); });
+      history = all.filter(function(r){ return r.status!=='PENDING_AREA' && areaMatch(r); });
+      pendTitle='รอ Area อนุมัติ'; pendIcon='fa-user-shield'; pendEmpty='ไม่มีคำขอรอ Area อนุมัติ 🎉';
+    } else if(role==='acct'){
+      pending = all.filter(function(r){ return r.status==='SUBMITTED'; });
+      history = all.filter(function(r){ return r.status!=='SUBMITTED' && r.status!=='PENDING_AREA'; });
+      pendTitle='รออนุมัติ'; pendIcon='fa-file-circle-check'; pendEmpty='ไม่มีคำขอรออนุมัติ 🎉';
+    } else {
+      pending = all.filter(function(r){ return r.status==='APPROVED'; });
+      history = all.filter(function(r){ return r.status!=='APPROVED' && r.status!=='PENDING_AREA'; });
+      pendTitle='รอเปิด/ปิดบน POS'; pendIcon='fa-toggle-on'; pendEmpty='ไม่มีคำขอที่อนุมัติแล้วรอเปิด 🎉';
+    }
+
+    var h=flowBar();
+    h+='<div class="stats">'
+      +'<div class="stat warn"><div class="n">'+cnt.sub+'</div><div class="l">รออนุมัติ</div></div>'
+      +'<div class="stat blue"><div class="n">'+cnt.app+'</div><div class="l">รอ IT เปิด</div></div>'
+      +'<div class="stat ok"><div class="n">'+cnt.done+'</div><div class="l">เสร็จสิ้น</div></div>'
+      +'<div class="stat bad"><div class="n">'+cnt.rej+'</div><div class="l">ตีกลับ</div></div></div>';
+
+    h+='<div class="card"><h2><i class="fas '+pendIcon+'"></i> '+pendTitle+' <span class="reqid">'+pending.length+'</span></h2>';
+    h+=listHTML(pending, role, pendEmpty);
+    h+='</div>';
+
+    h+='<div class="card"><h2><i class="fas fa-clock-rotate-left"></i> ประวัติ / สถานะอื่น <span class="reqid">'+history.length+'</span></h2>';
+    h+=listHTML(history, role, 'ยังไม่มีประวัติ');
+    h+='</div>';
+    return h;
+  }
+
+  function render(){
+    var view=document.getElementById('tndView'); if(!view) return;
+    var _tt=document.getElementById('tndTitle'), _ts=document.getElementById('tndSubtitle');
+    if(_tt&&_ts){
+      if(state.role==='branch'){
+        _tt.setAttribute('data-th','แจ้งเปิดช่องทางรับชำระเงิน'); _tt.setAttribute('data-en','OPEN PAYMENT CHANNEL'); _tt.textContent='แจ้งเปิดช่องทางรับชำระเงิน';
+        _ts.setAttribute('data-th','กรณีเครื่อง EDC มีปัญหา — แจ้งขอเปิดช่องทางรับชำระสำรอง → บัญชีอนุมัติ → IT เปิดให้'); _ts.setAttribute('data-en','When EDC has an issue — request a backup payment channel → Accounting approves → IT opens'); _ts.textContent='กรณีเครื่อง EDC มีปัญหา — แจ้งขอเปิดช่องทางรับชำระสำรอง → บัญชีอนุมัติ → IT เปิดให้';
+      } else {
+        _tt.setAttribute('data-th','แจ้งเปิด-ปิด Tender'); _tt.setAttribute('data-en','OPEN / CLOSE TENDER'); _tt.textContent='แจ้งเปิด-ปิด Tender';
+        _ts.setAttribute('data-th','สาขาแจ้งเปิด/ปิดช่องทางรับชำระบน POS → บัญชีอนุมัติ → IT เปิด → แจ้งสาขา'); _ts.setAttribute('data-en','Branch requests a POS payment tender → Accounting approves → IT opens → branch notified'); _ts.textContent='สาขาแจ้งเปิด/ปิดช่องทางรับชำระบน POS → บัญชีอนุมัติ → IT เปิด → แจ้งสาขา';
+      }
+    }
+    if(state.role==='branch') view.innerHTML=branchView();
+    else view.innerHTML=queueView(state.role);
+    // restore form selection state
+    if(state.role==='branch'){
+      document.querySelectorAll('#tndActSeg button').forEach(function(b){
+        var on=b.getAttribute('data-act')===state.action; b.classList.toggle('on',on); b.classList.toggle('close',on&&state.action==='CLOSE');
+      });
+      if(state.tenderId){ var el=document.querySelector('#tndTenderPick .topt[data-tid="'+state.tenderId+'"]'); if(el) el.classList.add('on'); }
+    }
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  function rolesList(){ var l=ROLES.slice(); if(wfMode()==='area'){ l.splice(1,0,{ key:'area', label:'Area', en:'Area', icon:'fa-user-shield' }); } return l; }
+  function renderRoles(){
+    var bar=document.getElementById('tndRoles'); if(!bar) return;
+    bar.innerHTML=rolesList().map(function(r){
+      return '<button class="role'+(r.key===state.role?' on':'')+'" onclick="window.TND.setRole(\''+r.key+'\')"><i class="fas '+r.icon+'"></i><span data-en="'+r.en+'" data-th="'+r.label+'">'+r.label+'</span></button>';
+    }).join('');
+  }
+
+  var state={ role:'branch', action:'OPEN', tenderId:null };
+
+  window.TND={
+    setRole:function(k){ state.role=k; renderRoles(); render(); },
+    act:function(a){ state.action=a; render(); },
+    pick:function(id){ state.tenderId=id; render(); },
+    submit:function(){
+      var br=(document.getElementById('tndBranch')||{}).value||'';
+      var reason=((document.getElementById('tndReason')||{}).value||'').trim();
+      var requester=((document.getElementById('tndRequester')||{}).value||'').trim()||'สาขา';
+      if(!br){ Swal.fire({icon:'warning',title:'เลือกสาขาก่อน',confirmButtonColor:'#2e934a'}); return; }
+      if(!reason){ Swal.fire({icon:'warning',title:'กรอกเหตุผล',confirmButtonColor:'#2e934a'}); return; }
+      var a=load();
+      var mode=wfMode();
+      var st = mode==='area' ? 'PENDING_AREA' : 'SUBMITTED';
+      a.push({ id:nextId(), branchId:br, branchName:'', tenderId:'', action:state.action,
+        reason:reason, requester:requester, ts:Date.now(), status:st });
+      save(a);
+      var _actw=(state.action==='CLOSE'?'ปิด':'เปิด');
+      try{ if(window.PC_notify){ if(mode==='area'){ var _z=areaOf(br); window.PC_notify('tender_area',{ zone:_z.zone, area:_z.area, text:'สาขา '+esc(br)+' ขอ'+_actw+'ช่องทางรับชำระ — รอ Area'+(_z.area?' “'+esc(_z.area)+'”':'')+' อนุมัติ'+(_z.zone?' · โซน '+esc(_z.zone):'')+(reason?' · '+esc(reason):'') }); } else { window.PC_notify('tender_request',{ text:'สาขา '+esc(br)+' ขอ'+_actw+'ช่องทางรับชำระ — รอบัญชีเลือกช่อง + อนุมัติ'+(reason?' · '+esc(reason):'') }); } } }catch(e){}
+      Swal.fire({icon:'success',title:'ส่งคำขอแล้ว',html:(mode==='area'?'ส่งให้ <b>Area</b> อนุมัติก่อน แล้วส่งต่อบัญชี':'ส่งให้บัญชีเลือกช่องและอนุมัติเรียบร้อย')+' ('+esc(_actw)+')',confirmButtonColor:'#2e934a'});
+      render();
+    },
+    areaApprove:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      var who=(localStorage.getItem('pc_userName')||'Area');
+      r.status='SUBMITTED'; r.areaApprovedBy=who; r.areaApproveTs=Date.now(); delete r.rejectReason; delete r.areaRejected; save(a);
+      try{ if(window.PC_notify) window.PC_notify('tender_request',{ text:'Area “'+esc(who)+'” อนุมัติคำขอของสาขา '+esc(r.branchId||'')+' — รอบัญชีเลือกช่อง + อนุมัติ' }); }catch(e){}
+      Swal.fire({icon:'success',title:'Area อนุมัติแล้ว',text:'ส่งต่อให้บัญชีเลือกช่อง + อนุมัติ',timer:1400,showConfirmButton:false}); render();
+    },
+    areaReject:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      Swal.fire({title:'เหตุผลที่ Area ตีกลับ',input:'textarea',inputPlaceholder:'ระบุเหตุผล...',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ตีกลับ',cancelButtonText:'ยกเลิก',
+        inputValidator:function(v){ if(!v) return 'กรุณาระบุเหตุผล'; }
+      }).then(function(res){ if(res.isConfirmed){ r.status='REJECTED'; r.areaRejected=1; r.rejectReason=res.value; r.approvedBy='Area'; r.approveTs=Date.now(); save(a); render(); } });
+    },
+    approve:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      var m=masterTenders().filter(function(t){return t.kind==='manual';});
+      if(!m.length){ Swal.fire({icon:'warning',title:'ยังไม่มีช่องทางให้เลือก',text:'เพิ่มช่องทางที่หน้า “ตั้งค่า Tender” ก่อน',confirmButtonColor:'#2e934a'}); return; }
+      var opts=m.map(function(t){ return '<option value="'+esc(tid(t))+'">'+esc(t.name)+' ('+esc(t.code)+')'+(t.iface?' · EDC interface':'')+'</option>'; }).join('');
+      var _edcMap; try{ _edcMap=JSON.parse(localStorage.getItem('pc_branch_edc'))||{}; }catch(e){ _edcMap={}; }
+      var _be=_edcMap[r.branchId]||{}; var _EDCLBL={'KPLUS':'KPLUS (interface POS)','M-EDC':'M-EDC (เครื่อง TID · manual)','MALL':'EDC ผ่านห้าง','NONE':'ไม่ใช้ EDC (เงินสด/QR)','':'ยังไม่ระบุ'};
+      var _edcTxt=(_EDCLBL[_be.edc||'']||_be.edc)+(_be.provider?' · '+_be.provider:'');
+      Swal.fire({ title:'เลือกช่องทางให้สาขา', html:'<div style="text-align:left;font-size:14px">'
+        +'<div style="background:#f1f7f3;border:1px solid #d6eade;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:13px"><b>เหตุผลจากสาขา:</b><br>'+esc(r.reason||'-')+'</div>'
+        +'<div style="background:#eef4ff;border:1px solid #cfe0ff;border-radius:8px;padding:8px 11px;margin-bottom:10px;font-size:13px"><b><i class="fas fa-credit-card"></i> EDC ปัจจุบันของสาขา '+esc(r.branchId||'')+':</b> '+esc(_edcTxt)+'</div>'
+        +'<label style="font-weight:600;display:block;margin:2px 0 4px">ช่องทางที่ให้ใช้ <span style="color:#c0392b">*</span></label>'
+        +'<select id="tndApChan" class="swal2-input" style="margin:0;width:100%;height:auto;padding:10px 8px">'+opts+'</select></div>',
+        confirmButtonColor:'#2e934a', confirmButtonText:'อนุมัติ + ส่งให้ IT', showCancelButton:true, cancelButtonText:'ยกเลิก',
+        preConfirm:function(){ var v=(document.getElementById('tndApChan')||{}).value||''; if(!v){ Swal.showValidationMessage('เลือกช่องทาง'); return false; } return v; }
+      }).then(function(res){ if(!res.isConfirmed) return;
+        r.tenderId=res.value; r.status='APPROVED'; r.approvedBy='บัญชี'; r.approveTs=Date.now(); save(a);
+        try{ if(window.PC_notify){ var _t=tenderById(r.tenderId)||{}; window.PC_notify('tender_request',{ text:'บัญชีอนุมัติ + เลือกช่อง “'+esc(_t.name||'')+'” ให้สาขา '+esc(r.branchId||'')+' — รอ IT เปิดบน POS' }); } }catch(e){}
+        Swal.fire({icon:'success',title:'อนุมัติแล้ว',text:'เลือกช่องและส่งต่อให้ IT เปิดบน POS',timer:1500,showConfirmButton:false}); render();
+      });
+    },
+    reject:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      Swal.fire({title:'เหตุผลที่ตีกลับ',input:'textarea',inputPlaceholder:'ระบุเหตุผล...',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ตีกลับ',cancelButtonText:'ยกเลิก',
+        inputValidator:function(v){ if(!v) return 'กรุณาระบุเหตุผล'; }
+      }).then(function(res){ if(res.isConfirmed){ r.status='REJECTED'; r.rejectReason=res.value; r.approvedBy='บัญชี'; r.approveTs=Date.now(); save(a); render(); } });
+    },
+    open:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      r.status='DONE'; r.openedBy='IT'; r.openTs=Date.now(); save(a);
+      // เมื่อ "ปิด" Tender สำรอง = เครื่อง EDC กลับมาใช้งานได้ → อัปเดตสถานะเครื่อง EDC ของสาขากลับเป็นปกติอัตโนมัติ
+      if(r.action==='CLOSE'){ try{ var _lg=JSON.parse(localStorage.getItem('pc_edc_status_log'))||[]; var _be=(JSON.parse(localStorage.getItem('pc_branch_edc'))||{})[r.branchId]||{}; _lg.push({ branchId:r.branchId, tid:_be.tid||'', ok:1, ts:Date.now(), by:'ระบบ · ปิด Tender (EDC กลับมาใช้ได้)' }); localStorage.setItem('pc_edc_status_log', JSON.stringify(_lg)); }catch(e){} }
+      try{ if(window.PC_notify){ var _t=tenderById(r.tenderId)||{}; window.PC_notify('tender_done',{ text:(r.action==='CLOSE'?'ปิด':'เปิด')+' Tender “'+esc(_t.name||r.tenderId)+'” ให้สาขา '+esc(r.branchId||'')+' เสร็จแล้ว — ใช้งานได้ที่ POS' }); } }catch(e){}
+      Swal.fire({icon:'success',title:(r.action==='CLOSE'?'ปิด':'เปิด')+' Tender บน POS แล้ว',text:(r.action==='CLOSE'?'แจ้งสาขา + อัปเดตสถานะ EDC กลับเป็นปกติ':'แจ้งสาขาเรียบร้อย'),timer:1600,showConfirmButton:false}); render();
+    },
+    resubmit:function(id){
+      var a=load(); var r=a.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      r.status=(wfMode()==='area'?'PENDING_AREA':'SUBMITTED'); delete r.rejectReason; delete r.areaRejected; r.ts=Date.now(); save(a);
+      Swal.fire({icon:'success',title:'ส่งใหม่แล้ว',timer:1200,showConfirmButton:false}); render();
+    },
+    del:function(id){
+      Swal.fire({icon:'warning',title:'ลบคำขอนี้?',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(function(res){
+        if(res.isConfirmed){ save(load().filter(function(x){return x.id!==id;})); render(); }
+      });
+    }
+  };
+
+  window.initTender=function(){
+    seed();
+    state={ role:'branch', action:'OPEN', tenderId:null };
+    renderRoles();
+    render();
+  };
+})();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.topbar .tt p,.bv-head .sub{color:#4a5158!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>

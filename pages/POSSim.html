@@ -1,0 +1,547 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  .ps-scope{ --tile:#3f86c6; --tile-d:#2f6dba; --hi:#2aa3e0; --pos-blue:#1f7fd2; --pos-blue-d:#155da3; --pc-yellow:#ffd23f; --pc-green:#1d9b4e;
+    font-family:'Kanit',sans-serif; height:calc(100vh - 56px); min-height:600px; background:#000; padding:10px; overflow:hidden; box-sizing:border-box; }
+  .ps-scope *{ box-sizing:border-box; }
+  .cm{ height:100%; display:flex; flex-direction:column; border-radius:14px; overflow:hidden; background:#1f7fd2; box-shadow:inset 0 0 0 1px #0c4c8a; }
+  .cm .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* ── top bar ── */
+  .cm-top{ flex:0 0 auto; display:flex; align-items:center; gap:18px; padding:9px 22px;
+    background:linear-gradient(180deg,#2a8ade,#1873c9); color:#fff; border-bottom:3px solid #0c4c8a; }
+  .cm-cart{ display:flex; align-items:center; gap:6px; }
+  .cm-ico{ position:relative; width:54px; height:42px; display:flex; align-items:center; justify-content:center; }
+  .cm-ico i{ font-size:2.5rem; color:#e8412a; }
+  .cm-ico .bdg{ position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#fff; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.15rem; text-shadow:0 1px 1px rgba(0,0,0,.4); }
+  .cm-ico.ppl .bdg{ left:50%; transform:translate(-50%,-46%); }
+  .cm-mode{ font-weight:700; font-size:1.7rem; letter-spacing:.3px; cursor:pointer; user-select:none; margin-left:4px; display:flex; align-items:center; gap:8px; }
+  .cm-modewrap{ position:relative; }
+  .cm-modecaret{ font-size:1rem; opacity:.85; }
+  .cm-modemenu{ position:absolute; top:calc(100% + 8px); left:0; z-index:90; min-width:210px; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.28); padding:6px; display:none; }
+  .cm-modemenu.show{ display:block; }
+  .cm-modeopt{ display:flex; align-items:center; gap:10px; padding:10px 13px; border-radius:9px; color:#1a1d20; font-size:1rem; font-weight:700; cursor:pointer; }
+  .cm-modeopt:hover{ background:#eef4ff; }
+  .cm-modeopt.on{ background:var(--pc-green,#2e934a); color:#fff; }
+  .cm-modeopt .dot{ width:9px; height:9px; border-radius:50%; background:#c7d2da; flex:none; }
+  .cm-modeopt.on .dot{ background:#fff; }
+  .cm-logo{ margin:0 auto; height:54px; display:flex; align-items:center; }
+  .cm-logo img{ height:54px; display:block; }
+  .cm-home{ display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.7rem; }
+  .cm-home .chev{ width:0;height:0; border-top:13px solid transparent; border-bottom:13px solid transparent; border-left:18px solid #e0218a; }
+
+  /* ── body ── */
+  .cm-body{ flex:1; display:grid; grid-template-columns:392px 1fr; min-height:0; }
+
+  /* left column */
+  .cm-left{ display:flex; flex-direction:column; min-height:0; background:#1f7fd2; padding:8px 8px 8px 10px; gap:7px; }
+  .cm-bill{ flex:1; display:flex; flex-direction:column; min-height:0; background:#e9eef0; border:1px solid #c7d2da; border-radius:3px; overflow:hidden; }
+  .cm-bhd{ display:flex; justify-content:space-between; padding:7px 12px 3px; font-size:1.02rem; color:#15202a; font-weight:600; }
+  .cm-bhd.r2{ padding-top:0; padding-bottom:8px; }
+  .cm-btot{ background:#000; display:flex; align-items:flex-end; justify-content:space-between; padding:8px 16px 9px; }
+  .cm-btot .qty{ color:#fff; font-weight:700; font-size:1rem; align-self:flex-end; }
+  .cm-btot .amt{ color:var(--pc-yellow); font-family:'Montserrat',sans-serif; font-weight:800; font-size:2.6rem; line-height:.9; }
+  .cm-lines{ flex:1; overflow:auto; background:#eef0f1; }
+  .cm-line{ background:#fff; border-bottom:1px solid #b9d4ee; padding:7px 8px 8px; }
+  .cm-lrow{ display:grid; grid-template-columns:20px 30px 22px 1fr auto; align-items:center; gap:6px; }
+  .cm-lrow .seq{ color:#15202a; font-weight:600; text-align:center; }
+  .cm-lrow .hg{ color:#e8412a; text-align:center; font-size:1.15rem; }
+  .cm-lrow .lq{ color:#15202a; font-weight:600; text-align:center; }
+  .cm-lrow .lbox{ border:1px dashed #6b7682; padding:2px 8px; line-height:1.15; }
+  .cm-lrow .lbox .lcode{ color:#1c4fd6; font-weight:600; font-size:.95rem; display:block; }
+  .cm-lrow .lbox .lname{ color:#1c4fd6; font-weight:700; font-size:1.02rem; display:block; }
+  .cm-lrow .lpr{ color:#1c4fd6; font-weight:700; font-size:1.1rem; white-space:nowrap; }
+  .cm-lflav{ text-align:center; color:#1c4fd6; font-weight:600; font-size:1.02rem; margin-top:5px; }
+  .cm-line.sel{ outline:2px solid var(--pc-green); outline-offset:-2px; }
+
+  .cm-bfoot{ background:#dfe9f3; border-top:1px solid #c7d2da; display:flex; align-items:center; justify-content:space-between; padding:6px 12px; }
+  .cm-bfoot .grp{ display:flex; align-items:center; gap:8px; color:#2b3742; font-weight:600; }
+  .cm-bfoot .stk{ display:flex; flex-direction:column; gap:3px; font-size:.95rem; }
+  .cm-bfoot i.staff{ color:#3b6ea5; font-size:1.25rem; }
+  .cm-bfoot i.cust{ color:#e8412a; font-size:1.25rem; }
+  .cm-bfoot .cmpos{ display:flex; align-items:center; gap:7px; }
+
+  /* status icons — แถบขาวท้ายบิล แนวเดียวกับปุ่มชำระเงิน */
+  .cm-status{ display:flex; justify-content:space-around; align-items:center; gap:4px; padding:12px 6px; background:#fff; border-radius:3px; min-height:96px; }
+  .cm-st{ display:flex; flex-direction:column; align-items:center; gap:5px; color:#3a4654; font-size:.78rem; font-weight:600; text-align:center; width:25%; }
+  .cm-st .ic{ position:relative; font-size:1.9rem; line-height:1; }
+  .cm-st .ic .b{ position:absolute; right:-7px; top:-5px; width:17px; height:17px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.62rem; color:#fff; }
+  .cm-st .ic .b.x{ background:#e8412a; } .cm-st .ic .b.ok{ background:#27ae60; }
+  .cm-st .ic.cal{ color:#8aa0b5; } .cm-st .ic.fold{ color:#3b73c4; } .cm-st .ic.chart{ color:#8aa0b5; } .cm-st .ic.prn{ color:#8aa0b5; }
+  .cm-warn{ background:#fff; border:1px solid #e3b; border-color:#d8dde2; border-radius:3px; color:#e8412a; font-weight:600; font-size:.92rem; padding:5px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* right column (menu) */
+  .cm-right{ display:flex; flex-direction:column; min-height:0; background:linear-gradient(180deg,#bcd9f0,#a0c6e6); border-left:3px solid #0c4c8a; }
+  .cm-grid{ flex:1; overflow:auto; padding:14px 16px 6px; display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:130px; gap:14px; align-content:start; }
+  .cm-tile{ border:0; border-radius:16px; cursor:pointer; font-family:inherit; font-weight:800; font-size:1.08rem; line-height:1.15;
+    color:var(--pc-yellow); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px;
+    background:linear-gradient(165deg,#4f93d6,#3576bf); box-shadow:0 5px 0 #2a5f9e, 0 7px 13px rgba(0,0,0,.28); transition:transform .06s; }
+  .cm-tile:active{ transform:translateY(3px); box-shadow:0 2px 0 #2a5f9e,0 4px 9px rgba(0,0,0,.3); }
+  .cm-tile.hi{ background:linear-gradient(165deg,#34b6ec,#1f9bd6); color:#fff; box-shadow:0 5px 0 #1378a8,0 7px 13px rgba(0,0,0,.28); }
+  .cm-tile .tp{ color:#fff; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1rem; margin-top:6px; }
+  .cm-gridmsg{ grid-column:1/-1; color:#3b5870; text-align:center; padding:60px 20px; font-weight:600; }
+
+  /* pager */
+  .cm-pager{ flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:6px 26px 12px; color:#fff; }
+  .cm-pager .pg{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.4rem; color:#fff; }
+  .cm-pager .pgrp{ display:flex; gap:14px; }
+  .cm-pg{ background:none; border:0; color:#fff; cursor:pointer; font-size:1.9rem; line-height:1; padding:0 2px; text-shadow:0 2px 3px rgba(0,0,0,.3); }
+  .cm-pg:active{ transform:translateY(2px); }
+
+  /* action bar */
+  .cm-actions{ flex:0 0 auto; display:flex; align-items:stretch; gap:11px; padding:9px 14px 11px; background:linear-gradient(180deg,#a0c6e6,#8db9de); position:relative; }
+  .cm-ab{ border:0; border-radius:13px; cursor:pointer; font-family:inherit; font-weight:700; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px 14px; min-width:96px; box-shadow:0 3px 6px rgba(0,0,0,.22); }
+  .cm-ab i{ font-size:1.7rem; }
+  .cm-ab .lb{ font-size:.95rem; }
+  .cm-ab.pay{ background:#1faa52; border-radius:50%; width:88px; height:88px; min-width:88px; }
+  .cm-ab.pay i{ font-size:2.1rem; }
+  .cm-am{ display:flex; flex-direction:column; gap:6px; justify-content:center; }
+  .cm-am button{ border:0; border-radius:11px; color:#fff; font-family:inherit; font-weight:700; font-size:1rem; padding:9px 20px; cursor:pointer; box-shadow:0 3px 6px rgba(0,0,0,.22); }
+  .cm-am .add{ background:#1d9b4e; } .cm-am .minus{ background:#e8412a; }
+  .cm-ab.del{ background:#e8412a; } .cm-ab.prn{ background:#3f97d6; } .cm-ab.mem{ background:#3f97d6; }
+  .cm-ab.scan{ background:#3f97d6; } .cm-ab.other{ background:#3f97d6; }
+  .cm-aspace{ flex:1; }
+  .cm-tab{ position:absolute; right:0; top:50%; transform:translateY(-50%); width:26px; height:46px; background:#2b3742; border-radius:6px 0 0 6px; display:flex; align-items:center; justify-content:center; color:#cfe0f0; }
+
+  /* bottom nav */
+  .cm-nav{ flex:0 0 auto; display:flex; align-items:center; gap:0; padding:6px 22px; background:linear-gradient(180deg,#1873c9,#0f5fae); border-top:3px solid #0c4c8a; color:#fff; }
+  .cm-ver{ display:flex; align-items:center; gap:10px; min-width:200px; }
+  .cm-ver .flag{ width:42px; height:30px; border-radius:4px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .cm-ver .flag i{ flex:1; } .cm-ver .flag .red{ background:#a51931; } .cm-ver .flag .wt{ background:#f4f5f8; } .cm-ver .flag .bl{ background:#2d2a4a; flex:2; }
+  .cm-ver .vt{ line-height:1.05; } .cm-ver .vt b{ font-size:1.35rem; font-weight:700; } .cm-ver .vt small{ display:block; font-size:.85rem; opacity:.92; }
+  .cm-navwrap{ flex:1; display:flex; justify-content:center; gap:34px; }
+  .cm-ni{ display:flex; flex-direction:column; align-items:center; gap:3px; color:#eaf2fb; font-size:.82rem; cursor:pointer; }
+  .cm-ni i{ font-size:1.55rem; color:#dfeaf6; }
+  .cm-ni.sel i{ color:var(--pc-yellow); }
+  .cm-navend{ display:flex; align-items:center; gap:22px; min-width:130px; justify-content:flex-end; }
+  .cm-navend .cm-ni i{ font-size:1.7rem; }
+  .cm-navend .globe i{ color:#2ecc71; }
+
+  /* overlays (flavor + payment) */
+  .ps-ov{ position:absolute; inset:0; background:rgba(10,12,15,.62); display:none; align-items:center; justify-content:center; z-index:80; padding:20px; }
+  .ps-ov.show{ display:flex; }
+  .ps-modal{ background:#fff; border-radius:18px; width:760px; max-width:100%; max-height:90%; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.5); font-family:'Kanit',sans-serif; }
+  .ps-mhd{ background:var(--pc-dark,#1a1d20); color:#fff; padding:14px 20px; font-weight:800; display:flex; align-items:center; gap:10px; }
+  .ps-mhd .x{ margin-left:auto; cursor:pointer; color:#aeb6bf; }
+  .flav-grid{ padding:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; overflow:auto; }
+  .flav{ border:2px solid #e7eaee; background:#fff; border-radius:14px; padding:12px 8px; text-align:center; cursor:pointer; font-family:inherit; }
+  .flav.on{ border-color:var(--pc-green); background:#eafaf1; }
+  .flav .fc{ width:54px; height:54px; border-radius:50%; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:#fff; }
+  .flav .fn{ font-weight:700; font-size:.82rem; } .flav .fp{ font-size:.72rem; color:#c8930a; font-weight:700; }
+  .ps-mfoot{ padding:13px 18px; border-top:1px solid #eef1f4; display:flex; justify-content:flex-end; gap:10px; }
+  .ps-mbtn{ border:0; border-radius:11px; padding:11px 22px; font-family:inherit; font-weight:800; cursor:pointer; }
+  .ps-mbtn.ok{ background:var(--pc-green); color:#fff; } .ps-mbtn.cancel{ background:#eef1f4; color:#5a616b; }
+  .pay-wrap{ display:grid; grid-template-columns:1.3fr 1fr; }
+  .pay-left{ padding:18px 20px; }
+  .pay-sum{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+  .pay-sum .c{ text-align:center; } .pay-sum .lab{ font-size:.7rem; color:#8a9099; font-weight:700; } .pay-sum .v{ font-family:'JetBrains Mono',monospace; font-weight:800; color:#1a1d20; }
+  .pay-bal{ background:var(--pc-dark,#1a1d20); color:var(--pc-yellow); border-radius:12px; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.7rem; }
+  .pay-bal small{ font-family:'Kanit',sans-serif; font-size:.8rem; color:#fff; font-weight:600; }
+  .tenders{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
+  .tender{ border:1.6px solid #dde2e7; background:#fff; border-radius:12px; padding:13px; font-family:inherit; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:9px; font-size:.9rem; }
+  .tender i{ color:var(--pc-green); } .tender:hover{ border-color:var(--pc-green); background:#f6fbf8; }
+  .pay-right{ background:#f4f6f8; padding:18px; border-left:1px solid #e7eaee; }
+  .numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+  .numpad button{ border:1.4px solid #dde2e7; background:#fff; border-radius:12px; padding:16px; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.2rem; cursor:pointer; }
+  .numpad button:active{ background:#eef1f4; }
+  .numdisp{ background:#fff; border:1.4px solid #dde2e7; border-radius:10px; padding:12px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.4rem; margin-bottom:11px; min-height:48px; }
+  /* hidden branch select styled as shop text */
+  .cm-shopsel{ border:0; background:transparent; font-family:'Kanit',sans-serif; font-weight:600; font-size:1.02rem; color:#15202a; cursor:pointer; max-width:230px; padding:0; }
+  .cm-shopsel:focus{ outline:1px dotted #6b7682; }
+</style>
+
+<div class="ps-scope" data-screen-label="POSSim">
+ <div class="cm">
+
+  <!-- top bar -->
+  <div class="cm-top">
+    <div class="cm-cart">
+      <div class="cm-ico"><i class="fas fa-cart-shopping"></i><span class="bdg" id="psCnt">0</span></div>
+      <div class="cm-ico ppl"><i class="fas fa-users"></i><span class="bdg">1</span></div>
+    </div>
+    <div class="cm-modewrap">
+      <div class="cm-mode" id="psMode" onclick="window.POS.modeMenu(event)">Take Away <span class="cm-modecaret">▾</span></div>
+      <div class="cm-modemenu" id="psModeMenu"></div>
+    </div>
+    <div class="cm-logo"><img src="assets/brand/potato-corner.png" alt="Potato Corner"></div>
+    <div class="cm-home" style="cursor:pointer" onclick="window.POS.home()">หน้าแรก <span class="chev"></span></div>
+  </div>
+
+  <!-- body -->
+  <div class="cm-body">
+
+    <!-- left: bill -->
+    <div class="cm-left">
+      <div class="cm-bill">
+        <div class="cm-bhd"><select class="cm-shopsel" id="psBranch" onchange="window.POS.setBranch(this.value)"><option value="">XXXX: SHOP TEST</option></select><span>เครื่อง: 01</span></div>
+        <div class="cm-bhd r2"><span id="psDate">23/06/2026 14:58:02</span><span>เลขที่บิล: 0100007</span></div>
+        <div class="cm-btot"><span class="qty">จำนวน <span id="psQty">0</span></span><span class="amt" id="psAmt">0.00</span></div>
+        <div class="cm-lines" id="psLines"></div>
+        <div class="cm-bfoot">
+          <div class="grp"><i class="fas fa-print" style="color:#3b6ea5;font-size:1.2rem"></i>
+            <div class="stk"><span>#107</span><span><i class="far fa-clock"></i> <span id="psTimer">00:00:00</span></span></div>
+            <i class="fas fa-user-tie staff"></i></div>
+          <div class="cmpos"><i class="fas fa-user-tie cust"></i><span>CMPOS</span><i class="fas fa-user-group cust"></i></div>
+        </div>
+      </div>
+
+      <div class="cm-warn">เองระบบช้ากว่าวันที่ปัจจุบัน! ให้ไปทำการปิดร้านก่อน</div>
+
+      <div class="cm-status">
+        <div class="cm-st"><div class="ic cal"><i class="far fa-calendar"></i><span class="b x"><i class="fas fa-xmark"></i></span></div>22/06/2026</div>
+        <div class="cm-st"><div class="ic fold"><i class="fas fa-file-zipper"></i><span class="b ok"><i class="fas fa-check"></i></span></div>P260622XXXXN.zip</div>
+        <div class="cm-st"><div class="ic chart"><i class="fas fa-chart-column"></i><span class="b x"><i class="fas fa-xmark"></i></span></div>U/L Sales</div>
+        <div class="cm-st"><div class="ic prn"><i class="fas fa-print"></i><span class="b ok"><i class="fas fa-check"></i></span></div>KIT Status</div>
+      </div>
+    </div>
+
+    <!-- right: menu -->
+    <div class="cm-right">
+      <div class="cm-grid" id="psGrid"></div>
+      <div class="cm-pager">
+        <div class="pgrp"><button class="cm-pg" onclick="window.POS.page('first')"><i class="fas fa-angles-left"></i></button><button class="cm-pg" onclick="window.POS.page(-1)"><i class="fas fa-angle-left"></i></button></div>
+        <span class="pg" id="psPage">( 1/1 )</span>
+        <div class="pgrp"><button class="cm-pg" onclick="window.POS.page(1)"><i class="fas fa-angle-right"></i></button><button class="cm-pg" onclick="window.POS.page('last')"><i class="fas fa-angles-right"></i></button></div>
+      </div>
+
+      <div class="cm-actions">
+        <button class="cm-ab pay" onclick="window.POS.pay()"><i class="fas fa-dollar-sign"></i><span class="lb">ชำระเงิน</span></button>
+        <div class="cm-am"><button class="add" onclick="window.POS.qty(1)">Add</button><button class="minus" onclick="window.POS.qty(-1)">Minus</button></div>
+        <button class="cm-ab del" onclick="window.POS.del()"><i class="fas fa-trash-can"></i><span class="lb">ลบรายการ</span></button>
+        <button class="cm-ab prn" onclick="window.POS.stub('พิมพ์ดร๊าว')"><i class="fas fa-print"></i><span class="lb">พิมพ์ดร๊าว</span></button>
+        <button class="cm-ab mem" onclick="window.POS.member()"><i class="fas fa-user"></i><span class="lb">สมาชิก</span></button>
+        <div class="cm-aspace"></div>
+        <button class="cm-ab scan" onclick="window.POS.stub('สแกนสินค้า')"><i class="fas fa-qrcode"></i><span class="lb">สแกนสินค้า</span></button>
+        <button class="cm-ab other" onclick="window.POS.stub('อื่นๆ')"><i class="fas fa-list-check"></i><span class="lb">อื่นๆ</span></button>
+        <div class="cm-tab"><i class="fas fa-arrow-right-arrow-left"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <div class="cm-nav">
+    <div class="cm-ver">
+      <div class="flag"><i class="red"></i><i class="wt"></i><i class="bl"></i><i class="wt"></i><i class="red"></i></div>
+      <div class="vt"><b>ซีเอ็มโพส</b><small>เวอร์ชั่น 4.0.42.28</small></div>
+    </div>
+    <div class="cm-navwrap">
+      <div class="cm-ni sel" onclick="window.POS.home()"><i class="fas fa-cash-register"></i>การขาย</div>
+      <div class="cm-ni" onclick="window.POS.stub('กำหนดโต๊ะ')"><i class="fas fa-chair"></i>กำหนดโต๊ะ</div>
+      <div class="cm-ni" onclick="window.POS.stub('ยอดขาย')"><i class="fas fa-circle-dollar-to-slot"></i>ยอดขาย</div>
+      <div class="cm-ni" onclick="window.POS.stub('เต็มรูปแบบ')"><i class="fas fa-file-lines"></i>เต็มรูปแบบ</div>
+      <div class="cm-ni" onclick="window.POS.stub('ควบคุมสต๊อก')"><i class="fas fa-boxes-stacked"></i>ควบคุมสต๊อก</div>
+      <div class="cm-ni" onclick="window.POS.stub('ควบคุมร้าน')"><i class="fas fa-store"></i>ควบคุมร้าน</div>
+      <div class="cm-ni" onclick="window.POS.stub('รายงาน')"><i class="fas fa-chart-simple"></i>รายงาน</div>
+      <div class="cm-ni" onclick="window.POS.stub('ค้นหา')"><i class="fas fa-magnifying-glass"></i>ค้นหา</div>
+    </div>
+    <div class="cm-navend">
+      <div class="cm-ni" onclick="window.POS.stub('ออกจากระบบ')"><i class="fas fa-right-from-bracket"></i>ออกจากระบบ</div>
+      <div class="cm-ni globe" id="psLang" onclick="window.POS.lang()" title="สลับภาษา / Switch language"><i class="fas fa-globe"></i><span id="psLangLbl" style="font-weight:800">TH</span></div>
+    </div>
+  </div>
+
+  <!-- flavor modal -->
+  <div class="ps-ov" id="psFlavOv">
+    <div class="ps-modal">
+      <div class="ps-mhd"><i class="fas fa-mortar-pestle" style="color:var(--pc-yellow)"></i> <span id="psFlavTitle">เลือกผงรสชาติ</span> <span class="x" onclick="window.POS.flavClose()"><i class="fas fa-xmark"></i></span></div>
+      <div class="flav-grid" id="psFlavGrid"></div>
+      <div class="ps-mfoot"><button class="ps-mbtn cancel" onclick="window.POS.flavClose()">ยกเลิก</button><button class="ps-mbtn ok" onclick="window.POS.flavOk()">ตกลง</button></div>
+    </div>
+  </div>
+
+  <!-- payment overlay -->
+  <div class="ps-ov" id="psPayOv">
+    <div class="ps-modal">
+      <div class="ps-mhd"><i class="fas fa-circle-dollar-to-slot" style="color:var(--pc-yellow)"></i> ชำระเงิน <span class="x" onclick="window.POS.payClose()"><i class="fas fa-xmark"></i></span></div>
+      <div class="pay-wrap">
+        <div class="pay-left">
+          <div class="pay-sum">
+            <div class="c"><div class="lab">SUBTOTAL</div><div class="v" id="paySub">0.00</div></div>
+            <div class="c"><div class="lab">DISCOUNT</div><div class="v">0.00</div></div>
+            <div class="c"><div class="lab">VAT incl.</div><div class="v" id="payVat">0.00</div></div>
+            <div class="c"><div class="lab">CHARGE</div><div class="v">0.00</div></div>
+          </div>
+          <div class="pay-bal"><small>BALANCE</small><span id="payBal">0.00</span></div>
+          <div class="tenders">
+            <button class="tender" onclick="window.POS.tender('เงินสด')"><i class="fas fa-money-bill-wave"></i> เงินสด</button>
+            <button class="tender" onclick="window.POS.tender('KBank EDC')"><i class="fas fa-credit-card"></i> KBank EDC</button>
+            <button class="tender" onclick="window.POS.tender('e-Payment')"><i class="fas fa-qrcode"></i> e-Payment</button>
+            <button class="tender" onclick="window.POS.tender('Voucher')"><i class="fas fa-ticket"></i> Voucher</button>
+          </div>
+        </div>
+        <div class="pay-right">
+          <div class="numdisp" id="payDisp">0</div>
+          <div class="numpad" id="payPad"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+(function(){
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function api(fn,arg){ return new Promise(function(res){ try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ google.script.run.withSuccessHandler(function(d){res(d);}).withFailureHandler(function(){res(null);})[fn](arg); return; } }catch(e){} res(null); }); }
+  function prodActive(it){ try{ var pf=JSON.parse(localStorage.getItem('pc_product_flags'))||{}; var f=pf[it.itemCode]||{}; if(f.active===0) return false; if(f.active!==1 && String(it.status||'Active').toLowerCase()==='inactive') return false; var cf=JSON.parse(localStorage.getItem('pc_cat_flags'))||{}; if((cf[it.category]||{}).active===0) return false; var df=JSON.parse(localStorage.getItem('pc_dep_flags'))||{}; if(it.department && (df[it.department]||{}).active===0) return false; return true; }catch(e){ return true; } }
+  function lsj(k){ try{ return JSON.parse(localStorage.getItem(k))||{}; }catch(e){ return {}; } }
+  function masterBranches(){ var base=(window.PC_BRANCH_MASTER||[]); var ml=lsj('pc_master_lists'); var edits={}; if(ml&&Array.isArray(ml.branches)){ ml.branches.forEach(function(b){ if(b&&b.id) edits[b.id]=b; }); if(!base.length) base=ml.branches; } return base.map(function(b){ var e=edits[b.id]; return (e&&(e.brands||e.brand))?Object.assign({},b,{brands:e.brands,brand:e.brand}):b; }); }
+  function branchBrands(b){ if(!b) return []; var arr=Array.isArray(b.brands)?b.brands.slice():(b.brand&&b.brand!=='both'?[b.brand]:['Potato Corner']); if(arr.indexOf('Event')>=0 && arr.indexOf('Potato Corner')<0) arr.push('Potato Corner'); return arr; }
+  function prodBrandsOf(code){ var f=(lsj('pc_product_flags')[code])||{}; return Array.isArray(f.brands)?f.brands:(f.brand&&f.brand!=='both'?[f.brand]:[]); }
+  function prodStoresOf(code){ var f=(lsj('pc_product_flags')[code])||{}; return f.sellStores||'ALL'; }
+  /* ลำดับปุ่มบน POS: FLAGS.seq (ตั้งที่หน้าแก้ไขสินค้า) > it.posSeq (NPD/ผง) > ลำดับมาตรฐานตามชื่อผง */
+  var POS_STD_SEQ=[['no flavor',99],['sour cream',3],['chilli bbq',4],['chili bbq',4],['sweet corn',7],['truffle 2',6],['truffle',5],['cheese',1],['bbq',2],['salted',8]];
+  function posSeqOf(it){ try{ var f=(lsj('pc_product_flags')[it.itemCode])||{}; if(f.seq!=null&&f.seq!=='') return Number(f.seq)||9999; }catch(e){} if(it.posSeq!=null&&it.posSeq!=='') return Number(it.posSeq)||9999; var nm=String(it.itemNameEN||'').toLowerCase(); for(var i=0;i<POS_STD_SEQ.length;i++){ if(nm.indexOf(POS_STD_SEQ[i][0])>=0) return POS_STD_SEQ[i][1]; } return 9999; }
+  function inStore(tok,b){ tok=String(tok||'').trim(); if(!tok||/(^|,)\s*ALL\s*(,|$)/i.test(tok)) return true; if(!b) return true; return tok.split(',').map(function(s){return s.trim();}).filter(Boolean).some(function(t){ if(/^G:/i.test(t)) return String(b.group)===t.slice(2); if(/^C:/i.test(t)) return String(b['class'])===t.slice(2); if(/^T:/i.test(t)) return String(b.type)===t.slice(2); if(/^F:/i.test(t)) return branchBrands(b).indexOf(t.slice(2))>=0; return String(b.id)===t; }); }
+  function availableAt(it){ if(!prodActive(it)) return false; if(!curBranch) return true; var pbs=prodBrandsOf(it.itemCode); if(pbs.length){ var bb=branchBrands(curBranch); if(!pbs.some(function(x){return bb.indexOf(x)>=0;})) return false; } return inStore(prodStoresOf(it.itemCode),curBranch); }
+  function fillBranchSelect(){ var el=document.getElementById('psBranch'); if(!el) return; el.innerHTML='<option value="">XXXX: SHOP TEST</option>'+BRANCHES.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(b.id)+': '+esc(b.name||b.nameTH||'')+'</option>';}).join(''); }
+
+  var FLAVORS=[
+    {n:'Cheese FF', c:'#e8b84b', i:'🧀'},{n:'BBQ FF', c:'#a0522d', i:'🍖'},{n:'Sour Cream FF', c:'#7aa86f', i:'🥣'},
+    {n:'Chili BBQ FF', c:'#d0454b', i:'🌶️'},{n:'Truffle +10THB', c:'#6b5847', i:'🍄', add:10},{n:'Truffle 2 FF', c:'#6b5847', i:'🍄'},
+    {n:'Salted FF', c:'#3a6fb0', i:'🧂'},{n:'Chili Cheese FF', c:'#5bb6d6', i:'🌶️'},{n:'Tom Yum Goong FF', c:'#4aa9c9', i:'🍤'},{n:'Sweet Corn FF', c:'#e3b84b', i:'🌽'}
+  ];
+  var FLAVOR_CATS={ 'Fries':1, 'Specialty Fries':1 };
+
+  // CMPOS default home layout (used when no product data yet — clean slate)
+  var DEFAULT_CATS=[
+    {name:'All Product',all:true},{name:'Fries'},{name:'Specialty Fries'},{name:'Super Chicken Pop'},{name:'Combo'},{name:'Value Set'},
+    {name:'Promotion Set',promo:true},{name:'Specialty Chicken'},{name:'E-Voucher',evoucher:true},{name:'Small Bites'},{name:'Seafood'},{name:'Beverages'},
+    {name:'SAUCE & TOPPING',hi:true},{name:'Other'}
+  ];
+
+  // Demo menu — used only when the backend returns no products (clean slate),
+  // so every category/product on the home page is still selectable like a live POS.
+  var DEMO_ITEMS=[
+    {itemCode:'101001',itemNameEN:'LARGE FRIES',category:'Fries',priceTA:49,priceDLV:59},
+    {itemCode:'101002',itemNameEN:'REGULAR FRIES',category:'Fries',priceTA:39,priceDLV:49},
+    {itemCode:'101003',itemNameEN:'JUMBO FRIES',category:'Fries',priceTA:65,priceDLV:75},
+    {itemCode:'102001',itemNameEN:'CHEESE OVERLOAD',category:'Specialty Fries',priceTA:79,priceDLV:89},
+    {itemCode:'102002',itemNameEN:'TRUFFLE FRIES',category:'Specialty Fries',priceTA:99,priceDLV:109},
+    {itemCode:'103001',itemNameEN:'CHICKEN POP REG',category:'Super Chicken Pop',priceTA:59,priceDLV:69},
+    {itemCode:'103002',itemNameEN:'CHICKEN POP LARGE',category:'Super Chicken Pop',priceTA:89,priceDLV:99},
+    {itemCode:'104001',itemNameEN:'FRIES + DRINK COMBO',category:'Combo',priceTA:79,priceDLV:89},
+    {itemCode:'104002',itemNameEN:'CHICKEN COMBO',category:'Combo',priceTA:99,priceDLV:109},
+    {itemCode:'105001',itemNameEN:'VALUE SET A',category:'Value Set',priceTA:99,priceDLV:109},
+    {itemCode:'105002',itemNameEN:'VALUE SET B',category:'Value Set',priceTA:129,priceDLV:139},
+    {itemCode:'106001',itemNameEN:'SPICY WINGS',category:'Specialty Chicken',priceTA:89,priceDLV:99},
+    {itemCode:'106002',itemNameEN:'CRISPY CHICKEN',category:'Specialty Chicken',priceTA:79,priceDLV:89},
+    {itemCode:'107001',itemNameEN:'NUGGETS 6PC',category:'Small Bites',priceTA:59,priceDLV:69},
+    {itemCode:'107002',itemNameEN:'ONION RINGS',category:'Small Bites',priceTA:49,priceDLV:59},
+    {itemCode:'108001',itemNameEN:'FISH BITES',category:'Seafood',priceTA:79,priceDLV:89},
+    {itemCode:'108002',itemNameEN:'SHRIMP POP',category:'Seafood',priceTA:89,priceDLV:99},
+    {itemCode:'109001',itemNameEN:'COKE',category:'Beverages',priceTA:25,priceDLV:30},
+    {itemCode:'109002',itemNameEN:'WATER',category:'Beverages',priceTA:15,priceDLV:20},
+    {itemCode:'109003',itemNameEN:'ICED TEA',category:'Beverages',priceTA:35,priceDLV:40},
+    {itemCode:'110001',itemNameEN:'EXTRA CHEESE SAUCE',category:'SAUCE & TOPPING',priceTA:15,priceDLV:15},
+    {itemCode:'110002',itemNameEN:'EXTRA FLAVOR POWDER',category:'SAUCE & TOPPING',priceTA:10,priceDLV:10},
+    {itemCode:'111001',itemNameEN:'PAPER BAG',category:'Other',priceTA:5,priceDLV:5}
+  ];
+
+  var ITEMS=[], ITEMS_RAW=[], PROMOS=[], CATS=[], BRANCHES=[], curBranch=null, usingDemo=false;
+  var state={ mode:'Take Away', cat:null, lines:[], sel:-1, _pending:null, _flavSel:[], payVal:'', page:0, _pages:1 };
+  var PER_PAGE=18;
+
+  /* ===== Sale mode (ช่องทาง) — POS โชว์สินค้า/โปรตามช่องทางที่เลือก ===== */
+  var POS_MODE_SEED=['Take Away','Grab','LINE MAN','ShopeeFood','foodpanda','Robinhood','Gokoo'];
+  function getChannels(){
+    var m=lsj('pc_salemode_master');
+    var list=Array.isArray(m)?m.filter(function(x){return x&&x.active!==0&&x.name;}).map(function(x){return x.name;}):[];
+    if(!list.length) list=POS_MODE_SEED.slice();
+    // เอา "Delivery" รวมออก — POS จริงเลือกเป็นช่องทางย่อย
+    list=list.filter(function(n){ return String(n).toLowerCase()!=='delivery'; });
+    if(list.map(function(n){return n.toLowerCase();}).indexOf('take away')<0) list.unshift('Take Away');
+    return list;
+  }
+  function isTakeAway(m){ var s=String(m||'').toLowerCase().replace(/[^a-z]/g,''); return s==='takeaway'||s==='ta'||s==='dinein'; }
+  function normCh(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+  var CH_ALIAS={ takeaway:['takeaway','ta','dinein'], grab:['grab'], lineman:['lineman'], shopeefood:['shopeefood','shopee'], foodpanda:['foodpanda','panda'], robinhood:['robinhood'], gokoo:['gokoo'], delivery:['delivery'] };
+  // ปุ่ม/สินค้านี้เล่นช่องทาง mode หรือไม่ (saleModeStr = ช่องทางที่ปุ่มรองรับ)
+  function modeMatches(saleModeStr, mode){
+    var s=String(saleModeStr==null?'':saleModeStr).toLowerCase().trim();
+    if(!s) return true;                                  // ไม่ระบุ = ทุกช่องทาง
+    if(s.indexOf('all channel')>-1 || s==='all') return true;
+    var deliv=!isTakeAway(mode);
+    if(s.indexOf('all delivery')>-1) return deliv;       // ALL DELIVERY = ทุกช่องส่ง (ไม่รวม Take Away)
+    var sn=normCh(s), mn=normCh(mode);
+    var keys=CH_ALIAS[mn]||[mn];
+    if(keys.some(function(k){ return sn.indexOf(k)>-1; })) return true;
+    // ถ้า mode เป็น delivery channel และปุ่มระบุ "delivery" รวม → ผ่าน
+    if(deliv && sn.indexOf('delivery')>-1) return true;
+    return false;
+  }
+  // ช่องทางที่สินค้าหนึ่งรองรับ (จากข้อมูลสินค้า)
+  function itemSaleModeStr(it){
+    if(Array.isArray(it.saleModes)&&it.saleModes.length) return it.saleModes.join(',');
+    if(it.saleMode) return it.saleMode;
+    if(it.prices&&typeof it.prices==='object'){ var ks=Object.keys(it.prices).filter(function(k){return it.prices[k]!=null&&it.prices[k]!=='';}); if(ks.length) return ks.join(','); }
+    return '';   // ไม่รู้ = โชว์ทุกช่องทาง
+  }
+  function inChannel(it, mode){ return modeMatches(itemSaleModeStr(it), mode); }
+
+  function money(n){ n=(parseFloat(n)||0); return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function priceOf(it){
+    var m=state.mode;
+    if(isTakeAway(m)) return parseFloat(it.priceTA)||0;
+    var pr=(it.prices&&typeof it.prices==='object')?it.prices:{};
+    // หาราคาช่องทางตรง ๆ (เทียบแบบ normalize)
+    var mn=normCh(m), hit=null;
+    Object.keys(pr).forEach(function(k){ if(hit==null && normCh(k)===mn) hit=pr[k]; });
+    if(hit!=null&&hit!=='') return parseFloat(hit)||0;
+    return parseFloat(it.priceDLV)||parseFloat(it.priceTA)||0;
+  }
+  function total(){ return state.lines.reduce(function(s,l){ return s+(l.price*l.qty); },0); }
+  function qtyTotal(){ return state.lines.reduce(function(s,l){ return s+l.qty; },0); }
+
+  function buildCats(){
+    var seen={}, list=[];
+    ITEMS.forEach(function(it){ if(it.category && availableAt(it) && inChannel(it,state.mode) && !seen[it.category]){ seen[it.category]=1; list.push(it.category); } });
+    if(usingDemo || !list.length){ CATS=DEFAULT_CATS.slice(); }
+    else { CATS=[{name:'All Product',all:true}].concat(list.map(function(n){return {name:n};})).concat([{name:'Promotion Set',promo:true},{name:'E-Voucher',evoucher:true}]); }
+  }
+
+  function renderBill(){
+    var el=document.getElementById('psLines');
+    el.innerHTML = state.lines.map(function(l,i){
+      var flav = l.flavor ? '<div class="cm-lflav">'+l.qty+' x '+esc(l.flavor)+'</div>' : '';
+      return '<div class="cm-line'+(i===state.sel?' sel':'')+'" onclick="window.POS.selLine('+i+')">'
+        +'<div class="cm-lrow"><span class="seq">'+(i+1)+'</span>'
+        +'<span class="hg"><i class="fas fa-hourglass-half"></i></span>'
+        +'<span class="lq">'+l.qty+'</span>'
+        +'<span class="lbox"><span class="lcode">'+esc(l.code||'')+'</span><span class="lname">'+esc(l.name)+'</span></span>'
+        +'<span class="lpr">'+money(l.price*l.qty)+'V</span></div>'+flav+'</div>';
+    }).join('');
+    document.getElementById('psQty').textContent=qtyTotal();
+    document.getElementById('psAmt').textContent=money(total());
+    document.getElementById('psCnt').textContent=qtyTotal();
+  }
+
+  function tileHTML(arr){
+    document.getElementById('psPage').textContent='( '+Math.min(state.page+1,Math.max(1,Math.ceil(arr.length/PER_PAGE)))+'/'+Math.max(1,Math.ceil(arr.length/PER_PAGE))+' )';
+    var pages=Math.max(1,Math.ceil(arr.length/PER_PAGE)); if(state.page>=pages) state.page=pages-1; if(state.page<0) state.page=0; state._pages=pages;
+    var start=state.page*PER_PAGE;
+    return arr.slice(start,start+PER_PAGE).join('');
+  }
+
+  function renderGrid(){
+    var g=document.getElementById('psGrid'), tiles=[];
+    if(!state.cat){
+      tiles=CATS.map(function(c){ return '<button class="cm-tile'+(c.hi?' hi':'')+'" onclick="window.POS.openCat(\''+esc(c.name).replace(/'/g,"\\'")+'\')">'+esc(c.name)+'</button>'; });
+      g.innerHTML=tileHTML(tiles); return;
+    }
+    var catObj=CATS.filter(function(c){return c.name===state.cat;})[0]||{};
+    if(catObj.promo){
+      // กรองเฉพาะแคมเปญที่มีปุ่มเล่นช่องทางที่เลือก
+      var matchBtns=function(c){ return (c.buttons||[]).filter(function(b){ return modeMatches(b.saleMode||c.saleMode||'', state.mode); }); };
+      var camps=PROMOS.filter(function(c){ return matchBtns(c).length; });
+      if(!camps.length){ g.innerHTML='<div class="cm-gridmsg">ไม่มีโปรในช่องทาง '+esc(state.mode)+'</div>'; document.getElementById('psPage').textContent='( 1/1 )'; return; }
+      if(!state.promoCamp){
+        // ระดับ 1: เลือกแคมเปญ
+        tiles=camps.map(function(c){ var n=matchBtns(c).length; return '<button class="cm-tile hi" onclick="window.POS.openPromo(\''+esc(c.campaign).replace(/'/g,"\\'")+'\')">'+esc(c.campaign)+'<span class="tp">'+n+' ปุ่ม</span></button>'; });
+        g.innerHTML=tileHTML(tiles); return;
+      }
+      // ระดับ 2: ปุ่มในแคมเปญที่เลือก
+      var camp=PROMOS.filter(function(c){return c.campaign===state.promoCamp;})[0];
+      var btns=camp?matchBtns(camp):[];
+      tiles=[ '<button class="cm-tile" style="background:linear-gradient(165deg,#5a6570,#434c56);box-shadow:0 5px 0 #2f363e,0 7px 13px rgba(0,0,0,.28)" onclick="window.POS.backPromo()"><i class="fas fa-arrow-left" style="font-size:1.4rem"></i><span class="tp">กลับ</span></button>' ];
+      btns.forEach(function(b){ var sn=b.shortName||(camp&&camp.campaign)||''; tiles.push('<button class="cm-tile" onclick="window.POS.addPromo(\''+esc(sn).replace(/'/g,"\\'")+'\','+(parseFloat(b.net)||0)+')">'+esc(sn)+'<span class="tp">'+(b.net?money(b.net):'—')+'</span></button>'); });
+      g.innerHTML=tileHTML(tiles); return;
+    }
+    if(catObj.evoucher){ g.innerHTML='<div class="cm-gridmsg"><i class="fas fa-ticket fa-2x" style="opacity:.4"></i><br>E-Voucher — เชื่อมระบบบัตร/โค้ดภายหลัง</div>'; document.getElementById('psPage').textContent='( 1/1 )'; return; }
+    var items=ITEMS.filter(function(it){ return availableAt(it) && inChannel(it,state.mode) && (catObj.all || it.category===state.cat); });
+    items.sort(function(a,b){ var sa=posSeqOf(a), sb=posSeqOf(b); if(sa!==sb) return sa-sb; return String(a.itemNameEN||'').localeCompare(String(b.itemNameEN||'')); });
+    if(!items.length){ g.innerHTML='<div class="cm-gridmsg">ยังไม่มีสินค้าในหมวดนี้ (รอ import ข้อมูล / เปิดที่หน้าจัดการสินค้า)</div>'; document.getElementById('psPage').textContent='( 1/1 )'; return; }
+    tiles=items.map(function(it){ var p=priceOf(it); return '<button class="cm-tile" onclick="window.POS.addItem(\''+esc(it.itemCode)+'\')">'+esc(it.itemNameEN||it.itemNameTH||it.itemCode)+'<span class="tp">'+(p?money(p):'—')+'</span></button>'; });
+    g.innerHTML=tileHTML(tiles);
+  }
+
+  function render(){ renderGrid(); renderBill(); }
+
+  window.POS={
+    modeMenu:function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation();
+      var menu=document.getElementById('psModeMenu'); if(!menu) return;
+      if(menu.classList.contains('show')){ menu.classList.remove('show'); return; }
+      var chs=getChannels();
+      menu.innerHTML=chs.map(function(n){ var on=String(n).toLowerCase()===String(state.mode).toLowerCase();
+        return '<div class="cm-modeopt'+(on?' on':'')+'" onclick="window.POS.setMode(\''+esc(n).replace(/'/g,"\\'")+'\')"><span class="dot"></span>'+esc(n)+'</div>'; }).join('');
+      menu.classList.add('show');
+      setTimeout(function(){ document.addEventListener('click', window.POS._modeClose); },0);
+    },
+    _modeClose:function(){ var m=document.getElementById('psModeMenu'); if(m) m.classList.remove('show'); document.removeEventListener('click', window.POS._modeClose); },
+    setMode:function(name){ state.mode=name;
+      var el=document.getElementById('psMode'); if(el) el.innerHTML=esc(name)+' <span class="cm-modecaret">▾</span>';
+      window.POS._modeClose(); state.cat=null; state.promoCamp=null; state.page=0; buildCats(); render();
+    },
+    home:function(){ state.cat=null; state.promoCamp=null; state.page=0; render(); },
+    setBranch:function(id){ curBranch=BRANCHES.filter(function(b){return String(b.id)===String(id);})[0]||null;
+      state.cat=null; state.promoCamp=null; state.page=0; buildCats(); render(); },
+    openCat:function(name){ state.cat=name; state.promoCamp=null; state.page=0; render(); },
+    openPromo:function(name){ state.promoCamp=name; state.page=0; renderGrid(); },
+    backPromo:function(){ state.promoCamp=null; state.page=0; renderGrid(); },
+    page:function(d){ if(d==='first') state.page=0; else if(d==='last') state.page=state._pages-1; else state.page+=d; renderGrid(); },
+    addItem:function(code){ var it=ITEMS.filter(function(x){return x.itemCode===code;})[0]; if(!it) return;
+      if(FLAVOR_CATS[it.category]){ state._pending={ code:it.itemCode, name:it.itemNameEN, price:priceOf(it) }; state._flavSel=[]; openFlav(it.itemNameEN); return; }
+      state.lines.push({ code:it.itemCode, name:it.itemNameEN, price:priceOf(it), qty:1 }); state.sel=state.lines.length-1; renderBill();
+    },
+    addPromo:function(sn, net){ state.lines.push({ code:'PROMO', name:sn, price:net||0, qty:1 }); state.sel=state.lines.length-1; renderBill(); },
+    selLine:function(i){ state.sel=i; renderBill(); },
+    qty:function(d){ if(state.sel<0||!state.lines[state.sel]) return; state.lines[state.sel].qty=Math.max(1, state.lines[state.sel].qty+d); renderBill(); },
+    del:function(){ if(state.sel<0) return; state.lines.splice(state.sel,1); state.sel=-1; renderBill(); },
+    lang:function(){ var nx=(window.PC_LANG==='EN')?'TH':'EN'; if(window.setLang){ window.setLang(nx); } var lbl=document.getElementById('psLangLbl'); if(lbl) lbl.textContent=(window.PC_LANG||'TH'); },
+    member:function(){ if(window.Swal) Swal.fire({icon:'info',title:'สมาชิก',text:'เชื่อมระบบบัตรสมาชิก/CRM ภายหลัง',confirmButtonColor:'#2e934a'}); },
+    stub:function(name){ if(window.Swal) Swal.fire({icon:'info',title:name,text:'ฟังก์ชันจำลอง (mockup)',confirmButtonColor:'#2e934a'}); },
+    flavClose:function(){ document.getElementById('psFlavOv').classList.remove('show'); state._pending=null; },
+    flavOk:function(){ var p=state._pending; if(!p){ window.POS.flavClose(); return; }
+      var add=state._flavSel.reduce(function(s,n){ var f=FLAVORS.filter(function(x){return x.n===n;})[0]; return s+((f&&f.add)||0); },0);
+      state.lines.push({ code:p.code, name:p.name, price:p.price+add, qty:1, flavor:state._flavSel.join(', ')||'ไม่เลือกผง' });
+      state.sel=state.lines.length-1; window.POS.flavClose(); renderBill();
+    },
+    flavPick:function(n){ var i=state._flavSel.indexOf(n); if(i>=0) state._flavSel.splice(i,1); else state._flavSel.push(n); renderFlav(); },
+    pay:function(){ if(!state.lines.length){ if(window.Swal) Swal.fire({icon:'info',title:'ยังไม่มีรายการ',confirmButtonColor:'#2e934a'}); return; }
+      var t=total(); document.getElementById('paySub').textContent=money(t);
+      document.getElementById('payVat').textContent=money(t-(t/1.07));
+      document.getElementById('payBal').textContent=money(t);
+      state.payVal=''; document.getElementById('payDisp').textContent='0';
+      document.getElementById('psPayOv').classList.add('show');
+    },
+    payClose:function(){ document.getElementById('psPayOv').classList.remove('show'); },
+    num:function(k){ if(k==='C'){ state.payVal=''; } else if(k==='←'){ state.payVal=state.payVal.slice(0,-1); } else { state.payVal=(state.payVal+k).slice(0,9); } document.getElementById('payDisp').textContent=state.payVal||'0'; },
+    tender:function(name){ var t=total();
+      if(window.Swal) Swal.fire({icon:'success',title:'ชำระด้วย '+name,html:'ยอด <b>'+money(t)+'</b><br>บิลปิดเรียบร้อย (จำลอง)',confirmButtonColor:'#2e934a',timer:1800,showConfirmButton:false});
+      state.lines=[]; state.sel=-1; state.cat=null; state.page=0; window.POS.payClose(); render();
+    }
+  };
+
+  function openFlav(title){ document.getElementById('psFlavTitle').textContent='เลือกผง — '+title; renderFlav(); document.getElementById('psFlavOv').classList.add('show'); }
+  function renderFlav(){
+    var flist = (window.pcFlavorSort ? window.pcFlavorSort(FLAVORS, function(f){return f.n;}) : FLAVORS);
+    document.getElementById('psFlavGrid').innerHTML=flist.map(function(f){ var on=state._flavSel.indexOf(f.n)>=0;
+      return '<button class="flav'+(on?' on':'')+'" onclick="window.POS.flavPick(\''+esc(f.n).replace(/'/g,"\\'")+'\')"><div class="fc" style="background:'+f.c+'">'+f.i+'</div><div class="fn">'+esc(f.n)+'</div>'+(f.add?'<div class="fp">+'+f.add+'฿</div>':'')+'</button>';
+    }).join('');
+  }
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function fmtDate(d){ return pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
+
+  window.initPOSSim=function(){
+    state={ mode:'Take Away', cat:null, lines:[], sel:-1, _pending:null, _flavSel:[], payVal:'', page:0, _pages:1 };
+    var pad=document.getElementById('payPad'); var keys=['7','8','9','4','5','6','1','2','3','C','0','←'];
+    pad.innerHTML=keys.map(function(k){ return '<button onclick="window.POS.num(\''+k+'\')">'+k+'</button>'; }).join('');
+    // clock + session timer
+    if(window._posTimer) clearInterval(window._posTimer);
+    var t0=Date.now();
+    function tick(){ var dEl=document.getElementById('psDate'); if(!dEl){ clearInterval(window._posTimer); return; } dEl.textContent=fmtDate(new Date());
+      var s=Math.floor((Date.now()-t0)/1000); var tEl=document.getElementById('psTimer'); if(tEl) tEl.textContent=pad2(Math.floor(s/3600))+':'+pad2(Math.floor(s/60)%60)+':'+pad2(s%60); }
+    tick(); window._posTimer=setInterval(tick,1000);
+    Promise.all([ api('getMasterDataExtended'), api('getMemoCampaigns','2026-06') ]).then(function(r){
+      ITEMS_RAW=(r[0]&&r[0].items)||[]; PROMOS=r[1]||[];
+      usingDemo = !ITEMS_RAW.length;
+      ITEMS = usingDemo ? DEMO_ITEMS.slice() : ITEMS_RAW;
+      BRANCHES=masterBranches(); fillBranchSelect();
+      var lbl=document.getElementById('psLangLbl'); if(lbl) lbl.textContent=(window.PC_LANG||'TH');
+      buildCats(); render();
+    });
+  };
+})();
+</script>

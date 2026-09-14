@@ -1,0 +1,152 @@
+<!-- ============================================================
+     pages/StaffDiscountIT.html — ตั้งค่าส่วนลดพนักงาน (ฝั่ง IT)
+     entry: initStaffDiscountIT()
+     • คิวเงื่อนไขที่ Admin FRC ส่งมา (pc_staff_conditions, status WAIT_IT)
+     • IT จองเลขจากตัวนับกลาง PC_COUNTER (Bill Discount→BD / Item Coupon→IC)
+       = กลุ่มรันเลขเดียวกับโปรโมชัน (ไม่ชนกัน) · flow เหมือนบัตรสมาชิก
+     • ตั้งค่าเสร็จ → status READY → เด้งกลับให้ Area เพิ่มพนักงานได้
+     ตารางแยกจากโปรโมชัน (ใช้ pc_staff_conditions / pc_staff_discounts)
+     ============================================================ -->
+<style>
+  .sit-scope { background:#f4f6f9; min-height:100vh; padding:24px 26px 60px; font-family:'Kanit',sans-serif; color:#3b4753; }
+  .sit-scope .h { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+  .sit-scope .h .ic { width:52px; height:52px; border-radius:14px; background:#eef4ff; color:#2c4a82; display:grid; place-items:center; font-size:1.35rem; flex:none; }
+  .sit-scope .h h1 { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; letter-spacing:.2px; color:#1a1d20; margin:0; line-height:1.1; }
+  .sit-scope .h .sub { font-size:.9rem; color:#8a9099; font-weight:600; margin-top:3px; }
+  .sit-scope .h .badge2 { margin-left:auto; background:#fff3e0; color:#a06d13; font-weight:800; font-size:.9rem; padding:9px 16px; border-radius:12px; }
+  .sit-scope .h .badge2.clear { background:#eafaf1; color:#1f8a4e; }
+
+  .sit-scope .card2 { background:#fff; border:1px solid #e6eaef; border-radius:16px; box-shadow:0 1px 2px rgba(20,32,43,.05),0 4px 16px rgba(20,32,43,.04); overflow:hidden; }
+  .sit-scope .tabs { display:flex; gap:6px; padding:14px 20px 0; border-bottom:1px solid #eef1f4; flex-wrap:wrap; }
+  .sit-scope .tab { background:none; border:0; border-bottom:3px solid transparent; padding:9px 6px; margin-bottom:-1px; font-weight:700; font-size:.92rem; color:#7a818a; cursor:pointer; }
+  .sit-scope .tab.on { color:#2c4a82; border-bottom-color:#2c4a82; }
+  .sit-scope .cb { padding:18px 20px; }
+  .sit-scope .toolbar { display:flex; gap:10px; margin-bottom:14px; }
+  .sit-scope .srch { flex:1; position:relative; }
+  .sit-scope .srch i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#aab0b8; }
+  .sit-scope .srch input { width:100%; border:2px solid #e3e7eb; border-radius:11px; padding:10px 12px 10px 40px; font-family:inherit; font-weight:600; }
+  .sit-scope .srch input:focus { outline:none; border-color:#2c4a82; }
+
+  .sit-scope table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  .sit-scope thead th { background:#14202b; color:#fff; font-weight:600; font-size:.76rem; text-align:left; padding:12px 14px; white-space:nowrap; }
+  .sit-scope tbody td { padding:13px 14px; border-top:1px solid #eef1f4; vertical-align:middle; }
+  .sit-scope tbody tr:hover { background:#fafbfc; }
+  .sit-scope .co { font-weight:700; color:#14202b; }
+  .sit-scope .mono { font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; }
+  .sit-scope .cbadge { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:800; padding:2px 9px; border-radius:20px; }
+  .sit-scope .cbadge.bill { background:#fff3e0; color:#a06d13; } .sit-scope .cbadge.item { background:#f3eefe; color:#6d3bd1; }
+  .sit-scope .st { display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:800; padding:3px 11px; border-radius:20px; }
+  .sit-scope .st.wait { background:rgba(201,138,30,.16); color:#a06d13; } .sit-scope .st.ready { background:rgba(31,138,78,.14); color:#1f8a4e; }
+  .sit-scope .btnp { background:#2c4a82; color:#fff; border:0; border-radius:10px; padding:9px 16px; font-weight:800; font-size:.86rem; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:7px; }
+  .sit-scope .btnp:hover { background:#213a68; }
+  .sit-scope .peek { font-family:'JetBrains Mono',monospace; font-weight:700; color:#2c4a82; background:#eef4ff; padding:2px 8px; border-radius:6px; font-size:.8rem; }
+  .sit-scope .empty { padding:44px; text-align:center; color:#9aa5b1; }
+  .sit-scope .tbwrap { border:1px solid #eef1f4; border-radius:12px; overflow:auto; max-height:64vh; }
+</style>
+
+<div class="sit-scope">
+  <div class="h">
+    <div class="ic"><i class="fas fa-gears"></i></div>
+    <div>
+      <h1>ตั้งค่าส่วนลดพนักงาน (IT)</h1>
+      <div class="sub">รับเงื่อนไขจาก Admin FRC → จองเลข BD/IC จากตัวนับกลาง (กลุ่มเดียวกับโปรฯ) → ตั้งค่าเข้าระบบ</div>
+    </div>
+    <div class="badge2" id="sitPend">—</div>
+  </div>
+
+  <div class="card2">
+    <div class="tabs">
+      <button class="tab on" id="sitTabWait" onclick="window.sitTab('WAIT_IT')">รอตั้งค่า</button>
+      <button class="tab" id="sitTabReady" onclick="window.sitTab('READY')">ตั้งค่าแล้ว</button>
+      <button class="tab" id="sitTabAll" onclick="window.sitTab('ALL')">ทั้งหมด</button>
+    </div>
+    <div class="cb">
+      <div class="toolbar"><div class="srch"><i class="fas fa-magnifying-glass"></i><input id="sitSearch" placeholder="ค้นหา บริษัท / ชื่อเงื่อนไข…" oninput="window.sitRender()"></div></div>
+      <div class="tbwrap">
+        <table><thead><tr><th>บริษัท FRC</th><th>ชื่อเงื่อนไข</th><th>Type Promotion</th><th>มูลค่า</th><th>พนักงาน</th><th>Type Code</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="sitBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var COND_KEY='pc_staff_conditions', EMP_KEY='pc_staff_discounts';
+    var TAB='WAIT_IT';
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function loadA(k){ try{ return JSON.parse(localStorage.getItem(k))||[]; }catch(e){ return []; } }
+    function saveA(k,a){ try{ localStorage.setItem(k,JSON.stringify(a)); }catch(e){} }
+    function counterType(tp){ return /item|coupon/i.test(String(tp||'')) ? 'coupon' : 'bill'; }  // Bill→BD · Item Coupon→IC
+    function peekCode(tp){ try{ return (window.PC_COUNTER&&PC_COUNTER.peek)?PC_COUNTER.peek(counterType(tp)):''; }catch(e){ return ''; } }
+
+    window.sitTab=function(t){ TAB=t; ['Wait','Ready','All'].forEach(function(x){ document.getElementById('sitTab'+x).classList.remove('on'); });
+      document.getElementById('sitTab'+(t==='WAIT_IT'?'Wait':t==='READY'?'Ready':'All')).classList.add('on'); window.sitRender(); };
+
+    window.sitConfigure=function(id){
+      var conds=loadA(COND_KEY); var c=conds.find(function(x){return x.id===id;}); if(!c) return;
+      var ctype=counterType(c.typePromotion);
+      var next=peekCode(c.typePromotion);
+      Swal.fire({
+        title:'จองเลข & ตั้งค่าเข้าระบบ', width:500, confirmButtonColor:'#2c4a82', confirmButtonText:'จองเลขนี้ · พร้อมใช้', showCancelButton:true, cancelButtonText:'ยกเลิก', showDenyButton:true, denyButtonText:'ใส่เลขเอง',
+        html:'<div style="text-align:left;font-size:14px">'+
+          '<div style="background:#f4f6f9;border-radius:10px;padding:10px 13px;margin-bottom:12px">'+
+            '<div style="font-weight:700">'+esc(c.name)+'</div>'+
+            '<div style="color:#8a9099;font-size:13px;margin-top:3px">'+esc(c.company)+' · '+esc(c.typePromotion)+'</div></div>'+
+          '<div style="font-size:13px;color:#5a616b">เลขถัดไปจากตัวนับกลาง ('+esc(ctype==='coupon'?'Item Coupon · IC':'Bill Discount · BD')+'):</div>'+
+          '<div style="font-family:JetBrains Mono,monospace;font-weight:800;font-size:1.9rem;color:#2c4a82;text-align:center;padding:8px 0">'+esc(next||'—')+'</div>'+
+          '<div style="font-size:12px;color:#9aa5b1;text-align:center">กลุ่มรันเลขเดียวกับโปรโมชัน — จองแล้วเลขจะไม่ถูกใช้ซ้ำ</div>'+
+        '</div>',
+        preDeny:function(){ return Swal.fire({title:'ใส่ Type Code เอง',input:'text',inputPlaceholder:'BDxxxx / ICxxxx',inputValue:next,showCancelButton:true,confirmButtonColor:'#2c4a82'}).then(function(r){ return r.isConfirmed?{manual:(r.value||'').trim().toUpperCase()}:null; }); }
+      }).then(function(res){
+        var code='';
+        if(res.isConfirmed){
+          // จองจากตัวนับกลาง (forward-only · advance cursor)
+          try{ var ent=(window.PC_COUNTER&&PC_COUNTER.reserve)?PC_COUNTER.reserve(ctype,{where:'Staff Discount · '+c.company, field:c.name}):null; code=ent&&ent.code?ent.code:next;
+            try{ if(PC_COUNTER.confirm) PC_COUNTER.confirm(code, ctype); }catch(e){} }catch(e){ code=next; }
+        } else if(res.isDenied && res.value && res.value.manual){ code=res.value.manual; }
+        else return;
+        if(!code) return;
+        c.code=code; c.status='READY'; c.itDoneAt=new Date().toISOString(); saveA(COND_KEY,conds);
+        var emps=loadA(EMP_KEY); emps.forEach(function(e){ if(e.conditionId===id) e.typeCode=code; }); saveA(EMP_KEY,emps);
+        try{ if(window.PC_notify) window.PC_notify('staff_discount_ready',{ text:'ตั้งค่ารหัสส่วนลดพนักงาน “'+esc(c.name)+'” เสร็จ (Type Code '+esc(code)+') · บริษัท '+esc(c.company||'')+' — ใช้ได้ที่ POS แล้ว' }); }catch(e){}
+        Swal.fire({icon:'success', title:'ตั้งค่าเข้าระบบแล้ว', html:'<b>'+esc(c.name)+'</b><br>Type Code: <span style="font-family:JetBrains Mono,monospace;font-weight:800;color:#2c4a82">'+esc(code)+'</span>', timer:2200, showConfirmButton:false});
+        window.sitRender();
+      });
+    };
+    window.sitRevert=function(id){ Swal.fire({icon:'warning',title:'ตีกลับเป็น "รอตั้งค่า"?',text:'Type Code จะถูกล้าง (เลขที่จองไปแล้วไม่คืน)',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ตีกลับ',cancelButtonText:'ยกเลิก'}).then(function(r){ if(!r.isConfirmed) return;
+      var conds=loadA(COND_KEY); var c=conds.find(function(x){return x.id===id;}); if(!c) return; c.status='WAIT_IT'; c.code=''; saveA(COND_KEY,conds);
+      var emps=loadA(EMP_KEY); emps.forEach(function(e){ if(e.conditionId===id) e.typeCode=''; }); saveA(EMP_KEY,emps); window.sitRender(); }); };
+
+    window.sitRender=function(){
+      var conds=loadA(COND_KEY), emps=loadA(EMP_KEY);
+      var pend=conds.filter(function(c){return c.status!=='READY';}).length;
+      var pb=document.getElementById('sitPend'); pb.textContent = pend>0?('รอตั้งค่า '+pend):'เคลียร์หมดแล้ว'; pb.className='badge2'+(pend>0?'':' clear');
+      var q=(document.getElementById('sitSearch').value||'').trim().toLowerCase();
+      var rows=conds.filter(function(c){ return TAB==='ALL'?true:(TAB==='READY'?c.status==='READY':c.status!=='READY'); });
+      if(q) rows=rows.filter(function(c){ return ((c.company||'')+' '+(c.name||'')).toLowerCase().indexOf(q)>-1; });
+      var body=document.getElementById('sitBody');
+      if(!rows.length){ body.innerHTML='<tr><td colspan="8" class="empty"><i class="fas fa-inbox fa-lg" style="opacity:.4;display:block;margin-bottom:8px"></i>'+(TAB==='WAIT_IT'?'ไม่มีเงื่อนไขรอตั้งค่า':'ไม่มีข้อมูล')+'</td></tr>'; return; }
+      body.innerHTML=rows.map(function(c){
+        var tp=/item|coupon/i.test(c.typePromotion)?'item':'bill';
+        var n=emps.filter(function(e){return e.conditionId===c.id;}).length;
+        var ready=c.status==='READY';
+        return '<tr>'+
+          '<td class="co">'+esc(c.company||'-')+'</td>'+
+          '<td><b>'+esc(c.name)+'</b></td>'+
+          '<td><span class="cbadge '+tp+'">'+esc(c.typePromotion)+'</span></td>'+
+          '<td>'+esc(c.value)+' '+esc(c.unit||'')+'</td>'+
+          '<td>'+n+' คน</td>'+
+          '<td>'+(c.code?('<span class="mono">'+esc(c.code)+'</span>'):'<span style="color:#c9a">— จ่อ '+esc(peekCode(c.typePromotion))+'</span>')+'</td>'+
+          '<td><span class="st '+(ready?'ready':'wait')+'">'+(ready?'<i class="fas fa-circle-check"></i> พร้อมใช้':'<i class="fas fa-clock"></i> รอตั้งค่า')+'</span></td>'+
+          '<td>'+(ready
+            ? '<button class="btnp" style="background:#eef1f4;color:#5a616b" onclick="window.sitRevert(\''+c.id+'\')"><i class="fas fa-rotate-left"></i> ตีกลับ</button>'
+            : '<button class="btnp" onclick="window.sitConfigure(\''+c.id+'\')"><i class="fas fa-hashtag"></i> จองเลข & ตั้งค่า</button>')+'</td>'+
+        '</tr>';
+      }).join('');
+    };
+
+    window.initStaffDiscountIT=function(){ window.sitRender(); };
+    if(document.getElementById('sitBody') && !window.__sitInit){ window.__sitInit=true; try{ window.initStaffDiscountIT(); }catch(e){} }
+  })();
+</script>

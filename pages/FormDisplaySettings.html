@@ -1,0 +1,302 @@
+<!-- FORM DISPLAY SETTINGS — ตั้งค่าหมวด/Subset แสดงในฟอร์มไหน
+     · แก้ไข = เปิดหน้าใหม่ในตัว (ไม่ใช่ป็อปอัพ)  · เพิ่ม/ลบ "ฟอร์ม" ได้เองในหน้านี้ -->
+<style>
+  #fds-page{ font-family:'Kanit',sans-serif; color:#2a2f36; padding:18px; }
+  #fds-page .fds-head{ display:flex; align-items:center; gap:14px; background:var(--pc-dark,#1a1d20); color:#fff; padding:16px 20px; border-radius:13px; margin-bottom:16px; }
+  #fds-page .fds-head .bar{ width:9px; height:42px; background:var(--pc-yellow,#2e934a); border-radius:5px; }
+  #fds-page .fds-head h3{ margin:0; font-weight:700; font-size:1.15rem; }
+  #fds-page .fds-head small{ opacity:.75; font-size:.82rem; }
+  #fds-page .fds-tools{ display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  #fds-page .fds-tools input[type=text]{ border:1.5px solid #dde2e7; border-radius:9px; padding:9px 13px; font-family:inherit; font-size:.9rem; min-width:200px; }
+  #fds-page .seg{ display:inline-flex; border:1.6px solid #1a1d20; border-radius:10px; overflow:hidden; }
+  #fds-page .seg button{ border:0; background:#fff; padding:9px 18px; font-weight:700; font-size:.86rem; cursor:pointer; color:#1a1d20; font-family:inherit; }
+  #fds-page .seg button.on{ background:var(--pc-dark,#1a1d20); color:#ffffff; }
+  #fds-page .btn-ghost{ background:#fff; border:1.5px solid #dde2e7; border-radius:9px; padding:9px 14px; font-weight:600; font-size:.85rem; cursor:pointer; font-family:inherit; color:#3a4150; }
+  #fds-page .btn-green{ background:#2e934a; color:#fff; border:0; border-radius:9px; padding:9px 15px; font-weight:700; font-size:.85rem; cursor:pointer; font-family:inherit; }
+  #fds-page .btn-green:hover{ filter:brightness(1.07); }
+  /* forms bar — แสดงฟอร์มทั้งหมดในโหมดนี้ + ลบฟอร์มที่เพิ่มเอง */
+  #fds-page .forms-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#f6f8fa; border:1px solid #e7eaee; border-radius:11px; padding:10px 12px; margin-bottom:14px; }
+  #fds-page .forms-bar .lbl{ font-size:.78rem; font-weight:700; color:#6b727b; margin-right:2px; }
+  #fds-page .fpill{ display:inline-flex; align-items:center; gap:7px; background:#fff; border:1.4px solid #d8dee4; border-radius:999px; padding:5px 11px; font-size:.8rem; font-weight:600; color:#2a2f36; }
+  #fds-page .fpill.base{ background:#eef3f7; border-color:#d4e0ea; color:#2c4a82; }
+  #fds-page .fpill .x{ width:17px; height:17px; border-radius:50%; background:#fdeaea; color:#b3261e; border:0; cursor:pointer; font-size:.7rem; line-height:1; display:flex; align-items:center; justify-content:center; }
+  #fds-page .fpill .x:hover{ background:#f6cfcc; }
+  #fds-page .fds-card{ background:#fff; border:1px solid #e7eaee; border-radius:13px; overflow:auto; max-height:600px; }
+  #fds-page table{ width:100%; border-collapse:collapse; font-size:.88rem; }
+  #fds-page thead th{ background:var(--pc-dark,#1a1d20); color:#fff; font-weight:600; padding:11px 14px; position:sticky; top:0; z-index:2; font-size:.8rem; text-align:left; white-space:nowrap; }
+  #fds-page tbody td{ padding:9px 14px; border-top:1px solid #eef1f4; vertical-align:middle; }
+  #fds-page tbody tr:hover{ background:#fafbfc; }
+  #fds-page .ccode{ font-family:'JetBrains Mono',monospace; font-weight:700; color:#5a626c; }
+  #fds-page .cname{ font-weight:600; color:#1a1d20; }
+  #fds-page .cnt{ font-size:.74rem; color:#9aa1aa; }
+  #fds-page .chip{ display:inline-block; background:#e6f4ec; color:#0b6b3a; border:1px solid #bfe3cd; border-radius:999px; padding:3px 10px; font-size:.74rem; font-weight:600; margin:2px 3px 2px 0; }
+  #fds-page .chip.more{ background:#eef3f7; color:#2c4a82; border-color:#d4e0ea; }
+  #fds-page .chip.none{ background:#fdeaea; color:#b3261e; border-color:#f3c9c6; }
+  #fds-page .ic-btn{ background:#eef3f7; color:#2c4a82; border:1.4px solid #d4e0ea; border-radius:8px; padding:6px 13px; font-size:.8rem; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  #fds-page .ic-btn:hover{ background:#e0eaf2; }
+  #fds-page .sw2{ width:42px; height:24px; border-radius:99px; background:#cdd3d9; position:relative; transition:.2s; cursor:pointer; display:inline-block; vertical-align:middle; flex:0 0 auto; }
+  #fds-page .sw2::after{ content:''; position:absolute; top:2.5px; left:2.5px; width:19px; height:19px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  #fds-page .sw2.on{ background:#2e934a; } #fds-page .sw2.on::after{ left:20.5px; }
+  #fds-page .swlbl{ font-size:.72rem; font-weight:700; color:#9aa1aa; } #fds-page .swlbl.on{ color:#2e934a; }
+  #fds-page .note{ font-size:.78rem; color:#6b727b; margin-top:10px; } #fds-page .note b{ color:#1a1d20; }
+
+  /* ===== EDIT SUB-PAGE (in-content, ไม่ใช่ป็อปอัพ) ===== */
+  #fds-edit{ display:none; }
+  #fds-edit .ed-head{ display:flex; align-items:center; gap:14px; background:var(--pc-dark,#1a1d20); color:#fff; padding:14px 18px; border-radius:13px; margin-bottom:16px; position:sticky; top:0; z-index:30; box-shadow:0 4px 14px rgba(0,0,0,.14); }
+  #fds-edit .ed-back{ background:var(--pc-yellow,#2e934a); color:#1a1d20; border:0; border-radius:9px; padding:9px 14px; font-weight:700; font-size:.85rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  #fds-edit .ed-back-top{ display:inline-flex; align-items:center; margin-bottom:12px; }
+  #fds-edit .ed-back:hover{ filter:brightness(.96); }
+  #fds-edit .ed-ttl{ font-weight:700; font-size:1.1rem; line-height:1.2; }
+  #fds-edit .ed-sub{ font-size:.82rem; opacity:.75; }
+  #fds-edit .ed-tools{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  #fds-edit .ed-tools input[type=text]{ border:1.5px solid #dde2e7; border-radius:9px; padding:9px 13px; font-family:inherit; font-size:.9rem; min-width:220px; }
+  #fds-edit .ed-card{ background:#fff; border:1px solid #e7eaee; border-radius:13px; overflow:hidden; }
+  #fds-edit .frow{ display:flex; align-items:center; gap:13px; padding:13px 16px; border-bottom:1px solid #f1f3f5; cursor:pointer; }
+  #fds-edit .frow:last-child{ border-bottom:0; }
+  #fds-edit .frow:hover{ background:#f9fbfc; }
+  #fds-edit .frow .fnm{ font-weight:600; font-size:.95rem; flex:1; }
+  #fds-edit .frow .ftag{ font-size:.68rem; font-weight:700; color:#2c4a82; background:#eef3f7; border:1px solid #d4e0ea; border-radius:6px; padding:2px 7px; }
+  /* toggle switch */
+  #fds-edit .sw{ width:46px; height:27px; border-radius:99px; background:#cdd3d9; position:relative; transition:.2s; flex:0 0 auto; }
+  #fds-edit .sw::after{ content:''; position:absolute; top:2.5px; left:2.5px; width:22px; height:22px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  #fds-edit .frow.on .sw{ background:#2e934a; } #fds-edit .frow.on .sw::after{ left:21.5px; }
+</style>
+
+<div id="fds-page">
+  <div class="fds-head">
+    <div class="bar"></div>
+    <div>
+      <h3><i class="fas fa-list-check me-2" style="color:#ffffff"></i>ตั้งค่าการแสดงผลหน้าฟอร์ม · FORM DISPLAY</h3>
+      <small>กำหนดว่า หมวด / Subset ไหน "โผล่เป็นตัวเลือก" ในฟอร์มแจ้งงานไหนบ้าง — กดแก้ไขเพื่อเปิดหน้าตั้งค่า</small>
+    </div>
+  </div>
+  <div class="fds-tools">
+    <div class="seg">
+      <button id="fdsTabCat" class="on" onclick="window.FDS.setMode('cat')">หมวด (Category)</button>
+      <button id="fdsTabSub" onclick="window.FDS.setMode('subset')">Subset</button>
+      <button id="fdsTabMode" onclick="window.FDS.setMode('mode')">Sale mode</button>
+    </div>
+    <input type="text" id="fdsSearch" placeholder="ค้นหา รหัส / ชื่อ" oninput="window.FDS.render()">
+    <button class="btn-green" id="fdsAddModeBtn" style="display:none" onclick="window.FDS.addMode()"><i class="fas fa-plus me-1"></i>เพิ่มช่องทาง</button>
+    <button class="btn-green" id="fdsAddFormBtn" style="margin-left:auto" onclick="window.FDS.addForm()"><i class="fas fa-plus me-1"></i>เพิ่มฟอร์ม</button>
+    <button class="btn-ghost" onclick="window.FDS.resetAll()"><i class="fas fa-rotate-left me-1"></i>รีเซ็ตเปิดทุกฟอร์ม</button>
+  </div>
+  <div class="forms-bar" id="fdsFormsBar"></div>
+  <div class="fds-card">
+    <table>
+      <thead><tr><th style="width:110px" id="fdsColCode">รหัส</th><th id="fdsColName">หมวดสินค้า</th><th>แสดงในฟอร์ม</th><th style="width:170px">จัดการ</th></tr></thead>
+      <tbody id="fdsBody"></tbody>
+    </table>
+  </div>
+  <div class="note" id="fdsNote"></div>
+</div>
+
+<!-- EDIT SUB-PAGE -->
+<div id="fds-edit">
+  <div class="ed-head">
+    <div>
+      <div class="ed-ttl" id="fdsEdTtl">—</div>
+      <div class="ed-sub" id="fdsEdSub">เลือกว่ารายการนี้จะแสดงเป็นตัวเลือกในฟอร์มใดบ้าง</div>
+    </div>
+    <button class="ed-back" onclick="window.FDS.back()" style="margin-left:auto"><i class="fas fa-arrow-left me-1"></i>กลับ</button>
+  </div>
+  <div class="ed-tools">
+    <input type="text" id="fdsEdQ" placeholder="ค้นหาฟอร์ม" oninput="window.FDS.edRender()">
+    <button class="btn-ghost" onclick="window.FDS.edAll(true)"><i class="fas fa-circle-check me-1"></i>เปิดทุกฟอร์ม</button>
+    <button class="btn-ghost" onclick="window.FDS.edAll(false)"><i class="fas fa-ban me-1"></i>ปิดทุกฟอร์ม</button>
+    <button class="btn-green" style="margin-left:auto" onclick="window.FDS.addForm()"><i class="fas fa-plus me-1"></i>เพิ่มฟอร์ม</button>
+  </div>
+  <div class="ed-card" id="fdsEdList"></div>
+</div>
+
+<script>
+window.initFormDisplaySettings = function(){
+  var CAT_KEY='pc_cat_forms', SUB_KEY='pc_subset_forms', MODE_KEY='pc_mode_forms';
+  var MODE='cat';   // 'cat' | 'subset'
+  var BASE_CAT = (window.PC_FORM_LIST && window.PC_FORM_LIST.length) ? window.PC_FORM_LIST : [
+    {k:'proposal', label:'แจ้งโปร / Item Set'},
+    {k:'coupon',   label:'Coupon'},
+    {k:'bill',     label:'Bill Discount'},
+    {k:'voucher',  label:'Voucher'},
+    {k:'npd',      label:'RD NPD สินค้าใหม่'},
+    {k:'flavor',   label:'RD เพิ่มผงรสชาติ'}
+  ];
+  var POOL = BASE_CAT;
+  /* ฟอร์มที่ "อ่านค่า" ของแต่ละโหมดจริง — โหมดอื่นกดเปิด/ปิดไปก็ไม่มีผล จึงไม่ต้องโชว์ */
+  var RELEVANT = {
+    cat:    ['proposal','coupon','bill','voucher','npd'],          // Flavor (เพิ่มผง) ไม่มีหมวดสินค้า
+    subset: ['proposal','coupon','bill','voucher','npd','flavor'], // ฟอร์มกรอกโปรฯ ครบ (coupon/bill/voucher default ปิด)
+    mode:   ['proposal','coupon','bill','voucher','npd','flavor']  // Sale mode ใช้ครบทุกฟอร์ม
+  };
+  function relevantPool(){ var r=RELEVANT[MODE]||POOL.map(function(f){return f.k;}); return POOL.filter(function(f){ return r.indexOf(f.k)>=0; }); }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function ls(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+  /* ---- ฟอร์มที่เปิดใช้ในโหมดนี้ (เลือกจาก 4 ฟอร์ม, เพิ่ม/ลบได้) ---- */
+  function activeKey(){ return MODE==='cat'?'pc_forms_active_cat':(MODE==='mode'?'pc_forms_active_mode':'pc_forms_active_sub'); }
+  function activeKeys(){ var rp=relevantPool().map(function(f){return f.k;}); var a=ls(activeKey(),null); if(!Array.isArray(a)) return rp; return a.filter(function(k){ return rp.indexOf(k)>=0; }); }
+  function setActive(arr){ save(activeKey(), arr); }
+  function forms(){ var ak=activeKeys(); return relevantPool().filter(function(f){ return ak.indexOf(f.k)>=0; }); }
+  function availForms(){ var ak=activeKeys(); return relevantPool().filter(function(f){ return ak.indexOf(f.k)<0; }); }
+
+  function subDefault(id, fk){
+    // ค่าเริ่มต้น subset: ใช้เฉพาะฟอร์ม Item Set (proposal) · เปิดเฉพาะ Topping + เครื่องดื่ม · Flavored = ปิด
+    if(fk && fk!=='proposal' && fk!=='itemset') return false;
+    try{ var meta=JSON.parse(localStorage.getItem('pc_subset_meta')||'{}'); var mo=meta[id]; if(mo&&(mo.show===0||mo.show===1)) return mo.show===1; }catch(e){}
+    var s=(window.PC_SUBSET_MASTER||[]).find(function(x){return x.ssCode===id;})||{};
+    var n=String(s.name||s.short||id).toLowerCase();
+    if(/flavor/.test(n)) return false;
+    return /drink|เครื่องดื่ม|soda|pepsi|sauce|topping/.test(n);
+  }
+  function keyOf(){ return MODE==='cat'?CAT_KEY:(MODE==='mode'?MODE_KEY:SUB_KEY); }
+  function cfg(){ var m=ls(keyOf(),{}); return (m&&typeof m==='object')?m:{}; }
+  function shown(id, fk){ var m=cfg()[id]; if(m&&m[fk]!==undefined) return !!m[fk]; if(MODE==='subset') return subDefault(id, fk); return true; }
+  function setShown(id, fk, on){ var m=cfg(); m[id]=m[id]||{}; m[id][fk]=!!on; save(keyOf(),m); }
+  function enabledForms(id){ return forms().filter(function(f){return shown(id,f.k);}); }
+
+  function cats(){
+    var map={}, A=ls('pc_cat_attrs',{})||{};
+    (window.PC_ITEM_MASTER||[]).forEach(function(it){ var c=it.category; if(c && !map[c]) map[c]={id:c, code:it.cateCode||'', name:(A[c]&&A[c].nameEN!=null?A[c].nameEN:c), th:(A[c]&&A[c].nameTH)||'', n:0}; if(c) map[c].n++; });
+    (ls('pc_cat_custom',[])||[]).forEach(function(cc){ if(cc.category && !map[cc.category]) map[cc.category]={id:cc.category, code:cc.cateCode||'', name:(A[cc.category]&&A[cc.category].nameEN!=null?A[cc.category].nameEN:cc.category), th:(A[cc.category]&&A[cc.category].nameTH)||'', n:0}; });
+    return Object.keys(map).map(function(k){return map[k];}).sort(byCode);
+  }
+  function subsets(){
+    var M=ls('pc_subset_meta',{})||{};
+    return (window.PC_SUBSET_MASTER||[]).map(function(s){ var mo=M[s.ssCode]||{}; return {id:s.ssCode, code:s.ssCode, name:(mo.nameEN!=null?mo.nameEN:(s.name||s.ssCode)), th:(mo.nameTH||''), n:null, short:s.short}; })
+      .sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); });
+  }
+  function byCode(a,b){ var na=parseInt(a.code,10),nb=parseInt(b.code,10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; if(isNaN(na)&&!isNaN(nb))return 1; if(!isNaN(na)&&isNaN(nb))return -1; return String(a.code).localeCompare(String(b.code)); }
+  function modes(){
+    var master=ls('pc_salemode_master',[]);
+    if(!Array.isArray(master)||!master.length) master=['Take Away','Delivery','Grab','Lineman','ShopeeFood','Robinhood','foodpanda','Gokoo'].map(function(n){return {name:n,active:1};});
+    return master.map(function(m,i){ return {id:m.name, code:String(i+1), name:m.name, th:'', n:null, custom:!!m.custom}; });
+  }
+  function syncModeActive(id){ if(MODE!=='mode') return; var master=ls('pc_salemode_master',[])||[]; var any=enabledForms(id).length>0; var ch=false;
+    master.forEach(function(m){ if(m && m.name===id){ var v=any?1:0; if(m.active!==v){ m.active=v; ch=true; } } });
+    if(ch) save('pc_salemode_master',master);
+  }
+  function rowsAll(){ return MODE==='cat'?cats():(MODE==='mode'?modes():subsets()); }
+
+  function chipsHTML(id){
+    var en=enabledForms(id);
+    if(!en.length) return '<span class="chip none"><i class="fas fa-ban me-1"></i>ไม่แสดงในฟอร์มใด</span>';
+    var SHOWN=3, html=en.slice(0,SHOWN).map(function(f){ return '<span class="chip">'+esc(f.label)+'</span>'; }).join('');
+    if(en.length>SHOWN) html+='<span class="chip more">+'+(en.length-SHOWN)+'</span>';
+    return html;
+  }
+
+  /* ---- forms bar (เพิ่ม/ลบฟอร์ม) ---- */
+  function renderFormsBar(){
+    var bar=document.getElementById('fdsFormsBar'); if(!bar) return;
+    var html='<span class="lbl"><i class="fas fa-layer-group me-1"></i>ฟอร์มในโหมดนี้:</span>';
+    html+=forms().map(function(f){ var nk=esc(f.k).replace(/'/g,"\\'"); return '<span class="fpill">'+esc(f.label)+'<button class="x" title="ลบฟอร์มนี้" onclick="window.FDS.delForm(\''+nk+'\')">&times;</button></span>'; }).join('');
+    if(!forms().length) html+='<span style="color:#9aa1aa;font-size:.8rem">— ยังไม่มีฟอร์ม กด "เพิ่มฟอร์ม"</span>';
+    bar.innerHTML=html;
+  }
+
+  function render(){
+    document.getElementById('fdsColCode').textContent = MODE==='cat'?'รหัส':(MODE==='mode'?'ลำดับ':'SS Code');
+    document.getElementById('fdsColName').textContent = MODE==='cat'?'หมวดสินค้า':(MODE==='mode'?'ช่องทางขาย (Sale mode)':'ชื่อ Subset');
+    renderFormsBar();
+    var q=(document.getElementById('fdsSearch').value||'').toLowerCase().trim();
+    var rows=rowsAll().filter(function(c){ return !q || (c.name+' '+c.code).toLowerCase().indexOf(q)>=0; });
+    var body=document.getElementById('fdsBody');
+    if(!rows.length){ body.innerHTML='<tr><td colspan="4" style="text-align:center;color:#9aa1aa;padding:30px">ไม่พบรายการ</td></tr>'; }
+    else body.innerHTML=rows.map(function(c){ var nk=esc(c.id).replace(/'/g,"\\'"); var en=enabledForms(c.id); var isOpen=en.length>0;
+      return '<tr><td class="ccode">'+esc(c.code||'-')+'</td>'+
+        '<td><span class="cname">'+esc(c.name)+'</span>'+(c.n!=null?' <span class="cnt">('+c.n+' สินค้า)</span>':'')+((c.th&&c.th!==c.name)?'<div style="font-size:.76rem;color:#9aa1aa">'+esc(c.th)+'</div>':'')+'</td>'+
+        '<td>'+chipsHTML(c.id)+'</td>'+
+        '<td><div style="display:flex;align-items:center;gap:9px"><span class="sw2'+(isOpen?' on':'')+'" title="เปิด/ปิดรายการนี้ในทุกฟอร์ม" onclick="window.FDS.masterToggle(\''+nk+'\')"></span><span class="swlbl'+(isOpen?' on':'')+'">'+(isOpen?'เปิด':'ปิด')+'</span><button class="ic-btn" onclick="window.FDS.edit(\''+nk+'\')"><i class="fas fa-pen me-1"></i>แก้ไข</button>'+((MODE==='mode'&&c.custom)?'<button class="ic-btn" style="color:#b3261e;border-color:#f3c9c6;background:#fdeaea" title="ลบช่องทาง" onclick="window.FDS.delMode(\''+nk+'\')"><i class="fas fa-trash-can"></i></button>':'')+'</div></td></tr>';
+    }).join('');
+    var total=rowsAll().length, unit=MODE==='cat'?'หมวด':(MODE==='mode'?'ช่องทาง':'subset');
+    var scopeHint=MODE==='subset'?' · ฟอร์มกรอกโปรฯ (Coupon / Bill / Voucher) ค่าเริ่มต้น = ปิด (เปิดเองได้ที่นี่)':(MODE==='cat'?' · แสดงเฉพาะฟอร์มที่มีการเลือกหมวด (Flavor ไม่มีหมวด)':'');
+    document.getElementById('fdsNote').innerHTML='<i class="fas fa-circle-info me-1"></i><b>'+total+' '+unit+' · '+forms().length+' ฟอร์ม</b> · ค่าเริ่มต้น = เปิดทุกฟอร์ม · ติ๊กออก = '+unit+'นั้นไม่ขึ้นเป็นตัวเลือกในฟอร์มนั้น'+scopeHint;
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  /* ---- EDIT sub-page (in-content) ---- */
+  function showList(){ document.getElementById('fds-page').style.display='block'; document.getElementById('fds-edit').style.display='none'; }
+  function showEdit(){ document.getElementById('fds-page').style.display='none'; document.getElementById('fds-edit').style.display='block'; }
+  function edRender(){
+    var id=window.__fdsId; if(id==null) return;
+    var q=((document.getElementById('fdsEdQ')||{}).value||'').toLowerCase().trim();
+    var list=forms().filter(function(f){ return !q || f.label.toLowerCase().indexOf(q)>=0 || f.k.toLowerCase().indexOf(q)>=0; });
+    var box=document.getElementById('fdsEdList');
+    box.innerHTML = list.length ? list.map(function(f){ var on=shown(id,f.k); var nk=esc(f.k).replace(/'/g,"\\'");
+      return '<div class="frow'+(on?' on':'')+'" onclick="window.FDS.edToggle(\''+nk+'\')">'+
+        '<span class="fnm">'+esc(f.label)+'</span>'+
+        '<span class="sw"></span></div>';
+    }).join('') : '<div style="padding:18px;color:#9aa1aa">ไม่พบฟอร์ม</div>';
+  }
+
+  window.FDS={
+    render:render, edRender:edRender,
+    setMode:function(m){ MODE=m; document.getElementById('fdsTabCat').classList.toggle('on',m==='cat'); document.getElementById('fdsTabSub').classList.toggle('on',m==='subset'); var tm=document.getElementById('fdsTabMode'); if(tm) tm.classList.toggle('on',m==='mode'); var ab=document.getElementById('fdsAddModeBtn'); if(ab) ab.style.display=(m==='mode')?'':'none'; showList(); render(); },
+    resetAll:function(){ var go=function(){ save(keyOf(),{}); render(); }; if(window.Swal){ Swal.fire({title:'รีเซ็ตเปิดทุกฟอร์ม?',text:(MODE==='cat'?'ทุกหมวด':'ทุก subset')+'จะแสดงในทุกฟอร์ม',icon:'question',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'รีเซ็ต',cancelButtonText:'ยกเลิก'}).then(function(r){ if(r.isConfirmed) go(); }); } else go(); },
+
+    /* เปิดหน้าแก้ไข (แทนป็อปอัพเดิม) */
+    edit:function(id){
+      window.__fdsId=id;
+      var row=rowsAll().filter(function(x){return x.id===id;})[0]||{};
+      document.getElementById('fdsEdTtl').textContent=(row.code?row.code+' · ':'')+(row.name||id);
+      document.getElementById('fdsEdSub').textContent=(MODE==='cat'?'หมวดสินค้า':(MODE==='mode'?'ช่องทางขาย':'Subset'))+' — เลือกว่าจะแสดงเป็นตัวเลือกในฟอร์มใดบ้าง';
+      var q=document.getElementById('fdsEdQ'); if(q) q.value='';
+      edRender(); showEdit();
+      try{ document.getElementById('fds-edit').scrollTop=0; window.scrollTo(0,0); }catch(e){}
+    },
+    back:function(){ window.__fdsId=null; showList(); render(); },
+    /* master toggle — เปิด/ปิดทั้งหมวดในทุกฟอร์มรวดเดียว */
+    masterToggle:function(id){ var m=cfg(); var turnOn=enabledForms(id).length===0;
+      m[id]=m[id]||{}; forms().forEach(function(f){ m[id][f.k]=turnOn; });  // เปิดอยู่→ปิดทุกฟอร์ม / ปิดอยู่→เปิดทุกฟอร์ม (เขียนค่าชัดเจน ใช้ได้ทั้งโหมด default เปิด/ปิด)
+      save(keyOf(),m); syncModeActive(id); render();
+    },
+    edToggle:function(fk){ var id=window.__fdsId; setShown(id,fk,!shown(id,fk)); syncModeActive(id); edRender(); },
+    edAll:function(on){ var id=window.__fdsId; var m=cfg(); m[id]=m[id]||{}; forms().forEach(function(f){ m[id][f.k]=on; }); save(keyOf(),m); syncModeActive(id); edRender(); },
+    addMode:function(){
+      var master=ls('pc_salemode_master',[])||[];
+      var apply=function(name){ name=(name||'').trim(); if(!name) return;
+        if(master.some(function(m){return String(m.name).toLowerCase()===name.toLowerCase();})){ if(window.Swal) Swal.fire({icon:'warning',title:'มีช่องทางนี้แล้ว',confirmButtonColor:'#2e934a'}); return; }
+        master.push({name:name,active:1,custom:true}); save('pc_salemode_master',master); render();
+      };
+      if(window.Swal){ Swal.fire({title:'เพิ่มช่องทางขาย (Sale mode)',input:'text',inputPlaceholder:'เช่น foodpanda',showCancelButton:true,confirmButtonText:'เพิ่ม',confirmButtonColor:'#2e934a',cancelButtonText:'ยกเลิก',inputValidator:function(v){ if(!v||!v.trim()) return 'ใส่ชื่อช่องทาง'; }}).then(function(r){ if(r.isConfirmed) apply(r.value); }); }
+      else { var n=prompt('ชื่อช่องทางใหม่'); if(n) apply(n); }
+    },
+    delMode:function(id){
+      var go=function(){ var master=ls('pc_salemode_master',[])||[]; master=master.filter(function(m){return m.name!==id;}); save('pc_salemode_master',master);
+        var m=cfg(); if(m[id]){ delete m[id]; save(keyOf(),m); } render();
+      };
+      if(window.Swal){ Swal.fire({title:'ลบช่องทาง?',text:'"'+id+'" จะถูกลบออกจาก Sale mode',icon:'warning',showCancelButton:true,confirmButtonColor:'#b3261e',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(function(r){ if(r.isConfirmed) go(); }); }
+      else if(confirm('ลบช่องทาง "'+id+'"?')) go();
+    },
+
+    /* เพิ่มฟอร์ม — เลือกจาก 4 ฟอร์มที่มี (ที่ยังไม่ได้เพิ่ม) */
+    addForm:function(){
+      var av=availForms();
+      if(!av.length){ if(window.Swal) Swal.fire({icon:'info',title:'ครบแล้ว',text:'เพิ่มครบทุกฟอร์มแล้ว',confirmButtonColor:'#2e934a'}); return; }
+      var opts={}; av.forEach(function(f){ opts[f.k]=f.label; });
+      var apply=function(k){ if(!k) return; var ak=activeKeys().slice(); if(ak.indexOf(k)<0) ak.push(k); setActive(ak);
+        if(document.getElementById('fds-edit').style.display!=='none') edRender(); renderFormsBar(); render(); };
+      if(window.Swal){ Swal.fire({ title:'เพิ่มฟอร์ม', input:'select', inputOptions:opts, inputPlaceholder:'เลือกฟอร์ม',
+        showCancelButton:true, confirmButtonText:'เพิ่ม', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก',
+        inputValidator:function(v){ if(!v) return 'เลือกฟอร์ม'; } }).then(function(r){ if(r.isConfirmed) apply(r.value); });
+      } else { apply(av[0].k); }
+    },
+    /* ลบฟอร์มออกจากรายการ (เพิ่มกลับได้) */
+    delForm:function(fk){
+      var f=POOL.filter(function(x){return x.k===fk;})[0]; if(!f) return;
+      var go=function(){ setActive(activeKeys().filter(function(k){return k!==fk;}));
+        if(document.getElementById('fds-edit').style.display!=='none') edRender();
+        renderFormsBar(); render();
+      };
+      if(window.Swal){ Swal.fire({title:'ลบฟอร์ม?',text:'"'+f.label+'" จะถูกเอาออกจากรายการ (เพิ่มกลับได้)',icon:'warning',showCancelButton:true,confirmButtonColor:'#b3261e',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(function(r){ if(r.isConfirmed) go(); }); }
+      else if(confirm('ลบฟอร์ม "'+f.label+'"?')) go();
+    }
+  };
+
+  showList();
+  render();
+};
+window.disposeFormDisplaySettings = function(){ window.__fdsId=null; };
+</script>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คู่มือการใช้งาน — ระบบจัดการโปรโมชัน</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:var(--pc-black); color:#fff; padding:16px 22px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:30; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.08rem; margin:0; letter-spacing:.3px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .pr{ margin-left:auto; }
+  .pbtn{ border:0; background:rgba(255,255,255,.12); color:#fff; font-family:inherit; font-weight:600; font-size:.82rem; border-radius:9px; padding:8px 14px; cursor:pointer; }
+  .pbtn:hover{ background:rgba(255,255,255,.22); }
+
+  .layout{ max-width:1080px; margin:0 auto; padding:24px 20px 70px; display:grid; grid-template-columns:230px 1fr; gap:26px; align-items:start; }
+  @media(max-width:820px){ .layout{ grid-template-columns:1fr; } .toc{ position:static !important; } }
+  .toc{ position:sticky; top:78px; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .toc .tl{ font-size:.68rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin:2px 6px 8px; }
+  .toc a{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; text-decoration:none; color:#3a4150; font-weight:600; font-size:.88rem; }
+  .toc a:hover{ background:#f3f5f8; }
+  .toc a i{ width:18px; color:#9aa1aa; }
+
+  .intro{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 22px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .intro h2{ font-family:'Montserrat',sans-serif; font-size:1.2rem; margin:0 0 6px; }
+  .intro p{ color:#5a616b; font-size:.92rem; line-height:1.6; margin:0; }
+  .legend{ display:flex; gap:10px; margin-top:13px; flex-wrap:wrap; }
+  .badge{ font-size:.74rem; font-weight:700; border-radius:8px; padding:4px 11px; display:inline-flex; align-items:center; gap:6px; }
+  .b-real{ background:#eafaf1; color:#1d7a4d; } .b-demo{ background:#eaf4ee; color:#9a6700; }
+
+  .sec{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:0; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); overflow:hidden; scroll-margin-top:80px; }
+  .sec-hd{ display:flex; align-items:center; gap:14px; padding:17px 22px; border-bottom:1px solid #f1f4f7; }
+  .sec-hd .ic{ width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#fff; flex:none; }
+  .sec-hd .t{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.12rem; }
+  .sec-hd .w{ font-size:.84rem; color:#8a9099; margin-top:2px; }
+  .sec-bd{ padding:18px 22px 22px; }
+  .who{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .rl{ font-size:.74rem; font-weight:700; background:#f1f4f7; color:#5a616b; border-radius:7px; padding:3px 10px; }
+
+  ol.steps{ margin:0; padding:0; counter-reset:st; list-style:none; }
+  ol.steps li{ position:relative; padding:0 0 15px 42px; counter-increment:st; }
+  ol.steps li:before{ content:counter(st); position:absolute; left:0; top:-1px; width:28px; height:28px; border-radius:50%; background:var(--pc-yellow); color:#1a1d20; font-family:'Montserrat',sans-serif; font-weight:900; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
+  ol.steps li:after{ content:''; position:absolute; left:13.5px; top:30px; bottom:2px; width:2px; background:#eef1f4; }
+  ol.steps li:last-child{ padding-bottom:0; }
+  ol.steps li:last-child:after{ display:none; }
+  ol.steps b{ font-weight:600; }
+  ol.steps .d{ color:#5a616b; font-size:.9rem; line-height:1.55; }
+  .key{ font-family:'JetBrains Mono',monospace; font-size:.82rem; background:#f1f4f7; border-radius:5px; padding:1px 7px; }
+
+  .tip{ display:flex; gap:11px; background:#f3fbf6; border:1px solid #bfe6cf; border-radius:12px; padding:11px 14px; margin-top:14px; font-size:.88rem; color:#1d6b46; line-height:1.5; }
+  .tip i{ color:var(--pc-green); margin-top:2px; }
+  .warn{ background:#fff8ec; border-color:#f3d99a; color:#8a6400; }
+  .warn i{ color:#c9870a; }
+
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:24px; }
+  @media print{ .topbar,.toc,.pr{ display:none !important; } .layout{ grid-template-columns:1fr; padding:0; } body{ background:#fff; } .sec,.intro{ break-inside:avoid; box-shadow:none; } }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><i class="fas fa-book-open"></i>คู่มือการใช้งาน · ระบบจัดการโปรโมชัน</h1>
+    <div class="pr"><button class="pbtn" onclick="window.print()"><i class="fas fa-print me-1"></i>พิมพ์ / บันทึก PDF</button></div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc">
+      <div class="tl">หัวข้อ</div>
+      <a href="#notify"><i class="fas fa-bell"></i>ตั้งค่าแจ้งเตือน</a>
+      <a href="#calendar"><i class="fas fa-calendar-check"></i>แจ้งเตือนเข้าปฏิทิน</a>
+      <a href="#brand"><i class="fas fa-layer-group"></i>Brand Manager</a>
+      <a href="#card"><i class="fas fa-id-card"></i>บัตรสมาชิก</a>
+      <a href="#code"><i class="fas fa-barcode"></i>จัดการโค้ด</a>
+      <a href="#report"><i class="fas fa-headset"></i>แจ้งปัญหาสาขา</a>
+    </nav>
+
+    <div>
+      <div class="intro">
+        <h2>เริ่มต้นใช้งาน</h2>
+        <p>คู่มือนี้อธิบายการตั้งค่าแต่ละส่วนแบบทีละขั้น สำหรับผู้ที่ไม่คุ้นเคย · ทุกหน้าตั้งค่า <b>กดบันทึกเก็บในเครื่อง</b> และมีผลกับทั้งระบบ · ป้ายด้านล่างบอกว่าฟีเจอร์ไหน “ใช้ได้จริงแล้ว” หรือ “เป็นตัวอย่าง flow” (ต้องให้ IT เชื่อมระบบจริงก่อน)</p>
+        <div class="legend"><span class="badge b-real"><i class="fas fa-circle-check"></i>ใช้ได้จริง</span><span class="badge b-demo"><i class="fas fa-flask"></i>ตัวอย่าง · รอเชื่อมระบบจริง</span></div>
+      </div>
+
+      <div class="sec" id="notify">
+        <div class="sec-hd"><span class="ic" style="background:#2f5fb3"><i class="fas fa-bell"></i></span><div><div class="t">ตั้งค่าการแจ้งเตือน</div><div class="w">เลือกว่าแต่ละเหตุการณ์จะแจ้งไปทางไหน + กลุ่มไหน</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">สำหรับ: Admin / IT</span><span class="badge b-demo"><i class="fas fa-flask"></i>ตัวอย่าง (ยังไม่ยิงเมล/LINE จริง)</span></div>
+          <ol class="steps">
+            <li><b>ดูตารางเหตุการณ์</b><div class="d">แต่ละแถวคือ 1 เหตุการณ์ในระบบ (เช่น แจ้งเพิ่มโค้ด, โค้ดใช้ไม่ได้ที่ POS)</div></li>
+            <li><b>เลือกช่องทาง</b><div class="d">กดปุ่ม <span class="key">Email</span> / <span class="key">Team Chat</span> / <span class="key">LINE</span> ให้ติด (เลือกได้หลายอัน)</div></li>
+            <li><b>เลือกกลุ่มปลายทาง</b><div class="d">พอเปิด Team Chat/LINE จะมีชิปให้เลือกว่าจะส่งเข้า “กลุ่มไหน” — กดเลือกได้หลายกลุ่ม หรือกด <span class="key">+ เพิ่มกลุ่ม</span> สร้างใหม่</div></li>
+            <li><b>เพิ่มคนที่จะถูก @mention</b><div class="d">เลื่อนลงไปการ์ด “แผนก” → กด “เพิ่มสมาชิก” ใส่ชื่อ+อีเมล (คนกลุ่มนี้คือผู้รับเมล + ถูก mention)</div></li>
+            <li><b>กดบันทึก</b><div class="d">ปุ่มเขียวด้านล่าง</div></li>
+          </ol>
+          <div class="tip"><i class="fas fa-lightbulb"></i>อยากส่งเข้าอีเมลเดียว (ไม่ใช่ทั้งทีม)? ใช้ช่อง “ส่งเฉพาะอีเมลนี้” ในแถวเหตุการณ์นั้น</div>
+        </div>
+      </div>
+
+      <div class="sec" id="calendar">
+        <div class="sec-hd"><span class="ic" style="background:#0a7d3c"><i class="fas fa-calendar-check"></i></span><div><div class="t">แจ้งเตือนเข้าปฏิทิน (Outlook / Google)</div><div class="w">ส่งวันสำคัญเข้าปฏิทินพร้อมเตือนล่วงหน้า</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">สำหรับ: ทุกคน / IT</span><span class="badge b-real"><i class="fas fa-circle-check"></i>ICS + Google = ใช้ได้จริง</span><span class="badge b-demo"><i class="fas fa-flask"></i>เชื่อม M365/Google อัตโนมัติ = ตัวอย่าง</span></div>
+          <ol class="steps">
+            <li><b>เปิดสวิตช์</b> “เปิดแจ้งเตือนเข้าปฏิทิน” ด้านบน</li>
+            <li><b>เลือกวิธี</b><div class="d"><b>ICS (.ics)</b> = ใช้ได้ทุกอีเมล โหลดไฟล์เปิดเอง · <b>Microsoft 365 / Google Workspace</b> = ลงปฏิทินอัตโนมัติ เฉพาะอีเมลบริษัท (ต้องให้ IT กดเชื่อมก่อน)</div></li>
+            <li><b>เลือกเหตุการณ์ + สี</b><div class="d">เปิด/ปิดแต่ละอย่าง (โปรเริ่ม/หมด, โค้ดหมดอายุ ฯลฯ) และกดช่องสีเพื่อเลือกสีในปฏิทิน</div></li>
+            <li><b>ตั้งเตือนล่วงหน้า</b><div class="d">กดชิป 7/3/1 วัน (เลือกได้หลายช่วง) + เลือกเวลาที่เตือน</div></li>
+            <li><b>ทดสอบ</b><div class="d">กด “โหลด .ics” แล้วเปิดด้วย Outlook หรือ “เพิ่มเข้า Google Calendar” — จะเห็นนัดจริงพร้อมเตือน</div></li>
+          </ol>
+          <div class="tip warn"><i class="fas fa-triangle-exclamation"></i>โหมดอัตโนมัติ (M365/Google) ในตัวอย่างจะขึ้น “เชื่อมต่อแล้ว” แต่ยังไม่ยิงจริง จนกว่า IT จะลงทะเบียนแอป + ขอสิทธิ์ปฏิทิน</div>
+        </div>
+      </div>
+
+      <div class="sec" id="brand">
+        <div class="sec-hd"><span class="ic" style="background:#1a1d20"><i class="fas fa-layer-group"></i></span><div><div class="t">Brand Manager (หลายแบรนด์)</div><div class="w">เพิ่มแบรนด์ · ธีม/โลโก้ · เปิด-ปิดโมดูล</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">สำหรับ: Admin</span><span class="badge b-real"><i class="fas fa-circle-check"></i>ตั้งค่า/สลับแบรนด์ = ใช้ได้จริง</span></div>
+          <ol class="steps">
+            <li><b>เลือกแบรนด์</b> จากรายการซ้าย เพื่อแก้ไข</li>
+            <li><b>ตั้งชื่อ/โดเมน/สีธีม</b><div class="d">หรือ <b>อัปโหลดภาพแบรนด์</b> ระบบจะดึงสีเด่นมาตั้งธีมให้อัตโนมัติ</div></li>
+            <li><b>เปิด-ปิดโมดูล</b><div class="d">สวิตช์รายโมดูล — แบรนด์ไหนไม่ใช้ก็ปิด (เมนูจะซ่อนให้)</div></li>
+            <li><b>กด “ใช้แบรนด์นี้”</b><div class="d">สลับมุมมองทั้งระบบไปแบรนด์นั้น (ข้อมูลแยกกันแต่ละแบรนด์)</div></li>
+            <li><b>เพิ่มแบรนด์ใหม่</b> ปุ่ม “Add New” ด้านล่างรายการ</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="sec" id="card">
+        <div class="sec-hd"><span class="ic" style="background:#b8860b"><i class="fas fa-id-card"></i></span><div><div class="t">บัตรสมาชิก (Member Card Master)</div><div class="w">สร้างบัตร + สิทธิ์/ส่วนลด + ออกโค้ดบัตร</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">สำหรับ: MKT</span><span class="badge b-real"><i class="fas fa-circle-check"></i>สร้าง/Import/Template = ใช้ได้จริง</span></div>
+          <ol class="steps">
+            <li><b>เพิ่มบัตรใหม่</b><div class="d">กด “Add New Member Master” → เลือก <b>เพิ่มเอง</b> (กรอกชื่อ/ระดับ/ส่วนลด/สิทธิ์) หรือ <b>Import</b> (วางจาก Excel) หรือ <b>โหลด Template</b> ก่อน</div></li>
+            <li><b>กรอกสิทธิ์</b><div class="d">พิมพ์ 1 บรรทัด = 1 สิทธิ์ (เช่น ส่วนลด 10%, ฟรี Upsize)</div></li>
+            <li><b>แจ้งเพิ่มโค้ดบัตร</b><div class="d">บนการ์ดบัตร กด “แจ้งเพิ่มโค้ดบัตร” → ใส่จำนวน → ส่งเข้าคิวงานโค้ดให้ IT</div></li>
+          </ol>
+          <div class="tip"><i class="fas fa-lightbulb"></i>Import: คัดลอกจาก Excel วางได้เลย ตามหัว Template (ชื่อ, tier, ส่วนลด, prefix, สิทธิ์, เริ่ม, สิ้นสุด)</div>
+        </div>
+      </div>
+
+      <div class="sec" id="code">
+        <div class="sec-hd"><span class="ic" style="background:#c9870a"><i class="fas fa-barcode"></i></span><div><div class="t">จัดการโค้ดโปรโมชัน</div><div class="w">MKT แจ้งเพิ่ม/ลบ · IT อัป Backoffice · สาขาตรวจสอบ</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">MKT / IT / สาขา</span><span class="badge b-real"><i class="fas fa-circle-check"></i>ใช้ได้จริง (ตรวจไฟล์/ออกไฟล์)</span></div>
+          <ol class="steps">
+            <li><b>MKT แจ้งเพิ่มโค้ด</b><div class="d">เลือกแคมเปญ/ปุ่ม → แนบไฟล์โค้ด → ระบบตรวจซ้ำ/format ให้ (ซ้ำ/ผิดถูกตัดออก สรุปจำนวนที่เข้า) → ยืนยัน</div></li>
+            <li><b>IT คิวงานโค้ด</b><div class="d">คัดลอก <b>Code Promotion</b> ไปค้นใน CMPOS · โหลดไฟล์ ProID/ProStatus/ProExpire ไปอัป Backoffice → กด “ยืนยัน+แจ้งเตือน”</div></li>
+            <li><b>สาขาตรวจสอบโค้ด</b><div class="d">กรอกโค้ดจากลูกค้า → เจอ/ไม่เจอ → ถ้าใช้ไม่ได้ที่ POS กด “แจ้ง IT”</div></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="sec" id="report">
+        <div class="sec-hd"><span class="ic" style="background:#c0392b"><i class="fas fa-headset"></i></span><div><div class="t">แจ้งปัญหาสาขา + ตามงานด่วน</div><div class="w">สาขาแจ้ง → IT ตอบกลับ → สาขาปิดงาน</div></div></div>
+        <div class="sec-bd">
+          <div class="who"><span class="rl">สาขา / IT</span><span class="badge b-real"><i class="fas fa-circle-check"></i>ครบลูป</span></div>
+          <ol class="steps">
+            <li><b>สาขาเปิด Ticket</b><div class="d">เลือกปัญหา + ใส่รายละเอียด → ยืนยันตัวตน (ตามที่ตั้งใน Report Settings) → ส่ง</div></li>
+            <li><b>ติดตามใน Branch Tickets</b><div class="d">เห็นสถานะ + คำตอบจาก IT · มี <b>SLA 1-4 ชม.</b> และปุ่ม <b>“ตามงานด่วน”</b> (ยืนยันตัวตน + ใส่เหตุผล)</div></li>
+            <li><b>IT ตอบกลับ</b><div class="d">หน้า Code Management แท็บ “แจ้งจากสาขา” → กดเลือก <b>คำตอบสำเร็จรูป</b> หรือพิมพ์เอง → แจ้งกลับสาขา</div></li>
+            <li><b>สาขาปิดงาน</b><div class="d">เมื่อแก้แล้ว กด “ยืนยันแก้แล้ว ปิดเรื่อง” (ถ้า IT รับเรื่องแล้ว สาขายกเลิกไม่ได้)</div></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="demo-note">— คู่มือนี้เป็นเอกสารตัวอย่าง · กด “พิมพ์ / บันทึก PDF” เพื่อแจกทีมได้ —</div>
+    </div>
+  </div>
+</body>
+</html>

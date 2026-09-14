@@ -1,0 +1,198 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าปุ่มแจ้งปัญหา</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --mail:#c9870a; --chat:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1040px; margin:0 auto; padding:22px 18px 120px; }
+
+  .bv-head{ background:#2e934a; color:#fff; border-radius:18px; padding:20px 24px; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.3rem; font-weight:700; margin:0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .bv-head .sub{ opacity:.72; font-size:.9rem; margin-top:5px; }
+
+  .bar{ display:flex; align-items:center; gap:10px; margin:22px 2px 12px; }
+  .bar .lbl{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; flex:1; }
+  .btn-add{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:10px 18px; font-family:inherit; font-weight:700; font-size:.92rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-add:hover{ background:#00632f; }
+  .btn-reset{ background:#fff; color:#6b7280; border:1.5px solid #d8dde2; border-radius:12px; padding:10px 14px; font-family:inherit; font-weight:600; font-size:.88rem; cursor:pointer; }
+  .btn-reset:hover{ border-color:#b6bcc4; }
+
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); overflow:hidden; }
+  .rowhead, .row{ display:grid; grid-template-columns:1fr 230px 250px 70px; gap:14px; align-items:center; }
+  .rowhead{ padding:11px 18px; background:#f6f8fa; border-bottom:2px solid #e7eaee; font-size:.7rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; }
+  .row{ padding:13px 18px; border-bottom:1px solid #eef1f4; }
+  .row:last-child{ border-bottom:0; }
+  .row:hover{ background:#f9fafb; }
+  .btn-info{ display:flex; align-items:center; gap:12px; }
+  .btn-ic{ width:40px; height:40px; border-radius:11px; background:#f1f4f7; color:#6b7280; display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex:none; }
+  .btn-nm{ font-weight:600; font-size:.98rem; }
+  .det-badge{ font-size:.68rem; font-weight:700; border-radius:6px; padding:2px 7px; margin-top:3px; display:inline-block; }
+  .det-badge.flavors{ background:#fff8ec; color:#9a6700; }
+  .det-badge.platform{ background:#eef4ff; color:#2f5fb3; }
+  .det-badge.none{ background:#f1f4f7; color:#9aa1aa; }
+
+  .dept-chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .dchip{ border:1.5px solid #d8dde2; background:#fff; color:#6b7280; border-radius:8px; padding:5px 9px; font-family:inherit; font-weight:700; font-size:.76rem; cursor:pointer; }
+  .dchip:hover{ border-color:#b6bcc4; }
+  .dchip.on{ background:var(--pc-green); color:#fff; border-color:var(--pc-green); }
+  .seg{ display:flex; background:#f1f4f7; border-radius:11px; padding:4px; gap:3px; }
+  .seg button{ flex:1; border:0; background:transparent; border-radius:8px; padding:7px 4px; font-family:inherit; font-weight:600; font-size:.76rem; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }
+  .seg button.on[data-ch="email"]{ background:#fff; color:var(--mail); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on[data-ch="chat"]{ background:#fff; color:var(--chat); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on[data-ch="line"]{ background:#fff; color:#06c755; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .row-act{ display:flex; gap:6px; justify-content:flex-end; }
+  .rowbtn{ width:34px; height:34px; border:0; border-radius:9px; cursor:pointer; font-size:.85rem; }
+  .rowbtn.edit{ background:#eaf4ee; color:#9a6700; } .rowbtn.edit:hover{ background:#ffe9c4; }
+  .rowbtn.del{ background:#fdecec; color:#c0392b; } .rowbtn.del:hover{ background:#fbd9d9; }
+
+  .savebar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:14px 18px; box-shadow:0 -4px 20px rgba(0,0,0,.06); z-index:30; }
+  .savebar .inner{ max-width:1040px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .savebar .cur{ font-size:.86rem; color:#6b7280; }
+  .btn-save{ background:var(--pc-green); color:#fff; border:0; border-radius:13px; padding:13px 26px; font-weight:700; font-size:1.02rem; cursor:pointer; }
+  .btn-save:hover{ background:#00632f; }
+  /* savebar: strip removed — float just the button */
+  .savebar{ background:transparent!important; border-top:none!important; box-shadow:none!important; padding:0!important; pointer-events:none!important; backdrop-filter:none!important; }
+  .savebar .inner{ justify-content:flex-end!important; pointer-events:none!important; }
+  .savebar .inner > div{ display:none!important; }
+  .savebar .btn-save{ pointer-events:auto!important; margin:14px 18px!important; box-shadow:0 6px 20px rgba(0,0,0,.22)!important; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:28px; }
+  .icon-grid{ display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:6px; }
+  .icon-grid button{ aspect-ratio:1; border:1.5px solid #e2e6ea; background:#fff; border-radius:9px; cursor:pointer; font-size:1rem; color:#5a616b; }
+  .icon-grid button.on{ border-color:var(--pc-green); background:#f3fbf6; color:var(--pc-green); }
+  @media(max-width:780px){ .rowhead,.row{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <h1><i class="fas fa-bars-staggered"></i>ตั้งค่าปุ่มแจ้งปัญหา</h1>
+    <div class="sub">เพิ่ม/แก้ไขปุ่มที่สาขาเลือกตอนแจ้งปัญหา และตั้งว่าแต่ละปุ่มจะส่ง Ticket ไปส่วนงาน (แผนก) ไหน + ช่องทางแจ้งเตือนใด</div>
+  </div>
+
+  <div class="bar">
+    <span class="lbl">รายการปุ่มแจ้งปัญหา</span>
+    <button class="btn-reset" onclick="resetDefault()"><i class="fas fa-rotate-left me-1"></i>คืนค่าเริ่มต้น</button>
+    <button class="btn-add" onclick="openForm()"><i class="fas fa-plus"></i>เพิ่มปุ่มแจ้งปัญหา</button>
+  </div>
+
+  <div class="card">
+    <div class="rowhead"><div>ปุ่มแจ้งปัญหา</div><div>ส่ง Ticket ไปแผนก</div><div>ช่องทางแจ้งเตือน</div><div></div></div>
+    <div id="rows"></div>
+  </div>
+
+  <div class="demo-note">— การตั้งค่านี้มีผลจริง: ปุ่มที่เพิ่ม/แก้ + แผนกปลายทาง + ช่องทางแจ้งเตือน ใช้กับหน้าแจ้งปัญหาสาขา (สร้าง Ticket + route จริง) · บันทึกในระบบ + ซิงค์ทุกเครื่อง —</div>
+</div>
+
+<div class="savebar">
+  <div class="inner">
+    <div class="cur"><i class="fas fa-circle-info me-1" style="color:#aab0b8"></i> ปุ่มที่เพิ่ม + ปลายทางแผนก จะมีผลกับหน้าแจ้งปัญหาทันทีหลังบันทึก</div>
+    <button class="btn-save" onclick="save()"><i class="fas fa-check me-1"></i>บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<script>
+const KEY='pc_issue_buttons';
+const ICONS=['fa-eye-slash','fa-trash-can','fa-mortar-pestle','fa-list-check','fa-hashtag','fa-spoon','fa-receipt','fa-tag','fa-percent','fa-motorcycle','fa-circle-exclamation','fa-bug','fa-triangle-exclamation','fa-clock','fa-money-bill','fa-bell','fa-image','fa-language','fa-barcode','fa-gift','fa-temperature-half','fa-box','fa-utensils','fa-store'];
+const DETAILS=[['','— ไม่มีช่องเพิ่ม —'],['flavors','ระบุผง/รสชาติ (ผูก Subset)'],['platform','ราคาแพลตฟอร์มเดลิเวอรี']];
+const DEFAULT=[
+  {k:'NO_BTN',     label:'ปุ่มโปรไม่ขึ้นบน POS',  icon:'fa-eye-slash', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'REMOVE',     label:'ขอนำปุ่มออกจาก POS',   icon:'fa-trash-can', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'NO_FLAVOR_BTN', label:'ไม่มีปุ่มผงรสชาติ',  icon:'fa-mortar-pestle', detail:'flavors', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_OPT', label:'ปุ่มตัวเลือกผงไม่ถูกต้อง', icon:'fa-list-check', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_QTY', label:'จำนวนผงไม่ถูกต้อง',      icon:'fa-hashtag', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_ABBR',label:'ชื่อย่อผงไม่ถูกต้อง',    icon:'fa-spoon', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'KITCHEN',    label:'ชื่อย่อบิลครัวไม่ถูกต้อง', icon:'fa-receipt', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_FULL', label:'ราคาเต็มไม่ถูกต้อง',     icon:'fa-tag', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_DISC', label:'ราคาส่วนลดผิด',         icon:'fa-percent', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_PLATFORM', label:'ราคาแอปเดลิเวอรีไม่ตรง', icon:'fa-motorcycle', detail:'platform', depts:['marketing'], channels:{email:false,chat:true,line:false}},
+  {k:'NO_DISC',    label:'กดแล้วไม่ลดราคา',       icon:'fa-circle-exclamation', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+];
+const DEFAULT_DEPTS={ it:{label:'Information Technology',short:'IT'}, marketing:{label:'Marketing',short:'MKT'}, operation:{label:'Operation',short:'OP'}, npd:{label:'NPD / R&D',short:'NPD'}, account:{label:'Accounting',short:'ACC'} };
+function depts(){ try{ const s=JSON.parse(localStorage.getItem('pc_notify_settings')); if(s&&s.depts) return s.depts; }catch(e){} return DEFAULT_DEPTS; }
+function load(){ try{ const a=JSON.parse(localStorage.getItem(KEY)); if(Array.isArray(a)&&a.length) return a; }catch(e){} return JSON.parse(JSON.stringify(DEFAULT)); }
+let CFG=load();
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function render(){
+  const D=depts();
+  document.getElementById('rows').innerHTML = CFG.map((b,i)=>{
+    const detClass=b.detail||'none'; const detLabel=(DETAILS.find(d=>d[0]===(b.detail||''))||['',''])[1];
+    const chips=Object.keys(D).map(dk=>`<button class="dchip ${(b.depts||[]).includes(dk)?'on':''}" title="${esc(D[dk].label)}" onclick="toggleDept(${i},'${dk}')">${esc(D[dk].short||D[dk].label)}</button>`).join('');
+    const seg=[['email','fas fa-envelope','Email'],['chat','fas fa-comments','Team Chat'],['line','fab fa-line','LINE']]
+      .map(([c,ic,lb])=>`<button data-ch="${c}" class="${(b.channels&&b.channels[c])?'on':''}" onclick="toggleCh(${i},'${c}')"><i class="${ic}"></i>${lb}</button>`).join('');
+    return `<div class="row">
+      <div class="btn-info">
+        <span class="btn-ic"><i class="fas ${b.icon||'fa-bug'}"></i></span>
+        <div><div class="btn-nm">${esc(b.label)}</div><span class="det-badge ${detClass}">${b.detail?detLabel:'ปุ่มทั่วไป'}</span></div>
+      </div>
+      <div class="dept-chips">${chips}</div>
+      <div class="seg">${seg}</div>
+      <div class="row-act">
+        <button class="rowbtn edit" title="แก้ไข" onclick="openForm(${i})"><i class="fas fa-pen"></i></button>
+        <button class="rowbtn del" title="ลบ" onclick="del(${i})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleDept(i,dk){ const a=CFG[i].depts||(CFG[i].depts=[]); const j=a.indexOf(dk); if(j>=0) a.splice(j,1); else a.push(dk); render(); }
+function toggleCh(i,c){ const ch=CFG[i].channels||(CFG[i].channels={email:false,chat:false,line:false}); ch[c]=!ch[c]; render(); }
+function del(i){ Swal.fire({icon:'warning',title:'ลบปุ่มนี้?',html:`<b>${esc(CFG[i].label)}</b>`,showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(r=>{ if(r.isConfirmed){ CFG.splice(i,1); render(); } }); }
+function resetDefault(){ Swal.fire({icon:'warning',title:'คืนค่าเริ่มต้น?',text:'ปุ่มแจ้งปัญหาจะกลับเป็นชุดมาตรฐาน',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'คืนค่า',cancelButtonText:'ยกเลิก'}).then(r=>{ if(r.isConfirmed){ CFG=JSON.parse(JSON.stringify(DEFAULT)); render(); } }); }
+
+let pickedIcon='fa-bug';
+function iconGrid(sel){ pickedIcon=sel||'fa-bug'; return `<div class="icon-grid" id="icGrid">${ICONS.map(ic=>`<button type="button" class="${ic===pickedIcon?'on':''}" onclick="pickIcon('${ic}')"><i class="fas ${ic}"></i></button>`).join('')}</div>`; }
+function pickIcon(ic){ pickedIcon=ic; document.querySelectorAll('#icGrid button').forEach(b=>b.classList.toggle('on', b.querySelector('i').classList.contains(ic))); }
+function openForm(i){
+  const editing=(i!==undefined); const b=editing?CFG[i]:{label:'',icon:'fa-bug',detail:''};
+  const detOpts=DETAILS.map(d=>`<option value="${d[0]}" ${ (b.detail||'')===d[0]?'selected':''}>${d[1]}</option>`).join('');
+  Swal.fire({
+    title: editing?'แก้ไขปุ่มแจ้งปัญหา':'เพิ่มปุ่มแจ้งปัญหา', width:520,
+    html:`<div style="text-align:left;font-size:14px">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อปุ่ม (สิ่งที่สาขาเห็น) <span style="color:#c0392b">*</span></label>
+      <input id="fLabel" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น สติกเกอร์โปรไม่ถูก" value="${esc(b.label)}">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ช่องกรอกรายละเอียดพิเศษ</label>
+      <select id="fDetail" class="swal2-select" style="margin:0 0 12px;width:100%">${detOpts}</select>
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ไอคอน</label>
+      ${iconGrid(b.icon)}
+    </div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText: editing?'บันทึก':'เพิ่ม', cancelButtonText:'ยกเลิก',
+    didOpen:()=>{ pickedIcon=b.icon||'fa-bug'; },
+    preConfirm:()=>{ const label=(document.getElementById('fLabel').value||'').trim(); const detail=document.getElementById('fDetail').value; if(!label){ Swal.showValidationMessage('กรอกชื่อปุ่ม'); return false; } return {label,detail,icon:pickedIcon}; }
+  }).then(r=>{
+    if(!r.isConfirmed) return;
+    if(editing){ CFG[i].label=r.value.label; CFG[i].detail=r.value.detail; CFG[i].icon=r.value.icon; }
+    else { CFG.push({ k:'CUSTOM_'+Date.now().toString(36).toUpperCase(), label:r.value.label, icon:r.value.icon, detail:r.value.detail, depts:['it'], channels:{email:true,chat:false,line:false} }); }
+    render();
+  });
+}
+function save(){
+  // ensure each button has at least one dept + one channel
+  CFG.forEach(b=>{ if(!b.depts||!b.depts.length) b.depts=['it']; const ch=b.channels||(b.channels={email:false,chat:false,line:false}); if(!ch.email&&!ch.chat&&!ch.line) ch.email=true; });
+  localStorage.setItem(KEY, JSON.stringify(CFG));
+  Swal.fire({icon:'success',title:'บันทึกแล้ว',html:'ปุ่มแจ้งปัญหา + ปลายทางแผนกถูกบันทึก — ใช้กับหน้าแจ้งปัญหาสาขาทันที',confirmButtonColor:'#2e934a',confirmButtonText:'ตกลง'});
+}
+render();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

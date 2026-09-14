@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าสิทธิ์เข้าใช้งาน — เลขสติ๊กเกอร์สรรพากร</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:60px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:#2e934a; color:#fff; padding:13px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:30; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.04rem; margin:0; display:flex; align-items:center; gap:9px; }
+  .topbar h1 i{ color:var(--pc-yellow); }
+  .topbar .sub{ font-size:.72rem; color:#aab0b8; font-weight:400; margin-top:2px; }
+  .back{ margin-left:auto; border:0; background:rgba(255,255,255,.12); color:#fff; font-family:inherit; font-weight:600; font-size:.85rem; border-radius:10px; padding:9px 14px; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:7px; }
+  .back:hover{ background:rgba(255,255,255,.22); }
+
+  .wrap{ max-width:920px; margin:0 auto; padding:18px 16px 0; }
+  .seg{ display:flex; gap:8px; background:#f1f4f7; border-radius:12px; padding:5px; margin-bottom:18px; }
+  .seg button{ flex:1; border:0; background:transparent; font-family:inherit; font-weight:600; font-size:.92rem; color:#5a616b; border-radius:9px; padding:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .seg button.on{ background:#fff; color:var(--pc-black); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:18px; }
+  .card h2{ font-size:1.04rem; font-weight:700; margin:0 0 3px; display:flex; align-items:center; gap:9px; }
+  .card h2 i{ color:var(--pc-green); }
+  .card .sub{ color:#8a9099; font-size:.85rem; margin:0 0 15px; line-height:1.45; }
+
+  .note{ background:#f3fbf6; border:1px solid #bfe6cf; border-radius:12px; padding:13px 16px; font-size:.85rem; color:#1d6b45; line-height:1.55; margin-bottom:16px; }
+  .note b{ color:#0c5733; } .note i{ color:var(--pc-green); margin-right:6px; }
+
+  .fld{ margin-bottom:14px; }
+  .fld label{ display:block; font-size:.82rem; font-weight:600; color:#5a616b; margin-bottom:6px; }
+  .inp, select.inp{ width:100%; border:1.6px solid #dde2e7; border-radius:11px; padding:10px 13px; font-family:inherit; font-size:.93rem; background:#fff; }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:13px; }
+
+  .btn{ border:0; border-radius:12px; font-family:inherit; font-weight:700; font-size:.95rem; padding:12px 20px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-d{ background:var(--pc-black); color:#fff; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-y{ background:var(--pc-yellow); color:#1a1d20; } .btn-r{ background:#c0392b; color:#fff; }
+  .btn-sm{ padding:8px 13px; font-size:.83rem; border-radius:9px; }
+
+  table.t{ width:100%; border-collapse:collapse; font-size:.86rem; }
+  table.t th{ text-align:left; font-size:.7rem; color:#8a9099; font-weight:700; padding:8px 10px; border-bottom:2px solid #eef1f4; text-transform:uppercase; letter-spacing:.4px; }
+  table.t td{ padding:9px 10px; border-bottom:1px solid #f1f4f7; vertical-align:middle; }
+  .prov{ display:inline-flex; align-items:center; gap:6px; font-size:.78rem; font-weight:600; }
+  .prov i{ font-size:.9rem; }
+  .scope{ font-size:.74rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:3px 9px; display:inline-block; }
+  .rolechip{ font-size:.7rem; font-weight:700; border-radius:6px; padding:2px 8px; }
+  .r-HO{ background:#eef4ff; color:#2c4a82; } .r-IT{ background:#f3ecff; color:#6b3fa0; }
+  .r-BD{ background:#eaf4ee; color:#9a6700; } .r-FRC{ background:#eafaf1; color:#1d7a4d; }
+  .xbtn{ border:0; background:#fdecea; color:#c0392b; width:30px; height:30px; border-radius:8px; cursor:pointer; }
+
+  .linkcard{ border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; margin-bottom:12px; }
+  .linkcard.revoked{ opacity:.55; }
+  .linkcard .lt{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .linkcard .lb{ font-weight:700; font-size:.98rem; }
+  .lstat{ font-size:.7rem; font-weight:700; border-radius:999px; padding:3px 10px; margin-left:auto; }
+  .lstat.active{ background:#eafaf1; color:#1d7a4d; } .lstat.revoked{ background:#fdecea; color:#c0392b; }
+  .lurl{ display:flex; gap:8px; align-items:center; margin-top:11px; background:#f6f8fa; border:1px solid #e7eaee; border-radius:10px; padding:8px 11px; }
+  .lurl code{ font-family:'JetBrains Mono',monospace; font-size:.76rem; color:#3a4150; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lmeta{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+  .mtag{ font-size:.76rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:3px 10px; display:inline-flex; align-items:center; gap:6px; } .mtag i{ color:#9aa1aa; }
+
+  .ov{ position:fixed; inset:0; background:rgba(20,22,25,.55); display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  .ov.on{ display:flex; }
+  .modal{ background:#fff; border-radius:18px; width:520px; max-width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+  .mhead{ padding:15px 20px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; }
+  .mhead h3{ margin:0; font-size:1.04rem; font-weight:700; } .mhead h3 i{ color:var(--pc-green); margin-right:7px; }
+  .mhead .x{ margin-left:auto; border:0; background:#f1f4f7; width:34px; height:34px; border-radius:9px; cursor:pointer; }
+  .mbody{ padding:16px 20px; overflow:auto; }
+  .mfoot{ padding:14px 20px; border-top:1px solid #eef1f4; display:flex; gap:10px; }
+  .email-prev{ border:1px solid #e7eaee; border-radius:12px; overflow:hidden; }
+  .email-prev .eh{ background:#f6f8fa; padding:11px 14px; font-size:.8rem; color:#5a616b; border-bottom:1px solid #eef1f4; }
+  .email-prev .eb{ padding:16px; font-size:.88rem; line-height:1.6; }
+  .email-prev .ebtn{ display:inline-block; background:var(--pc-green); color:#fff; text-decoration:none; padding:10px 20px; border-radius:10px; font-weight:700; margin:8px 0; }
+  .blist{ border:1px solid #eef1f4; border-radius:12px; overflow:auto; max-height:320px; }
+  .brow{ display:flex; align-items:center; gap:11px; padding:9px 13px; border-bottom:1px solid #f4f6f9; cursor:pointer; }
+  .brow:hover{ background:#fafbfc; } .brow.sel{ background:#f3fbf6; }
+  .brow input{ width:17px; height:17px; }
+  .brow .nm{ font-weight:600; font-size:.9rem; } .brow .meta{ font-size:.72rem; color:#8a9099; }
+  .brow .cc{ margin-left:auto; font-size:.68rem; color:#8a9099; background:#f1f4f7; border-radius:6px; padding:2px 8px; }
+  .scopebox{ display:flex; flex-direction:column; gap:6px; }
+  .scopebox .empty2{ font-size:.8rem; color:#9aa1aa; border:2px dashed #dde2e7; border-radius:10px; padding:11px; text-align:center; }
+  .scoperow{ display:flex; align-items:center; gap:9px; background:#f6f8fa; border:1px solid #e7eaee; border-radius:9px; padding:7px 11px; font-size:.85rem; }
+  .scoperow .sid{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#8a9099; }
+  .scoperow .rm{ margin-left:auto; border:0; background:transparent; color:#c0392b; cursor:pointer; font-size:.9rem; }
+  .edbtn{ border:0; background:#eef4ff; color:#2c4a82; width:30px; height:30px; border-radius:8px; cursor:pointer; margin-right:5px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <h1><i class="fas fa-shield-halved"></i> ตั้งค่าสิทธิ์เข้าใช้งาน</h1>
+    <div class="sub">เลขสติ๊กเกอร์สรรพากร · การล็อกอินด้วยเมล + ลิงก์เฉพาะสาขา (BD → FRC)</div>
+  </div>
+  <a class="back" href="RD Sticker Management.html"><i class="fas fa-arrow-left"></i> กลับหน้าแจ้งเพิ่มเลข</a>
+</div>
+
+<div class="wrap">
+  <div class="seg">
+    <button class="on" data-tab="login" onclick="setTab('login')"><i class="fas fa-right-to-bracket"></i> ล็อกอินด้วยเมล</button>
+    <button data-tab="link" onclick="setTab('link')"><i class="fas fa-link"></i> ลิงก์เฉพาะสาขา (FRC)</button>
+    <button data-tab="tpl" onclick="setTab('tpl')"><i class="fas fa-envelope-open-text"></i> เทมเพลต FRC + สิทธิ์</button>
+    <button data-tab="cancel" onclick="setTab('cancel')"><i class="fas fa-rotate"></i> แจ้งยกเลิก/จดใหม่</button>
+  </div>
+  <div id="body"></div>
+</div>
+
+<!-- email allow modal -->
+<div class="ov" id="ovEmail"><div class="modal">
+  <div class="mhead"><h3><i class="fas fa-user-plus"></i> เพิ่มผู้มีสิทธิ์ล็อกอิน</h3><button class="x" onclick="close_('ovEmail')">✕</button></div>
+  <div class="mbody">
+    <div class="grid2">
+      <div class="fld"><label>ชื่อผู้ใช้</label><input class="inp" id="eName" placeholder="เช่น คุณสมชาย"></div>
+      <div class="fld"><label>ผู้ให้บริการเมล</label><select class="inp" id="eProv">
+        <option value="corporate">Corporate (@potatocornerth.com)</option>
+        <option value="google">Google / Gmail</option>
+        <option value="microsoft">Microsoft / Outlook</option></select></div>
+    </div>
+    <div class="fld"><label>อีเมล</label><input class="inp" id="eEmail" placeholder="name@example.com"></div>
+    <div class="grid2">
+      <div class="fld"><label>บทบาท</label><select class="inp" id="eRole" onchange="eScopeToggle()">
+        <option value="HO">HO — ผู้แจ้ง (ส่วนกลาง)</option>
+        <option value="IT">IT — ลงเลข POS</option>
+        <option value="BD">BD — ดูแลแฟรนไชส์</option>
+        <option value="FRC">FRC — แฟรนไชส์ (เห็นเฉพาะสาขา)</option></select></div>
+      <div class="fld"><label>ขอบเขตการมองเห็น</label><select class="inp" id="eScopeMode" onchange="eScopeToggle()">
+        <option value="all">ทุกสาขา</option>
+        <option value="company">ตามบริษัท</option>
+        <option value="branch">เฉพาะสาขาที่กำหนด</option></select></div>
+    </div>
+    <div class="fld" id="eScopeWrap" style="display:none"><label id="eScopeLbl">สาขาที่เลือก</label>
+      <div id="eScopeBox" class="scopebox"></div>
+      <button type="button" class="btn btn-o btn-sm" style="margin-top:9px" onclick="openScope('e')"><i class="fas fa-plus"></i> <span id="eScopeBtn">เลือกสาขา</span></button></div>
+  </div>
+  <div class="mfoot"><button class="btn btn-o btn-sm" style="margin-left:auto" onclick="close_('ovEmail')">ยกเลิก</button>
+    <button class="btn btn-g btn-sm" onclick="saveEmail()"><i class="fas fa-check"></i> บันทึก</button></div>
+</div></div>
+
+<!-- gen link modal -->
+<div class="ov" id="ovLink"><div class="modal">
+  <div class="mhead"><h3><i class="fas fa-link"></i> สร้างลิงก์เฉพาะสาขา (FRC)</h3><button class="x" onclick="close_('ovLink')">✕</button></div>
+  <div class="mbody">
+    <div class="note" style="margin-bottom:14px"><i class="fas fa-circle-info"></i> ลิงก์นี้ให้ FRC <b>กดแจ้งเพิ่มเลขได้โดยไม่ต้องล็อกอิน</b> และเห็นเฉพาะสาขาที่กำหนด ระบบจะส่งอีเมลให้ FRC อัตโนมัติ</div>
+    <div class="fld"><label>ป้ายกำกับลิงก์</label><input class="inp" id="lLabel" placeholder="เช่น FRC พัทยา (PC1029)"></div>
+    <div class="grid2">
+      <div class="fld"><label>ขอบเขต</label><select class="inp" id="lScopeMode" onchange="lScopeFill()">
+        <option value="branch">เฉพาะสาขา</option><option value="company">ทั้งบริษัท</option></select></div>
+      <div class="fld"><label>หมดอายุ (วัน)</label><input type="number" class="inp" id="lExpiry" value="30" min="1"></div>
+    </div>
+    <div class="fld"><label id="lScopeLbl">สาขาที่เลือก</label>
+      <div id="lScopeBox" class="scopebox"></div>
+      <button type="button" class="btn btn-o btn-sm" style="margin-top:9px" onclick="openScope('l')"><i class="fas fa-plus"></i> <span id="lScopeBtn">เลือกสาขา</span></button></div>
+    <div class="grid2">
+      <div class="fld"><label>ชื่อผู้รับ (FRC)</label><input class="inp" id="lName" placeholder="เช่น คุณสมชาย"></div>
+      <div class="fld"><label>อีเมล FRC</label><input class="inp" id="lEmail" placeholder="frc@gmail.com"></div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn btn-o btn-sm" style="margin-left:auto" onclick="close_('ovLink')">ยกเลิก</button>
+    <button class="btn btn-g btn-sm" onclick="saveLink()"><i class="fas fa-paper-plane"></i> สร้าง + ส่งอีเมล</button></div>
+</div></div>
+
+<!-- branch/company picker modal -->
+<div class="ov" id="ovScope"><div class="modal">
+  <div class="mhead"><h3><i class="fas fa-store"></i> <span id="scTitle">เลือกสาขา</span></h3><button class="x" onclick="close_('ovScope')">✕</button></div>
+  <div class="mbody">
+    <div style="display:flex;gap:9px;margin-bottom:12px">
+      <input class="inp" id="scSearch" placeholder="ค้นหา…" oninput="renderScope()" style="flex:1">
+      <select class="inp" id="scCompany" onchange="renderScope()" style="flex:1;display:none"></select>
+    </div>
+    <div class="blist" id="scList"></div>
+  </div>
+  <div class="mfoot"><span id="scCount" style="font-size:.85rem;color:#5a616b;font-weight:600">เลือกแล้ว 0</span>
+    <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="applyScope()"><i class="fas fa-check"></i> ใส่ในตาราง</button></div>
+</div></div>
+
+<script src="js/branch-master.js"></script>
+<script src="js/rd-sticker.js"></script>
+<script>
+RD.seed();
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tab='login';
+let eState={ idx:-1, ids:[] };
+let lState={ ids:[] };
+let scTarget=null, scSel=new Set(), scIsCompany=false;
+function setTab(t){ tab=t; document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); render(); }
+const open_=id=>$('#'+id).classList.add('on'); const close_=id=>$('#'+id).classList.remove('on');
+
+function render(){ $('#body').innerHTML = tab==='login'?loginHTML():(tab==='link'?linkHTML():(tab==='tpl'?tplHTML():cancelHTML())); if(tab==='tpl') tplBind(); }
+
+/* ===== email login ===== */
+function loginHTML(){
+  const acc = RD.getAccess();
+  return `<div class="note"><i class="fas fa-circle-info"></i> ระบบรองรับล็อกอินผ่าน <b>Google (Gmail)</b>, <b>Microsoft (Outlook)</b> และ <b>เมลบริษัท</b> — เมลนอกโดเมนเข้าได้ก็ต่อเมื่อ<b>ถูกเพิ่มในรายชื่อนี้</b> เท่านั้น สิทธิ์การเห็นสาขาผูกกับเมล ไม่ใช่โดเมน จึงปลอดภัยสำหรับแฟรนไชส์</div>
+  <div class="card">
+    <h2><i class="fas fa-users-gear"></i> รายชื่อผู้มีสิทธิ์ล็อกอิน <span style="font-size:.8rem;color:#8a9099;font-weight:400">(${acc.length})</span></h2>
+    <p class="sub">เพิ่ม/ลบผู้ใช้ และกำหนดบทบาท + ขอบเขตสาขาที่มองเห็น</p>
+    <table class="t"><thead><tr><th>ผู้ใช้</th><th>เมล / ผู้ให้บริการ</th><th>บทบาท</th><th>ขอบเขต</th><th></th></tr></thead><tbody>
+    ${acc.map((a,i)=>{ const p=RD.providerMeta[a.provider]||RD.providerMeta.corporate;
+      return `<tr>
+        <td style="font-weight:600">${esc(a.name)}</td>
+        <td><div class="mono" style="font-size:.8rem">${esc(a.email)}</div><span class="prov" style="color:${p.color}"><i class="fa-brands ${p.icon} ${a.provider==='corporate'?'fas fa-building':''}"></i> ${p.label}</span></td>
+        <td><span class="rolechip r-${a.role}">${a.role}</span></td>
+        <td><span class="scope">${scopeLabel(a)}</span></td>
+        <td><button class="edbtn" onclick="editEmail(${i})"><i class="fas fa-pen"></i></button><button class="xbtn" onclick="delEmail(${i})"><i class="fas fa-trash"></i></button></td></tr>`;
+    }).join('')}
+    </tbody></table>
+    <button class="btn btn-d btn-sm" style="margin-top:14px" onclick="openEmail()"><i class="fas fa-user-plus"></i> เพิ่มผู้ใช้</button>
+  </div>`;
+}
+function scopeLabel(a){
+  if(a.scopeMode==='all') return 'ทุกสาขา';
+  if(a.scopeMode==='company') return 'บริษัท: '+(a.scopeIds||[]).join(', ');
+  return (a.scopeIds||[]).length+' สาขา';
+}
+function eScopeToggle(){
+  const mode=$('#eScopeMode').value;
+  $('#eScopeWrap').style.display = mode==='all'?'none':'block';
+  $('#eScopeLbl').textContent = mode==='company'?'บริษัทที่เลือก':'สาขาที่เลือก';
+  $('#eScopeBtn').textContent = mode==='company'?'เลือกบริษัท':'เลือกสาขา';
+  renderScopeBox('e');
+}
+function openEmail(){ if(!RD.getPerms().editAccess) return Swal.fire('ถูกล็อก','สิทธิ์แก้ไขรายชื่อล็อกอินถูกปิดอยู่ (ตั้งที่แท็บ “เทมเพลตอีเมล + สิทธิ์”)','info'); eState={idx:-1,ids:[]}; $('#eName').value='';$('#eEmail').value='';$('#eProv').value='google';$('#eRole').value='FRC';$('#eScopeMode').value='branch'; $('#ovEmail .mhead h3').innerHTML='<i class="fas fa-user-plus"></i> เพิ่มผู้มีสิทธิ์ล็อกอิน'; eScopeToggle(); open_('ovEmail'); }
+function editEmail(i){ const a=RD.getAccess()[i]; eState={idx:i,ids:(a.scopeIds||[]).slice()};
+  $('#eName').value=a.name; $('#eEmail').value=a.email; $('#eProv').value=a.provider; $('#eRole').value=a.role; $('#eScopeMode').value=a.scopeMode;
+  $('#ovEmail .mhead h3').innerHTML='<i class="fas fa-user-pen"></i> แก้ไขผู้ใช้'; eScopeToggle(); open_('ovEmail'); }
+function saveEmail(){
+  const name=$('#eName').value.trim(), email=$('#eEmail').value.trim();
+  if(!name||!email) return Swal.fire('กรอกไม่ครบ','กรุณากรอกชื่อและอีเมล','warning');
+  const mode=$('#eScopeMode').value;
+  const ids = mode==='all'?[]:eState.ids.slice();
+  if(mode!=='all'&&!ids.length) return Swal.fire('เลือกขอบเขต','กรุณาเลือกสาขา/บริษัทอย่างน้อย 1','warning');
+  const acc=RD.getAccess();
+  const rec={email,provider:$('#eProv').value,name,role:$('#eRole').value,scopeMode:mode,scopeIds:ids};
+  if(eState.idx>=0) acc[eState.idx]=rec; else acc.push(rec);
+  RD.setAccess(acc); close_('ovEmail'); render(); toast(eState.idx>=0?'แก้ไขแล้ว':'เพิ่มผู้ใช้แล้ว');
+}
+function delEmail(i){ Swal.fire({title:'ลบผู้ใช้นี้?',icon:'warning',showCancelButton:true,confirmButtonText:'ลบ',confirmButtonColor:'#c0392b',cancelButtonText:'ยกเลิก'}).then(r=>{ if(r.isConfirmed){ const acc=RD.getAccess(); acc.splice(i,1); RD.setAccess(acc); render(); }}); }
+
+/* ===== scope picker (shared by email + link modals) ===== */
+function stateOf(t){ return t==='e'?eState:lState; }
+function modeOf(t){ return t==='e'?$('#eScopeMode').value:$('#lScopeMode').value; }
+function renderScopeBox(t){
+  const box=$('#'+t+'ScopeBox'), st=stateOf(t), comp=modeOf(t)==='company';
+  if(!st.ids.length){ box.innerHTML='<div class="empty2">ยังไม่ได้เลือก</div>'; return; }
+  box.innerHTML = st.ids.map(id=>{
+    const label = comp ? esc(id) : (()=>{ const b=RD.branch(id); return b?`${esc(b.nameTH)} <span class="sid">${esc(id)}</span>`:esc(id); })();
+    return `<div class="scoperow">${comp?'<i class="fas fa-building" style="color:#9aa1aa"></i>':'<i class="fas fa-store" style="color:#9aa1aa"></i>'} <span>${label}</span><button class="rm" onclick="removeScope('${t}','${esc(id).replace(/'/g,"\\'")}')"><i class="fas fa-xmark"></i></button></div>`;
+  }).join('');
+}
+function removeScope(t,id){ const st=stateOf(t); st.ids=st.ids.filter(x=>x!==id); renderScopeBox(t); }
+function openScope(t){
+  scTarget=t; scIsCompany = modeOf(t)==='company'; scSel=new Set(stateOf(t).ids);
+  $('#scTitle').textContent = scIsCompany?'เลือกบริษัท':'เลือกสาขา';
+  $('#scSearch').value='';
+  const cf=$('#scCompany');
+  if(scIsCompany){ cf.style.display='none'; }
+  else { cf.style.display=''; cf.innerHTML='<option value="">ทุกบริษัท</option>'+RD.companies().map(c=>`<option>${esc(c)}</option>`).join(''); }
+  open_('ovScope'); renderScope();
+}
+function renderScope(){
+  const q=$('#scSearch').value.trim().toLowerCase();
+  let items;
+  if(scIsCompany){
+    items = RD.companies().filter(c=>!q||c.toLowerCase().includes(q))
+      .map(c=>({id:c, nm:c, meta:RD.branchesOfCompany(c).length+' สาขา', tag:''}));
+  } else {
+    const comp=$('#scCompany').value;
+    items = RD.branches().filter(b=>{ if(comp&&b.company!==comp) return false;
+      return !q || `${b.id} ${b.name} ${b.nameTH} ${b.company}`.toLowerCase().includes(q); })
+      .map(b=>({id:b.id, nm:b.nameTH, meta:b.id+' · '+b.name, tag:b.type||''}));
+  }
+  $('#scList').innerHTML = items.map(it=>`<div class="brow ${scSel.has(it.id)?'sel':''}" onclick="toggleScope('${esc(it.id).replace(/'/g,"\\'")}')">
+    <input type="checkbox" ${scSel.has(it.id)?'checked':''} onclick="event.stopPropagation();toggleScope('${esc(it.id).replace(/'/g,"\\'")}')">
+    <div><div class="nm">${esc(it.nm)}</div><div class="meta">${esc(it.meta)}</div></div>
+    ${it.tag?`<span class="cc">${esc(it.tag)}</span>`:''}</div>`).join('') || '<div style="padding:22px;text-align:center;color:#9aa1aa">ไม่พบ</div>';
+  $('#scCount').textContent='เลือกแล้ว '+scSel.size;
+}
+function toggleScope(id){ scSel.has(id)?scSel.delete(id):scSel.add(id); renderScope(); }
+function applyScope(){ stateOf(scTarget).ids=[...scSel]; renderScopeBox(scTarget); close_('ovScope'); }
+
+/* ===== gen link ===== */
+function linkHTML(){
+  const links = RD.getLinks();
+  return `<div class="note"><i class="fas fa-lightbulb"></i> <b>วิธีทำงาน:</b> ทีม BD เลือกสาขาของ FRC → สร้างลิงก์ → ระบบส่งอีเมลให้ FRC → FRC กดลิงก์เพื่อ<b>แจ้งเพิ่มเลขได้ทันทีโดยไม่ต้องล็อกอิน</b> และเห็นเฉพาะสาขาของตน เหมาะกับแฟรนไชส์ที่ไม่ได้อยู่ในระบบบัญชีผู้ใช้</div>
+  <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div><h2 style="margin:0"><i class="fas fa-link"></i> ลิงก์เฉพาะสาขาที่สร้างไว้ <span style="font-size:.8rem;color:#8a9099;font-weight:400">(${links.length})</span></h2></div>
+    <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="openLink()"><i class="fas fa-plus"></i> สร้างลิงก์ใหม่</button>
+  </div>
+  ${links.length?links.map(l=>linkCard(l)).join(''):`<div class="card" style="text-align:center;color:#9aa1aa;padding:36px"><i class="fas fa-link-slash" style="font-size:1.8rem;display:block;margin-bottom:10px;opacity:.5"></i>ยังไม่มีลิงก์</div>`}`;
+}
+function linkCard(l){
+  const url = location.href.replace(/[^/]*$/,'') + 'RD Sticker Management.html?link=' + l.token;
+  const names = l.scopeMode==='company' ? l.scopeIds.join(', ')
+    : l.scopeIds.map(id=>{const b=RD.branch(id);return b?b.nameTH:id;}).join(', ');
+  return `<div class="linkcard ${l.status==='revoked'?'revoked':''}">
+    <div class="lt"><span class="lb">${esc(l.label)}</span>
+      <span class="lstat ${l.status}">${l.status==='active'?'ใช้งานได้':'ยกเลิกแล้ว'}</span></div>
+    <div class="lmeta">
+      <span class="mtag"><i class="fas fa-store"></i> ${esc(names)}</span>
+      <span class="mtag"><i class="fas fa-user"></i> ${esc(l.frcName)} · ${esc(l.frcEmail)}</span>
+      <span class="mtag"><i class="fas fa-paper-plane"></i> ใช้ไป ${l.uses} ครั้ง</span>
+      <span class="mtag"><i class="fas fa-clock"></i> หมดอายุ ${RD.fmtDate(l.expiry)}</span>
+    </div>
+    <div class="lurl"><i class="fas fa-link" style="color:#9aa1aa"></i><code>${esc(url)}</code>
+      <button class="btn btn-o btn-sm" onclick="copyUrl('${esc(url)}')"><i class="fas fa-copy"></i> คัดลอก</button>
+      <button class="btn btn-o btn-sm" onclick="previewEmail('${l.id}')"><i class="fas fa-envelope"></i> ดูอีเมล</button>
+      ${l.status==='active'?`<button class="btn btn-r btn-sm" onclick="revoke('${l.id}')"><i class="fas fa-ban"></i></button>`:''}
+    </div></div>`;
+}
+function lScopeFill(){
+  $('#lScopeLbl').textContent = $('#lScopeMode').value==='company'?'บริษัทที่เลือก':'สาขาที่เลือก';
+  $('#lScopeBtn').textContent = $('#lScopeMode').value==='company'?'เลือกบริษัท':'เลือกสาขา';
+  lState.ids=[]; renderScopeBox('l');
+}
+function openLink(){ if(!RD.getPerms().bdCreateLink) return Swal.fire('ถูกล็อก','สิทธิ์สร้างลิงก์ถูกปิดอยู่ (ตั้งค่าได้ที่แท็บ “เทมเพลตอีเมล + สิทธิ์”)','info');
+  lState={ids:[]}; $('#lLabel').value='';$('#lName').value='';$('#lEmail').value='';$('#lExpiry').value='30';$('#lScopeMode').value='branch'; lScopeFill(); open_('ovLink'); }
+function saveLink(){
+  const ids=lState.ids.slice();
+  if(!ids.length) return Swal.fire('เลือกขอบเขต','กรุณาเลือกสาขา/บริษัท','warning');
+  const email=$('#lEmail').value.trim(); if(!email) return Swal.fire('กรอกอีเมล','กรุณากรอกอีเมล FRC','warning');
+  const days=parseInt($('#lExpiry').value)||30;
+  const l=RD.addLink({ label:$('#lLabel').value.trim()||('FRC '+ids[0]), scopeMode:$('#lScopeMode').value, scopeIds:ids,
+    frcName:$('#lName').value.trim()||'FRC', frcEmail:email, createdBy:'BD — ทีมแฟรนไชส์', expiry:Date.now()+days*86400000 });
+  close_('ovLink'); render(); previewEmail(l.id, true);
+}
+function revoke(id){ if(!RD.getPerms().bdRevokeLink) return Swal.fire('ถูกล็อก','สิทธิ์ยกเลิกลิงก์ถูกปิดอยู่','info'); const ls=RD.getLinks(); const l=ls.find(x=>x.id===id); if(l)l.status='revoked'; RD.setLinks(ls); render(); }
+function copyUrl(u){ navigator.clipboard?.writeText(u); toast('คัดลอกลิงก์แล้ว'); }
+function previewEmail(id, sent){
+  const l=RD.getLinks().find(x=>x.id===id); if(!l)return;
+  const url = location.href.replace(/[^/]*$/,'') + 'RD Sticker Management.html?link=' + l.token;
+  const names = l.scopeMode==='company'?l.scopeIds.join(', '):l.scopeIds.map(i=>{const b=RD.branch(i);return b?b.nameTH:i;}).join(', ');
+  const m = RD.renderEmail(RD.getEmailTpl(), { frcName:l.frcName, branches:names, link:url, expiry:RD.fmtDate(l.expiry) });
+  const bodyHtml = esc(m.body).replace(/\{link\}/g,url).replace(new RegExp(esc(url),'g'),`<a class="ebtn" href="${esc(url)}" target="_blank">แจ้งเพิ่มเลขสติ๊กเกอร์</a>`).replace(/\n/g,'<br>');
+  Swal.fire({ width:560, showConfirmButton:false, showCloseButton:true,
+    title: sent?'✅ ส่งอีเมลให้ FRC แล้ว':'ตัวอย่างอีเมลที่ส่งให้ FRC',
+    html:`<div class="email-prev" style="text-align:left">
+      <div class="eh"><b>ถึง:</b> ${esc(l.frcEmail)} &nbsp;·&nbsp; <b>เรื่อง:</b> ${esc(m.subject)}</div>
+      <div class="eb">${bodyHtml}</div></div>`});
+}
+function toast(t){ Swal.fire({toast:true,position:'top-end',icon:'success',title:t,showConfirmButton:false,timer:2000}); }
+
+/* ===== แจ้งยกเลิก/จดใหม่ — ช่องทาง + เทมเพลตรายช่องทาง ===== */
+function cancelHTML(){
+  const ch=RD.getChannels(), tpl=RD.getCancelTpl(), locked=!RD.getPerms().editEmailTpl;
+  const vars=['branch','branchId','branchType','company','caseName','actions','oldNum','adminName','guide'];
+  const chcards = RD.CHANNELS.map(x=>{
+    const on=!!ch[x.id];
+    return `<label class="radio ${on?'on':''}" style="flex:1;min-width:150px"><input type="checkbox" ${on?'checked':''} onchange="chToggle('${x.id}',this.checked)">
+      <div><div class="rt" style="color:${x.color}"><i class="${x.brand?'fa-brands':'fas'} ${x.icon}"></i> ${esc(x.label)}</div><div class="rd">${on?'เปิดส่ง':'ปิด'}</div></div></label>`;
+  }).join('');
+  const editors = RD.CHANNELS.map(x=>{
+    const t=tpl[x.id]||{};
+    const subj = x.id==='email' ? `<div class="fld"><label>หัวข้อ (Subject)</label><input class="inp" id="ct_${x.id}_subject" ${locked?'disabled':''} value="${esc(t.subject||'')}"></div>` : '';
+    return `<div class="card" style="margin-bottom:14px">
+      <h2 style="font-size:.98rem"><i class="${x.brand?'fa-brands':'fas'} ${x.icon}" style="color:${x.color}"></i> ${esc(x.label)} ${ch[x.id]?'<span class="lstat active" style="margin-left:6px">เปิดใช้งาน</span>':'<span class="lstat revoked" style="margin-left:6px">ปิด</span>'}</h2>
+      ${subj}
+      <div class="fld"><label>ข้อความ</label><textarea class="inp" id="ct_${x.id}_body" rows="${x.id==='email'?8:4}" ${locked?'disabled':''} style="font-family:Kanit,sans-serif;line-height:1.6">${esc(t.body||'')}</textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${vars.map(v=>`<button type="button" class="btn btn-o btn-sm" ${locked?'disabled':''} onclick="insCancelVar('${x.id}','{${v}}')">+ {${v}}</button>`).join('')}</div>
+      </div>
+      <button class="btn btn-o btn-sm" onclick="cancelPreview('${x.id}')"><i class="fas fa-eye"></i> ดูตัวอย่าง</button>
+    </div>`;
+  }).join('');
+  return `<div class="note"><i class="fas fa-circle-info"></i> ตั้งค่าว่างานแจ้งยกเลิก/จดใหม่ จะส่งถึง Admin บริษัทผ่านช่องทางไหน · ตัวแปร: <b>{branch} {branchType} {company} {caseName} {actions} {oldNum} {adminName} {guide}</b></div>
+  <div class="card"><h2><i class="fas fa-tower-broadcast"></i> ช่องทางที่จะแจ้ง</h2>
+    <p class="sub">เลือกช่องทางที่ระบบจะส่งแจ้ง (เลือกได้หลายช่องทาง)</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${chcards}</div></div>
+  ${editors}
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+    <button class="btn btn-o btn-sm" onclick="cancelReset()" ${locked?'disabled':''}><i class="fas fa-rotate-left"></i> ค่าเริ่มต้น</button>
+    <button class="btn btn-g btn-sm" onclick="cancelSave()" ${locked?'disabled':''}><i class="fas fa-check"></i> บันทึกเทมเพลตทุกช่องทาง</button>
+  </div>`;
+}
+function chToggle(id,val){ const ch=RD.getChannels(); ch[id]=val; RD.setChannels(ch); render(); toast(val?'เปิดช่องทางแล้ว':'ปิดช่องทางแล้ว'); }
+function insCancelVar(chid,v){ const ta=$('#ct_'+chid+'_body'); if(!ta||ta.disabled)return; const s=ta.selectionStart||ta.value.length; ta.value=ta.value.slice(0,s)+v+ta.value.slice(ta.selectionEnd||s); ta.focus(); }
+function collectCancelTpl(){ const tpl=RD.getCancelTpl(); RD.CHANNELS.forEach(x=>{ tpl[x.id]=tpl[x.id]||{}; const bd=$('#ct_'+x.id+'_body'); if(bd) tpl[x.id].body=bd.value; if(x.id==='email'){ const sj=$('#ct_email_subject'); if(sj) tpl.email.subject=sj.value; } }); return tpl; }
+function cancelSave(){ RD.setCancelTpl(collectCancelTpl()); toast('บันทึกเทมเพลตแล้ว'); }
+function cancelReset(){ Swal.fire({title:'คืนค่าเริ่มต้นทุกช่องทาง?',icon:'warning',showCancelButton:true,confirmButtonText:'คืนค่า',confirmButtonColor:'#c0392b'}).then(r=>{ if(r.isConfirmed){ RD.setCancelTpl(JSON.parse(JSON.stringify(RD.DEFAULT_CANCEL_TPL))); render(); toast('คืนค่าแล้ว'); }}); }
+function cancelPreview(chid){
+  const tpl=collectCancelTpl(); const x=RD.CHANNELS.find(c=>c.id===chid);
+  const vars={ branch:'เทอมินอล 21 พัทยา', branchId:'PC1029', branchType:'DODO', company:'บริษัท แฟรนไชส์ จำกัด', caseName:'Transfer Code (เปลี่ยนเป็น COCO)', actions:'ยกเลิก/จดใหม่', oldNum:'0105563000291', adminName:'คุณสมชาย (Admin)', guide:'\nแนวทางแฟรนไชส์: 1) ยื่น ภ.พ.06.1  2) Z-Close  3) คืนสติ๊กเกอร์+เล่มทะเบียน\n' };
+  let html;
+  if(chid==='email'){ const subj=RD.renderText(tpl.email.subject,vars), body=RD.renderText(tpl.email.body,vars);
+    html=`<div class="email-prev" style="text-align:left"><div class="eh"><b>เรื่อง:</b> ${esc(subj)}</div><div class="eb">${esc(body).replace(/\n/g,'<br>')}</div></div>`; }
+  else { const body=RD.renderText(tpl[chid].body,vars);
+    html=`<div style="text-align:left;border:1px solid #e7eaee;border-radius:11px;padding:14px;background:#fafbfc;white-space:pre-wrap;line-height:1.6">${esc(body)}</div>`; }
+  Swal.fire({width:560,showConfirmButton:false,showCloseButton:true,title:'ตัวอย่าง — '+esc(x.label),html});
+}
+
+/* ===== email template + permissions ===== */
+function tplHTML(){
+  const tpl=RD.getEmailTpl(), p=RD.getPerms(), locked=!p.editEmailTpl;
+  const url='https://.../RD Sticker Management.html?link=XXXX';
+  return `<div class="note"><i class="fas fa-circle-info"></i> ผู้ดูแล FRC (BD) แก้ข้อความอีเมลได้เอง · ใช้ตัวแปรในวงเล็บปีกกา: <b>{frcName}</b> ชื่อ FRC · <b>{branches}</b> สาขา · <b>{link}</b> ลิงก์ · <b>{expiry}</b> วันหมดอายุ</div>
+
+  <div class="card">
+    <h2><i class="fas fa-user-shield"></i> สิทธิ์การแก้ไข (ใครเปลี่ยนอะไรได้บ้าง)</h2>
+    <p class="sub">เปิด/ปิดสิทธิ์ของทีม BD — ถ้าปิด ส่วนนั้นจะถูกล็อกไม่ให้แก้</p>
+    ${permRow('editEmailTpl','แก้ไขเทมเพลตอีเมล','อนุญาตให้แก้ข้อความอีเมลที่ส่ง FRC',p.editEmailTpl)}
+    ${permRow('bdCreateLink','สร้างลิงก์ใหม่','อนุญาตให้สร้างลิงก์เฉพาะสาขา (FRC)',p.bdCreateLink)}
+    ${permRow('bdRevokeLink','ยกเลิกลิงก์','อนุญาตให้ยกเลิก/ปิดลิงก์ที่ส่งไปแล้ว',p.bdRevokeLink)}
+    ${permRow('editAccess','แก้ไขรายชื่อล็อกอิน','อนุญาตให้เพิ่ม/แก้/ลบผู้มีสิทธิ์ล็อกอิน',p.editAccess)}
+  </div>
+
+  <div class="card">
+    <h2><i class="fas fa-envelope-open-text"></i> เทมเพลตอีเมลเชิญ FRC ${locked?'<span class="lstat revoked" style="margin-left:8px"><i class="fas fa-lock"></i> ล็อกการแก้ไข</span>':''}</h2>
+    <p class="sub">ข้อความนี้จะถูกส่งในอีเมลทุกครั้งที่ BD สร้างลิงก์</p>
+    <div class="fld"><label>หัวข้ออีเมล (Subject)</label><input class="inp" id="tSub" ${locked?'disabled':''} value="${esc(tpl.subject)}"></div>
+    <div class="fld"><label>เนื้อหาอีเมล (Body)</label><textarea class="inp" id="tBody" ${locked?'disabled':''} rows="9" style="font-family:Kanit,sans-serif;line-height:1.6">${esc(tpl.body)}</textarea>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${['frcName','branches','link','expiry'].map(k=>`<button type="button" class="btn btn-o btn-sm" ${locked?'disabled':''} onclick="insVar('{${k}}')">+ {${k}}</button>`).join('')}</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-o btn-sm" onclick="tplPreview()"><i class="fas fa-eye"></i> ดูตัวอย่าง</button>
+      <button class="btn btn-o btn-sm" onclick="tplReset()" ${locked?'disabled':''}><i class="fas fa-rotate-left"></i> ค่าเริ่มต้น</button>
+      <button class="btn btn-g btn-sm" onclick="tplSave()" ${locked?'disabled':''}><i class="fas fa-check"></i> บันทึกเทมเพลต</button>
+    </div>
+  </div>`;
+}
+function permRow(key,t,d,on){ return `<label class="radio ${on?'on':''}" style="margin-bottom:9px"><input type="checkbox" ${on?'checked':''} onchange="togglePerm('${key}',this.checked)"><div><div class="rt">${t}</div><div class="rd">${d}</div></div></label>`; }
+function togglePerm(key,val){ const p=RD.getPerms(); p[key]=val; RD.setPerms(p); render(); toast('บันทึกสิทธิ์แล้ว'); }
+function tplBind(){}
+function insVar(v){ const ta=$('#tBody'); if(!ta||ta.disabled)return; const s=ta.selectionStart||ta.value.length; ta.value=ta.value.slice(0,s)+v+ta.value.slice(ta.selectionEnd||s); ta.focus(); }
+function tplSave(){ RD.setEmailTpl({subject:$('#tSub').value, body:$('#tBody').value}); toast('บันทึกเทมเพลตแล้ว'); }
+function tplReset(){ Swal.fire({title:'คืนค่าเริ่มต้น?',icon:'warning',showCancelButton:true,confirmButtonText:'คืนค่า',confirmButtonColor:'#c0392b'}).then(r=>{ if(r.isConfirmed){ RD.setEmailTpl(JSON.parse(JSON.stringify(RD.DEFAULT_TPL))); render(); toast('คืนค่าเริ่มต้นแล้ว'); }}); }
+function tplPreview(){
+  const m=RD.renderEmail({subject:$('#tSub').value,body:$('#tBody').value},{frcName:'คุณสมชาย (ตัวอย่าง)',branches:'เทอมินอล 21 พัทยา',link:'แจ้งเพิ่มเลขสติ๊กเกอร์',expiry:RD.fmtDate(Date.now()+30*86400000)});
+  Swal.fire({width:560,showConfirmButton:false,showCloseButton:true,title:'ตัวอย่างอีเมล',
+    html:`<div class="email-prev" style="text-align:left"><div class="eh"><b>เรื่อง:</b> ${esc(m.subject)}</div><div class="eb">${esc(m.body).replace(/\n/g,'<br>')}</div></div>`});
+}
+
+render();
+</script>
+</body>
+</html>

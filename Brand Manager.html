@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brand Manager — ตั้งค่าหลายแบรนด์</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:var(--pc-black); color:#fff; padding:15px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:20; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.4px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .active-pill{ margin-left:auto; display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.1); border-radius:11px; padding:7px 8px 7px 13px; font-size:.84rem; font-weight:600; }
+  .active-pill .dot{ width:12px; height:12px; border-radius:50%; }
+  .active-pill .nm{ font-weight:700; }
+  .active-pill .tag{ font-size:.66rem; font-weight:700; color:#9aa1aa; text-transform:uppercase; letter-spacing:.5px; }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:22px 18px 60px; }
+  .intro{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 18px; font-size:.9rem; color:#5a616b; line-height:1.55; margin-bottom:18px; display:flex; gap:12px; align-items:flex-start; }
+  .intro i{ color:var(--blue); font-size:1.1rem; margin-top:2px; }
+  .intro b{ color:var(--pc-black); }
+
+  .grid{ display:grid; grid-template-columns:330px 1fr; gap:18px; align-items:start; }
+  @media(max-width:820px){ .grid{ grid-template-columns:1fr; } }
+
+  .sec-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin:0 2px 11px; }
+  .brand-list{ display:flex; flex-direction:column; gap:11px; }
+  .bcard{ background:#fff; border:1.6px solid #e7eaee; border-radius:15px; padding:14px 15px; cursor:pointer; transition:.12s; position:relative; }
+  .bcard:hover{ border-color:#c2c8cf; }
+  .bcard.sel{ border-color:var(--pc-black); box-shadow:0 2px 10px rgba(0,0,0,.08); }
+  .bcard .top{ display:flex; align-items:center; gap:12px; }
+  .blogo{ width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.05rem; flex:none; letter-spacing:-.5px; }
+  .bcard .nm{ font-weight:700; font-size:1.05rem; line-height:1.15; }
+  .bcard .dom{ font-family:'JetBrains Mono',monospace; font-size:.74rem; color:#8a9099; margin-top:2px; }
+  .bcard .meta{ display:flex; gap:7px; margin-top:11px; flex-wrap:wrap; align-items:center; }
+  .chip{ font-size:.72rem; font-weight:700; border-radius:7px; padding:3px 9px; }
+  .chip.mod{ background:#eef4ff; color:#2c4a82; }
+  .chip.on{ background:#eafaf1; color:#1d7a4d; }
+  .chip.off{ background:#f1f4f7; color:#8a9099; }
+  .use-btn{ margin-left:auto; border:0; background:#1a1d20; color:#fff; font-family:inherit; font-weight:600; font-size:.74rem; border-radius:8px; padding:5px 11px; cursor:pointer; }
+  .use-btn.cur{ background:var(--pc-green); }
+  .use-btn:hover{ opacity:.9; }
+  .add-brand{ border:2px dashed #cfd5db; background:#fff; border-radius:15px; padding:13px; font-family:inherit; font-weight:700; font-size:.94rem; color:#3a4150; cursor:pointer; width:100%; }
+  .add-brand:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+
+  .panel{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:0; overflow:hidden; }
+  .panel-hd{ padding:18px 20px; color:#fff; display:flex; align-items:center; gap:15px; }
+  .panel-hd .lg{ width:58px; height:58px; border-radius:14px; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.3rem; flex:none; }
+  .panel-hd .nm{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.35rem; }
+  .panel-hd .sub{ font-size:.82rem; opacity:.85; margin-top:2px; }
+  .panel-bd{ padding:20px; }
+
+  .fld{ margin-bottom:18px; }
+  .fld label{ display:block; font-size:.78rem; font-weight:700; color:#5a616b; margin-bottom:7px; letter-spacing:.2px; }
+  .inp{ width:100%; border:1.6px solid #dde2e7; border-radius:11px; padding:11px 13px; font-family:inherit; font-size:.95rem; }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:560px){ .row2{ grid-template-columns:1fr; } }
+  .swatches{ display:flex; gap:9px; flex-wrap:wrap; }
+  .swatch{ width:36px; height:36px; border-radius:10px; cursor:pointer; border:3px solid #fff; box-shadow:0 0 0 1.6px #dde2e7; }
+  .swatch.on{ box-shadow:0 0 0 2.5px var(--pc-black); }
+
+  .mod-hd{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 12px; }
+  .mod-hd .t{ font-size:.78rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; }
+  .mod-hd .n{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); }
+  .mini{ border:1.4px solid #dde2e7; background:#fff; font-family:inherit; font-weight:600; font-size:.76rem; border-radius:8px; padding:5px 11px; cursor:pointer; color:#5a616b; }
+  .mini:hover{ border-color:#b6bcc4; }
+  .mods{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:560px){ .mods{ grid-template-columns:1fr; } }
+  .mod{ display:flex; align-items:center; gap:12px; border:1px solid #eef1f4; border-radius:12px; padding:11px 13px; background:#fafbfc; }
+  .mod.on{ background:#fff; border-color:#d6e6dd; }
+  .mod .mi{ width:36px; height:36px; border-radius:10px; background:#f1f4f7; color:#8a9099; display:flex; align-items:center; justify-content:center; font-size:.95rem; flex:none; }
+  .mod.on .mi{ background:#eafaf1; color:var(--pc-green); }
+  .mod .ml{ flex:1; font-weight:600; font-size:.9rem; line-height:1.25; }
+  .mod .mk{ font-family:'JetBrains Mono',monospace; font-size:.68rem; color:#aab0b8; }
+
+  .sw{ position:relative; width:44px; height:26px; flex:none; cursor:pointer; }
+  .sw input{ position:absolute; opacity:0; width:0; height:0; }
+  .sw .tr{ position:absolute; inset:0; background:#cfd5db; border-radius:999px; transition:.15s; }
+  .sw .kn{ position:absolute; top:3px; left:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .sw input:checked ~ .tr{ background:var(--pc-green); }
+  .sw input:checked ~ .kn{ transform:translateX(18px); }
+
+  .footer-note{ font-size:.74rem; color:#aab0b8; text-align:center; margin-top:26px; }
+  .danger{ border:0; background:#fdecec; color:#c0392b; font-family:inherit; font-weight:600; font-size:.82rem; border-radius:9px; padding:8px 14px; cursor:pointer; }
+  .danger:hover{ background:#fbd9d9; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><i class="fas fa-layer-group"></i>BRAND MANAGER · ตั้งค่าหลายแบรนด์</h1>
+    <div class="active-pill" id="activePill"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro"><i class="fas fa-circle-info"></i><div>ระบบรองรับ <b>หลายแบรนด์/บริษัท</b> ในที่เดียว — แต่ละแบรนด์แยกข้อมูล สาขา ตั้งค่า ธีม และ <b>เปิด-ปิดโมดูลได้อิสระ</b> · เลือกแบรนด์ทางซ้ายเพื่อตั้งค่า · กด “ใช้แบรนด์นี้” เพื่อสลับมุมมองทั้งระบบไปแบรนด์นั้น</div></div>
+
+    <div class="grid">
+      <div>
+        <div class="sec-lbl">แบรนด์ในระบบ</div>
+        <div class="brand-list" id="brandList"></div>
+        <button class="add-brand" style="margin-top:12px" onclick="addBrand()"><i class="fas fa-plus me-2"></i>เพิ่มแบรนด์/บริษัทใหม่</button>
+      </div>
+      <div id="detail"></div>
+    </div>
+
+    <div class="footer-note">— หน้าตัวอย่าง (Mockup) · บันทึกในเครื่องนี้ (localStorage: pc_brands · pc_active_brand) · โครง Multi-tenant ขั้นที่ 1 —</div>
+  </div>
+
+<script>
+const BKEY='pc_brands', AKEY='pc_active_brand';
+const MODULES=[
+  {k:'dashboard',     label:'Dashboard / แดชบอร์ด',        icon:'fa-chart-line'},
+  {k:'create_promo',  label:'แจ้งทำโปรโมชัน',              icon:'fa-bullhorn'},
+  {k:'coupon',        label:'Coupon Proposal',             icon:'fa-ticket'},
+  {k:'bill_discount', label:'Bill Discount Proposal',      icon:'fa-calculator'},
+  {k:'voucher',       label:'Voucher Proposal',            icon:'fa-gift'},
+  {k:'it_settlement', label:'IT Settlement',               icon:'fa-check-double'},
+  {k:'tracking',      label:'Tracking Center',             icon:'fa-satellite-dish'},
+  {k:'op_tracking',   label:'OP Tracking',                 icon:'fa-list-check'},
+  {k:'memo',          label:'Create Memo',                 icon:'fa-file-lines'},
+  {k:'branch_view',   label:'Branch View (หน้าสาขา)',      icon:'fa-store'},
+  {k:'npd',           label:'NPD / RD สินค้าใหม่',         icon:'fa-flask'},
+  {k:'item_set',      label:'Item Set Builder',            icon:'fa-vials'},
+  {k:'code_mgmt',     label:'จัดการโค้ดโปรโมชัน',          icon:'fa-barcode'},
+  {k:'branch_report', label:'แจ้งปัญหาสาขา / Tickets',     icon:'fa-headset'},
+  {k:'permissions',   label:'Permissions / สิทธิ์',        icon:'fa-user-shield'},
+  {k:'notify',        label:'ตั้งค่าแจ้งเตือน',            icon:'fa-bell'},
+];
+const PALETTE=['#2e934a','#e4002b','#0a7d3c','#2f5fb3','#9b51e0','#e8830c','#1a1d20','#0aa2c0'];
+function allMods(v){ const m={}; MODULES.forEach(x=>m[x.k]=v); return m; }
+function someMods(onKeys){ const m=allMods(false); onKeys.forEach(k=>m[k]=true); return m; }
+const DEFAULT_BRANDS=[
+  { id:'pc',  name:'Potato Corner', color:'#2e934a', emailDomain:'potatocornerth.com', active:true,  modules:allMods(true) },
+  { id:'uno', name:'UNO',           color:'#e4002b', emailDomain:'uno-th.com',         active:false, modules:someMods(['dashboard','create_promo','coupon','voucher','it_settlement','tracking','branch_view','code_mgmt','branch_report','notify']) },
+  { id:'ksi', name:'KSI Foods',     color:'#0a7d3c', emailDomain:'ksi-foods.com',      active:false, modules:someMods(['dashboard','create_promo','bill_discount','it_settlement','tracking','branch_view','notify']) },
+];
+function load(){ try{ const a=JSON.parse(localStorage.getItem(BKEY)); if(Array.isArray(a)&&a.length){ a.forEach(b=>{ b.modules=b.modules||allMods(true); MODULES.forEach(m=>{ if(typeof b.modules[m.k]!=='boolean') b.modules[m.k]=false; }); }); return a; } }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_BRANDS)); }
+function save(){ localStorage.setItem(BKEY, JSON.stringify(BRANDS)); }
+let BRANDS=load();
+let activeId=localStorage.getItem(AKEY)||(BRANDS.find(b=>b.active)||BRANDS[0]).id;
+let selId=activeId;
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||''); }
+function brand(id){ return BRANDS.find(b=>b.id===id); }
+function modOn(b){ return MODULES.filter(m=>b.modules[m.k]).length; }
+function textOn(hex){ const c=hex.replace('#',''); const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),bl=parseInt(c.substr(4,2),16); return (r*299+g*587+bl*114)/1000>150?'#1a1d20':'#fff'; }
+
+function hx(h){ h=String(h).replace('#',''); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+function colorDist(a,b){ const x=hx(a),y=hx(b); return Math.abs(x[0]-y[0])+Math.abs(x[1]-y[1])+Math.abs(x[2]-y[2]); }
+function extractColors(img){ const cv=document.createElement('canvas'),w=50,h=50; cv.width=w;cv.height=h; const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,w,h); let data; try{ data=ctx.getImageData(0,0,w,h).data; }catch(e){ return []; }
+  const map={}; for(let i=0;i<data.length;i+=4){ if(data[i+3]<180) continue; const r=Math.round(data[i]/24)*24,g=Math.round(data[i+1]/24)*24,b=Math.round(data[i+2]/24)*24; const k=r+'_'+g+'_'+b; map[k]=map[k]||{r,g,b,c:0}; map[k].c++; }
+  const arr=Object.values(map); arr.forEach(o=>{ const mx=Math.max(o.r,o.g,o.b),mn=Math.min(o.r,o.g,o.b); const sat=mx?(mx-mn)/mx:0; const lum=(o.r+o.g+o.b)/3; o.score=o.c*(0.35+sat*1.4)*((lum>28&&lum<235)?1:0.25); });
+  arr.sort((a,b)=>b.score-a.score); const toHex=(r,g,b)=>'#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const out=[]; for(const o of arr){ const v=toHex(o.r,o.g,o.b); if(out.some(h=>colorDist(h,v)<48)) continue; out.push(v); if(out.length>=5) break; } return out; }
+function handleLogo(file){ if(!file) return; const b=brand(selId); if(!b) return; const rd=new FileReader();
+  rd.onload=e=>{ const img=new Image(); img.onload=()=>{ b.logo=e.target.result; const cols=extractColors(img); if(cols.length){ b.palette=cols; b.color=cols[0]; } save(); renderAll(); if(cols.length) Swal.fire({icon:'success',title:'ดึงสีจากภาพแล้ว',html:'ตั้งธีม/เทมเพลตตามสีเด่นของแบรนด์ให้ — ปรับเองได้',timer:1700,showConfirmButton:false}); }; img.src=e.target.result; };
+  rd.readAsDataURL(file); }
+function renderActive(){
+  const b=brand(activeId)||BRANDS[0];
+  document.getElementById('activePill').innerHTML=`<span class="tag">กำลังใช้</span><span class="dot" style="background:${b.color}"></span><span class="nm">${esc(b.name)}</span>`;
+}
+function renderList(){
+  document.getElementById('brandList').innerHTML=BRANDS.map(b=>{
+    const cur=b.id===activeId;
+    return `<div class="bcard ${b.id===selId?'sel':''}" onclick="selectBrand('${b.id}')">
+      <div class="top">
+        <div class="blogo" style="background:${b.color};color:${textOn(b.color)};overflow:hidden">${b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover">`:esc(initials(b.name)||'?')}</div>
+        <div style="flex:1;min-width:0"><div class="nm">${esc(b.name)}</div><div class="dom">@${esc(b.emailDomain)}</div></div>
+        <button class="use-btn ${cur?'cur':''}" onclick="event.stopPropagation();useBrand('${b.id}')">${cur?'<i class=\"fas fa-check\"></i> ใช้อยู่':'ใช้แบรนด์นี้'}</button>
+      </div>
+      <div class="meta">
+        <span class="chip mod">${modOn(b)}/${MODULES.length} โมดูล</span>
+        <span class="chip ${b.active?'on':'off'}">${b.active?'เปิดใช้งาน':'ปิดอยู่'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderDetail(){
+  const b=brand(selId); if(!b){ document.getElementById('detail').innerHTML=''; return; }
+  const tc=textOn(b.color);
+  const sw=PALETTE.map(c=>`<div class="swatch ${c===b.color?'on':''}" style="background:${c}" onclick="setColor('${c}')"></div>`).join('');
+  const mods=MODULES.map(m=>{ const on=!!b.modules[m.k];
+    return `<div class="mod ${on?'on':''}">
+      <span class="mi"><i class="fas ${m.icon}"></i></span>
+      <div class="ml">${esc(m.label)}<div class="mk">${m.k}</div></div>
+      <label class="sw"><input type="checkbox" ${on?'checked':''} onchange="toggleMod('${m.k}',this.checked)"><span class="tr"></span><span class="kn"></span></label>
+    </div>`; }).join('');
+  document.getElementById('detail').innerHTML=`
+    <div class="panel">
+      <div class="panel-hd" style="background:${b.color};color:${tc}">
+        <div class="lg" style="color:${tc};overflow:hidden">${b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`:esc(initials(b.name)||'?')}</div>
+        <div style="flex:1"><div class="nm">${esc(b.name)}</div><div class="sub">@${esc(b.emailDomain)} · ${modOn(b)} โมดูลเปิดใช้</div></div>
+        ${b.id===activeId?`<span style="font-size:.74rem;font-weight:700;background:rgba(255,255,255,.22);border-radius:8px;padding:5px 11px">กำลังใช้งาน</span>`:`<button class="use-btn" onclick="useBrand('${b.id}')" style="background:rgba(0,0,0,.25)">ใช้แบรนด์นี้</button>`}
+      </div>
+      <div class="panel-bd">
+        <div class="row2">
+          <div class="fld"><label>ชื่อแบรนด์ / บริษัท</label><input class="inp" value="${esc(b.name)}" oninput="setField('name',this.value)"></div>
+          <div class="fld"><label>โดเมนอีเมล (ใช้ตรวจ login)</label><input class="inp mono" value="${esc(b.emailDomain)}" oninput="setField('emailDomain',this.value)" placeholder="brand.com"></div>
+        </div>
+        <div class="fld"><label>โลโก้ / วางภาพตัวอย่างแบรนด์ — ระบบดึงสีทำเทมเพลตให้</label>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:64px;height:64px;border-radius:14px;flex:none;overflow:hidden;box-shadow:0 0 0 1.5px #dde2e7;background:${b.color};display:flex;align-items:center;justify-content:center">${b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover">`:`<span style="color:${textOn(b.color)};font-family:'Montserrat',sans-serif;font-weight:900">${esc(initials(b.name)||'?')}</span>`}</div>
+            <div style="flex:1">
+              <input type="file" id="logoInp" accept="image/*" style="display:none" onchange="handleLogo(this.files[0])">
+              <button class="mini" onclick="document.getElementById('logoInp').click()"><i class="fas fa-image"></i> อัปโหลด/วางภาพแบรนด์</button>
+              <div style="font-size:.76rem;color:#8a9099;margin-top:7px;line-height:1.4">วางโลโก้หรือแคปหน้าเพจแบรนด์ → ระบบดึงสีเด่นมาตั้งธีม/เทมเพลตให้</div>
+              ${b.palette&&b.palette.length?`<div style="font-size:.72rem;font-weight:700;color:#8a9099;margin-top:9px">สีที่ดึงจากภาพ</div><div class="swatches" style="margin-top:5px">${b.palette.map(c=>`<div class="swatch ${c===b.color?'on':''}" style="background:${c}" onclick="setColor('${c}')" title="${c}"></div>`).join('')}</div>`:''}
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label>สีธีมหลัก (Theme)</label><div class="swatches">${sw}</div></div>
+          <div class="fld"><label>สถานะ</label>
+            <label class="sw" style="margin-top:3px"><input type="checkbox" ${b.active?'checked':''} onchange="setField('active',this.checked)"><span class="tr"></span><span class="kn"></span></label>
+            <span style="font-size:.82rem;color:#8a9099;margin-left:10px;vertical-align:8px">${b.active?'เปิดใช้งานแบรนด์นี้':'ปิดใช้งาน (ซ่อนจากระบบ)'}</span>
+          </div>
+        </div>
+
+        <div class="mod-hd">
+          <span class="t">โมดูลที่เปิดใช้ <span class="n">${modOn(b)}/${MODULES.length}</span></span>
+          <span style="display:flex;gap:7px">
+            <button class="mini" onclick="setAllMods(true)">เปิดทั้งหมด</button>
+            <button class="mini" onclick="setAllMods(false)">ปิดทั้งหมด</button>
+          </span>
+        </div>
+        <div class="mods">${mods}</div>
+
+        <div class="fld" style="margin-top:18px"><label>ตัวอย่างหน้า Login (ตามแบรนด์)</label>
+          <div style="border:1px solid #e7eaee;border-radius:14px;padding:22px;display:flex;justify-content:center;background:linear-gradient(135deg, ${b.color}26, #f3f5f8 60%)">
+            <div style="background:#fff;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.1);padding:20px 22px;width:240px;text-align:center">
+              <div style="width:54px;height:54px;border-radius:14px;margin:0 auto 11px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${b.color};font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.15rem;color:${tc}">${b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover">`:esc(initials(b.name)||'?')}</div>
+              <div style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem;line-height:1.1">${esc(b.name)}</div>
+              <div style="font-size:.68rem;color:#8a9099;margin:2px 0 14px">Promotion Management System</div>
+              <div style="text-align:left;font-size:.78rem;color:#8a9099;border:1.4px solid #e2e6ea;border-radius:9px;padding:8px 11px;margin-bottom:8px"><i class="fas fa-envelope" style="opacity:.7;margin-right:6px"></i> name@${esc(b.emailDomain)}</div>
+              <div style="text-align:left;font-size:.78rem;color:#8a9099;border:1.4px solid #e2e6ea;border-radius:9px;padding:8px 11px;margin-bottom:8px"><i class="fas fa-lock" style="opacity:.7;margin-right:6px"></i> ••••••••</div>
+              <div style="border-radius:9px;padding:9px;font-weight:700;font-size:.82rem;margin-top:4px;background:${b.color};color:${tc}">เข้าสู่ระบบ</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:20px;display:flex;justify-content:flex-end">
+          ${BRANDS.length>1?`<button class="danger" onclick="delBrand('${b.id}')"><i class="fas fa-trash me-1"></i>ลบแบรนด์นี้</button>`:''}
+        </div>
+      </div>
+    </div>`;
+}
+function renderAll(){ renderActive(); renderList(); renderDetail(); }
+
+function selectBrand(id){ selId=id; renderAll(); }
+function useBrand(id){ activeId=id; localStorage.setItem(AKEY,id); selId=id;
+  const b=brand(id); renderAll();
+  Swal.fire({icon:'success', title:'สลับแบรนด์แล้ว', html:`ทั้งระบบจะแสดงข้อมูล/งานของ <b>${esc(b.name)}</b><br><span style="font-size:13px;color:#6b7280">โมดูลที่ปิดจะถูกซ่อนจากเมนู</span>`, timer:1700, showConfirmButton:false}); }
+function setField(k,v){ const b=brand(selId); if(!b) return; b[k]=v; save(); if(k==='name'||k==='emailDomain'||k==='active') renderAll(); }
+function setColor(c){ const b=brand(selId); if(!b) return; b.color=c; save(); renderAll(); }
+function toggleMod(k,v){ const b=brand(selId); if(!b) return; b.modules[k]=v; save(); renderAll(); }
+function setAllMods(v){ const b=brand(selId); if(!b) return; MODULES.forEach(m=>b.modules[m.k]=v); save(); renderAll(); }
+function delBrand(id){ const b=brand(id);
+  Swal.fire({icon:'warning', title:'ลบแบรนด์นี้?', html:`<b>${esc(b.name)}</b> และข้อมูลตั้งค่าของแบรนด์จะถูกลบ`, showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'})
+    .then(r=>{ if(!r.isConfirmed) return; BRANDS=BRANDS.filter(x=>x.id!==id); if(activeId===id){ activeId=BRANDS[0].id; localStorage.setItem(AKEY,activeId); } if(selId===id) selId=BRANDS[0].id; save(); renderAll(); }); }
+function addBrand(){
+  Swal.fire({ title:'เพิ่มแบรนด์/บริษัท', width:460, html:`<div style="text-align:left;font-size:14px">
+      <label style="font-weight:600;display:block;margin:2px 0 5px">ชื่อแบรนด์ <span style="color:#c0392b">*</span></label>
+      <input id="nbName" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น Auntie Anne's">
+      <label style="font-weight:600;display:block;margin:2px 0 5px">โดเมนอีเมล</label>
+      <input id="nbDom" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="brand.com">
+      <label style="font-weight:600;display:block;margin:2px 0 5px">เริ่มจากชุดโมดูล</label>
+      <select id="nbMods" class="swal2-input" style="margin:0;width:100%"><option value="all">เปิดทุกโมดูล</option><option value="none">ปิดทุกโมดูล (เลือกเองทีหลัง)</option></select>
+    </div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const n=(document.getElementById('nbName').value||'').trim(); if(!n){ Swal.showValidationMessage('กรอกชื่อแบรนด์'); return false; } return {name:n, dom:(document.getElementById('nbDom').value||'').trim(), mods:document.getElementById('nbMods').value}; }
+  }).then(r=>{ if(!r.isConfirmed) return; const v=r.value;
+    let id=v.name.toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,8)||('b'+Date.now().toString(36).slice(-4)); if(brand(id)) id=id+Date.now().toString(36).slice(-3);
+    const color=PALETTE[BRANDS.length%PALETTE.length];
+    BRANDS.push({ id, name:v.name, color, emailDomain:v.dom||(id+'.com'), active:true, modules:v.mods==='all'?allMods(true):allMods(false) });
+    selId=id; save(); renderAll();
+    Swal.fire({icon:'success', title:'เพิ่มแบรนด์แล้ว', timer:1300, showConfirmButton:false}); }); }
+
+renderAll();
+</script>
+</body>
+</html>

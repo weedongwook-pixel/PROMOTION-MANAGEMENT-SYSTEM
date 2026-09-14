@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voucher Master — วอเชอร์</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:50px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:linear-gradient(118deg,#00582a 0%,#00753c 48%,#1fa85a 100%); color:#fff; padding:15px 20px; display:flex; align-items:center; gap:13px; position:relative; z-index:20; overflow:hidden; }
+  .topbar::before{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background:radial-gradient(130% 200% at 2% -20%, rgba(255,255,255,.20), rgba(255,255,255,0) 42%); }
+  .topbar::after{ content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.10; background-image:repeating-linear-gradient(135deg, #fff 0 1.5px, transparent 1.5px 15px); }
+  .topbar h1, .topbar .role{ position:relative; z-index:1; }
+  .backbtn{ position:relative; z-index:1; border:0; background:rgba(255,255,255,.14); color:#fff; width:36px; height:36px; border-radius:10px; cursor:pointer; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; flex:none; transition:.14s; }
+  .backbtn:hover{ background:rgba(255,255,255,.26); }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.3px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .role{ margin-left:auto; font-size:.74rem; font-weight:700; background:rgba(255,255,255,.12); border-radius:8px; padding:5px 11px; letter-spacing:.5px; }
+  .wrap{ max-width:none; margin:0; padding:22px 26px 0; }
+
+  .bar{ display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .bar h2{ font-size:1.1rem; font-weight:700; margin:0; }
+  .bar .count{ font-size:.84rem; color:#8a9099; }
+  .bar .sp{ flex:1; }
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.9rem; padding:11px 17px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-d{ background:var(--pc-black); color:#fff; } .btn-d:hover{ opacity:.92; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-sm{ padding:8px 13px; font-size:.82rem; border-radius:9px; }
+
+  /* category tabs */
+  .tabs{ display:flex; gap:4px; border-bottom:2px solid #e7eaee; margin-bottom:18px; flex-wrap:wrap; }
+  .tab{ border:0; background:transparent; color:#7a828c; font-family:inherit; font-weight:700; font-size:.96rem; padding:11px 20px 13px; cursor:pointer; position:relative; display:inline-flex; align-items:center; gap:9px; margin-bottom:-2px; border-bottom:3px solid transparent; }
+  .tab:hover{ color:#3a4150; }
+  .tab.on{ color:#1a1d20; }
+  .tab .tcount{ font-size:.74rem; font-weight:700; background:#eef1f4; color:#7a828c; border-radius:999px; padding:1px 9px; min-width:22px; text-align:center; }
+  .tab.on .tcount{ background:#1a1d20; color:#fff; }
+  .tab .tdesc{ font-size:.74rem; font-weight:500; color:#aab0b8; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:18px; }
+  .mcard{ background:#fff; border:1px solid #e7eaee; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); transition:.14s; }
+  .mcard:hover{ transform:translateY(-3px); box-shadow:0 .7rem 1.5rem rgba(0,0,0,.1); }
+  .mcard.draft{ border:1.5px dashed #e6c45e; background:#fffdf5; }
+  .tag.draft{ background:#fff4d6; color:#946200; border:1px solid #f0dca0; }
+  /* voucher visual face (no image) */
+  .cvis{ padding:18px 18px 16px; color:#fff; position:relative; min-height:140px; display:flex; flex-direction:column; }
+  .cvis .tier{ font-size:.68rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:.85; }
+  .cvis .cname{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.32rem; line-height:1.05; margin-top:3px; max-width:65%; }
+  .cvis .perf{ position:absolute; left:0; right:0; bottom:46px; border-top:2px dashed rgba(255,255,255,.45); }
+  .cvis .perf::before,.cvis .perf::after{ content:''; position:absolute; top:-9px; width:16px; height:16px; border-radius:50%; background:var(--bg); }
+  .cvis .perf::before{ left:-8px; } .cvis .perf::after{ right:-8px; }
+  .cvis .num{ font-family:'JetBrains Mono',monospace; font-size:1rem; letter-spacing:2px; margin-top:auto; padding-top:14px; }
+  .cvis .disc{ position:absolute; top:16px; right:18px; text-align:right; }
+  .cvis .disc .b{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.7rem; line-height:1; }
+  .cvis .disc .s{ font-size:.66rem; opacity:.85; }
+  /* image face */
+  .cface{ position:relative; display:flex; align-items:center; justify-content:center; padding:20px; min-height:150px; }
+  .cface img{ max-width:100%; max-height:300px; width:auto; height:auto; border-radius:11px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.28)); }
+  .cface.land img{ width:86%; max-height:none; }
+  .cface .qrtag{ position:absolute; bottom:12px; right:14px; background:rgba(26,29,32,.82); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.4px; padding:3px 8px; border-radius:6px; display:flex; align-items:center; gap:5px; }
+  .cbody{ padding:14px 17px 16px; }
+  .privs{ display:flex; flex-direction:column; gap:6px; }
+  .priv{ font-size:.84rem; color:#3a4047; display:flex; align-items:center; gap:9px; }
+  .priv i{ color:var(--pc-green); font-size:.78rem; width:14px; }
+  .priv.hl{ font-weight:600; color:#1d7a4d; }
+  .priv.hl i{ color:#1d7a4d; }
+  .condbox{ margin-top:11px; background:#f8f9fb; border:1px solid #eef1f4; border-radius:10px; padding:9px 12px; }
+  .condh{ font-size:.7rem; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:#9aa1aa; margin-bottom:5px; }
+  .condh i{ color:#b6bcc4; margin-right:4px; }
+  .condi{ font-size:.78rem; color:#6b7280; line-height:1.45; padding-left:13px; position:relative; }
+  .condi::before{ content:'·'; position:absolute; left:3px; color:#aab0b8; }
+  .condi.more{ color:#9aa1aa; font-style:italic; }
+  .cmeta{ display:flex; gap:8px; margin-top:13px; flex-wrap:wrap; align-items:center; }
+  .tag{ font-size:.72rem; font-weight:700; border-radius:7px; padding:3px 9px; }
+  .tag.codes{ background:#eef4ff; color:#2c4a82; } .tag.on{ background:#eafaf1; color:#1d7a4d; } .tag.off{ background:#f1f4f7; color:#8a9099; }
+  .catbadge{ font-size:.68rem; font-weight:700; border-radius:6px; padding:3px 9px; letter-spacing:.4px; }
+  .cacts{ display:flex; gap:8px; margin-top:13px; border-top:1px solid #f1f4f7; padding-top:12px; }
+
+  .empty{ grid-column:1/-1; background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:46px; color:#9aa1aa; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+  .vtoggle{ display:inline-flex; border:1.5px solid #dde2e7; border-radius:9px; overflow:hidden; }
+  .vbtn{ border:0; background:#fff; color:#8a9099; padding:8px 12px; cursor:pointer; font-size:.9rem; }
+  .vbtn.on{ background:#1a1d20; color:#fff; }
+  .glist{ background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .ltbl{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .ltbl th{ text-align:left; font-size:.68rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; padding:11px 14px; background:#fafbfc; border-bottom:1px solid #eef1f4; }
+  .ltbl td{ padding:11px 14px; border-bottom:1px solid #f4f6f8; vertical-align:middle; }
+  .ltbl tr:last-child td{ border-bottom:0; }
+  .ldot{ display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:9px; vertical-align:-2px; }
+  .srch{ display:inline-flex; align-items:center; gap:8px; background:#fff; border:1.5px solid #dde2e7; border-radius:11px; padding:0 13px; height:42px; }
+  .srch i{ color:#aab0b8; font-size:.85rem; }
+  .srch input{ border:0; outline:0; font-family:inherit; font-size:.9rem; width:190px; background:transparent; color:#1a1d20; }
+  /* view-only (สาขา) — ซ่อนปุ่ม action ทั้งหมด */
+  body.vo .btn-d, body.vo .itnote, body.vo .cacts, body.vo .ltbl th:last-child, body.vo .ltbl td:last-child{ display:none !important; }
+  body.vo .mcard{ cursor:default; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="backbtn" onclick="goBack()" title="กลับหน้าก่อนหน้า"><i class="fas fa-arrow-left"></i></button>
+    <h1><i class="fas fa-gift"></i>VOUCHER MASTER · วอเชอร์</h1>
+    <span class="role">ACC · MKT</span>
+  </div>
+
+  <div class="wrap">
+    <div class="bar">
+      <h2>Voucher Master</h2><span class="count" id="count"></span>
+      <div class="sp"></div>
+      <div class="srch"><i class="fas fa-magnifying-glass"></i><input id="q" placeholder="ค้นหาชื่อ / โค้ด" oninput="setQuery(this.value)"></div>
+      <div class="sp"></div>
+      <div class="vtoggle"><button class="vbtn" id="vCard" onclick="setView('card')" title="การ์ด"><i class="fas fa-grip"></i></button><button class="vbtn" id="vList" onclick="setView('list')" title="ลิสต์"><i class="fas fa-list"></i></button></div>
+      <button class="btn btn-d" onclick="addManual()"><i class="fas fa-plus"></i>เพิ่ม Voucher</button>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="itnote" style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:12px;padding:11px 15px;margin-bottom:16px;font-size:.88rem;color:#2c4a82;display:flex;gap:10px;align-items:flex-start"><i class="fas fa-circle-info" style="margin-top:2px"></i><div>Voucher แต่ละประเภท (B2B · B2C · Complain) = <b>ปุ่ม Voucher ที่ตั้งบน POS</b> · <b>ผู้ดูแล:</b> Comp = MKT · B2B/B2C = ACC · ทุกการเปลี่ยนแปลง (เพิ่ม · แก้ไข · ลบ · แจ้งเพิ่มโค้ด) จะ<b>ส่งเข้าคิวงานให้ IT</b> นำไปตั้งปุ่ม/อัปข้อมูลที่ Backoffice พร้อมแจ้งเตือนทีม IT</div></div>
+    <div class="grid" id="grid"></div>
+    <div class="demo-note">— หน้าตัวอย่าง (Mockup) · บันทึกในเครื่องนี้ (localStorage: pc_vouchers) · “แจ้งเพิ่มโค้ด Voucher” ส่งเข้าคิวให้ IT เหมือนระบบจัดการโค้ด —</div>
+  </div>
+
+<script>
+const KEY='pc_vouchers';
+/* ประเภท Voucher — แก้สี/ป้ายได้ที่นี่ (เพิ่มประเภทใหม่ได้) */
+const CATS={
+  b2b:      { label:'B2B',      desc:'องค์กร / คู่ค้า',  owner:'ACC', c1:'#1f4e79', c2:'#4a86c5', text:'#fff' },
+  b2c:      { label:'B2C',      desc:'ลูกค้าทั่วไป',     owner:'ACC', c1:'#0a7d3c', c2:'#5bbd7e', text:'#fff' },
+  complain: { label:'Complain', desc:'ชดเชยลูกค้า',      owner:'MKT', c1:'#b03048', c2:'#e0738a', text:'#fff' },
+};
+/* ข้อมูลจริงจาก Voucher master (Voucher Online = B2C/Complain · Item coupon Online = B2B) */
+function mkV(code,name,cat,vt,amt,start,end,promoKind){ return { id:code.toLowerCase(), name, cat, typeCode:code, prefix:code, valueType:vt, valueAmount:amt||0, active:true, codeCount:0, image:'', start, end, benefits:[], conditions:[], promoKind:promoKind||'Voucher Online' }; }
+const DEFAULT_VOUCHERS=[
+  // B2C — Voucher Online (แลกสินค้าฟรี)
+  mkV('VC0011','Large Fries Voucher','b2c','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0012','Jumbo Fries Voucher','b2c','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0013','Mega Fries Voucher','b2c','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0015','Jumbo Chicken Pop Voucher','b2c','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0016','Mega Chicken Pop Voucher','b2c','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0029','Large Chicken Pop Voucher','b2c','free',0,'2020-01-01','2050-12-31'),
+  mkV('VC0034','Large Chicken skin Voucher','b2c','free',0,'2021-01-07','2050-12-31'),
+  mkV('VC0059','Free Lime Soda 16oz Voucher','b2c','free',0,'2022-02-17','2050-12-31'),
+  mkV('VC0221','Free Pepsi 16oz Voucher','b2c','free',0,'2025-03-01','2050-03-14'),
+  // Complain — Voucher Online (ชดเชยลูกค้า)
+  mkV('VC0041','Comp Voucher - Large FF','complain','free',0,'2021-07-30','2050-12-31'),
+  mkV('VC0042','Comp Voucher Jumbo FF','complain','free',0,'2019-03-12','2050-12-31'),
+  mkV('VC0043','Comp Voucher Mega FF','complain','free',0,'2021-07-30','2050-12-31'),
+  mkV('VC0044','Comp Voucher Giga FF','complain','free',0,'2021-07-30','2050-12-31'),
+  mkV('VC0045','Comp Voucher Large CK','complain','free',0,'2021-07-30','2050-12-31'),
+  // B2B — Item coupon Online (มูลค่าขาย + Truffle 10THB)
+  mkV('IVC001','Large Fries Voucher + Truffle 10THB','b2b','baht',49,'2022-01-12','2050-12-31','Item coupon Online'),
+  mkV('IVC002','Jumbo Fries Voucher + Truffle 10THB','b2b','baht',69,'2022-01-12','2050-12-31','Item coupon Online'),
+  mkV('IVC003','Mega Fries Voucher + Truffle 10THB','b2b','baht',89,'2022-01-12','2050-12-31','Item coupon Online'),
+  mkV('IVC004','Large Chicken Pop Voucher+Truffle 10THB','b2b','baht',69,'2022-01-12','2050-12-31','Item coupon Online'),
+  mkV('IVC005','Jumbo Chicken Pop Voucher+Truffle 10THB','b2b','baht',89,'2022-01-12','2050-12-31','Item coupon Online'),
+  mkV('IVC006','Mega Chicken Pop Voucher+Truffle 10THB','b2b','baht',115,'2022-01-12','2050-12-31','Item coupon Online'),
+];
+const VOUCHERS_VER='2';
+/* รูปหน้า Voucher จริง (อาร์ตเวิร์ก) — key = code */
+const VOUCHER_IMG={ 'VC0015':'assets/vouchers/VC0015.jpg', 'IVC005':'assets/vouchers/IVC005.jpg' };
+function load(){ let a=null; try{ a=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!Array.isArray(a)||!a.length){ a=JSON.parse(JSON.stringify(DEFAULT_VOUCHERS)); try{ localStorage.setItem(KEY, JSON.stringify(a)); }catch(e){} }
+  let touched=false;
+  a.forEach(c=>{ if(!c) return;
+    if(VOUCHER_IMG[c.typeCode] && !c.image){ c.image=VOUCHER_IMG[c.typeCode]; touched=true; }
+    if(!c.prefix && c.typeCode){ c.prefix=c.typeCode; touched=true; }
+    if(c.valueType===undefined){ c.valueType=(+(c.valueAmount||0)>0?'baht':'free'); touched=true; }
+    if(!Array.isArray(c.benefits)) { c.benefits=c.benefits?[String(c.benefits)]:[]; touched=true; }
+    if(!Array.isArray(c.conditions)) { c.conditions=[]; touched=true; }
+  });
+  if(touched){ try{ localStorage.setItem(KEY, JSON.stringify(a)); }catch(e){} }
+  try{ localStorage.setItem(KEY+'_ver',VOUCHERS_VER); }catch(e){}
+  return a; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(VOUCHERS)); }
+let VOUCHERS=load();
+let FORM_IMG=null;
+function onFormImg(file){ if(!file) return; const rd=new FileReader(); rd.onload=e=>{ FORM_IMG=e.target.result; const p=document.getElementById('fImgPrev'); if(p){ p.style.background="#f1f4f7 url('"+FORM_IMG+"') center/contain no-repeat"; } }; rd.readAsDataURL(file); }
+function clearFormImg(){ FORM_IMG=null; const p=document.getElementById('fImgPrev'); if(p) p.style.background='#f1f4f7'; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function catOf(t){ return CATS[t]||CATS.b2c; }
+function fitFace(img){ const p=img.parentElement; if(!p) return; const land=img.naturalWidth>=img.naturalHeight; p.classList.toggle('land',land); }
+function valueText(c){ if(c.valueType==='free') return 'แลกฟรี'; if(c.valueType==='percent') return (+c.valueAmount||0)+'%'; return '฿'+(+c.valueAmount||0).toLocaleString(); }
+function valueSub(c){ if(c.valueType==='free') return 'แลกสินค้า'; if(c.valueType==='percent') return 'ส่วนลด'; return 'มูลค่า'; }
+let FILTER='all';
+function renderFilter(){ const el=document.getElementById('tabs'); if(!el) return;
+  const cnt={all:VOUCHERS.length}; Object.keys(CATS).forEach(k=>cnt[k]=VOUCHERS.filter(v=>v.cat===k).length);
+  const tabs=[['all','ทั้งหมด','']].concat(Object.keys(CATS).map(k=>[k,CATS[k].label,CATS[k].desc]));
+  el.innerHTML=tabs.map(([k,lb,desc])=>{ const t=k==='all'?null:CATS[k]; const ub=t?t.c1:'#1a1d20';
+    return `<button class="tab ${FILTER===k?'on':''}" style="${FILTER===k?'border-bottom-color:'+ub:''}" onclick="setFilter('${k}')"><span>${esc(lb)}</span>${desc?`<span class="tdesc">${esc(desc)}</span>`:''}${t&&t.owner?`<span class="towner" style="font-size:.6rem;font-weight:700;background:#eef1f4;color:#5a616b;border-radius:5px;padding:1px 6px;margin-left:6px;letter-spacing:.3px">${t.owner}</span>`:''}<span class="tcount" ${FILTER===k&&t?`style="background:${t.c1};color:#fff"`:''}>${cnt[k]||0}</span></button>`; }).join('');
+}
+function setFilter(k){ FILTER=k; render(); }
+let QUERY='';
+function setQuery(v){ QUERY=(v||'').trim().toLowerCase(); render(); }
+function visList(){ let l=FILTER==='all'?VOUCHERS:VOUCHERS.filter(v=>v.cat===FILTER);
+  if(QUERY) l=l.filter(v=>(((v.name||'')+' '+(v.typeCode||'')+' '+(v.prefix||'')).toLowerCase().indexOf(QUERY)>-1));
+  return l; }
+const VIEW_ONLY=/[?&]view=1/.test(location.search);
+
+let VIEW='card';
+function setView(v){ VIEW=v; var a=document.getElementById('vCard'),b=document.getElementById('vList'); if(a)a.classList.toggle('on',v==='card'); if(b)b.classList.toggle('on',v==='list'); render(); }
+function listHTML(){ const rows=visList();
+  return `<table class="ltbl"><thead><tr><th>Voucher</th><th>ประเภท</th><th>มูลค่า</th><th>Code Type</th><th>โค้ด</th><th>สถานะ</th><th></th></tr></thead><tbody>${rows.map(c=>{ const i=VOUCHERS.indexOf(c); const t=catOf(c.cat);
+    return `<tr${!c.active?' style="opacity:.55"':''}><td><span class="ldot" style="background:linear-gradient(135deg,${t.c1},${t.c2})"></span><b>${esc(c.name)}</b></td><td><span class="catbadge" style="background:${t.c1}1a;color:${t.c1}">${esc(t.label)}</span></td><td><b>${esc(valueText(c))}</b></td><td class="mono">${esc(c.prefix)}</td><td>${(+c.codeCount||0).toLocaleString()}</td><td>${c.draft?'<span style="font-size:.74rem;font-weight:700;border-radius:6px;padding:2px 8px;background:#fff4d6;color:#946200">ร่าง</span>':`<span style="font-size:.74rem;font-weight:700;border-radius:6px;padding:2px 8px;${c.active?'background:#eafaf1;color:#1d7a4d':'background:#fdecea;color:#c0392b'}">${c.active?'เปิดใช้งาน':'ยกเลิกใช้งาน'}</span>`}</td><td style="text-align:right;white-space:nowrap">${c.draft?`<button class="btn btn-g btn-sm" title="ยืนยัน + ส่งให้ IT" onclick="editVoucher(${i})"><i class="fas fa-paper-plane"></i></button>`:`<button class="btn btn-g btn-sm" onclick="addCodes(${i})"><i class="fas fa-plus"></i></button>`} <button class="btn btn-o btn-sm" onclick="editVoucher(${i})"><i class="fas fa-pen"></i></button> <button class="btn btn-o btn-sm" style="color:#c0392b;border-color:#f1c6bf" onclick="delVoucher(${i})"><i class="fas ${c.active?'fa-ban':'fa-rotate-left'}"></i></button></td></tr>`; }).join('')}</tbody></table>`;
+}
+function render(){
+  renderFilter();
+  document.getElementById('count').textContent='· '+VOUCHERS.length+' ประเภท · '+VOUCHERS.reduce((s,c)=>s+(+c.codeCount||0),0).toLocaleString()+' โค้ด';
+  const g=document.getElementById('grid');
+  g.className = VIEW==='list' ? 'glist' : 'grid';
+  const rows=visList();
+  if(VIEW==='list'){ g.innerHTML = rows.length ? listHTML() : '<div class="empty" style="padding:40px;text-align:center;color:#9aa1aa">ยังไม่มี Voucher</div>'; return; }
+  if(!rows.length){ g.innerHTML='<div class="empty"><i class="fas fa-gift fa-2x" style="opacity:.4;display:block;margin-bottom:12px"></i>ยังไม่มี Voucher — กด “เพิ่ม Voucher”</div>'; return; }
+  g.innerHTML=rows.map(c=>{ const i=VOUCHERS.indexOf(c); const t=catOf(c.cat);
+    const face = c.image
+      ? `<div class="cface" style="background:linear-gradient(135deg,${t.c1}1f,${t.c2}1f)"><img class="cimg" src="${c.image}" alt="${esc(c.name)}" loading="lazy" onload="fitFace(this)"><span class="qrtag"><i class="fas fa-qrcode"></i> สแกนใช้ที่ POS</span></div>`
+      : `<div class="cvis" style="background:linear-gradient(135deg,${t.c1},${t.c2});color:${t.text}">
+        <div class="tier">${esc(t.label)} VOUCHER</div>
+        <div class="cname">${esc(c.name)}</div>
+        <div class="disc"><div class="b">${esc(valueText(c))}</div><div class="s">${esc(valueSub(c))}</div></div>
+        <div class="perf"></div>
+        <div class="num">${esc(c.prefix)} •••• ••••</div>
+      </div>`;
+    return `<div class="mcard${c.draft?' draft':''}"${!c.active?' style="opacity:.62"':''}>
+      ${face}
+      <div class="cbody">
+        <div class="privs">${(c.benefits||[]).map(p=>`<div class="priv"><i class="fas fa-check"></i>${esc(p)}</div>`).join('')}</div>
+        ${(c.conditions&&c.conditions.length)?`<div class="condbox"><div class="condh"><i class="fas fa-circle-info"></i> เงื่อนไขการใช้</div>${c.conditions.slice(0,3).map(x=>`<div class="condi">${esc(x)}</div>`).join('')}${c.conditions.length>3?`<div class="condi more">+ อีก ${c.conditions.length-3} เงื่อนไข</div>`:''}</div>`:''}
+        <div class="cmeta">
+          <span class="catbadge" style="background:${t.c1}1a;color:${t.c1}">${esc(t.label)}</span>
+          <span class="tag codes"><i class="fas fa-barcode"></i> ${(+c.codeCount||0).toLocaleString()} โค้ด</span>
+          ${c.draft?`<span class="tag draft"><i class="fas fa-pen-ruler"></i> ร่าง · ยังไม่ส่ง IT</span>`:`<span class="tag" style="${c.active?'background:#eafaf1;color:#1d7a4d':'background:#fdecea;color:#c0392b'}">${c.active?'เปิดใช้งาน':'ยกเลิกการใช้งาน'}</span>`}
+          <span class="tag" style="background:#f1f4f7;color:#5a616b"><i class="far fa-calendar"></i> ถึง ${esc(c.end||'-')}</span>
+        </div>
+        <div class="cacts">
+          ${c.draft
+            ? `<button class="btn btn-g btn-sm" onclick="editVoucher(${i})"><i class="fas fa-paper-plane"></i>ยืนยัน + ส่งให้ IT</button>
+               <button class="btn btn-o btn-sm" onclick="editVoucher(${i})"><i class="fas fa-pen"></i>แก้ร่าง</button>`
+            : `<button class="btn btn-g btn-sm" onclick="addCodes(${i})"><i class="fas fa-plus"></i>แจ้งเพิ่มโค้ด</button>
+               <button class="btn btn-o btn-sm" onclick="editVoucher(${i})"><i class="fas fa-pen"></i>แก้ไข</button>`}
+          <button class="btn btn-o btn-sm" title="${c.active?'ยกเลิกการใช้งาน':'เปิดใช้งานอีกครั้ง'}" style="margin-left:auto;color:#c0392b;border-color:#f1c6bf" onclick="delVoucher(${i})"><i class="fas ${c.active?'fa-ban':'fa-rotate-left'}"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function voucherForm(c){ c=c||{}; const copt=Object.keys(CATS).map(k=>`<option value="${k}" ${c.cat===k?'selected':''}>${CATS[k].label} · ${CATS[k].desc}</option>`).join('');
+  const vt=c.valueType||'baht';
+  return `<div style="text-align:left;font-size:14px">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อ Voucher <span style="color:#c0392b">*</span></label>
+    <input id="fName" class="swal2-input" style="margin:0 0 11px;width:100%" placeholder="เช่น B2B Gift Voucher 100" value="${esc(c.name)}">
+    <div style="display:flex;gap:11px">
+      <div style="width:160px"><label style="font-weight:600;display:block;margin:2px 0 4px">Code Type <span style="color:#c24033">*</span> <span style="font-size:.66rem;font-weight:700;background:#e7f0ff;color:#2c4a82;border:1px solid #cfe0fb;border-radius:5px;padding:1px 6px">IT กรอก</span></label><input id="fTypeCode" class="swal2-input mono" style="margin:0 0 11px;width:100%;background:#f3f5f7" value="${esc(c.typeCode||'')}" placeholder="เช่น VB2B"></div>
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">ประเภท Voucher <span style="color:#c0392b">*</span></label><select id="fCat" class="swal2-input" style="margin:0 0 11px;width:100%">${copt}</select></div>
+    </div>
+    <div style="border:1.5px solid #dde2e7;border-radius:10px;padding:11px 13px;margin:0 0 13px">
+      <div style="font-weight:600;font-size:13.5px;margin-bottom:7px">มูลค่า Voucher</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px"><input type="radio" name="fVT" value="baht" ${vt==='baht'?'checked':''} onchange="window.__vtSync&&window.__vtSync()" style="width:16px;height:16px;accent-color:#2e934a"> มูลค่าเงิน (฿)</label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px"><input type="radio" name="fVT" value="percent" ${vt==='percent'?'checked':''} onchange="window.__vtSync&&window.__vtSync()" style="width:16px;height:16px;accent-color:#2e934a"> ส่วนลด (%)</label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px"><input type="radio" name="fVT" value="free" ${vt==='free'?'checked':''} onchange="window.__vtSync&&window.__vtSync()" style="width:16px;height:16px;accent-color:#2e934a"> แลกสินค้าฟรี</label>
+      </div>
+      <input id="fAmount" type="number" min="0" class="swal2-input" style="margin:9px 0 0;width:160px" placeholder="จำนวน" value="${c.valueAmount!=null?esc(c.valueAmount):''}">
+    </div>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">รูปหน้า Voucher (ไม่บังคับ)</label>
+    <div style="display:flex;gap:11px;align-items:center;margin-bottom:11px">
+      <div id="fImgPrev" style="width:90px;height:56px;border-radius:9px;border:1.5px solid #dde2e7;background:${c.image?`#f1f4f7 url('${c.image}') center/contain no-repeat`:'#f1f4f7'};flex:none"></div>
+      <input type="file" id="fImg" accept="image/*" style="display:none" onchange="onFormImg(this.files[0])">
+      <button type="button" onclick="document.getElementById('fImg').click()" style="background:#1a1d20;color:#fff;border:0;border-radius:9px;padding:9px 14px;font-family:inherit;font-weight:600;font-size:.86rem;cursor:pointer"><i class="fas fa-image"></i> อัปโหลดรูป</button>
+      <button type="button" onclick="clearFormImg()" style="background:#fff;border:1.5px solid #dde2e7;border-radius:9px;padding:9px 12px;font-family:inherit;font-weight:600;font-size:.86rem;cursor:pointer;color:#c0392b">ลบรูป</button>
+    </div>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">รายละเอียด/สิทธิ์ <span style="font-weight:400;color:#9aa1aa">(1 บรรทัด = 1 ข้อ)</span></label>
+    <textarea id="fBenefits" class="swal2-textarea" style="margin:0 0 11px;width:100%;min-height:60px" placeholder="ใช้แทนเงินสด 100 บาท / ใบ">${esc((c.benefits||[]).join('\n'))}</textarea>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">เงื่อนไขการใช้ <span style="font-weight:400;color:#9aa1aa">(1 บรรทัด = 1 เงื่อนไข)</span></label>
+    <textarea id="fCond" class="swal2-textarea" style="margin:0 0 11px;width:100%;min-height:84px" placeholder="ใช้ได้ทุกสาขาที่ร่วมรายการ&#10;1 ใบ/บิล · ไม่ใช้ร่วมกับโปรโมชั่นอื่น&#10;ใช้สิทธิ์ได้ถึงวันหมดอายุบนใบ">${esc((c.conditions||[]).join('\n'))}</textarea>
+    <div style="display:flex;gap:11px">
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">เริ่ม</label><input id="fStart" type="date" class="swal2-input" style="margin:0;width:100%" value="${esc(c.start||'2026-01-01')}"></div>
+      <div style="flex:1"><label style="font-weight:600;display:block;margin:2px 0 4px">สิ้นสุด</label><input id="fEnd" type="date" class="swal2-input" style="margin:0;width:100%" value="${esc(c.end||'2026-12-31')}"></div>
+    </div>
+  </div>`; }
+window.__vtSync=function(){ const vt=(document.querySelector('input[name="fVT"]:checked')||{}).value; const amt=document.getElementById('fAmount'); if(!amt) return; if(vt==='free'){ amt.value=''; amt.disabled=true; amt.style.opacity=.5; } else { amt.disabled=false; amt.style.opacity=1; } };
+function readForm(){ const name=(document.getElementById('fName').value||'').trim(); if(!name){ Swal.showValidationMessage('กรอกชื่อ Voucher'); return false; }
+  const code=(document.getElementById('fTypeCode').value||'').trim().toUpperCase();
+  const valueType=(document.querySelector('input[name="fVT"]:checked')||{}).value||'baht';
+  const valueAmount=valueType==='free'?0:(+document.getElementById('fAmount').value||0);
+  return { name, cat:document.getElementById('fCat').value, valueType, valueAmount, typeCode:code, prefix:code,
+    benefits:(document.getElementById('fBenefits').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    conditions:(document.getElementById('fCond').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    image:FORM_IMG, start:document.getElementById('fStart').value, end:document.getElementById('fEnd').value }; }
+function readFormDraft(){ const code=(document.getElementById('fTypeCode').value||'').trim().toUpperCase();
+  const valueType=(document.querySelector('input[name="fVT"]:checked')||{}).value||'baht';
+  const valueAmount=valueType==='free'?0:(+document.getElementById('fAmount').value||0);
+  return { name:(document.getElementById('fName').value||'').trim()||'(ร่าง — ยังไม่ตั้งชื่อ)', cat:document.getElementById('fCat').value, valueType, valueAmount, typeCode:code, prefix:code,
+    benefits:(document.getElementById('fBenefits').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    conditions:(document.getElementById('fCond').value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    image:FORM_IMG, start:document.getElementById('fStart').value, end:document.getElementById('fEnd').value }; }
+function toastDraft(name){ Swal.fire({ toast:true, position:'top-end', icon:'info', iconColor:'#b07d00', title:'บันทึกร่างแล้ว', html:`<span style="font-size:13px;color:#6b7280">${esc(name)} · ยังไม่ส่งให้ IT</span>`, showConfirmButton:false, timer:2600, timerProgressBar:true }); }
+function notifyIT(action, name, extra){
+  Swal.fire({ icon:'success', title:'เข้าคิวงานให้ IT แล้ว', width:540,
+    html:`<div style="text-align:left;font-size:14px"><div style="font-weight:600">${esc(action)} — <b>${esc(name)}</b></div>${extra?`<div style="color:#5a616b;margin-top:4px">${esc(extra)}</div>`:''}<div style="margin-top:11px;background:#f6f8fa;border-left:4px solid #2f5fb3;border-radius:10px;padding:10px 13px"><div style="font-size:.72rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#8a9099">แจ้งเตือนไปที่</div><div style="font-weight:600;margin-top:5px"><span style="font-size:.74rem;font-weight:700;background:#fdf3e0;color:#9a6700;border-radius:6px;padding:2px 8px">Email</span> <span style="font-size:.74rem;font-weight:700;background:#eef4ff;color:#2c4a82;border-radius:6px;padding:2px 8px">Team Chat</span> <span style="color:#9aa1aa">→</span> ทีม IT</div><div style="font-size:13px;color:#6b7280;margin-top:7px">IT รับไปตั้งปุ่ม Voucher บน POS / อัปข้อมูลที่ Backoffice ต่อ</div></div></div>`, confirmButtonColor:'#2e934a' });
+}
+function addManual(){ FORM_IMG=null; Swal.fire({ title:'เพิ่ม Voucher', width:560, html:voucherForm(), didOpen:window.__vtSync, showCancelButton:true, showDenyButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม + ส่งให้ IT', denyButtonText:'<i class="fas fa-pen-ruler"></i> บันทึกร่าง', denyButtonColor:'#b07d00', cancelButtonText:'ยกเลิก', preConfirm:readForm, preDeny:readFormDraft })
+  .then(r=>{ if(r.isDismissed) return; const v=r.value; v.id='v'+Date.now().toString(36); v.active=true; v.codeCount=0;
+    if(r.isDenied){ v.draft=true; VOUCHERS.unshift(v); save(); render(); toastDraft(v.name); return; }
+    v.draft=false; VOUCHERS.unshift(v); save(); render(); notifyIT('เพิ่ม Voucher ใหม่', v.name, CATS[v.cat].label+' · '+valueText(v)+' · Code '+v.prefix); }); }
+function editVoucher(i){ FORM_IMG=VOUCHERS[i].image||null; const wasDraft=!!VOUCHERS[i].draft; Swal.fire({ title: wasDraft?'แก้ไขร่าง Voucher':'แก้ไข Voucher', width:560, html:voucherForm(VOUCHERS[i]), didOpen:window.__vtSync, showCancelButton:true, showDenyButton:true, confirmButtonColor:'#2e934a', confirmButtonText: wasDraft?'ยืนยัน + ส่งให้ IT':'บันทึก', denyButtonText:'<i class="fas fa-pen-ruler"></i> บันทึกร่าง', denyButtonColor:'#b07d00', cancelButtonText:'ยกเลิก', preConfirm:readForm, preDeny:readFormDraft })
+  .then(r=>{ if(r.isDismissed) return;
+    if(r.isDenied){ Object.assign(VOUCHERS[i], r.value, {draft:true}); save(); render(); toastDraft(VOUCHERS[i].name); return; }
+    Object.assign(VOUCHERS[i], r.value, {draft:false}); save(); render(); notifyIT(wasDraft?'ยืนยัน Voucher จากร่าง':'แก้ไข Voucher', VOUCHERS[i].name, 'อัปเดตมูลค่า/เงื่อนไข/รูป Voucher'); }); }
+function delVoucher(i){ const c=VOUCHERS[i];
+  if(!c.active){ Swal.fire({icon:'question',title:'เปิดใช้งาน Voucher นี้อีกครั้ง?',html:`<b>${esc(c.name)}</b>`,showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'เปิดใช้งาน',cancelButtonText:'ปิด'}).then(r=>{ if(r.isConfirmed){ c.active=true; save(); render(); notifyIT('เปิดใช้งาน Voucher อีกครั้ง', c.name); } }); return; }
+  Swal.fire({icon:'warning',title:'ยกเลิกการใช้งาน Voucher นี้?',html:`<b>${esc(c.name)}</b><br><span style="font-size:13px;color:#6b7280">Voucher จะถูกตั้งเป็น <b>ยกเลิกการใช้งาน</b> — ข้อมูลยังอยู่เพื่อให้<b>สาขาตรวจสอบได้ว่าไม่ใช้แล้ว</b> · แจ้ง IT ถอด/ปิดปุ่มที่ Backoffice</span>`,showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ยกเลิกการใช้งาน',cancelButtonText:'ยกเลิก'})
+  .then(r=>{ if(!r.isConfirmed) return; c.active=false; save(); render(); notifyIT('ยกเลิกการใช้งาน Voucher', c.name, 'ข้อมูลยังอยู่ในระบบ (สถานะ: ยกเลิกการใช้งาน) · สาขาตรวจสอบได้'); }); }
+
+function addCodes(i){ const c=VOUCHERS[i];
+  if(c.draft){ Swal.fire({icon:'info',iconColor:'#b07d00',title:'Voucher นี้ยังเป็นร่าง',html:'<span style="font-size:13px;color:#6b7280">กด <b>ยืนยัน + ส่งให้ IT</b> ก่อน จึงจะแจ้งเพิ่มโค้ดได้</span>',confirmButtonColor:'#2e934a'}); return; }
+  try{ localStorage.setItem('pc_code_role','ADD');
+    localStorage.setItem('pc_card_addcode', JSON.stringify({name:c.name, prefix:c.prefix, typeCode:c.typeCode||c.prefix, kind:'Voucher online', cat:'voucher', voucherCat:c.cat||'', start:c.start, end:c.end})); }catch(e){}
+  location.href='Code Management.html';
+}
+
+/* Import / Template */
+function importVouchers(){ Swal.fire({ title:'Import Voucher', width:580, html:`<div style="text-align:left;font-size:13.5px">
+    <div style="color:#5a616b;margin-bottom:8px">วางข้อมูลจาก Excel — 1 บรรทัด/Voucher · คั่นด้วย <b>Tab หรือ ,</b> ตามหัว Template:<br><span class="mono" style="font-size:.74rem;color:#8a9099">ชื่อ, ประเภท(b2b/b2c/complain), มูลค่า(฿/%/free), จำนวน, codeType, สิทธิ์(คั่นด้วย ;), เริ่ม, สิ้นสุด</span></div>
+    <textarea id="imp" class="swal2-textarea" style="margin:0;width:100%;min-height:140px;font-family:'JetBrains Mono',monospace;font-size:12.5px" placeholder="B2B Gift 100	b2b	฿	100	VB2B	ใช้แทนเงินสด 100 บาท	2026-01-01	2026-12-31"></textarea></div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'นำเข้า', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const txt=(document.getElementById('imp').value||'').trim(); if(!txt){ Swal.showValidationMessage('วางข้อมูลก่อน'); return false; } return txt; } })
+    .then(r=>{ if(!r.isConfirmed) return; const rows=r.value.split('\n').map(l=>l.trim()).filter(Boolean); let n=0;
+      rows.forEach(line=>{ const p=line.split(/\t|,/).map(s=>s.trim()); if(!p[0]) return;
+        const cat=(p[1]||'b2c').toLowerCase(); const um=(p[2]||'฿'); const vt=/free|ฟรี/i.test(um)?'free':(/%/.test(um)?'percent':'baht');
+        VOUCHERS.unshift({ id:'v'+Date.now().toString(36)+n, name:p[0], cat:CATS[cat]?cat:'b2c', valueType:vt, valueAmount:vt==='free'?0:(+p[3]||0), prefix:(p[4]||'').toUpperCase(), typeCode:(p[4]||'').toUpperCase(), benefits:(p[5]||'').split(';').map(s=>s.trim()).filter(Boolean), conditions:[], start:p[6]||'2026-01-01', end:p[7]||'2026-12-31', active:true, codeCount:0 }); n++; });
+      save(); render(); Swal.fire({icon:'success',title:'นำเข้าแล้ว',html:`เพิ่ม <b>${n}</b> Voucher`,timer:1600,showConfirmButton:false}); }); }
+
+setView('card');
+if(VIEW_ONLY){ document.body.classList.add('vo'); var _r=document.querySelector('.topbar .role'); if(_r) _r.textContent='สาขา · ดูข้อมูล'; var _h2=document.querySelector('.bar h2'); if(_h2) _h2.textContent='บัตรกำนัล / Voucher ของร้าน'; }
+/* ปุ่มกลับ — ย้อนไปหน้าก่อนหน้าใน shell (หน้าที่พามาที่นี่) · standalone ใช้ history ของตัวเอง */
+function goBack(){
+  try{ if(window.parent && window.parent!==window && window.parent.history){ window.parent.history.back(); return; } }catch(e){}
+  if(window.history.length>1){ window.history.back(); } else { try{ if(window.parent!==window) window.parent.location.hash='#Dashboard'; }catch(e){} }
+}
+window.VoucherMasterReady = true;
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .backbtn,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

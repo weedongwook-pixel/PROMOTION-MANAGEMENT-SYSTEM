@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan งาน — เปิดสาขา &amp; Renovate</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="data/plan-forecast.js"></script>
+<script src="data/it-asset-catalog.js"></script>
+<style>
+  :root{ --dark:#1a1d20; --yellow:#2e934a; --green:#2e934a; --soft:#f6f8fa; --mut:#6b7280; --line:#e6e9ee;
+         --amber:#fff4d6; --amberT:#8a6d00; --red:#fdecec; --redT:#c0392b; --greenBg:#eafaf1; --greenT:#1d7a4d; --blue:#e8eefb; --blueT:#2c4a82; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:#eef1f5; color:#1a1d20; margin:0; padding:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1380px; margin:0 auto; padding:22px 18px 70px; }
+
+  .head{ background:var(--dark); border-radius:18px; padding:22px 26px; color:#fff; display:flex; align-items:center; gap:18px; flex-wrap:wrap; box-shadow:0 14px 36px rgba(0,0,0,.12); }
+  .head .icon{ width:50px; height:50px; border-radius:13px; background:var(--yellow); color:var(--dark); display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex:none; }
+  .head h1{ margin:0; font-size:1.4rem; font-weight:800; }
+  .head .sub{ color:#aab2bd; font-size:.86rem; margin-top:3px; }
+
+  .chips{ display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 6px; }
+  .chip{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 15px; display:flex; align-items:center; gap:9px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+  .chip .num{ font-size:1.35rem; font-weight:800; font-family:'JetBrains Mono',monospace; line-height:1; }
+  .chip .lbl{ font-size:.74rem; color:var(--mut); font-weight:500; line-height:1.2; }
+  .chip.red .num{ color:var(--redT); } .chip.amber .num{ color:var(--amberT); } .chip.green .num{ color:var(--greenT); } .chip.blue .num{ color:var(--blueT); }
+
+  .bar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:14px 0 10px; }
+  .bar input[type=text], .bar select{ font-family:'Kanit',sans-serif; font-size:.86rem; border:1.4px solid var(--line); border-radius:10px; padding:8px 12px; background:#fff; outline:none; }
+  .bar input[type=text]{ min-width:220px; }
+  .bar input:focus, .bar select:focus{ border-color:var(--green); }
+  .legend{ margin-left:auto; display:flex; gap:12px; font-size:.74rem; color:var(--mut); align-items:center; flex-wrap:wrap; }
+  .lg{ display:inline-flex; align-items:center; gap:5px; } .sw{ width:13px; height:13px; border-radius:4px; display:inline-block; }
+
+  .tablecard{ background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:0 8px 28px rgba(0,0,0,.06); }
+  .scroll{ overflow:auto; max-height:calc(100vh - 320px); }
+  table{ width:100%; border-collapse:separate; border-spacing:0; font-size:.84rem; }
+  thead th{ position:sticky; top:0; z-index:3; background:var(--dark); color:#fff; text-align:left; padding:11px 12px; font-weight:600; font-size:.76rem; white-space:nowrap; }
+  thead tr.flt th{ top:39px; background:#2a2e33; padding:6px 8px; z-index:2; }
+  thead tr.flt input, thead tr.flt select{ width:100%; font-family:'Kanit',sans-serif; font-size:.74rem; border:1px solid #444; border-radius:6px; padding:4px 7px; background:#1f2226; color:#fff; outline:none; }
+  thead tr.flt input::placeholder{ color:#8a9099; }
+  tbody td{ padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap; }
+  tbody tr:nth-child(even) td{ background:#fafbfc; }
+  tbody tr:hover td{ background:#fffdf3; }
+  tbody tr.urgent td{ background:#fef4f4; }
+  .loc{ white-space:normal; min-width:160px; font-weight:500; }
+  .shop{ font-family:'JetBrains Mono',monospace; font-weight:700; }
+
+  .tag{ font-size:.72rem; font-weight:700; padding:3px 10px; border-radius:999px; display:inline-block; white-space:nowrap; }
+  .t-reno{ background:var(--amber); color:var(--amberT); } .t-relo{ background:#ffe8d6; color:#9a5518; }
+  .t-full{ background:var(--greenBg); color:var(--greenT); } .t-togo{ background:var(--blue); color:var(--blueT); }
+  .t-def{ background:#eef1f4; color:#5b636c; }
+  .pos-new{ background:var(--blue); color:var(--blueT); font-weight:700; padding:2px 9px; border-radius:6px; font-size:.76rem; }
+  .pos-old{ color:#8a9099; font-size:.78rem; }
+  .yes{ color:var(--greenT); font-weight:700; } .no{ color:var(--redT); font-weight:700; background:var(--red); padding:2px 8px; border-radius:6px; }
+  .when{ font-size:.78rem; } .when .d{ font-size:.66rem; font-weight:700; display:block; margin-top:1px; }
+  .d-open{ color:var(--greenT); } .d-soon{ color:var(--redT); } .d-fut{ color:var(--mut); } .d-tbc{ color:var(--amberT); }
+
+  .btn{ font-family:'Kanit',sans-serif; font-size:.76rem; font-weight:600; border:none; border-radius:8px; padding:6px 11px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .btn-g{ background:var(--green); color:#fff; } .btn-g:hover{ background:#01692f; }
+  .btn-r{ background:var(--redT); color:#fff; } .btn-r:hover{ filter:brightness(.95); }
+  .btn-a{ background:var(--amber); color:var(--amberT); } .btn-a:hover{ filter:brightness(.97); }
+  .btn-b{ background:var(--blue); color:var(--blueT); } .btn-o{ background:#fff; border:1.3px solid var(--line); color:#5b636c; }
+  .done-pill{ font-size:.72rem; font-weight:700; color:var(--greenT); display:inline-flex; align-items:center; gap:5px; }
+  .empty{ text-align:center; color:#aab0b8; padding:34px; }
+  .foot{ padding:10px 14px; font-size:.78rem; color:var(--mut); border-top:1px solid var(--line); background:var(--soft); }
+  @media(max-width:680px){ .legend{ width:100%; margin-left:0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="icon"><i class="fas fa-table-cells-large"></i></div>
+    <div style="flex:1;min-width:200px">
+      <h1>Plan งาน — เปิดสาขา &amp; Renovate</h1>
+      <div class="sub">เปิดแล้ว → ดันเข้าทะเบียนอัตโนมัติ · ยังไม่เปิด → เปิดงานแจ้ง CMPOS ล่วงหน้า ≥2 สัปดาห์ · IT ติ๊กเลือกอุปกรณ์ + แนบ License แล้วกดยืนยัน</div>
+    </div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="bar">
+    <input type="text" id="q" placeholder="🔍 ค้นหา Shop / Location / PIC…" oninput="PW.render()">
+    <select id="fChange" onchange="PW.render()"><option value="">การเปลี่ยน: ทั้งหมด</option></select>
+    <select id="fStat" onchange="PW.render()"><option value="">สถานะ: ทั้งหมด</option><option value="opened-noreg">เปิดแล้ว · ยังไม่เข้าทะเบียน</option><option value="upcoming">รอเปิด</option><option value="done">เข้าทะเบียนแล้ว</option></select>
+    <button class="btn btn-r" id="bulkBtn" onclick="PW.processOpened()" style="display:none"></button>
+    <button class="btn btn-o" onclick="PW.newFromLicense()"><i class="fas fa-file-arrow-up"></i> เปิดสาขาใหม่จาก License</button>
+    <button class="btn btn-g" onclick="PW.addPlan()"><i class="fas fa-plus"></i> เพิ่มแผนงาน</button>
+    <div class="legend">
+      <span class="lg"><span class="sw" style="background:var(--amber)"></span>Renovate</span>
+      <span class="lg"><span class="sw" style="background:var(--red)"></span>เปิดแล้วยังไม่เข้าทะเบียน</span>
+      <span class="lg"><span class="sw" style="background:var(--greenBg)"></span>เข้าทะเบียนแล้ว</span>
+    </div>
+  </div>
+
+  <div class="tablecard">
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th><th>Shop</th><th>Location</th><th>การเปลี่ยน</th><th>PIC (BD)</th><th>เปิดร้าน</th>
+            <th>POS</th><th>พิมพ์แคชเชียร์</th><th>พิมพ์ครัว</th><th>ในทะเบียน?</th><th>ใน ShopMaster?</th><th>จัดการ</th>
+          </tr>
+          <tr class="flt">
+            <th><input id="cf_type" placeholder="กรอง" oninput="PW.render()"></th>
+            <th><input id="cf_shop" placeholder="กรอง" oninput="PW.render()"></th>
+            <th><input id="cf_loc" placeholder="กรอง" oninput="PW.render()"></th>
+            <th></th><th><input id="cf_pic" placeholder="กรอง" oninput="PW.render()"></th><th></th>
+            <th></th><th></th><th></th><th></th><th></th><th></th>
+          </tr>
+        </thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <div class="foot" id="foot"></div>
+  </div>
+</div>
+
+<script>
+window.initPlanWork = function(){ window.__pwShell=true; if(!window.__pwInit){ window.__pwInit=true; } PW.boot(); };
+var PW = (function(){
+  var STORE_KEY='pc_mock_store_v28', ML_KEY='pc_master_lists', ACT_KEY='pc_plan_actions', LIC_KEY='pc_cmpos_license_req', TASK_KEY='pc_plan_cmpos_tasks', ADDED_KEY='pc_plan_added';
+  var LEAD_DAYS=14; // แจ้ง CMPOS ล่วงหน้าไม่น้อยกว่า 2 สัปดาห์
+  var ROWS=[], ACT={};
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function todayMs(){ var t=new Date(); t.setHours(0,0,0,0); return t.getTime(); }
+
+  function getBranch(shop){
+    var ml=lsGet(ML_KEY,null); if(ml&&Array.isArray(ml.branches)){ var b=ml.branches.find(function(x){return String(x.id)===shop;}); if(b) return b; }
+    if(window.PC_BRANCH_MASTER){ var b2=window.PC_BRANCH_MASTER.find(function(x){return x.id===shop;}); if(b2) return b2; }
+    return null;
+  }
+  function liveStatus(p){
+    var inMaster=p.inMaster, inReg=p.inReg;
+    var ml=lsGet(ML_KEY,null); if(ml&&Array.isArray(ml.branches)){ if(ml.branches.some(function(x){return String(x.id)===p.shop;})) inMaster=true; }
+    var st=lsGet(STORE_KEY,null); if(st&&Array.isArray(st.assets)){ inReg=st.assets.some(function(a){ return a.shopCode===p.shop && String(a.category||'').toUpperCase().indexOf('POS')>=0 && String(a.status||'').toUpperCase()==='ACTIVE'; }); }
+    return {inMaster:inMaster, inReg:inReg};
+  }
+  function parseD(p){ if(p.openIso){ var t=new Date(p.openIso+'T00:00:00').getTime(); if(!isNaN(t)) return t; } return null; }
+  function dleft(p){ var t=parseD(p); if(t==null) return null; return Math.round((t-todayMs())/864e5); }
+  function isReno(p){ return /renov|reloc/i.test(p.change); }
+  // status: done | opened-noreg | upcoming | tbc
+  function statusOf(p,s){
+    var d=dleft(p);
+    if(s.inReg) return 'done';
+    if(d==null) return 'tbc';
+    if(d<=0) return 'opened-noreg';
+    return 'upcoming';
+  }
+
+  function changeTag(c){ var u=(c||'').toLowerCase(); var cls='t-def';
+    if(/renov/.test(u))cls='t-reno'; else if(/reloc/.test(u))cls='t-relo'; else if(/full/.test(u))cls='t-full'; else if(/togo|tbc|tent/.test(u))cls='t-togo';
+    return '<span class="tag '+cls+'">'+esc(c||'—')+'</span>'; }
+  function posCell(v){ if(!v||/^old$/i.test(v)) return '<span class="pos-old">'+esc(v||'—')+'</span>'; return '<span class="pos-new">'+esc(v)+'</span>'; }
+  // ชื่อสาขา — ดึงทั้ง EN (loc) + TH (nameTH จาก Shop Master) ให้เหมือนกันทุกหน้า
+  function locName(p){ var b=getBranch(p.shop); var th=(b&&b.nameTH)?b.nameTH:''; return esc(p.loc||'')+(th&&th!==(p.loc||'')?' <span style="color:#8a9099;font-size:.82em">· '+esc(th)+'</span>':''); }
+  // ดึงเครื่องเดิมจากทะเบียน (รุ่น + อายุปี) — สำหรับ Renovate
+  function devRows(shop){ var st=lsGet(STORE_KEY,null); var rows=(st&&Array.isArray(st.assets))?st.assets:(window.PC_ASSET_SEED||[]); return rows.filter(function(a){return a.shopCode===shop && String(a.status||'').toUpperCase()==='ACTIVE';}); }
+  function ageY(waStart){ if(!waStart) return null; var m=/(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(waStart)); if(!m) return null; var y=+m[3]; if(y>2400) y-=543; var t=new Date(y,(+m[2])-1,+m[1]).getTime(); if(isNaN(t)) return null; var yr=(Date.now()-t)/(365.25*864e5); return yr<0?0:Math.round(yr*10)/10; }
+  function deviceInfo(shop){ var ds=devRows(shop); return { pos:ds.find(function(a){return /POS/i.test(a.category);}), prnC:ds.find(function(a){return /print/i.test(a.category)&&/epson/i.test(a.brand);}), prnK:ds.find(function(a){return /print/i.test(a.category)&&/vpos/i.test(a.brand);}) }; }
+  function deviceCell(shop, planVal, kind){ var d=deviceInfo(shop)[kind]; var html=planVal?posCell(planVal):'<span class="pos-old">—</span>'; if(d){ var yr=ageY(d.waStart); html+='<div style="font-size:.66rem;color:#5b636c;margin-top:2px;white-space:normal">'+esc(((d.brand||'')+' '+(d.model||'')).trim()||'มีเครื่อง')+(yr!=null?' · <b>'+yr+'ปี</b>':'')+'</div>'; } return html; }
+  function apDev(){ var shop=(_g('ap_shop')||'').trim().toUpperCase(); var box=document.getElementById('ap_devinfo'); if(!box) return; if(!shop){ box.innerHTML=''; return; }
+    var di=deviceInfo(shop); if(!(di.pos||di.prnC||di.prnK)){ box.innerHTML='<div style="color:#1d6b43;font-size:12px"><i class="fas fa-circle-plus"></i> ไม่พบเครื่องเดิม → สาขาใหม่ (New Opening)</div>'; return; }
+    function line(d,l){ if(!d) return ''; var yr=ageY(d.waStart); return '<div>'+l+': <b>'+esc(((d.brand||'')+' '+(d.model||'')).trim())+'</b>'+(yr!=null?' · อายุ '+yr+' ปี':'')+'</div>'; }
+    box.innerHTML='<div style="background:#fff7e6;border:1px solid #f4e2a0;border-radius:8px;padding:7px 10px;font-size:12px"><b>เครื่องเดิมในทะเบียน (Renovate):</b>'+line(di.pos,'POS')+line(di.prnC,'แคชเชียร์')+line(di.prnK,'ครัว')+'</div>'; }
+  function whenCell(p){
+    var d=dleft(p); var cls='d-fut', txt='';
+    if(d==null){ cls='d-tbc'; txt='TBC'; }
+    else if(d<=0){ cls='d-open'; txt='เปิดแล้ว '+(Math.abs(d))+'ว'; }
+    else if(d<=LEAD_DAYS){ cls='d-soon'; txt='อีก '+d+'ว · ด่วน!'; }
+    else { cls='d-fut'; txt='อีก '+d+'ว'; }
+    return '<span class="when">'+esc(p.open||'—')+'<span class="d '+cls+'">'+txt+'</span></span>';
+  }
+
+  // equipment checklist (catalog จริงจาก CMPOS form) + เช็คข้อมูลเครื่องครบไหม
+  function catalog(){ return window.PC_IT_ASSET_CATALOG||{standard:[],optional:[]}; }
+  function eqChecklist(p){ var c=catalog(); var items=(c.standard||[]).concat(c.optional||[]).filter(function(it){return !it.disabled;}); var planNew=/new/i.test(p.pos);
+    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 9px">'+items.map(function(it){ var pre=!!(it.core)||(planNew&&it.cat==='Printer-Cashier');
+      return '<label style="display:flex;align-items:center;gap:7px;font-size:12px;border:1px solid #eee;border-radius:7px;padding:5px 8px;cursor:pointer"><input type="checkbox" name="eq" value="'+it.id+'"'+(pre?' checked':'')+'> <span>'+esc(it.name)+(it.price?' <span style="color:#a45a4a;font-weight:700">฿'+it.price.toLocaleString()+'</span>':'')+'</span></label>'; }).join('')+'</div>';
+  }
+  function readEqList(){ return Array.prototype.slice.call(document.querySelectorAll('input[name="eq"]:checked')).map(function(e){return e.value;}); }
+  function posComplete(shop){ var b=getBranch(shop)||{}; if(b.serialNumber && String(b.serialNumber).trim() && b.serialNumber!=='-') return true; var di=deviceInfo(shop); if(di.pos && di.pos.serial && di.pos.serial!=='-') return true; return false; }
+
+  function actionCell(p,s,stat){
+    var a=ACT[p.shop]||{};
+    if(isReno(p)){
+      if(a.caseOpened) return '<span class="done-pill"><i class="fas fa-circle-check"></i> เปิดเคสแล้ว</span>';
+      return '<button class="btn btn-a" onclick="PW.renoCase(\''+p.shop+'\')"><i class="fas fa-paint-roller"></i> เปิดเคส '+(/reloc/i.test(p.change)?'Relocate':'Renovate')+'</button>';
+    }
+    if(stat==='done') return '<span class="done-pill"><i class="fas fa-circle-check"></i> เข้าทะเบียนแล้ว</span>';
+    if(stat==='opened-noreg'){
+      return '<button class="btn btn-r" onclick="PW.confirmOpen(\''+p.shop+'\',true)"><i class="fas fa-bolt"></i> เปิดแล้ว · ดันเข้าทะเบียน</button>';
+    }
+    if(stat==='upcoming'){
+      var d=dleft(p);
+      if(a.task) return '<span class="done-pill"><i class="fas fa-paper-plane"></i> แจ้ง CMPOS แล้ว</span>';
+      var cls=(d!=null&&d<=LEAD_DAYS)?'btn-r':'btn-b';
+      return '<button class="btn '+cls+'" onclick="PW.itTask(\''+p.shop+'\')"><i class="fas fa-bell"></i> เปิดงานแจ้ง CMPOS</button>';
+    }
+    // tbc
+    if(a.task) return '<span class="done-pill"><i class="fas fa-paper-plane"></i> แจ้ง CMPOS แล้ว</span>';
+    return '<button class="btn btn-o" onclick="PW.itTask(\''+p.shop+'\')"><i class="fas fa-bell"></i> เตรียม License (TBC)</button>';
+  }
+
+  function render(){
+    var q=(document.getElementById('q').value||'').toLowerCase();
+    var fc=document.getElementById('fChange').value, fs=document.getElementById('fStat').value;
+    var cT=(document.getElementById('cf_type').value||'').toLowerCase(), cS=(document.getElementById('cf_shop').value||'').toLowerCase(),
+        cL=(document.getElementById('cf_loc').value||'').toLowerCase(), cP=(document.getElementById('cf_pic').value||'').toLowerCase();
+    var shown=0;
+    var html=ROWS.map(function(p){
+      var s=liveStatus(p), stat=statusOf(p,s);
+      if(fc && p.change!==fc) return '';
+      if(fs && stat!==fs) return '';
+      if(cT && (p.type||'').toLowerCase().indexOf(cT)<0) return '';
+      if(cS && p.shop.toLowerCase().indexOf(cS)<0) return '';
+      if(cL && (p.loc||'').toLowerCase().indexOf(cL)<0) return '';
+      if(cP && (p.pic||'').toLowerCase().indexOf(cP)<0) return '';
+      if(q){ var hay=(p.type+' '+p.shop+' '+p.loc+' '+p.pic+' '+p.change).toLowerCase(); if(hay.indexOf(q)<0) return ''; }
+      shown++;
+      var urgent=(stat==='opened-noreg') || (stat==='upcoming' && !isReno(p) && (dleft(p)!=null&&dleft(p)<=LEAD_DAYS) && !(ACT[p.shop]||{}).task);
+      return '<tr class="'+(urgent?'urgent':'')+'">'
+        +'<td>'+esc(p.type)+'</td>'
+        +'<td class="shop">'+esc(p.shop)+'</td>'
+        +'<td class="loc">'+locName(p)+'</td>'
+        +'<td>'+changeTag(p.change)+'</td>'
+        +'<td>'+esc(p.pic||'—')+'</td>'
+        +'<td>'+whenCell(p)+'</td>'
+        +'<td>'+deviceCell(p.shop,p.pos,'pos')+'</td>'
+        +'<td>'+deviceCell(p.shop,p.prnC,'prnC')+'</td>'
+        +'<td>'+deviceCell(p.shop,p.prnK,'prnK')+'</td>'
+        +'<td>'+(s.inReg?'<span class="yes"><i class="fas fa-check"></i></span>':'<span class="no">✘ ยังไม่มี</span>')+'</td>'
+        +'<td>'+(s.inMaster?'<span class="yes"><i class="fas fa-check"></i></span>':'<span class="no">✘ ยังไม่มี</span>')+'</td>'
+        +'<td>'+actionCell(p,s,stat)+(p._added?' <button class="btn btn-o" onclick="PW.delPlan(\''+p.shop+'\')" title="ลบแผนที่เพิ่ม"><i class="fas fa-trash"></i></button>':'')+'</td>'
+        +'</tr>';
+    }).join('');
+    document.getElementById('body').innerHTML = html || '<tr><td colspan="12" class="empty">— ไม่พบรายการตามเงื่อนไข —</td></tr>';
+    document.getElementById('foot').textContent='แสดง '+shown+' / '+ROWS.length+' รายการ · วันนี้ '+new Date().toLocaleDateString('th-TH')+' · ข้อมูลทะเบียน/Shop Master ดึงสด (mock)';
+    renderChips();
+  }
+
+  function renderChips(){
+    var openedNoReg=0,upcoming=0,done=0,reno=0,soon=0;
+    ROWS.forEach(function(p){ var s=liveStatus(p),st=statusOf(p,s);
+      if(isReno(p)){ reno++; return; }
+      if(st==='done')done++; else if(st==='opened-noreg')openedNoReg++; else if(st==='upcoming'){ upcoming++; var d=dleft(p); if(d!=null&&d<=LEAD_DAYS&&!(ACT[p.shop]||{}).task)soon++; } });
+    var defs=[['',ROWS.length,'รายการในแผน'],['red',openedNoReg,'เปิดแล้ว·ยังไม่เข้าทะเบียน'],['amber',soon,'ใกล้เปิด ≤2สัปดาห์'],['blue',upcoming,'รอเปิด'],['amber',reno,'Renovate'],['green',done,'เข้าทะเบียนแล้ว']];
+    document.getElementById('chips').innerHTML=defs.map(function(d){ return '<div class="chip '+d[0]+'"><div class="num">'+d[1]+'</div><div class="lbl">'+d[2]+'</div></div>'; }).join('');
+    var bb=document.getElementById('bulkBtn');
+    if(openedNoReg>0){ bb.style.display=''; bb.innerHTML='<i class="fas fa-bolt"></i> ดันสาขาที่เปิดแล้วเข้าทะเบียน ('+openedNoReg+')'; }
+    else bb.style.display='none';
+  }
+
+  function fillFilters(){
+    var ch=[...new Set(ROWS.map(function(p){return p.change;}).filter(Boolean))];
+    document.getElementById('fChange').innerHTML='<option value="">การเปลี่ยน: ทั้งหมด</option>'+ch.map(function(c){return '<option>'+esc(c)+'</option>';}).join('');
+  }
+
+  // ---- ทะเบียนอุปกรณ์ = ตัวหลักของข้อมูลเครื่อง (POS + printer) · Shop Master ดึงไปแสดง ----
+  function splitBM(s){ s=String(s||'').trim(); var i=s.indexOf(' '); return i<0?{brand:s,model:''}:{brand:s.slice(0,i),model:s.slice(i+1)}; }
+  function ensureShop(p){ var ml=lsGet(ML_KEY,null)||{}; if(!Array.isArray(ml.branches)) ml.branches=[]; if(!ml.branches.some(function(x){return String(x.id)===p.shop;})){ ml.branches.unshift({id:p.shop,name:p.loc,nameTH:p.loc,type:p.branchType||p.type,company:p.company||'',opStatus:'Operating',active:'Active'}); lsSet(ML_KEY,ml); } }
+  function directPush(p, dev){
+    var st=lsGet(STORE_KEY,null); if(!st||!Array.isArray(st.assets)) return false;
+    var b=getBranch(p.shop)||{}; dev=dev||{};
+    var base=st.assets.filter(function(a){return a.shopCode===p.shop;}).length;
+    function exists(catRe,brandRe){ return st.assets.some(function(a){ return a.shopCode===p.shop && /active/i.test(String(a.status||'')) && catRe.test(String(a.category||'')) && (!brandRe||brandRe.test(String(a.brand||''))); }); }
+    function add(cat,brand,model,serial,fee){ base++; st.assets.unshift({ id:'AST-'+p.shop+'-'+String(base).padStart(2,'0'), shopCode:p.shop, shopName:b.name||p.loc||p.shop, company:b.company||p.company||'-', owner:b.type||p.branchType||p.type||'-', category:cat, brand:brand||'-', model:model||'-', spec:'-', serial:serial||'-', hwsw:'Hardware', waStart:'-', waEnd:'-', maStart:'-', maEnd:'-', maFee:fee, maCharge:0, status:'Active', source:'plan' }); }
+    var posBrand=dev.posBrand||b.brandModel||'Toshiba', posModel=dev.posModel||b.machineType||'', posSerial=dev.posSerial||b.serialNumber||'';
+    if(!exists(/POS/i)) add('POS', posBrand, posModel, posSerial, 5900);
+    var pcM=dev.prnCBrand!=null?dev.prnCBrand:(b.printerCashierModel||''), pcS=dev.prnCSerial!=null?dev.prnCSerial:(b.printerCashierSerial||'');
+    if((pcM||pcS) && !exists(/print/i,/epson/i)){ var c=splitBM(pcM); add('Printer', c.brand||'EPSON', c.model, pcS, 1400); }
+    var pkM=dev.prnKBrand!=null?dev.prnKBrand:(b.printerKitchenModel||''), pkS=dev.prnKSerial!=null?dev.prnKSerial:(b.printerKitchenSerial||'');
+    if((pkM||pkS) && !exists(/print/i,/vpos/i)){ var k=splitBM(pkM); add('Printer', k.brand||'VPOS', k.model, pkS, 1400); }
+    lsSet(STORE_KEY,st); return true;
+  }
+  function pushToRegister(p, cb, dev){ cb(directPush(p, dev)); }
+
+  // ---- actions ----
+  function confirmOpen(shop, opened){
+    var p=ROWS.find(function(x){return x.shop===shop;}); if(!p) return;
+    var newBranch=!liveStatus(p).inMaster; var complete=posComplete(p.shop);
+    var di=deviceInfo(p.shop); function dv(d,f){ return d&&d[f]?esc(String(d[f])):''; } function dvM(d){ return d?esc(((d.brand||'')+' '+(d.model||'')).trim()):''; }
+    Swal.fire({ title:(opened?'เปิดแล้ว → ดันเข้าทะเบียน':'ยืนยันเปิดสาขา')+' · '+esc(p.shop), width:600,
+      html:'<div style="text-align:left;font-size:13.5px">'
+        +'<div style="background:#eaf6ef;border:1px solid #cfe7d8;border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:#1d6b43"><b>'+esc(p.shop)+'</b> · '+esc(p.loc)+'<br>'+esc(p.branchType||p.type)+(p.company?' · '+esc(p.company):'')+' · เปิด '+esc(p.open||'TBC')+'</div>'
+        +(complete?'':'<div style="background:#fdeceb;border:1px solid #f3c6c0;border-radius:8px;padding:8px 11px;margin-bottom:10px;font-size:12.5px;color:#b3372b"><i class="fas fa-triangle-exclamation"></i> ข้อมูลเครื่อง POS (Serial) ยังไม่ครบ → จะเปิดเคสให้ IT ส่งเมล CMPOS กรอกข้อมูล (ยังไม่เข้าทะเบียน)</div>')
+        +'<div style="font-weight:700;margin:0 0 6px"><i class="fas fa-list-check"></i> ติ๊กอุปกรณ์ที่สั่ง (นอกจาก POS มีอะไรบ้าง)</div>'
+        +eqChecklist(p)
+        +(newBranch?'<div style="margin-top:12px;font-weight:700"><i class="fas fa-file-arrow-up"></i> แนบ License (ภ.พ.06 / อนุมัติ) — สาขาใหม่ <span style="color:#c0392b">*</span></div><input type="file" id="licFile" accept=".xlsx,.pdf,image/*" class="swal2-file" style="margin-top:6px">':'')
+        +(complete?'':'<div style="margin-top:12px;background:#fff7e6;border:1px solid #f4e2a0;border-radius:8px;padding:10px 12px">'
+          +'<div style="font-weight:700;font-size:12.5px;color:#8a6d00;margin-bottom:6px"><i class="fas fa-keyboard"></i> ข้อมูลเครื่องใหม่ — IT กรอกก่อนยืนยัน (POS + เครื่องพิมพ์)</div>'
+          +'<div style="font-size:11px;color:#8a6d00;margin-bottom:3px">POS</div><div style="display:flex;gap:7px;margin-bottom:7px"><input id="co_brand" class="swal2-input" style="margin:0;flex:1" placeholder="Brand/Model เช่น Toshiba TCx810" value="'+dvM(di.pos)+'"><input id="co_serial" class="swal2-input" style="margin:0;width:150px;font-family:monospace" placeholder="Serial" value="'+dv(di.pos,'serial')+'"></div>'
+          +'<div style="font-size:11px;color:#8a6d00;margin-bottom:3px">พิมพ์แคชเชียร์ (EPSON)</div><div style="display:flex;gap:7px;margin-bottom:7px"><input id="co_prnC_brand" class="swal2-input" style="margin:0;flex:1" placeholder="EPSON TM-T82x-II" value="'+(di.prnC?dvM(di.prnC):'')+'"><input id="co_prnC_serial" class="swal2-input" style="margin:0;width:150px;font-family:monospace" placeholder="Serial" value="'+dv(di.prnC,'serial')+'"></div>'
+          +'<div style="font-size:11px;color:#8a6d00;margin-bottom:3px">พิมพ์ครัว (VPOS)</div><div style="display:flex;gap:7px"><input id="co_prnK_brand" class="swal2-input" style="margin:0;flex:1" placeholder="VPOS VP-Q300H" value="'+(di.prnK?dvM(di.prnK):'')+'"><input id="co_prnK_serial" class="swal2-input" style="margin:0;width:150px;font-family:monospace" placeholder="Serial" value="'+dv(di.prnK,'serial')+'"></div>'
+          +'<label style="font-weight:600;display:block;margin:9px 0 4px;font-size:12px"><i class="fas fa-user-gear"></i> ถ้ายังไม่มีข้อมูล → เปิดงานให้น้อง IT กรอก</label><input id="co_assignee" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อน้องทีม IT (ถ้ายังไม่มี Serial)"></div>')
+        +'</div>',
+      showCancelButton:true, confirmButtonColor:complete?(opened?'#c0392b':'#2e934a'):'#2c4a82', confirmButtonText:complete?'<i class="fas fa-paper-plane"></i> ส่งยืนยัน → เข้าทะเบียน':'<i class="fas fa-envelope"></i> เปิดเคส → ส่งเมล CMPOS', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ if(newBranch){ var f=document.getElementById('licFile'); if(!f||!f.files||!f.files.length){ Swal.showValidationMessage('สาขาใหม่ต้องแนบไฟล์ License'); return false; } }
+        if(complete) return { equip:readEqList(), mode:'ok' };
+        var serial=(document.getElementById('co_serial').value||'').trim();
+        if(serial) return { equip:readEqList(), mode:'fill', brand:(document.getElementById('co_brand').value||'').trim(), serial:serial, prnC:{brand:(document.getElementById('co_prnC_brand').value||'').trim(),serial:(document.getElementById('co_prnC_serial').value||'').trim()}, prnK:{brand:(document.getElementById('co_prnK_brand').value||'').trim(),serial:(document.getElementById('co_prnK_serial').value||'').trim()} };
+        var asg=(document.getElementById('co_assignee').value||'').trim();
+        if(!asg){ Swal.showValidationMessage('กรอก Serial เครื่องใหม่ หรือ มอบหมายน้อง IT ให้กรอก'); return false; }
+        return { equip:readEqList(), mode:'task', assignee:asg }; } })
+    .then(function(r){ if(!r.isConfirmed) return; var v=r.value;
+      var reqs=lsGet(LIC_KEY,[]); reqs.unshift({shop:p.shop,loc:p.loc,type:p.branchType||p.type,company:p.company,open:p.open,equip:v.equip,newBranch:newBranch,at:Date.now(),status:'sent'}); lsSet(LIC_KEY,reqs);
+      if(complete){
+        pushToRegister(p, function(ok){ ACT[p.shop]=Object.assign(ACT[p.shop]||{},{licensed:true,pushed:ok,at:Date.now()}); lsSet(ACT_KEY,ACT);
+          Swal.fire({icon:'success',title:'ส่งยืนยันแล้ว',html:'<span style="font-size:13px">'+(ok?'เครื่องเข้า<b>ทะเบียน</b>แล้ว':'บันทึกคำขอแล้ว — เข้าทะเบียนเมื่อ IT กด Apply')+' · ส่งใบ License CMPOS · อุปกรณ์ '+v.equip.length+' รายการ</span>',confirmButtonColor:'#2e934a',timer:2800}); render(); });
+      } else if(v.mode==='fill'){
+        ensureShop(p);
+        var pb=splitBM(v.brand);
+        var dev={ posBrand:pb.brand, posModel:pb.model, posSerial:v.serial, prnCBrand:(v.prnC&&v.prnC.brand)||'', prnCSerial:(v.prnC&&v.prnC.serial)||'', prnKBrand:(v.prnK&&v.prnK.brand)||'', prnKSerial:(v.prnK&&v.prnK.serial)||'' };
+        pushToRegister(p, function(ok){ ACT[p.shop]=Object.assign(ACT[p.shop]||{},{licensed:true,pushed:ok,at:Date.now()}); lsSet(ACT_KEY,ACT);
+          Swal.fire({icon:'success',title:'เข้าทะเบียนอุปกรณ์แล้ว',html:'<span style="font-size:13px">บันทึก POS S/N <b>'+esc(v.serial)+'</b>'+((v.prnC&&v.prnC.serial)?' + แคชเชียร์':'')+((v.prnK&&v.prnK.serial)?' + ครัว':'')+' ลง<b>ทะเบียนอุปกรณ์</b> · Shop Master ดึงไปแสดง</span>',confirmButtonColor:'#2e934a',timer:2800}); render(); }, dev);
+      } else {
+        var q=lsGet('pc_plan_handoff',[]); q.unshift({shop:p.shop,loc:p.loc,change:p.change||'New Opening',kind:'it-fill-machine',equip:v.equip,assignee:v.assignee,status:'pending',by:'Plan',at:Date.now()}); lsSet('pc_plan_handoff',q);
+        ACT[p.shop]=Object.assign(ACT[p.shop]||{},{task:true,assignee:v.assignee,at:Date.now()}); lsSet(ACT_KEY,ACT);
+        Swal.fire({icon:'success',title:'เปิดงานให้ IT กรอกข้อมูลเครื่อง',html:'<span style="font-size:13px">มอบหมาย <b>'+esc(v.assignee)+'</b> กรอกข้อมูลเครื่องใหม่ก่อนยืนยันเข้าทะเบียน</span>',confirmButtonColor:'#2e934a',timer:2800}); render();
+      }
+    });
+  }
+  function renoCase(shop){
+    var p=ROWS.find(function(x){return x.shop===shop;}); if(!p) return;
+    var isReloc=/reloc/i.test(p.change); var di=deviceInfo(p.shop);
+    function devRow(d,l,key){
+      if(!d) return '<tr><td style="padding:6px 8px;font-size:12.5px">'+l+'</td><td style="padding:6px 8px;color:#8a9099;font-size:12px">— ไม่มีเครื่องเดิม —</td></tr>';
+      var yr=ageY(d.waStart);
+      return '<tr><td style="padding:6px 8px;font-size:12.5px">'+l+'<div style="font-size:11px;color:#5b636c">'+esc(((d.brand||'')+' '+(d.model||'')).trim())+(yr!=null?' · '+yr+'ปี':'')+' · S/N '+esc(d.serial||'—')+'</div></td>'
+        +'<td style="padding:6px 8px"><label style="font-size:12.5px;margin-right:12px"><input type="radio" name="rn_'+key+'" value="reuse" checked> ♻️ ใช้เดิม</label><label style="font-size:12.5px"><input type="radio" name="rn_'+key+'" value="new"> 🛒 เปลี่ยนใหม่</label></td></tr>';
+    }
+    Swal.fire({ title:(isReloc?'Relocate':'Renovate')+' — '+esc(p.shop), width:580,
+      html:'<div style="text-align:left;font-size:13.5px"><div style="background:#fff7e6;border:1px solid #f4e2a0;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#8a6d00"><b>'+esc(p.loc)+'</b> · เปิด '+esc(p.open||'TBC')+'</div>'
+        +'<div style="font-weight:700;margin:0 0 6px"><i class="fas fa-screwdriver-wrench"></i> อุปกรณ์เดิม (ดึงจากทะเบียน) — เลือกใช้เดิม/เปลี่ยนใหม่</div>'
+        +'<table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:8px;overflow:hidden">'+devRow(di.pos,'POS','pos')+devRow(di.prnC,'พิมพ์แคชเชียร์','prnC')+devRow(di.prnK,'พิมพ์ครัว','prnK')+'</table>'
+        +'<div style="margin-top:11px"><label style="font-weight:600;display:block;margin-bottom:4px;font-size:12.5px"><i class="fas fa-user-gear"></i> มอบหมายให้ (น้องทีม IT) <span style="color:#c0392b">*</span></label><input id="rn_assignee" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อน้องในทีม IT ที่ทำต่อ"></div>'
+        +'<div style="font-size:12px;color:#8a9099;margin-top:10px">กดยืนยัน = ส่งเข้าสถานะ <b>“รอดำเนินการ”</b> ให้ทีม IT ทำต่อ · ถ้ามี “เปลี่ยนใหม่” จะเปิดเคสสติ๊กเกอร์ (ยกเลิก+ขอใหม่) ให้อัตโนมัติ</div></div>',
+      showCancelButton:true, confirmButtonColor:'#8a6d00', confirmButtonText:'ยืนยัน → ส่งให้ทีมทำต่อ', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ var asg=(document.getElementById('rn_assignee').value||'').trim(); if(!asg){ Swal.showValidationMessage('ใส่ชื่อน้องทีม IT ที่จะทำต่อ'); return false; } function rv(k){ var e=document.querySelector('input[name="rn_'+k+'"]:checked'); return e?e.value:'reuse'; } return { pos:rv('pos'), prnC:rv('prnC'), prnK:rv('prnK'), assignee:asg }; } })
+    .then(function(r){ if(!r.isConfirmed) return; var ch=r.value; var anyNew=ch.pos==='new'||ch.prnC==='new'||ch.prnK==='new';
+      if(anyNew && window.RD && window.RD.addTrigger){ window.RD.addTrigger({branchId:p.shop,oldType:p.branchType||p.type,newType:p.branchType||p.type,kind:isReloc?'relocate':'renovate',caseHint:(isReloc?'Relocate':'Renovate')+' เปลี่ยนเครื่อง (จาก Plan)'}); }
+      var q=lsGet('pc_plan_handoff',[]); q.unshift({shop:p.shop,loc:p.loc,change:p.change,choices:ch,anyNew:anyNew,assignee:ch.assignee,status:'pending',by:'Plan',at:Date.now()}); lsSet('pc_plan_handoff',q);
+      ACT[p.shop]=Object.assign(ACT[p.shop]||{},{caseOpened:true,assignee:ch.assignee,at:Date.now()}); lsSet(ACT_KEY,ACT);
+      Swal.fire({icon:'success',title:'ส่งงานแล้ว — รอดำเนินการ',html:'<span style="font-size:13px">มอบหมาย <b>'+esc(ch.assignee)+'</b> ทำต่อ'+(anyNew?' · เปิดเคสสติ๊กเกอร์ (เปลี่ยนเครื่อง)':' · ใช้เครื่องเดิมทั้งหมด')+'</span>',confirmButtonColor:'#2e934a',timer:2600}); render();
+    });
+  }
+  function itTask(shop){
+    var p=ROWS.find(function(x){return x.shop===shop;}); if(!p) return; var d=dleft(p);
+    Swal.fire({ title:'เปิดงานแจ้ง CMPOS — '+esc(p.shop), width:520,
+      html:'<div style="text-align:left;font-size:14px"><div style="background:'+(d!=null&&d<=LEAD_DAYS?'#fdeceb':'#e8eefb')+';border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px">'
+        +'<b>'+esc(p.loc)+'</b> · เปิด '+esc(p.open||'TBC')+(d!=null?' ('+(d<=0?'เปิดแล้ว':'อีก '+d+' วัน')+')':'')+'<br>'
+        +(d!=null&&d>LEAD_DAYS?'<span style="color:#1d6b43">✔ ล่วงหน้าพอ (≥2 สัปดาห์)</span>':(d!=null&&d>0?'<span style="color:#c0392b">⚠️ เหลือน้อยกว่า 2 สัปดาห์ — เร่งด่วน</span>':'<span style="color:#8a6d00">TBC / เปิดแล้ว</span>'))+'</div>'
+        +'<div style="font-size:13px;color:#5b636c">สร้างงานให้ IT แจ้ง CMPOS เตรียม License + อุปกรณ์ ก่อนสาขาเปิด · ติ๊กอุปกรณ์/แนบ License ได้ที่ปุ่ม “ยืนยันเปิด” เมื่อสรุปมติประชุม</div>'
+        +'<div style="margin-top:11px"><label style="font-weight:600;display:block;margin-bottom:4px;font-size:12.5px"><i class="fas fa-user-gear"></i> มอบหมายให้ (น้องทีม IT) <span style="color:#c0392b">*</span></label><input id="it_assignee" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อน้องในทีม IT"></div></div>',
+      showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เปิดงาน CMPOS', cancelButtonText:'ปิด',
+      preConfirm:function(){ var asg=(document.getElementById('it_assignee').value||'').trim(); if(!asg){ Swal.showValidationMessage('ใส่ชื่อน้องทีม IT'); return false; } return asg; } })
+    .then(function(r){ if(!r.isConfirmed) return;
+      var tasks=lsGet(TASK_KEY,[]); tasks.unshift({shop:p.shop,loc:p.loc,open:p.open,openIso:p.openIso,leadDays:d,assignee:r.value,at:Date.now(),status:'open'}); lsSet(TASK_KEY,tasks);
+      ACT[p.shop]=Object.assign(ACT[p.shop]||{},{task:true,assignee:r.value,at:Date.now()}); lsSet(ACT_KEY,ACT);
+      Swal.fire({icon:'success',title:'เปิดงานแล้ว',html:'<span style="font-size:13px">มอบหมาย <b>'+esc(r.value)+'</b> แจ้ง CMPOS เตรียมงานก่อนเปิดสาขา</span>',confirmButtonColor:'#2e934a',timer:2300}); render();
+    });
+  }
+  function processOpened(){
+    var targets=ROWS.filter(function(p){ if(isReno(p)) return false; var s=liveStatus(p); return statusOf(p,s)==='opened-noreg' && posComplete(p.shop); });
+    if(!targets.length){ Swal.fire('ไม่มีรายการ','ไม่มีสาขาที่เปิดแล้วแต่ยังไม่เข้าทะเบียน','info'); return; }
+    Swal.fire({ title:'ดันสาขาที่เปิดแล้วเข้าทะเบียน?', html:'สาขาที่เปิดไปแล้วแต่ยังไม่มีเครื่องในทะเบียน <b>'+targets.length+'</b> สาขา<br><span style="font-size:12px;color:#8a9099">จะสร้างเครื่อง POS ในทะเบียนตามข้อมูล Shop Master + ส่งใบ License CMPOS</span>',
+      icon:'question', showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'ดันเข้าทะเบียนทั้งหมด' })
+    .then(function(r){ if(!r.isConfirmed) return; var n=0, i=0;
+      (function next(){ if(i>=targets.length){ var reqs=lsGet(LIC_KEY,[]); targets.forEach(function(p){ reqs.unshift({shop:p.shop,loc:p.loc,open:p.open,bulk:true,at:Date.now(),status:'sent'}); }); lsSet(LIC_KEY,reqs); lsSet(ACT_KEY,ACT);
+          Swal.fire({icon:'success',title:'เสร็จสิ้น',html:'ดันเข้าทะเบียน '+n+'/'+targets.length+' สาขา',confirmButtonColor:'#2e934a'}); render(); return; }
+        var p=targets[i++]; pushToRegister(p,function(ok){ if(ok){ n++; ACT[p.shop]=Object.assign(ACT[p.shop]||{},{licensed:true,pushed:true,at:Date.now()}); } next(); });
+      })();
+    });
+  }
+
+  // ---- License Excel (.xlsx) → Shop Master row ----
+  async function inflateRaw(bytes){ var ds=new DecompressionStream('deflate-raw'); var w=ds.writable.getWriter(); w.write(bytes); w.close(); return new Uint8Array(await new Response(ds.readable).arrayBuffer()); }
+  async function readXlsxKV(file){
+    var buf=new Uint8Array(await file.arrayBuffer()); var dv=new DataView(buf.buffer);
+    var u16=function(o){return dv.getUint16(o,true);}, u32=function(o){return dv.getUint32(o,true);};
+    var files={}, i=0;
+    while(i+4<=buf.length && u32(i)===0x04034b50){ var m=u16(i+8),cs=u32(i+18),nl=u16(i+26),el=u16(i+28); var nm=new TextDecoder().decode(buf.subarray(i+30,i+30+nl)); var ds=i+30+nl+el; files[nm]={m:m,comp:buf.subarray(ds,ds+cs)}; i=ds+cs; }
+    async function gt(n){ var f=files[n]; if(!f) return ''; var raw=f.m===0?f.comp:await inflateRaw(f.comp); return new TextDecoder().decode(raw); }
+    var ss=[], sst=await gt('xl/sharedStrings.xml');
+    if(sst){ (sst.match(/<si>[\s\S]*?<\/si>/g)||[]).forEach(function(si){ ss.push((si.match(/<t[^>]*>([\s\S]*?)<\/t>/g)||[]).map(function(t){return t.replace(/<[^>]+>/g,'');}).join('').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); }); }
+    var sheet=Object.keys(files).filter(function(n){return /xl\/worksheets\/sheet\d+\.xml$/.test(n);}).sort()[0];
+    var xml=await gt(sheet), map={};
+    (xml.match(/<row[^>]*>[\s\S]*?<\/row>/g)||[]).forEach(function(rw){
+      var cells={}, re=/<c[^>]*r="([A-Z]+)\d+"[^>]*?(?:\st="([^"]*)")?[^>]*>(?:<v>([\s\S]*?)<\/v>|<is><t[^>]*>([\s\S]*?)<\/t><\/is>)?<\/c>/g, mm;
+      while(mm=re.exec(rw)){ var v=mm[4]!=null?mm[4]:(mm[3]!=null?mm[3]:''); if(mm[2]==='s'&&mm[3]!=null) v=ss[+mm[3]]||''; cells[mm[1]]=String(v).replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'); }
+      var k=(cells['A']||'').replace(/\s+/g,' ').trim(); var val=(cells['B']!=null?cells['B']:'').toString().trim();
+      if(k && val && !(k in map)) map[k]=val;
+    });
+    return map;
+  }
+  function licF(map,needles,excl){ for(var mk in map){ var lk=mk.toLowerCase(); if(excl&&lk.indexOf(excl)>=0) continue; for(var j=0;j<needles.length;j++){ if(lk.indexOf(needles[j])>=0) return map[mk]; } } return ''; }
+  function licenseToBranch(map){
+    var addr1=licF(map,['address'],'2'), a2=licF(map,['address 2']), post=licF(map,['post code']), city=licF(map,['city']);
+    return { id:String(licF(map,['store code'])).trim(),
+      name:licF(map,['store name (en)'])||licF(map,['mall name (en)']),
+      nameTH:licF(map,['store name (th)'])||licF(map,['mall name (th)']),
+      type:licF(map,['shop type','business unit'])||'COCO',
+      'class':licF(map,['shop class']), group:licF(map,['shop group']),
+      company:licF(map,['company name (th)'])||licF(map,['company name','company']),
+      address:[addr1,a2,city,post].filter(Boolean).join(' ').replace(/\s+/g,' ').trim(),
+      opStatus:'Operating', active:'Active', flagReason:'', brands:['Potato Corner'], source:'license' };
+  }
+  function createBranchFromLicense(b){
+    if(!b.id) return false;
+    var ml=lsGet(ML_KEY,null)||{}; if(!Array.isArray(ml.branches)) ml.branches=[];
+    var ix=ml.branches.findIndex(function(x){return String(x.id)===b.id;});
+    if(ix>=0){ var o=ml.branches[ix]; ml.branches[ix]=Object.assign({},o,{ name:b.name||o.name, nameTH:b.nameTH||o.nameTH, type:b.type||o.type, 'class':b['class']||o['class'], group:b.group||o.group, company:b.company||o.company, address:b.address||o.address, opStatus:'Operating', active:'Active' }); }
+    else ml.branches.unshift(b);
+    lsSet(ML_KEY,ml); return true;
+  }
+  function newFromLicense(){
+    Swal.fire({ title:'เปิดสาขาใหม่จาก License (.xlsx)', width:520,
+      html:'<div style="text-align:left;font-size:13.5px"><div style="background:#e8eefb;border:1px solid #cdd9f2;border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#2c4a82">แนบไฟล์ License (Excel) ที่ BD ส่งมา — ระบบจะอ่านข้อมูลสาขาแล้วสร้าง Shop row ใน Master (Operating)</div><input type="file" id="nlFile" accept=".xlsx" class="swal2-file"></div>',
+      showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'อ่านไฟล์ → สร้างสาขา', cancelButtonText:'ยกเลิก',
+      preConfirm:async function(){ var f=document.getElementById('nlFile'); if(!f||!f.files||!f.files.length){ Swal.showValidationMessage('แนบไฟล์ License (.xlsx)'); return false; }
+        try{ var map=await readXlsxKV(f.files[0]); var br=licenseToBranch(map); if(!br.id){ Swal.showValidationMessage('อ่าน Store Code จากไฟล์ไม่ได้ — ตรวจรูปแบบ License'); return false; } return br; }
+        catch(e){ Swal.showValidationMessage('อ่านไฟล์ไม่สำเร็จ: '+e.message); return false; } } })
+    .then(function(r){ if(!r.isConfirmed) return; var b=r.value; var exists=!!getBranch(b.id); createBranchFromLicense(b);
+      Swal.fire({icon:'success',title:exists?'อัปเดต Shop แล้ว':'เปิด Shop ใหม่แล้ว',
+        html:'<div style="text-align:left;font-size:13px"><b>'+esc(b.id)+'</b> · '+esc(b.name||'—')+'<br>'+esc(b.type)+' · '+esc(b['class']||'—')+' · '+esc(b.group||'—')+'<br>'+esc(b.company||'—')+'<br><span style="color:#8a9099">'+esc(b.address||'—')+'</span><br><span style="color:#1d6b43;margin-top:5px;display:inline-block">✔ สร้างใน Shop Master (Operating) · รอเลขสติ๊กเกอร์ (ภ.พ.06) + ส่งเครื่อง</span></div>',
+        confirmButtonColor:'#2e934a'}); render();
+    });
+  }
+
+  // ---- เพิ่ม/ลบ แผนงาน (เก็บ localStorage รวมกับ Forecast) ----
+  function _fld(lab,inner){ return '<div><label style="font-weight:600;display:block;margin:0 0 4px;font-size:12.5px">'+lab+'</label>'+inner+'</div>'; }
+  function _sel(id,opts,cur){ return '<select id="'+id+'" class="swal2-input" style="margin:0;width:100%">'+opts.map(function(o){return '<option value="'+esc(o)+'"'+(o===cur?' selected':'')+'>'+(o||'—')+'</option>';}).join('')+'</select>'; }
+  function _g(id){ var e=document.getElementById(id); return e?e.value:''; }
+  function addedRows(){ return lsGet(ADDED_KEY,[]); }
+  function addPlan(){
+    var types=['COCO','DODO','DODO M','DODO-M','SE','EXPR','TOGO'];
+    var changes=['New Opening','FULL','Renovate','Relocate','TOGO'];
+    var posOpts=['New Opening','New Replace','Old',''];
+    Swal.fire({ title:'เพิ่มแผนงาน (เปิดสาขา / Renovate)', width:640,
+      html:'<div style="text-align:left;font-size:13.5px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">'
+        +_fld('Shop Code <span style="color:#c0392b">*</span>','<input id="ap_shop" class="swal2-input" style="margin:0;width:100%;font-family:monospace" placeholder="PC1112" oninput="PW.apDev()">')
+        +_fld('Location <span style="color:#c0392b">*</span>','<input id="ap_loc" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อสาขา">')
+        +_fld('Type', _sel('ap_type', types, 'COCO'))
+        +_fld('การเปลี่ยน', _sel('ap_change', changes, 'New Opening'))
+        +_fld('PIC','<input id="ap_pic" class="swal2-input" style="margin:0;width:100%">')
+        +_fld('วันเปิดร้าน','<input id="ap_open" type="date" class="swal2-input" style="margin:0;width:100%">')
+        +_fld('สถานะ', _sel('ap_conf',['Confirmed','Tentative'],'Confirmed'))
+        +_fld('Company','<input id="ap_company" class="swal2-input" style="margin:0;width:100%" placeholder="บริษัท ...">')
+        +_fld('POS', _sel('ap_pos', posOpts, 'New Opening'))
+        +_fld('พิมพ์แคชเชียร์', _sel('ap_prnC', ['','New Replace','New Opening'], ''))
+        +'<div id="ap_devinfo" style="grid-column:1/-1"></div>'
+        +'</div>',
+      showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่มแผนงาน', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ var shop=(_g('ap_shop')||'').trim().toUpperCase(), loc=(_g('ap_loc')||'').trim();
+        if(!shop){ Swal.showValidationMessage('กรอก Shop Code'); return false; }
+        if(!loc){ Swal.showValidationMessage('กรอก Location'); return false; }
+        if(addedRows().some(function(x){return x.shop===shop;})){ Swal.showValidationMessage('มีแผนของ '+shop+' อยู่แล้ว'); return false; }
+        var iso=_g('ap_open'); var open=iso?iso.split('-').reverse().join('/'):'';
+        return { type:_g('ap_type'), shop:shop, loc:loc, change:_g('ap_change'), pic:_g('ap_pic'), open:open, openIso:iso||'', conf:_g('ap_conf'), pos:_g('ap_pos'), prnC:_g('ap_prnC'), prnK:'', company:(_g('ap_company')||'').trim(), branchType:_g('ap_type'), inReg:false, inMaster:false, _added:true }; } })
+    .then(function(r){ if(!r.isConfirmed) return; var added=addedRows(); added.unshift(r.value); lsSet(ADDED_KEY,added);
+      ROWS=(window.PC_PLAN_FORECAST||[]).slice().concat(added);
+      Swal.fire({icon:'success',title:'เพิ่มแผนงานแล้ว',html:'<b>'+esc(r.value.shop)+'</b> · '+esc(r.value.loc),confirmButtonColor:'#2e934a',timer:1700,showConfirmButton:false}); render();
+    });
+  }
+  function delPlan(shop){
+    Swal.fire({title:'ลบแผนงาน?',html:'<b>'+esc(shop)+'</b>',icon:'warning',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ปิด'}).then(function(r){ if(!r.isConfirmed) return;
+      var added=addedRows().filter(function(x){return x.shop!==shop;}); lsSet(ADDED_KEY,added); ROWS=(window.PC_PLAN_FORECAST||[]).slice().concat(added); render(); });
+  }
+
+  function boot(){
+    ROWS=(window.PC_PLAN_FORECAST||[]).slice().concat(addedRows());
+    ACT=lsGet(ACT_KEY,{});
+    fillFilters(); render();
+  }
+  return { boot:boot, render:render, confirmOpen:confirmOpen, renoCase:renoCase, itTask:itTask, processOpened:processOpened, newFromLicense:newFromLicense, addPlan:addPlan, delPlan:delPlan, apDev:apDev };
+})();
+if(!window.__pwShell){ document.addEventListener('DOMContentLoaded', function(){ if(!window.__pwInit){ window.__pwInit=true; PW.boot(); } }); if(document.readyState!=='loading' && !window.__pwInit){ window.__pwInit=true; PW.boot(); } }
+</script>
+</body>
+</html>

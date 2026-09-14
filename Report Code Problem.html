@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แจ้งปัญหาโค้ดโปรโมชัน — Branch</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:96px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:var(--pc-black); color:#fff; padding:16px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:10; }
+  .topbar .back{ width:44px; height:44px; border:0; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; font-size:1.1rem; cursor:pointer; flex:none; }
+  .topbar .back:hover{ background:rgba(255,255,255,.22); }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.12rem; margin:0; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:8px; }
+
+  .wrap{ max-width:680px; margin:0 auto; padding:18px 16px 0; }
+
+  .ctx{ background:#fff; border-radius:16px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid #e7eaee; margin-bottom:18px; border-left:5px solid var(--lc,#2e934a); }
+  .ctx .code{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.4rem; line-height:1.1; }
+  .ctx .found{ font-size:.74rem; font-weight:700; border-radius:7px; padding:3px 10px; margin-left:8px; vertical-align:middle; }
+  .ctx .found.yes{ background:#eafaf1; color:#1d7a4d; } .ctx .found.no{ background:#fdecea; color:#c0392b; }
+  .ctx .meta{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .ctx .mtag{ font-size:.82rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:8px; padding:5px 11px; display:inline-flex; align-items:center; gap:6px; }
+  .ctx .mtag i{ color:#9aa1aa; }
+
+  .step{ margin-bottom:22px; }
+  .step-q{ font-size:1.1rem; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+  .step-q .no{ width:30px; height:30px; border-radius:50%; background:var(--pc-yellow); color:#000; font-family:'Montserrat',sans-serif; font-weight:900; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .step-sub{ color:#8a9099; font-size:.86rem; margin:2px 0 12px 40px; }
+
+  .fld{ margin:0 0 6px; }
+  .fld label{ display:block; font-size:.84rem; font-weight:600; color:#5a616b; margin-bottom:6px; }
+  .sel{ width:100%; border:2px solid #dde2e7; border-radius:13px; padding:13px 14px; font-family:inherit; font-size:1rem; background:#fff; color:var(--pc-black); }
+  .sel:focus{ outline:none; border-color:var(--pc-green); }
+
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .tile{ border:2px solid #dde2e7; background:#fff; border-radius:16px; padding:18px 14px; text-align:center; cursor:pointer; transition:.12s; position:relative; min-height:116px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; }
+  .tile:hover{ border-color:#b6bcc4; }
+  .tile .ti{ width:52px; height:52px; border-radius:14px; background:#f1f4f7; color:#7b8089; display:inline-flex; align-items:center; justify-content:center; font-size:1.5rem; transition:.12s; }
+  .tile .tl{ font-weight:600; font-size:.95rem; line-height:1.25; }
+  .tile .badge-chk{ position:absolute; top:9px; right:9px; width:26px; height:26px; border-radius:50%; background:#c9870a; color:#fff; display:none; align-items:center; justify-content:center; font-size:.82rem; }
+  .tile.on{ border-color:#c9870a; background:#fff8ec; }
+  .tile.on .ti{ background:#c9870a; color:#fff; }
+  .tile.on .badge-chk{ display:inline-flex; }
+
+  /* custom promo picker */
+  .pcbx{ position:relative; }
+  .pcbx-in{ position:relative; }
+  .pcbx-in .pcbx-ic{ position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#9aa1aa; font-size:.95rem; pointer-events:none; }
+  .pcbx-inp{ padding-left:42px !important; padding-right:42px !important; }
+  .pcbx-ca{ position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#9aa1aa; cursor:pointer; transition:transform .18s,color .18s; }
+  .pcbx.open .pcbx-ca{ transform:translateY(-50%) rotate(180deg); color:var(--pc-green); }
+  .pcbx-panel{ display:none; position:absolute; left:0; right:0; top:calc(100% + 7px); background:#fff; border:1px solid #e2e6ea; border-radius:15px; box-shadow:0 14px 40px rgba(20,30,25,.16); max-height:340px; overflow:auto; z-index:40; padding:6px; }
+  .pcbx.open .pcbx-panel{ display:block; }
+  .pcbx-head{ padding:9px 12px 6px; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#adb3bb; display:flex; justify-content:space-between; }
+  .pcbx-row{ display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:11px; cursor:pointer; transition:background .1s; }
+  .pcbx-row:hover, .pcbx-row.active{ background:#eef7f1; }
+  .pcbx-row .nm{ flex:1; min-width:0; }
+  .pcbx-row .nm b{ display:block; font-weight:600; font-size:.95rem; color:#1a1d20; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pcbx-row .nm small{ color:#9aa1aa; font-size:.75rem; }
+  .pcbx-code{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.76rem; padding:4px 9px; border-radius:8px; flex:none; letter-spacing:.3px; }
+  .pcbx-empty{ padding:22px 16px; text-align:center; color:#9aa1aa; font-size:.88rem; }
+  .pcbx-empty i{ display:block; font-size:1.5rem; margin-bottom:8px; opacity:.5; }
+
+  .note{ width:100%; border:2px solid #dde2e7; border-radius:14px; padding:13px 15px; font-family:inherit; font-size:1rem; resize:vertical; min-height:84px; }
+  .note:focus{ outline:none; border-color:var(--pc-green); }
+
+  .route{ background:#fff; border:1px solid #e7eaee; border-left:4px solid #2e934a; border-radius:12px; padding:11px 14px; margin-top:16px; }
+  .route .rh{ font-size:.7rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; margin-bottom:5px; }
+  .route .rl{ font-size:.9rem; font-weight:600; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .route .ch{ font-size:.74rem; font-weight:700; border-radius:6px; padding:2px 8px; }
+  .ch.mail{ background:#fdf3e0; color:#9a6700; } .ch.chat{ background:#eef4ff; color:#2c4a82; }
+
+  .submitbar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:14px 16px; box-shadow:0 -4px 20px rgba(0,0,0,.06); z-index:20; }
+  .submitbar .inner{ max-width:680px; margin:0 auto; display:flex; gap:12px; }
+  .btn-send{ flex:1; background:var(--pc-green); color:#fff; border:0; border-radius:14px; padding:16px; font-weight:700; font-size:1.1rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; }
+  .btn-send:hover{ background:#00632f; } .btn-send:disabled{ background:#cfd5db; cursor:not-allowed; }
+  .noctx{ background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:48px 20px; color:#8a9099; }
+  .noctx i{ font-size:2.2rem; display:block; margin-bottom:12px; opacity:.5; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+  <h1><i class="fas fa-barcode"></i>แจ้งปัญหาโค้ดโปรโมชัน</h1>
+</div>
+
+<div class="wrap" id="main"></div>
+
+<div class="submitbar" id="submitbar" style="display:none">
+  <div class="inner">
+    <button class="btn-send" id="btnSend" onclick="submitReport()"><i class="fas fa-paper-plane"></i>ส่งแจ้ง IT</button>
+  </div>
+</div>
+
+<script>
+const TK_KEY='pc_branch_tickets';
+const BRANCHES=['101 · Central World','088 · Mega Bangna','142 · Terminal 21','203 · CentralPlaza Rama 9','311 · Future Park'];
+/* ปัญหาเฉพาะเรื่องโค้ดโปรโมชัน (สอดคล้องกับเหตุการณ์ที่แจ้ง) */
+const ISSUES=[
+  {k:'NOT_FOUND',    label:'ไม่พบโค้ดใน POS',        icon:'fa-eye-slash',          need:['app','pos']},
+  {k:'NO_DISCOUNT',  label:'กดแล้วไม่ลดราคา',        icon:'fa-circle-exclamation', need:['app','pos']},
+  {k:'EXPIRED',      label:'โค้ดหมดอายุ/ใช้ไม่ได้',  icon:'fa-hourglass-end',      need:['app','pos']},
+  {k:'USED',         label:'โค้ดถูกใช้ไปแล้ว',       icon:'fa-ban',                need:['app','pos']},
+  {k:'QUOTA',        label:'โควต้าบัตรใช้ไม่ได้ (เฉพาะบัตรสมาชิก)', icon:'fa-ticket', need:['pos'], cardOnly:true},
+  {k:'OTHER',        label:'อื่นๆ',                  icon:'fa-comment-dots',       need:['app','text']},
+];
+const EV_LABEL={app:'หลักฐานฝั่งลูกค้า (แอป/หน้าจอลูกค้า)', pos:'หลักฐานหน้าเครื่อง POS'};
+const EV_ICON={app:'fa-mobile-screen-button', pos:'fa-cash-register'};
+const EV_COLOR={app:'#2c4a82', pos:'#1d7a4d'};
+
+let CTX=null, picked=new Set(), note='', issueData={};
+try{ CTX=JSON.parse(localStorage.getItem('pc_report_ctx')); }catch(e){ CTX=null; }
+if(CTX && CTX.preIssue){ try{ picked.add(CTX.preIssue); }catch(e){} }
+function getSettings(){ try{ return JSON.parse(localStorage.getItem('pc_report_settings'))||{}; }catch(e){ return {}; } }
+const AUTH_MODE=(getSettings().authMode)||'cashier';
+function imgCfg(){ const s=getSettings(); return { maxMB:Number(s.maxImgMB)||5, blurOn:s.blurCheck!==false, blurThresh:Number(s.blurThreshold)||80, multiple:s.multiImage!==false }; }
+const USED_WARN_DEFAULT='***กรณีหน้าจอ POS แจ้งมีการใช้โค๊ดในระบบแล้วต้องยึดทาง POS เป็นหลักเท่านั้น';
+function usedWarnMsg(){ const s=getSettings(); return (s.usedWarnMsg||'').trim()||USED_WARN_DEFAULT; }
+function dataOf(k){ return issueData[k]||(issueData[k]={}); }
+function isMemberCardCtx(){ return !!(CTX && (CTX.isMemberCard || /บัตรสมาชิก/.test(String(CTX.promoType||'')))); }
+/* ความคมของภาพ = variance of Laplacian (สูง = คมชัด) */
+function sharpnessScore(img){
+  const W=Math.min(img.width||1,480)||1, scale=W/(img.width||1), H=Math.max(1,Math.round((img.height||1)*scale));
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const ctx=cv.getContext('2d');
+  ctx.drawImage(img,0,0,W,H); let d; try{ d=ctx.getImageData(0,0,W,H).data; }catch(e){ return 9999; }
+  const g=new Float32Array(W*H); for(let i=0,j=0;i<d.length;i+=4,j++){ g[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; }
+  let mean=0,n=0; const lap=new Float32Array(W*H);
+  for(let y=1;y<H-1;y++){ for(let x=1;x<W-1;x++){ const o=y*W+x; const l=4*g[o]-g[o-1]-g[o+1]-g[o-W]-g[o+W]; lap[o]=l; mean+=l; n++; } }
+  if(!n) return 9999; mean/=n; let v=0;
+  for(let y=1;y<H-1;y++){ for(let x=1;x<W-1;x++){ const o=y*W+x; const dd=lap[o]-mean; v+=dd*dd; } }
+  return v/n;
+}
+function onEv(k, which, input){
+  const files=Array.from(input.files||[]); input.value=''; if(!files.length) return;
+  const cfg=imgCfg(); const d=dataOf(k); d[which]=d[which]||[];
+  files.forEach(f=>{
+    if(!cfg.multiple && d[which].length>=1){ Swal.fire({icon:'info',title:'แนบได้ 1 รูป',text:'ตั้งค่าระบบอนุญาตให้แนบ 1 รูปต่อช่อง',confirmButtonColor:'#2e934a'}); return; }
+    if(!/^image\//.test(f.type)){ Swal.fire({icon:'error',title:'ต้องเป็นไฟล์รูปภาพ',confirmButtonColor:'#2e934a'}); return; }
+    if(f.size > cfg.maxMB*1024*1024){ Swal.fire({icon:'error',title:'ไฟล์ใหญ่เกินไป',html:`ขนาดต้องไม่เกิน <b>${cfg.maxMB} MB</b> (ไฟล์นี้ ${(f.size/1048576).toFixed(1)} MB)`,confirmButtonColor:'#2e934a'}); return; }
+    const rd=new FileReader(); rd.onload=e=>{ const url=e.target.result; const im=new Image(); im.onload=()=>{
+      let score=9999; if(cfg.blurOn) score=sharpnessScore(im);
+      if(cfg.blurOn && score<cfg.blurThresh){ Swal.fire({icon:'warning',title:'ภาพไม่ชัด — แนบใหม่',html:`ภาพเบลอเกินไป (ความคม <b>${Math.round(score)}</b> ต่ำกว่าเกณฑ์ ${cfg.blurThresh})<br>กรุณาถ่าย/แนบรูปที่ชัดกว่านี้`,confirmButtonColor:'#2e934a'}); return; }
+      d[which].push({url, score:Math.round(score)}); render();
+    }; im.onerror=()=>{ Swal.fire({icon:'error',title:'เปิดรูปไม่ได้',confirmButtonColor:'#2e934a'}); }; im.src=url; };
+    rd.readAsDataURL(f);
+  });
+}
+function clrEv(k, which, idx){ const d=issueData[k]; if(d&&Array.isArray(d[which])) d[which].splice(idx,1); render(); }
+function setIssueText(k, v){ dataOf(k).text=v; updateSend(); }
+function evBox(k, which, label, icon, color, list){
+  list=list||[]; const cfg=imgCfg();
+  const thumbs=list.map((im,i)=>`<div style="position:relative;display:inline-block"><img src="${im.url}" style="width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid #e7eaee;display:block"><button type="button" onclick="clrEv('${k}','${which}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:#c0392b;color:#fff;border:0;cursor:pointer;font-size:.7rem;line-height:1">✕</button></div>`).join('');
+  const canAdd = cfg.multiple || list.length===0;
+  const addBtn = canAdd?`<label style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:78px;height:78px;border:2px dashed ${color};border-radius:9px;cursor:pointer;color:${color}"><i class="fas fa-camera" style="font-size:1.2rem"></i><span style="font-size:.68rem;font-weight:600">เพิ่มรูป</span><input type="file" accept="image/*" capture="environment" ${cfg.multiple?'multiple':''} style="display:none" onchange="onEv('${k}','${which}',this)"></label>`:'';
+  return `<div style="border:2px dashed ${list.length?color:'#dde2e7'};border-radius:14px;padding:12px;background:#fff"><div style="font-weight:700;font-size:.85rem;margin-bottom:9px;color:${color}"><i class="fas ${icon} me-1"></i> ${label} <span style="color:#c0392b">*</span>${cfg.multiple?' <span style="font-weight:500;color:#9aa1aa;font-size:.78rem">(แนบได้หลายรูป)</span>':''}</div><div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center">${thumbs}${addBtn}</div></div>`;
+}
+function issueComplete(k){ const it=ISSUES.find(x=>x.k===k); if(!it) return true; const d=issueData[k]||{}; return (it.need||[]).every(n=> n==='text' ? !!(d.text&&d.text.trim()) : (Array.isArray(d[n])&&d[n].length>0) ); }
+function allComplete(){ return [...picked].every(issueComplete); }
+function issueInputs(it){
+  const k=it.k, d=issueData[k]||{}, need=it.need||[];
+  let h='<div style="margin-top:13px;display:flex;flex-direction:column;gap:12px">';
+  if(k==='QUOTA'){ h+=`<div style="background:#eafaf1;border:1px solid #cdeed9;border-left:5px solid #1d7a4d;border-radius:13px;padding:12px 14px;color:#155e37"><div style="font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.95rem"><i class="fas fa-circle-info"></i>โควต้าใช้ไม่ได้ — ทำอย่างไรต่อ</div><div style="font-size:.85rem;line-height:1.55">รบกวน<b>ทำสินค้า / ให้ส่วนลดลูกค้าตามสิทธิ์</b>ไปก่อน แล้วแนบ<b>ภาพหน้าจอเครื่อง POS</b>เป็นหลักฐาน · ระบบจะตรวจสอบและแจ้งสาขาภายหลัง</div></div>`; }
+  if(k==='USED'){ h+=`<div style="background:#fdecea;border:1px solid #f5c2c0;border-left:5px solid #c0392b;border-radius:13px;padding:12px 14px;color:#a1271b"><div style="font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.95rem"><i class="fas fa-triangle-exclamation"></i>ห้ามให้สินค้า/ส่วนลดก่อน</div><div style="font-size:.85rem;line-height:1.5">${esc(usedWarnMsg())}</div></div>`; }
+  const evs=[];
+  if(need.includes('app')) evs.push(evBox(k,'app',EV_LABEL.app,EV_ICON.app,EV_COLOR.app,d.app));
+  if(need.includes('pos')) evs.push(evBox(k,'pos',EV_LABEL.pos,EV_ICON.pos,EV_COLOR.pos,d.pos));
+  if(evs.length) h+=`<div style="display:grid;grid-template-columns:${evs.length>1?'1fr 1fr':'1fr'};gap:11px">${evs.join('')}</div>`;
+  if(need.includes('text')) h+=`<div><label style="font-weight:600;font-size:.86rem;color:#5a616b;margin-bottom:6px;display:block">โปรดระบุรายละเอียด <span style="color:#c0392b">*</span></label><textarea class="note" style="min-height:72px" placeholder="ระบุรายละเอียดของปัญหานี้" oninput="setIssueText('${k}',this.value)">${esc(d.text||'')}</textarea></div>`;
+  h+='</div>'; return h;
+}
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function goBack(){
+  var o=null; try{ o=localStorage.getItem('pc_report_origin'); }catch(e){}
+  o=o||'Potato Corner Promotion System.html#Branch_View';
+  // ดึงชื่อหน้าจาก hash (เช่น #Branch_View, #BranchCards) เพื่อสั่ง shell เปิดหน้านั้นในตัว (ไม่โหลด shell ซ้อน)
+  var page=''; var m=/#([A-Za-z_]+)/.exec(o); if(m) page=m[1];
+  // 1) ถ้าอยู่ใน shell (embed) และ shell มี loadPage → นำทางในแอป ไม่ reload ไม่เกิด shell ซ้อน
+  try{ if(page && window.top && window.top!==window && typeof window.top.loadPage==='function'){ window.top.loadPage(page); return; } }catch(e){}
+  // 2) เป็น top อยู่แล้ว (เปิดแบบเต็มจอ) → โหลด shell พร้อม hash ที่หน้าต่างบนสุดเสมอ (กันโหลดซ้อนในกรอบ)
+  try{ (window.top||window).location.href=o; return; }catch(e){}
+  location.href=o;
+}
+function loadTickets(){ try{ return JSON.parse(localStorage.getItem(TK_KEY))||[]; }catch(e){ return []; } }
+function saveTickets(a){ localStorage.setItem(TK_KEY, JSON.stringify(a)); }
+function nextTid(a){ let m=1000; a.forEach(t=>{ const n=parseInt(String(t.id||'').replace(/\D/g,'')); if(n>m) m=n; }); return 'BVT-'+(m+1); }
+
+// ตัวอย่าง (Demo) — จำลอง context โค้ดที่ถูกส่งมาจากหน้าตรวจสอบโค้ด
+function loadDemoCtx(){
+  CTX={ lookupCode:'IC0542', campaign:'CPN รับฟรี Wow Set1', promoType:'Item coupon Online', buttons:[{ sn:'รับฟรี Wow Set1' }] };
+  picked=new Set(); note=''; issueData={};
+  render();
+}
+
+/* รายชื่อโปรโมชั่น (สำหรับกรณีไม่พบโค้ด → ให้สาขาระบุโปรที่เกี่ยวข้อง) — อ่านจาก working ใน pc_mock_store_v28 */
+function pcPromoList(){
+  try{
+    var s=JSON.parse(localStorage.getItem('pc_mock_store_v28'))||{}; var w=s.working||[];
+    var seen={}, out=[];
+    w.forEach(function(r){
+      var camp=String(r.campaign||'').trim(); if(!camp) return;
+      var code=r.codePromotion||r.promoCode||r.codeItemSet||'';
+      var sn=(r.buttons&&r.buttons[0]&&(r.buttons[0].shortName||r.buttons[0].sn))||'';
+      var label=camp+(code?(' · '+code):'');
+      if(seen[label]) return; seen[label]=1;
+      out.push({label:label, campaign:camp, promoType:r.promoType||'', code:code, sn:sn});
+    });
+    out.sort(function(a,b){ return String(a.campaign).localeCompare(String(b.campaign),'th'); });
+    return out;
+  }catch(e){ return []; }
+}
+window.pcPromoPickChange=function(v){
+  v=String(v||'').trim();
+  var rec=(window.__promoIdx||{})[v];
+  if(rec){ CTX.campaign=rec.campaign; if(rec.promoType) CTX.promoType=rec.promoType; if(!CTX.buttons||!CTX.buttons.length) CTX.buttons=[{}]; if(rec.sn) CTX.buttons[0].sn=rec.sn; }
+  else { CTX.campaign = v; }   // พิมพ์เอง (ไม่มีในรายการ)
+};
+/* ---- custom promo picker (แทน native datalist ที่เต็มจอ) ---- */
+function pcCodeStyle(code){
+  var p=String(code||'').toUpperCase();
+  if(/^IC/.test(p)) return 'background:#eef4ff;color:#2c4a82';
+  if(/^BD/.test(p)) return 'background:#fdf3e0;color:#9a6700';
+  if(/^VC/.test(p)) return 'background:#f2ecfb;color:#6b3fa0';
+  if(/^M\d/.test(p)) return 'background:#eafaf1;color:#1d7a4d';
+  if(/^P\d/.test(p)) return 'background:#e7f5f2;color:#0f766e';
+  return 'background:#f1f4f7;color:#6b7280';
+}
+function pcPromoOpen(){ var b=document.getElementById('pcbx'); if(b){ b.classList.add('open'); pcPromoRender(document.getElementById('promoPick').value); } }
+function pcPromoClose(){ var b=document.getElementById('pcbx'); if(b) b.classList.remove('open'); }
+function pcPromoToggle(){ var b=document.getElementById('pcbx'); if(!b) return; if(b.classList.contains('open')) pcPromoClose(); else { document.getElementById('promoPick').focus(); pcPromoOpen(); } }
+function pcPromoRender(filter){
+  var panel=document.getElementById('pcbxPanel'); if(!panel) return;
+  var items=window.__promoItems||[]; var q=String(filter||'').trim().toLowerCase();
+  var list=q? items.filter(function(p){ return (p.campaign+' '+p.code+' '+(p.sn||'')).toLowerCase().indexOf(q)>=0; }) : items;
+  if(!list.length){ panel.innerHTML='<div class="pcbx-empty"><i class="fas fa-magnifying-glass"></i>ไม่พบโปรที่ตรง— กด <b>Enter</b> เพื่อใช้ข้อความที่พิมพ์เอง</div>'; return; }
+  var shown=list.slice(0,60);
+  var head='<div class="pcbx-head"><span>โปรโมชันในระบบ</span><span>'+list.length+' รายการ</span></div>';
+  panel.innerHTML=head+shown.map(function(p,i){
+    return '<div class="pcbx-row" onmousedown="event.preventDefault();pcPromoSelect('+i+')">'+
+      '<div class="nm"><b>'+esc(p.campaign)+'</b>'+(p.sn?'<small><i class="fas fa-hand-pointer" style="font-size:.65rem;margin-right:4px"></i>'+esc(p.sn)+'</small>':(p.promoType?'<small>'+esc(p.promoType)+'</small>':''))+'</div>'+
+      (p.code?'<span class="pcbx-code" style="'+pcCodeStyle(p.code)+'">'+esc(p.code)+'</span>':'')+
+    '</div>';
+  }).join('');
+  window.__promoShown=shown;
+}
+function pcPromoSelect(i){
+  var p=(window.__promoShown||[])[i]; if(!p) return;
+  var inp=document.getElementById('promoPick'); if(inp) inp.value=p.label;
+  pcPromoPickChange(p.label); pcPromoClose(); updateSend();
+}
+function pcPromoInput(v){ pcPromoPickChange(v); var b=document.getElementById('pcbx'); if(b&&!b.classList.contains('open')) b.classList.add('open'); pcPromoRender(v); }
+document.addEventListener('mousedown',function(e){ var b=document.getElementById('pcbx'); if(b&&!b.contains(e.target)) pcPromoClose(); });
+function render(){
+  const main=document.getElementById('main');
+  if(!CTX || !CTX.lookupCode){
+    document.getElementById('submitbar').style.display='none';
+    main.innerHTML=`<div class="noctx"><i class="fas fa-circle-question"></i>ไม่พบโค้ดที่จะแจ้ง<br>
+      <button class="btn-send" style="max-width:260px;margin:14px auto 0" onclick="goBack()">กลับไปหน้าตรวจสอบโค้ด</button>
+      <button class="btn-send" style="max-width:260px;margin:10px auto 0;background:#1a1d20" onclick="loadDemoCtx()"><i class="fas fa-flask"></i> ดูตัวอย่าง (Demo)</button></div>`;
+    return;
+  }
+  const found = CTX.campaign && CTX.campaign!=='(ไม่พบในระบบ)';
+  const b=(CTX.buttons||[])[0]||{};
+  const ctxCard=`<div class="ctx" style="--lc:${found?'#2e934a':'#c0392b'}">
+    <div><span class="code">${esc(CTX.lookupCode)}</span><span class="found ${found?'yes':'no'}">${found?'พบในระบบ':'ไม่พบในระบบ'}</span></div>
+    <div class="meta">
+      <span class="mtag"><i class="fas fa-bullhorn"></i>แคมเปญ: <b>${esc(CTX.campaign||'—')}</b></span>
+      ${b.sn?`<span class="mtag"><i class="fas fa-hand-pointer"></i>ปุ่ม: <b>${esc(b.sn)}</b></span>`:''}
+      ${CTX.promoType?`<span class="mtag"><i class="fas fa-tag"></i>${esc(CTX.promoType)}</span>`:''}
+    </div>
+  </div>`;
+  const branchOpts=BRANCHES.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  var _plist = found ? [] : pcPromoList(); window.__promoIdx={}; window.__promoItems=_plist; _plist.forEach(function(p){ window.__promoIdx[p.label]=p; });
+  const _preP = (CTX.campaign && CTX.campaign!=='(ไม่พบในระบบ)') ? CTX.campaign : '';
+  const stepPromo = found ? '' : `<div class="step">
+    <div class="step-q"><span class="no" style="background:#c0392b"><i class="fas fa-magnifying-glass" style="font-size:.8rem"></i></span>โค้ดนี้เป็นของโปรไหน?</div>
+    <div class="step-sub">ระบบไม่พบโค้ด — ช่วยระบุโปรโมชั่นที่เกี่ยวข้อง (พิมพ์ค้นหา หรือเลือกจากรายการ) เพื่อให้ทีมตรวจสอบได้เร็วขึ้น</div>
+    <div class="fld"><div class="pcbx" id="pcbx"><div class="pcbx-in">
+      <i class="fas fa-magnifying-glass pcbx-ic"></i>
+      <input class="sel pcbx-inp" id="promoPick" autocomplete="off" placeholder="พิมพ์ชื่อโปร / รหัส — เลือกจากรายการ หรือพิมพ์เอง" value="${esc(_preP)}" oninput="pcPromoInput(this.value)" onfocus="pcPromoOpen()">
+      <i class="fas fa-chevron-down pcbx-ca" onclick="pcPromoToggle()"></i>
+    </div><div class="pcbx-panel" id="pcbxPanel"></div></div></div>
+  </div>`;
+  const step1=`<div class="step">
+    <div class="step-q"><span class="no">1</span>สาขาที่แจ้ง</div>
+    <div class="fld"><select class="sel" id="brSel">${branchOpts}</select></div>
+  </div>`;
+  const tiles=ISSUES.filter(it=> !it.cardOnly || isMemberCardCtx()).map(it=>{
+    const on=picked.has(it.k); const done=on&&issueComplete(it.k);
+    return `<div style="border:2px solid ${on?(done?'#1d7a4d':'#e0a93f'):'#dde2e7'};background:${on?'#fffdf7':'#fff'};border-radius:16px;padding:14px 15px;margin-bottom:11px">
+      <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onclick="toggleIssue('${it.k}')">
+        <span style="width:44px;height:44px;border-radius:13px;background:${on?(done?'#1d7a4d':'#e0a93f'):'#f1f4f7'};color:${on?'#fff':'#7b8089'};display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem;flex:none"><i class="fas ${it.icon}"></i></span>
+        <span style="font-weight:600;font-size:1rem;flex:1">${it.label}</span>
+        ${on?(done?'<i class="fas fa-circle-check" style="color:#1d7a4d;font-size:1.25rem"></i>':'<span style="font-size:.7rem;font-weight:700;color:#c9870a;background:#eaf4ee;border-radius:7px;padding:3px 9px">ต้องแนบ/กรอก</span>'):'<i class="far fa-circle" style="color:#c2c8cf;font-size:1.25rem"></i>'}
+      </div>
+      ${on?issueInputs(it):''}
+    </div>`;
+  }).join('');
+  const step2=`<div class="step">
+    <div class="step-q"><span class="no">2</span>เป็นปัญหาแบบไหน?</div>
+    <div class="step-sub">เลือกหัวข้อ → แนบหลักฐาน/กรอกให้ครบ <b>ก่อน</b>เลือกหัวข้อถัดไป (เลือกได้มากกว่า 1)</div>
+    ${tiles}
+  </div>`;
+  const step3=`<div class="step">
+    <div class="step-q"><span class="no">3</span>รายละเอียดเพิ่มเติม</div>
+    <div class="step-sub">อธิบายอาการ เช่น ลูกค้ายืนยันว่าได้รับโค้ดจริง แต่กดที่ POS ไม่เจอ (ถ้ามี)</div>
+    <textarea class="note" id="noteBox" placeholder="อธิบายอาการ (ถ้ามี)" oninput="note=this.value">${esc(note)}</textarea>
+  </div>`;
+  const route=`<div class="route"><div class="rh">เรื่องนี้จะถูกแจ้งเตือนไปที่</div>
+    <div class="rl"><span class="ch mail"><i class="fas fa-envelope"></i> Email</span><span class="ch chat"><i class="fas fa-comments"></i> Team Chat</span><span style="color:#9aa1aa">→</span> ทีม IT Support · เปิด Ticket เข้าระบบแจ้งปัญหาสาขา</div></div>`;
+  main.innerHTML=ctxCard+stepPromo+step1+step2+step3+route;
+  document.getElementById('submitbar').style.display='block';
+  updateSend();
+}
+function toggleIssue(k){
+  if(picked.has(k)){ picked.delete(k); }
+  else {
+    const incomplete=[...picked].filter(x=>!issueComplete(x));
+    if(incomplete.length){ Swal.fire({icon:'warning',title:'กรอกให้ครบก่อน',text:'แนบหลักฐาน/ระบุรายละเอียดของหัวข้อที่เลือกไว้ให้ครบ ก่อนเลือกหัวข้อใหม่',confirmButtonColor:'#2e934a'}); return; }
+    picked.add(k); dataOf(k);
+  }
+  render();
+}
+function updateSend(){ const b=document.getElementById('btnSend'); if(b) b.disabled = picked.size===0 || !allComplete(); }
+
+/* ---- auth (ตามตั้งค่าระบบแจ้งปัญหาสาขา) ---- */
+const CASHIER_KEY='pc_cashier_users';
+const CASHIER_SEED=[
+  {code:'4821', name:'สมชาย ใจดี',    password:'1234', position:'ผู้จัดการสาขา', branch:'101 · Central World'},
+  {code:'5510', name:'มาลี สดใส',     password:'1234', position:'แคชเชียร์',     branch:'101 · Central World'},
+  {code:'6093', name:'อนุชา รักงาน',  password:'1234', position:'ผู้ช่วยผู้จัดการ', branch:'088 · Mega Bangna'},
+];
+function loadCashiers(){ let a; try{ a=JSON.parse(localStorage.getItem(CASHIER_KEY)); }catch(e){ a=null; }
+  if(!Array.isArray(a)||!a.length){ a=CASHIER_SEED.slice(); localStorage.setItem(CASHIER_KEY, JSON.stringify(a)); } return a; }
+/* ผู้จัดการเขต (Area) / ส่วนกลาง = ดึงชื่อจากบัญชีที่ล็อกอิน (ไม่ต้องกรอกรหัส) · พนักงานสาขา = กรอกเองเหมือนเดิม */
+function pcReporterArea(){
+  try{
+    var role=(localStorage.getItem('pc_role')||'').trim();
+    var name=(localStorage.getItem('pc_userName')||'').trim();
+    // OP = ผู้จัดการเขต (Area) · รวมบทบาทส่วนกลาง = auto-fill (ไม่ต้องกรอกรหัสพนักงาน)
+    // พนักงานหน้าสาขา (ล็อกอินด้วยรหัสแคชเชียร์ / ไม่มี role เหล่านี้) = กรอกเองเหมือนเดิม
+    var AREA_ROLES=['OP','Area','Admin','Admin HQ','MKT','IT','ACC','BD','RD'];
+    if(name && AREA_ROLES.indexOf(role)>=0) return {name:name, role:(role==='OP'?'Area':role)};
+  }catch(e){}
+  return null;
+}
+/* ทะเบียนพนักงานสาขา (รหัส→ชื่อ) สะสมเอง — ยังไม่มี API ฐานข้อมูลพนักงาน · ซิงค์ผ่าน cloud (pc_branch_staff_roster) */
+function pcRosterLoad(){ try{ return JSON.parse(localStorage.getItem('pc_branch_staff_roster'))||{}; }catch(e){ return {}; } }
+function pcRosterSave(code,name,branch){ if(!/^\d{5}$/.test(code)||!name) return; var r=pcRosterLoad(); r[code]={ name:name, branch:branch||'', last:new Date().toISOString(), count:((r[code]&&r[code].count)||0)+1 }; try{ localStorage.setItem('pc_branch_staff_roster', JSON.stringify(r)); }catch(e){} }
+function pcRosterLookup(emp){ var c=(emp.value||'').replace(/\D/g,'').slice(0,5); var nm=document.getElementById('swName'), hint=document.getElementById('swHint'); var roster=pcRosterLoad(); var hit=(c.length===5)?roster[c]:null; if(hit){ if(nm && (!nm.value.trim() || nm.value===emp.dataset.sug)){ nm.value=hit.name; emp.dataset.sug=hit.name; } if(hint){ hint.textContent='↳ เคยแจ้งด้วยรหัสนี้: '+hit.name+' — เติมชื่อให้แล้ว (แก้ได้)'; hint.style.display='block'; } } else if(hint){ hint.style.display='none'; } }
+function requireAuth(cb){
+  // พนักงานสาขา = บังคับกรอกรหัสพนักงาน + ชื่อ-นามสกุล + เลือกสาขา ทุกครั้ง · Area = auto-fill
+  const cur=(document.getElementById('brSel')||{}).value||'';
+  const brOpts=BRANCHES.map(x=>`<option value="${esc(x)}"${x===cur?' selected':''}>${esc(x)}</option>`).join('');
+  const _area=pcReporterArea();
+  if(_area){
+    Swal.fire({ title:'ยืนยันการแจ้ง',
+      html:`<div style="text-align:left;font-size:14px">
+        <div style="background:#eafaf0;border:1px solid #b6e6c7;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="font-size:12px;color:#6b7280;margin-bottom:2px">แจ้งในนาม (จากบัญชีที่ล็อกอิน — ไม่ต้องกรอกรหัสพนักงาน)</div>
+          <b style="font-size:15px">${esc(_area.name)}</b> <span style="color:#2e934a;font-weight:700">· ${esc(_area.role)}</span>
+        </div>
+        <label style="font-weight:600;display:block;margin:2px 0 4px">สาขาที่แจ้ง <span style="color:#c0392b">*</span></label>
+        <select id="swBr" class="swal2-input" style="margin:0;width:100%;height:auto;padding:10px 8px">${brOpts}</select></div>`,
+      confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน + ส่ง', showCancelButton:true, cancelButtonText:'ยกเลิก',
+      preConfirm:()=>{ const br=(document.getElementById('swBr').value||'').trim(); if(!br){ Swal.showValidationMessage('เลือกสาขา'); return false; } return { reporter:`${_area.name} (${_area.role})`, branch:br }; }
+    }).then(r=>{ if(r.isConfirmed) cb(r.value); });
+    return;
+  }
+  Swal.fire({ title:'ยืนยันผู้แจ้ง',
+    html:`<div style="text-align:left;font-size:14px">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">รหัสพนักงาน (ตัวเลข 5 หลัก) <span style="color:#c0392b">*</span></label>
+      <input id="swEmp" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น 50421" inputmode="numeric" maxlength="5" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,5);pcRosterLookup(this)">
+      <div id="swHint" style="display:none;font-size:12px;color:#2e934a;margin:-8px 0 10px 2px"></div>
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อ-นามสกุล <span style="color:#c0392b">*</span></label>
+      <input id="swName" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="ชื่อ นามสกุล" oninput="this.value=this.value.replace(/[^A-Za-z\\u0E00-\\u0E7F\\s.]/g,'')">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">สาขาที่แจ้ง <span style="color:#c0392b">*</span></label>
+      <select id="swBr" class="swal2-input" style="margin:0;width:100%;height:auto;padding:10px 8px">${brOpts}</select></div>`,
+    confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน + ส่ง', showCancelButton:true, cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const emp=(document.getElementById('swEmp').value||'').replace(/\D/g,''); const nm=(document.getElementById('swName').value||'').trim().replace(/\s+/g,' '); const br=(document.getElementById('swBr').value||'').trim(); if(!/^\d{5}$/.test(emp)){ Swal.showValidationMessage('รหัสพนักงานต้องเป็นตัวเลข 5 หลัก'); return false; } if(!/^[A-Za-z\u0E00-\u0E7F.]+(?:\s[A-Za-z\u0E00-\u0E7F.]+)+$/.test(nm)){ Swal.showValidationMessage('กรอกชื่อ-นามสกุลให้ครบ (ตัวอักษรเท่านั้น เว้นวรรคระหว่างชื่อกับสกุล)'); return false; } if(!br){ Swal.showValidationMessage('เลือกสาขา'); return false; } const _reg=pcRosterLoad()[emp]; if(_reg && _reg.name && _reg.name!==nm){ Swal.showValidationMessage('รหัส '+emp+' ลงทะเบียนกับ "'+_reg.name+'" แล้ว — รหัสพนักงานห้ามซ้ำ (ใช้รหัสของตัวเอง หรือแก้ชื่อให้ตรง)'); return false; } pcRosterSave(emp,nm,br); return { reporter:`${nm} (${emp})`, branch:br }; }
+  }).then(r=>{ if(r.isConfirmed) cb(r.value); });
+}
+
+function submitReport(){
+  if(picked.size===0){ Swal.fire({icon:'warning',title:'เลือกปัญหา',text:'เลือกปัญหาอย่างน้อย 1 ข้อ',confirmButtonColor:'#2e934a'}); return; }
+  if(!allComplete()){ Swal.fire({icon:'warning',title:'กรอก/แนบให้ครบ',text:'ยังมีหัวข้อที่ต้องแนบหลักฐานหรือระบุรายละเอียด',confirmButtonColor:'#2e934a'}); return; }
+  const branch0=document.getElementById('brSel').value;
+  requireAuth(res=>{
+    const reporter=res.reporter; const branch=res.branch||branch0;
+    const b=(CTX.buttons||[])[0]||{};
+    const sel=ISSUES.filter(it=>picked.has(it.k));
+    const labels=sel.map(it=>it.label);
+    let evApp=[], evPos=[]; const details=[];
+    sel.forEach(it=>{ const d=issueData[it.k]||{}; (d.app||[]).forEach(x=>evApp.push(x.url)); (d.pos||[]).forEach(x=>evPos.push(x.url)); if(d.text&&d.text.trim()) details.push(it.label+': '+d.text.trim()); });
+    const noteCombined=[(note||'').trim(), ...details].filter(Boolean).join(' · ');
+    const all=loadTickets(); const id=nextTid(all); const now=Date.now();
+    const bc=String(branch).split('·')[0].trim();
+    all.unshift({ id, branchCode:bc, branch, campaign:CTX.campaign||'(ไม่พบในระบบ)', promoType:CTX.promoType||'', reporter, source:'code', lookupCode:CTX.lookupCode,
+      buttons:[{ sn:b.sn||'', code:CTX.lookupCode, issues:labels, note:noteCombined, evApp:evApp, evPos:evPos }],
+      status:'OPEN', createdAt:now, log:[{status:'OPEN', at:now, by:reporter, note:''}] });
+    saveTickets(all);
+    localStorage.removeItem('pc_report_ctx');
+    Swal.fire({ icon:'success', title:'ส่งแจ้ง IT แล้ว', width:540,
+      html:`เลขที่ <b>${id}</b> · โค้ด <b class="mono">${esc(CTX.lookupCode)}</b><br><span style="font-size:13px;color:#6b7280">เปิด Ticket เข้าระบบแจ้งปัญหาสาขา · ติดตามสถานะได้ที่ Branch Tickets</span>`,
+      confirmButtonColor:'#2e934a', confirmButtonText:'<i class="fas fa-clipboard-list"></i> ดูสถานะที่แจ้ง', allowOutsideClick:false
+    }).then(()=> location.href='Branch Tickets.html');
+  });
+}
+render();
+</script>
+</body>
+</html>

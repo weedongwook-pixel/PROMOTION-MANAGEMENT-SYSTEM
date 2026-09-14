@@ -1,0 +1,554 @@
+<!-- IT Asset Logistics (Stock In/Out · Dispatch · Asset ID) — runs in shell. Entry: initAssetLogistics
+     SCAFFOLD: wired to mock data (store.assets via getAssetInventory, PC_BRANCH_MASTER, pc_device_swap_requests).
+     Persists spares/dispatch in localStorage (pc_asset_stock / pc_asset_dispatch) — swap for real backend later. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  #al-page{ --bg:#0c0d10; --panel:#15171c; --line:rgba(255,255,255,.10); --mut:#8b929c;
+    --red:#e61e2b; --kex:#f68b1e; --lala:#00a0df; --green:#1faa52; --blue:#1a73e8; --yellow:#F4D03F;
+    font-family:'Kanit','Inter',sans-serif; background:var(--bg); color:#fff; min-height:100vh; padding:26px 22px 70px; }
+  #al-page *{ box-sizing:border-box; }
+  #al-page .mono{ font-family:'JetBrains Mono',monospace; }
+  #al-page .wrap{ max-width:1040px; margin:0 auto; }
+
+  /* nav */
+  #al-page .al-nav{ display:flex; gap:10px; align-items:center; margin-bottom:20px; }
+  #al-page .al-tab{ flex:1; border-radius:13px; padding:13px; font-weight:800; border:1px solid #2a2d34; color:#8b929c; background:transparent; cursor:pointer; text-align:center; text-transform:uppercase; letter-spacing:1.5px; font-size:.86rem; transition:.2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+  #al-page .al-tab.on{ background:#fff; color:#000; border-color:#fff; box-shadow:0 8px 26px rgba(255,255,255,.12); }
+  #al-page .al-iconbtn{ border:1px solid #2a2d34; color:#8b929c; background:transparent; border-radius:13px; height:48px; width:50px; cursor:pointer; font-size:1rem; }
+  #al-page .al-iconbtn:hover{ color:#fff; border-color:#4a4f59; }
+
+  /* card */
+  #al-page .card-al{ background:var(--panel); border:1px solid var(--line); border-radius:24px; padding:34px; box-shadow:0 30px 70px rgba(0,0,0,.55); }
+  #al-page h3.title{ font-weight:800; letter-spacing:4px; text-align:center; margin:0 0 24px; font-size:1.25rem; }
+  #al-page .tag{ font-size:.7rem; font-weight:800; text-transform:uppercase; color:#fff; letter-spacing:1.4px; display:block; margin-bottom:7px; }
+  #al-page .muted{ color:var(--mut); }
+  #al-page label.fld{ font-size:.7rem; font-weight:800; text-transform:uppercase; color:var(--mut); letter-spacing:1.2px; display:block; margin-bottom:6px; }
+  #al-page input, #al-page select{ width:100%; background:#1c1f25; border:1px solid #2e323a; color:#fff; border-radius:12px; padding:13px 14px; font-family:'Kanit',sans-serif; font-size:.96rem; }
+  #al-page input:focus, #al-page select:focus{ outline:none; border-color:var(--red); box-shadow:0 0 0 4px rgba(230,30,43,.18); }
+  #al-page select option{ background:#1c1f25; }
+  #al-page .row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  #al-page .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  #al-page .mb{ margin-bottom:16px; }
+
+  #al-page .btn{ border:0; border-radius:13px; padding:13px 18px; font-family:'Kanit',sans-serif; font-weight:800; cursor:pointer; font-size:.95rem; }
+  #al-page .btn-light{ background:#fff; color:#000; } #al-page .btn-light:hover{ background:#e9e9e9; }
+  #al-page .btn-red{ background:var(--red); color:#fff; } #al-page .btn-dark{ background:#23262d; color:#fff; border:1px solid #2e323a; }
+  #al-page .btn-green{ background:var(--green); color:#fff; } #al-page .btn-kex{ background:var(--kex); color:#fff; } #al-page .btn-lala{ background:var(--lala); color:#fff; }
+  #al-page .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+  /* stats */
+  #al-page .stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
+  #al-page .stat{ background:#0e0f13; border:1px solid var(--line); border-radius:18px; padding:18px; text-align:center; }
+  #al-page .stat .n{ font-size:2.1rem; font-weight:900; font-family:'JetBrains Mono',monospace; }
+  #al-page .stat.avail .n{ color:var(--green); } #al-page .stat.use .n{ color:var(--red); }
+
+  /* sub tabs */
+  #al-page .subnav{ display:flex; background:#0e0f13; border:1px solid var(--line); border-radius:14px; padding:5px; margin-bottom:20px; gap:4px; }
+  #al-page .subnav .it{ flex:1; text-align:center; padding:10px; border-radius:10px; cursor:pointer; font-weight:800; color:#5e646e; font-size:.82rem; transition:.2s; }
+  #al-page .subnav .it.on{ background:#2a2d34; color:#fff; }
+
+  /* table */
+  #al-page .tbl-wrap{ border:1px solid var(--line); border-radius:16px; overflow:auto; max-height:440px; }
+  #al-page table{ width:100%; border-collapse:collapse; font-size:.85rem; }
+  #al-page thead th{ position:sticky; top:0; background:#0a0b0e; color:#7b818b; font-weight:800; text-transform:uppercase; font-size:.66rem; letter-spacing:.5px; padding:13px 14px; text-align:left; border-bottom:1px solid var(--line); }
+  #al-page tbody td{ padding:11px 14px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
+  #al-page tbody tr:hover{ background:rgba(255,255,255,.03); }
+  #al-page .pill{ font-size:.68rem; font-weight:800; padding:3px 9px; border-radius:999px; display:inline-block; }
+  #al-page .pill.warn{ background:rgba(244,208,63,.18); color:var(--yellow); }
+  #al-page .pill.ok{ background:rgba(31,170,82,.18); color:var(--green); }
+  #al-page .pill.red{ background:rgba(230,30,43,.18); color:#ff7a82; }
+  #al-page .th-head{ background:var(--yellow); color:#1a1a1a; font-weight:800; padding:12px 18px; border-radius:14px 14px 0 0; display:flex; justify-content:space-between; align-items:center; }
+  #al-page .empty{ text-align:center; padding:34px; color:#5e646e; }
+
+  /* shipping cards */
+  #al-page .ship-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  #al-page .ship-card{ border:1px solid #2e323a; border-radius:16px; padding:18px; text-align:center; cursor:pointer; background:#161922; color:#8b929c; transition:.2s; }
+  #al-page .ship-card i{ font-size:1.5rem; display:block; margin-bottom:8px; }
+  #al-page .ship-card b{ font-size:.86rem; }
+  #al-page .ship-card.on.kex{ border-color:var(--kex); background:rgba(246,139,30,.12); color:var(--kex); }
+  #al-page .ship-card.on.lala{ border-color:var(--lala); background:rgba(0,160,223,.12); color:var(--lala); }
+  #al-page .ship-card.on.msg{ border-color:var(--red); background:rgba(230,30,43,.12); color:var(--red); }
+
+  #al-page .modelbox{ background:#000; border:1px solid #2e323a; border-radius:14px; padding:14px; text-align:center; font-family:'JetBrains Mono',monospace; font-weight:800; color:var(--red); margin-bottom:18px; }
+
+  /* preview (label / office form) */
+  #al-page .preview-area{ background:#fff; color:#000; border-radius:14px; overflow:hidden; margin-top:22px; font-family:'Sarabun','Kanit',sans-serif; }
+  #al-page .pv-head{ background:#000; color:#fff; padding:20px 26px; display:flex; justify-content:space-between; align-items:center; }
+  #al-page .pv-badge{ padding:5px 14px; font-weight:900; border-radius:6px; font-size:1.05rem; }
+  #al-page .pv-body{ padding:28px 30px; }
+  #al-page .pv-lbl{ font-size:.72rem; font-weight:900; color:#888; text-transform:uppercase; letter-spacing:1.5px; border-bottom:2px solid #000; display:inline-block; padding-bottom:2px; }
+  #al-page .pv-dest{ font-size:1.9rem; font-weight:900; margin:8px 0 16px; line-height:1.1; }
+  #al-page .pv-addr{ font-size:1.1rem; color:#333; margin-bottom:22px; line-height:1.5; }
+  #al-page .pv-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:18px; }
+  #al-page .pv-val{ font-size:1.2rem; font-weight:800; }
+  #al-page .pv-foot{ background:#000; color:#fff; padding:16px 30px; display:flex; justify-content:space-between; font-weight:800; }
+  /* office form */
+  #al-page .off-banner{ background:var(--red); color:#fff; text-align:center; padding:10px; font-weight:900; letter-spacing:2px; }
+  #al-page .off-row{ display:flex; border-bottom:1px solid #000; }
+  #al-page .off-l{ width:230px; background:#f2f2f2; padding:14px 18px; border-right:1px solid #000; font-weight:800; font-size:.92rem; }
+  #al-page .off-v{ padding:14px 22px; flex:1; font-weight:800; font-size:1.2rem; text-transform:uppercase; }
+  #al-page .off-sig{ display:grid; grid-template-columns:1fr 1fr; gap:50px; padding:34px 30px 22px; }
+  #al-page .sig-line{ border-top:2px solid #000; text-align:center; padding-top:8px; font-weight:900; font-size:.74rem; }
+
+  /* modal */
+  #al-page .al-ov{ position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:6000; padding:20px; }
+  #al-page .al-ov.show{ display:flex; }
+  #al-page .al-modal{ background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:28px; width:420px; max-width:100%; }
+  #al-page .al-modal h4{ font-weight:800; margin:0 0 16px; }
+  #al-page .idcard{ background:#fff; color:#222; border-radius:18px; overflow:hidden; margin-top:16px; display:none; }
+  #al-page .idcard .ic-h{ background:var(--blue); color:#fff; padding:20px; text-align:center; }
+  #al-page .idcard .ic-h i{ font-size:2.2rem; }
+  #al-page .idcard .ic-b{ padding:22px; }
+  #al-page .idcard .ic-row{ border-bottom:1px dashed #e3e3e3; padding-bottom:9px; margin-bottom:13px; }
+  #al-page .idcard .ic-row:last-child{ border:0; margin:0; }
+  #al-page .idcard .ic-lbl{ font-size:.66rem; color:#999; font-weight:800; text-transform:uppercase; }
+  #al-page .idcard .ic-val{ font-size:1.1rem; font-weight:800; color:#111; }
+  @media(max-width:760px){ #al-page .row2,#al-page .row3,#al-page .stats,#al-page .ship-grid,#al-page .pv-grid{ grid-template-columns:1fr; } }
+  @media(max-width:680px){
+    #al-page{ padding:14px 10px 50px; }
+    #al-page .al-nav{ flex-wrap:wrap; }
+    #al-page .al-tab{ flex:1 1 42%; font-size:.74rem; padding:11px 6px; letter-spacing:.5px; }
+    #al-page .card-al{ padding:20px 15px; border-radius:18px; }
+    #al-page h3.title{ font-size:1.02rem; letter-spacing:2px; }
+    #al-page .stats{ grid-template-columns:repeat(3,1fr); gap:8px; }
+    #al-page .stat{ padding:12px 6px; }
+    #al-page .stat .n{ font-size:1.5rem; }
+    #al-page .subnav{ flex-wrap:wrap; }
+    #al-page .subnav .it{ font-size:.72rem; padding:9px 4px; }
+    #al-page .row3{ grid-template-columns:1fr; }
+  }
+</style>
+
+<div id="al-page" data-screen-label="AssetLogistics">
+ <div class="wrap">
+
+  <div class="al-nav">
+    <div class="al-tab on" id="alTabDash" onclick="alSwitch('DASH')"><i class="fas fa-gauge-high"></i> Dashboard</div>
+    <div class="al-tab" id="alTabOut" onclick="alSwitch('OUT')"><i class="fas fa-shipping-fast"></i> Stock Out</div>
+    <div class="al-tab" id="alTabIn" onclick="alSwitch('IN')"><i class="fas fa-warehouse"></i> Stock In</div>
+    <button class="al-iconbtn" title="ค้นหา Asset (ID Card)" onclick="alOpenIdCard()"><i class="fas fa-id-card"></i></button>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="alPageDash" class="card-al" style="max-width:1040px;">
+    <h3 class="title">IT ASSET DASHBOARD</h3>
+    <div class="stats">
+      <div class="stat avail"><div class="tag muted">พร้อมจ่าย (Spare)</div><div class="n" id="alStAvail">0</div></div>
+      <div class="stat use"><div class="tag muted">ใช้งานอยู่ (In Use)</div><div class="n" id="alStUse">0</div></div>
+      <div class="stat"><div class="tag muted">ทะเบียนทั้งหมด</div><div class="n" id="alStTotal">0</div></div>
+    </div>
+    <div class="subnav">
+      <div class="it on" id="alSubPending" onclick="alSub('PENDING')">คิวงานรอจ่าย (TICKETS)</div>
+      <div class="it" id="alSubBranch" onclick="alSub('BRANCH')">เครื่องที่สาขา</div>
+      <div class="it" id="alSubOffice" onclick="alSub('OFFICE')">เครื่องสำนักงาน</div>
+    </div>
+
+    <div id="alDashPending">
+      <div class="th-head"><span><i class="fas fa-list-check"></i> คิวงานรอเปลี่ยนอุปกรณ์ (จากฟอร์มแจ้งสาขา)</span>
+        <button class="btn btn-green" style="padding:6px 14px;font-size:.8rem" onclick="alRefreshTickets()"><i class="fas fa-rotate"></i> รีเฟรช</button></div>
+      <div class="tbl-wrap" style="border-radius:0 0 16px 16px;border-top:0;">
+        <table><thead><tr><th>เวลา</th><th>Ticket</th><th>ผู้แจ้ง / สาขา</th><th>สาเหตุ</th><th style="text-align:center">จัดการ</th></tr></thead>
+        <tbody id="alTicketBody"></tbody></table>
+      </div>
+    </div>
+
+    <div id="alDashBranch" style="display:none;">
+      <div class="tbl-wrap"><table><thead><tr><th>SN</th><th>Model</th><th>หมวด</th><th>สาขา</th><th>บริษัท</th><th>สถานะ</th></tr></thead>
+      <tbody id="alBranchBody"></tbody></table></div>
+    </div>
+    <div id="alDashOffice" style="display:none;">
+      <div class="tbl-wrap"><table><thead><tr><th>SN</th><th>Model</th><th>หมวด</th><th>ปลายทาง</th><th>ผู้รับ</th><th>วันที่</th></tr></thead>
+      <tbody id="alOfficeBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ============ STOCK OUT ============ -->
+  <div id="alPageOut" class="card-al" style="display:none;">
+    <h3 class="title">ASSET DISPATCH · จ่ายเครื่อง</h3>
+    <label class="fld">1. สแกน / กรอก Serial Number</label>
+    <div style="display:flex; gap:0; margin-bottom:18px;">
+      <input type="text" id="alSn" placeholder="ENTER S/N..." class="mono" style="border-radius:12px 0 0 12px;">
+      <button class="btn btn-light" style="border-radius:0 12px 12px 0;" onclick="alVerifySN()">VERIFY</button>
+    </div>
+
+    <div id="alOutForm" style="display:none;">
+      <div class="modelbox" id="alModelDisplay"></div>
+
+      <div class="row2 mb">
+        <div>
+          <label class="fld">ประเภทปลายทาง</label>
+          <div class="row2" style="gap:8px;">
+            <button type="button" class="btn btn-dark" id="alTypeBranch" onclick="alSetType('BRANCH')" style="border:2px solid var(--red);">สาขา (BRANCH)</button>
+            <button type="button" class="btn btn-dark" id="alTypeHQ" onclick="alSetType('HQ')">สำนักงาน (HQ)</button>
+          </div>
+        </div>
+        <div id="alTicketContainer">
+          <label class="fld">เลขที่อ้างอิง (Ticket / REQ)</label>
+          <input type="text" id="alTicketId" placeholder="DSW-0000 / REQ-0000" oninput="alUpdateLabel()">
+        </div>
+      </div>
+
+      <div class="row2 mb">
+        <div><label class="fld">ชื่อผู้รับ (Recipient)</label><input type="text" id="alReceiver" placeholder="กรอกชื่อผู้รับ" oninput="alUpdateLabel()"></div>
+        <div><label class="fld">เบอร์ติดต่อผู้รับ</label><input type="text" id="alTel" maxlength="10" placeholder="08x-xxx-xxxx" oninput="alUpdateLabel()"></div>
+      </div>
+
+      <div id="alBranchSection" class="mb">
+        <div class="row2">
+          <div><label class="fld">สาขาปลายทาง</label><select id="alBranchSel" onchange="alBranchChange()"></select></div>
+          <div><label class="fld">เบอร์สาขา</label><input type="text" id="alBranchTel" readonly style="background:#111;color:#9aa1aa;"></div>
+        </div>
+      </div>
+      <div id="alHqSection" class="mb" style="display:none;">
+        <label class="fld">แผนกผู้รับ (Department)</label><select id="alDeptSel" onchange="alUpdateLabel()"></select>
+      </div>
+
+      <div class="row2 mb">
+        <div><label class="fld">วัตถุประสงค์</label>
+          <select id="alReason" onchange="alUpdateLabel()">
+            <option value="NEW INSTALL">NEW INSTALL (ติดตั้งใหม่)</option>
+            <option value="REPLACEMENT">REPLACEMENT (เปลี่ยนของเสีย)</option>
+            <option value="BORROW">BORROW (ยืมใช้งาน)</option>
+            <option value="REPAIR/CLAIM">REPAIR/CLAIM (ส่งซ่อม/เคลม)</option>
+            <option value="IT MANUAL">IT MANUAL (ไอทีจัดการเอง)</option>
+          </select></div>
+        <div><label class="fld">หมายเหตุ</label><input type="text" id="alRemarks" placeholder="ระบุเพิ่มเติม..." oninput="alUpdateLabel()"></div>
+      </div>
+
+      <div id="alShipSelector" class="mb">
+        <label class="fld">วิธีจัดส่ง (Shipping Method)</label>
+        <div class="ship-grid">
+          <div class="ship-card kex" id="alShipKEX" onclick="alSelectShip('KEX')"><i class="fas fa-box"></i><b>KEX</b></div>
+          <div class="ship-card lala" id="alShipLALA" onclick="alSelectShip('LALA')"><i class="fas fa-motorcycle"></i><b>LALAMOVE</b></div>
+          <div class="ship-card msg" id="alShipMSG" onclick="alSelectShip('MSG')"><i class="fas fa-paper-plane"></i><b>OFFICE (MSG)</b></div>
+        </div>
+      </div>
+
+      <!-- shipping label preview -->
+      <div id="alLabel" class="preview-area" style="display:none;">
+        <div class="pv-head"><div><small style="letter-spacing:3px;font-weight:800;">ROCKS LOGISTICS</small><div style="font-size:1.5rem;font-weight:900;">SHIP TO</div></div><div class="pv-badge" id="alBadge">KEX</div></div>
+        <div class="pv-body">
+          <span class="pv-lbl">Destination / ปลายทาง</span>
+          <div class="pv-dest" id="alLblDest">-</div>
+          <div class="pv-addr" id="alLblAddr">-</div>
+          <div class="pv-grid">
+            <div><span class="pv-lbl">Recipient / ผู้รับ</span><div class="pv-val" id="alLblRec">-</div></div>
+            <div><span class="pv-lbl">Contact / เบอร์</span><div class="pv-val" id="alLblTel">-</div></div>
+          </div>
+        </div>
+        <div class="pv-foot"><span id="alLblSN">SN: -</span><span id="alLblRef">REF: -</span></div>
+      </div>
+
+      <!-- office internal form -->
+      <div id="alOffice" class="preview-area" style="display:none;">
+        <div class="off-banner">IT ASSET INTERNAL DELIVERY FORM</div>
+        <div style="padding:18px 26px;border-bottom:5px solid #000;display:flex;justify-content:space-between;align-items:center;">
+          <b style="font-size:1.1rem;">INTERNAL TRANSFER</b><span style="font-weight:700;color:#555;">Rocks PC Co., Ltd.</span>
+        </div>
+        <div class="off-row"><div class="off-l">สถานที่ส่ง (Destination)</div><div class="off-v" id="alOffDest">-</div></div>
+        <div class="off-row"><div class="off-l">ชื่อผู้รับ (Recipient)</div><div class="off-v" id="alOffRec">-</div></div>
+        <div class="off-row"><div class="off-l">รายการ (Item/Model)</div><div class="off-v" id="alOffModel">-</div></div>
+        <div class="off-row"><div class="off-l">ซีเรียล (Serial No.)</div><div class="off-v" style="color:var(--red)" id="alOffSN">-</div></div>
+        <div class="off-sig"><div class="sig-line">ผู้ออกเอกสาร (Sender)</div><div class="sig-line">ลายเซ็นผู้รับ (Recipient)</div></div>
+      </div>
+
+      <div id="alActions" class="row3" style="display:none; margin-top:22px;">
+        <button class="btn btn-kex" id="alBtnCall" style="display:none;" onclick="alCallCourier()"><i class="fas fa-phone"></i> เรียกขนส่ง</button>
+        <button class="btn btn-light" onclick="alPrint()"><i class="fas fa-print"></i> พิมพ์เอกสาร</button>
+        <button class="btn btn-red" onclick="alConfirmOut()"><i class="fas fa-check"></i> ยืนยัน & บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STOCK IN ============ -->
+  <div id="alPageIn" class="card-al" style="display:none;">
+    <h3 class="title">STOCK IN · เติมเครื่องสำรอง</h3>
+    <div class="subnav">
+      <div class="it on" id="alInManualTab" onclick="alInSub('MANUAL')">กรอกทีละเครื่อง</div>
+      <div class="it" id="alInImportTab" onclick="alInSub('IMPORT')">นำเข้า CSV</div>
+    </div>
+    <div id="alInManual">
+      <label class="fld">Serial Number</label><input type="text" id="alInSn" class="mono mb" placeholder="ENTER S/N...">
+      <label class="fld">Model Name</label><input type="text" id="alInModel" class="mb" placeholder="เช่น Toshiba 4852-E70 / iPad 10th">
+      <button class="btn btn-light" style="width:100%;" onclick="alStockInManual()"><i class="fas fa-plus"></i> เพิ่มเข้าคลังสำรอง</button>
+    </div>
+    <div id="alInImport" style="display:none;">
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <button class="btn btn-dark" style="flex:1;" onclick="document.getElementById('alCsv').click()"><i class="fas fa-file-csv"></i> เลือกไฟล์ CSV</button>
+        <button class="btn btn-dark" onclick="alDownloadTpl()" title="ดาวน์โหลดเทมเพลต"><i class="fas fa-download"></i></button>
+      </div>
+      <input type="file" id="alCsv" hidden accept=".csv" onchange="alPreviewCsv()">
+      <div id="alCsvPreview" style="display:none;">
+        <div class="tbl-wrap" style="max-height:240px;margin-bottom:16px;"><table><thead><tr><th>SN</th><th>Model</th><th>สถานะ</th></tr></thead><tbody id="alCsvBody"></tbody></table></div>
+        <button class="btn btn-light" id="alCsvBtn" style="width:100%;" onclick="alImportCsv()" disabled>นำเข้าทั้งหมด</button>
+      </div>
+    </div>
+    <div style="margin-top:24px;">
+      <div class="th-head" style="border-radius:14px 14px 0 0;"><span><i class="fas fa-boxes-stacked"></i> คลังสำรองพร้อมจ่าย</span><span class="mono" id="alSpareCount" style="color:#1a1a1a;">0</span></div>
+      <div class="tbl-wrap" style="border-radius:0 0 16px 16px;border-top:0;max-height:280px;"><table><thead><tr><th>SN</th><th>Model</th><th>เพิ่มเมื่อ</th><th></th></tr></thead><tbody id="alSpareBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ID card lookup modal -->
+  <div class="al-ov" id="alIdOv" onclick="if(event.target===this)alCloseIdCard()">
+    <div class="al-modal">
+      <h4><i class="fas fa-id-card" style="color:var(--blue)"></i> ค้นหา Asset ด้วย Serial</h4>
+      <input type="text" id="alIdInput" class="mono mb" placeholder="ใส่ Serial Number...">
+      <button class="btn btn-light" style="width:100%;" onclick="alSearchAsset()">ค้นหา</button>
+      <button class="btn btn-dark" style="width:100%;margin-top:10px;" onclick="alCloseIdCard()">ปิด</button>
+      <div class="idcard" id="alIdCard">
+        <div class="ic-h"><i class="fas fa-check-circle"></i><div style="font-weight:900;">ASSET ASSIGNMENT</div><small style="opacity:.85;">ข้อมูลการถือครองอุปกรณ์</small></div>
+        <div class="ic-b">
+          <div class="ic-row"><div class="ic-lbl">ผู้รับ / ปลายทาง</div><div class="ic-val" id="alIcRec">-</div></div>
+          <div class="ic-row"><div class="ic-lbl">อุปกรณ์ (Model)</div><div class="ic-val" id="alIcModel">-</div></div>
+          <div class="ic-row"><div class="ic-lbl">Serial</div><div class="ic-val mono" id="alIcSn" style="color:var(--red)">-</div></div>
+          <div class="ic-row" style="display:flex;justify-content:space-between;"><div><div class="ic-lbl">อ้างอิง</div><div class="ic-val" id="alIcRef">-</div></div><div style="text-align:right;"><div class="ic-lbl">วันที่</div><div class="ic-val" id="alIcDate">-</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+(function(){
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function lsArr(k){ try{ return JSON.parse(localStorage.getItem(k))||[]; }catch(e){ return []; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function api(fn,arg){ return new Promise(function(res){ try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ google.script.run.withSuccessHandler(function(d){res(d);}).withFailureHandler(function(){res(null);})[fn](arg); return; } }catch(e){} res(null); }); }
+
+  var STOCK='pc_asset_stock', DISPATCH='pc_asset_dispatch', TICKETS='pc_device_swap_requests';
+  var DEPTS=['IT','Accounting / บัญชี','HR / บุคคล','Marketing','Operations','Purchasing / จัดซื้อ','Audit','Warehouse / คลัง'];
+  var BRANCHES=[], INVENTORY=[], curModel='', curShip='', curType='BRANCH', adminName='IT ADMIN';
+
+  function fmtDate(ts){ var d=new Date(ts); function p(n){return('0'+n).slice(-2);} return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); }
+  function branchById(id){ return BRANCHES.filter(function(b){return String(b.id)===String(id);})[0]; }
+
+  /* ---------- navigation ---------- */
+  window.alSwitch=function(p){
+    ['Dash','Out','In'].forEach(function(x){ var el=document.getElementById('alPage'+x); if(el) el.style.display='none'; var t=document.getElementById('alTab'+x); if(t) t.classList.remove('on'); });
+    document.getElementById('alPage'+(p==='DASH'?'Dash':p==='OUT'?'Out':'In')).style.display='block';
+    document.getElementById('alTab'+(p==='DASH'?'Dash':p==='OUT'?'Out':'In')).classList.add('on');
+    if(p==='DASH'){ alLoadDash(); } if(p==='IN'){ alRenderSpares(); }
+  };
+  window.alSub=function(s){
+    ['Pending','Branch','Office'].forEach(function(x){ document.getElementById('alDash'+x).style.display='none'; document.getElementById('alSub'+x).classList.remove('on'); });
+    document.getElementById('alDash'+s.charAt(0)+s.slice(1).toLowerCase()).style.display='block';
+    document.getElementById('alSub'+s.charAt(0)+s.slice(1).toLowerCase()).classList.add('on');
+  };
+  window.alInSub=function(s){
+    document.getElementById('alInManual').style.display=(s==='MANUAL')?'block':'none';
+    document.getElementById('alInImport').style.display=(s==='IMPORT')?'block':'none';
+    document.getElementById('alInManualTab').classList.toggle('on',s==='MANUAL');
+    document.getElementById('alInImportTab').classList.toggle('on',s==='IMPORT');
+  };
+
+  /* ---------- dashboard ---------- */
+  function alLoadDash(){
+    var spares=lsArr(STOCK), dispatch=lsArr(DISPATCH);
+    document.getElementById('alStAvail').textContent=spares.length;
+    document.getElementById('alStUse').textContent=dispatch.length;
+    document.getElementById('alStTotal').textContent=INVENTORY.length;
+    alRenderTickets(); alRenderInv(); alRenderDispatch();
+  }
+  window.alRefreshTickets=function(){ alRenderTickets(); };
+  function alRenderTickets(){
+    var tb=document.getElementById('alTicketBody');
+    var tk=lsArr(TICKETS).filter(function(t){ return t.status!=='FULFILLED'; });
+    if(!tk.length){ tb.innerHTML='<tr><td colspan="5" class="empty">✅ ไม่มีคิวงานค้าง (ฟอร์มแจ้งจากสาขาจะเข้ามาที่นี่)</td></tr>'; return; }
+    tb.innerHTML=tk.map(function(t){
+      var b=branchById(t.branch); var bn=b?(b.id+' · '+(b.name||b.nameTH||'')):(t.branch||'-');
+      return '<tr><td style="font-size:.78rem">'+esc(fmtDate(t.ts))+'</td>'+
+        '<td style="font-weight:800;color:#ff9a3c">'+esc(t.ticket)+'</td>'+
+        '<td><b>'+esc(t.requester||'-')+'</b><br><small class="muted">'+esc(bn)+'</small></td>'+
+        '<td>'+esc(t.reason||'-')+'</td>'+
+        '<td style="text-align:center"><button class="btn btn-light" style="padding:6px 12px;font-size:.78rem" onclick="alSelectTicket(\''+esc(t.ticket)+'\')">จ่ายเครื่อง</button></td></tr>';
+    }).join('');
+  }
+  window.alSelectTicket=function(tid){
+    var t=lsArr(TICKETS).filter(function(x){return x.ticket===tid;})[0]; if(!t) return;
+    alSwitch('OUT');
+    document.getElementById('alTicketId').value=tid;
+    alSetType('BRANCH');
+    if(t.receiverName) document.getElementById('alReceiver').value=t.receiverName;
+    if(t.receiverPhone) document.getElementById('alTel').value=t.receiverPhone;
+    if(t.branch){ var sel=document.getElementById('alBranchSel'); sel.value=t.branch; alBranchChange(); }
+    document.getElementById('alReason').value='REPLACEMENT';
+    document.getElementById('alRemarks').value=(t.reason||'')+(t.damageDetail?(' · '+t.damageDetail):'');
+    alUpdateLabel();
+    if(window.Swal) Swal.fire({icon:'info',title:'ดึงข้อมูล Ticket '+tid,text:'สแกน S/N เครื่องสำรองที่จะจ่าย แล้วเลือกวิธีจัดส่ง',timer:2400,showConfirmButton:false});
+  };
+  function alRenderInv(){
+    var tb=document.getElementById('alBranchBody');
+    var rows=INVENTORY.filter(function(r){ return r.shopCode && r.shopCode!=='-'; });
+    tb.innerHTML=rows.length?rows.slice(0,400).map(function(r){
+      var st=String(r.statusUse||'').toUpperCase();
+      var pill=st.indexOf('ACTIVE')>=0?'<span class="pill ok">'+esc(r.statusUse)+'</span>':st.indexOf('RETIR')>=0?'<span class="pill red">'+esc(r.statusUse)+'</span>':'<span class="pill warn">'+esc(r.statusUse||'-')+'</span>';
+      return '<tr><td class="mono">'+esc(r.sn)+'</td><td>'+esc(r.model)+'</td><td>'+esc(r.typeBrand)+'</td><td>'+esc(r.shopName)+'</td><td>'+esc(r.company)+'</td><td>'+pill+'</td></tr>';
+    }).join(''):'<tr><td colspan="6" class="empty">ไม่มีข้อมูล</td></tr>';
+  }
+  function alRenderDispatch(){
+    var tb=document.getElementById('alOfficeBody');
+    var d=lsArr(DISPATCH).filter(function(x){return x.type==='HQ';});
+    tb.innerHTML=d.length?d.map(function(x){
+      return '<tr><td class="mono">'+esc(x.sn)+'</td><td>'+esc(x.model)+'</td><td>'+esc(x.category||'-')+'</td><td>'+esc(x.dest)+'</td><td>'+esc(x.recipient||'-')+'</td><td style="font-size:.78rem">'+esc(fmtDate(x.at))+'</td></tr>';
+    }).join(''):'<tr><td colspan="6" class="empty">ยังไม่มีการจ่ายเครื่องไปสำนักงาน</td></tr>';
+  }
+
+  /* ---------- stock out ---------- */
+  window.alVerifySN=function(){
+    var sn=(document.getElementById('alSn').value||'').trim().toUpperCase(); if(!sn) return;
+    var spare=lsArr(STOCK).filter(function(x){return String(x.sn).toUpperCase()===sn;})[0];
+    var inv=INVENTORY.filter(function(x){return String(x.sn).toUpperCase()===sn;})[0];
+    if(spare){ curModel=spare.model; }
+    else if(inv){ curModel=inv.model; }
+    else {
+      if(window.Swal) Swal.fire({icon:'warning',title:'ไม่พบ S/N นี้ในคลัง',text:'เพิ่มเครื่องที่ Stock In ก่อน หรือใช้เครื่องที่อยู่ในทะเบียน',confirmButtonColor:'#1faa52'});
+      return;
+    }
+    document.getElementById('alOutForm').style.display='block';
+    document.getElementById('alModelDisplay').textContent='MODEL: '+curModel+(spare?'  ·  [สำรองพร้อมจ่าย]':'  ·  [อยู่ในทะเบียน]');
+    alUpdateLabel();
+  };
+  window.alSetType=function(t){
+    curType=t;
+    document.getElementById('alTypeBranch').style.border=(t==='BRANCH')?'2px solid var(--red)':'1px solid #2e323a';
+    document.getElementById('alTypeHQ').style.border=(t==='HQ')?'2px solid var(--red)':'1px solid #2e323a';
+    document.getElementById('alBranchSection').style.display=(t==='BRANCH')?'block':'none';
+    document.getElementById('alHqSection').style.display=(t==='HQ')?'block':'none';
+    document.getElementById('alTicketContainer').style.display=(t==='BRANCH')?'block':'none';
+    var shipSel=document.getElementById('alShipSelector'), act=document.getElementById('alActions');
+    if(t==='HQ'){ shipSel.style.display='none'; curShip='HQ_INTERNAL'; act.style.display='grid';
+      document.getElementById('alOffice').style.display='block'; document.getElementById('alLabel').style.display='none';
+      document.getElementById('alBtnCall').style.display='none'; }
+    else { shipSel.style.display='block'; curShip=''; act.style.display='none';
+      document.getElementById('alOffice').style.display='none'; document.getElementById('alLabel').style.display='none'; }
+    alUpdateLabel();
+  };
+  window.alBranchChange=function(){ var b=branchById(document.getElementById('alBranchSel').value); document.getElementById('alBranchTel').value=b?(b.mobile||b.phone||''):''; alUpdateLabel(); };
+  window.alSelectShip=function(m){
+    curShip=m;
+    ['KEX','LALA','MSG'].forEach(function(x){ document.getElementById('alShip'+x).classList.toggle('on', x===m); });
+    document.getElementById('alActions').style.display='grid';
+    var isMsg=(m==='MSG');
+    document.getElementById('alOffice').style.display=isMsg?'block':'none';
+    document.getElementById('alLabel').style.display=isMsg?'none':'block';
+    document.getElementById('alBtnCall').style.display=isMsg?'none':'block';
+    var badge=document.getElementById('alBadge');
+    if(m==='KEX'){ badge.textContent='KEX'; badge.style.background='#f68b1e'; badge.style.color='#fff'; document.getElementById('alBtnCall').textContent='เรียก KEX'; }
+    else if(m==='LALA'){ badge.textContent='LALAMOVE'; badge.style.background='#00a0df'; badge.style.color='#fff'; document.getElementById('alBtnCall').textContent='เรียก Lalamove'; }
+    alUpdateLabel();
+  };
+  window.alCallCourier=function(){ window.open(curShip==='KEX'?'https://th.kex-express.com/th/log-in':'https://web.lalamove.com/login','_blank'); };
+
+  function alDest(){
+    if(curType==='HQ'){ var d=document.getElementById('alDeptSel').value; return d?('สำนักงานใหญ่ · '+d):'สำนักงานใหญ่'; }
+    var b=branchById(document.getElementById('alBranchSel').value);
+    return b?('Potato Corner สาขา '+(b.nameTH||b.name||'')):'-';
+  }
+  window.alUpdateLabel=function(){
+    var rec=document.getElementById('alReceiver').value.trim(); rec=rec?(rec.indexOf('คุณ')===0?rec:'คุณ'+rec):'-';
+    var tel=document.getElementById('alTel').value.replace(/\D/g,'').slice(0,10); document.getElementById('alTel').value=tel;
+    var sn=document.getElementById('alSn').value||'-';
+    var ref=document.getElementById('alTicketId').value||'IT-MANUAL';
+    var b=branchById(document.getElementById('alBranchSel').value);
+    var dest=alDest();
+    var set=function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+    set('alLblDest',dest); set('alLblAddr', b?(b.address||'-'):'อาคารสำนักงานใหญ่'); set('alLblRec',rec); set('alLblTel',tel||'-');
+    set('alLblSN','SN: '+sn); set('alLblRef','REF: '+ref);
+    set('alOffDest',dest); set('alOffRec',rec); set('alOffModel',curModel||'-'); set('alOffSN',sn);
+  };
+  window.alConfirmOut=function(){
+    var sn=(document.getElementById('alSn').value||'').trim().toUpperCase();
+    if(!sn){ if(window.Swal) Swal.fire({icon:'warning',title:'กรุณาสแกน S/N'}); return; }
+    if(!curShip){ if(window.Swal) Swal.fire({icon:'warning',title:'เลือกวิธีจัดส่งก่อน'}); return; }
+    var rec={ sn:sn, model:curModel, category:(INVENTORY.filter(function(x){return String(x.sn).toUpperCase()===sn;})[0]||{}).typeBrand||'-',
+      type:curType, dest:alDest(), recipient:document.getElementById('alReceiver').value, tel:document.getElementById('alTel').value,
+      ship:curShip, ref:document.getElementById('alTicketId').value||'IT-MANUAL', reason:document.getElementById('alReason').value,
+      remarks:document.getElementById('alRemarks').value, at:Date.now(), by:adminName,
+      branch: curType==='BRANCH'?document.getElementById('alBranchSel').value:'', dept: curType==='HQ'?document.getElementById('alDeptSel').value:'' };
+    var dis=lsArr(DISPATCH); dis.unshift(rec); lsSet(DISPATCH,dis);
+    // remove from spares pool
+    var sp=lsArr(STOCK).filter(function(x){return String(x.sn).toUpperCase()!==sn;}); lsSet(STOCK,sp);
+    // mark ticket fulfilled
+    var ref=document.getElementById('alTicketId').value;
+    if(ref){ var tk=lsArr(TICKETS); var hit=tk.filter(function(t){return t.ticket===ref;})[0]; if(hit){ hit.status='FULFILLED'; hit.fulfilledSN=sn; hit.fulfilledAt=Date.now(); lsSet(TICKETS,tk); } }
+    if(window.Swal) Swal.fire({icon:'success',title:'บันทึกการจ่ายเครื่องสำเร็จ',html:'S/N <b>'+esc(sn)+'</b> → '+esc(alDest()),confirmButtonColor:'#1faa52'}).then(function(){ alResetOut(); alSwitch('DASH'); });
+  };
+  function alResetOut(){ document.getElementById('alSn').value=''; document.getElementById('alOutForm').style.display='none'; curModel=''; curShip=''; }
+  window.alPrint=function(){
+    var html=(curType==='HQ'||curShip==='MSG')?document.getElementById('alOffice').outerHTML:document.getElementById('alLabel').outerHTML;
+    var css='body{font-family:Sarabun,Kanit,sans-serif;margin:0;padding:20px;} .preview-area{border:2px solid #000;border-radius:8px;overflow:hidden;} .pv-head,.pv-foot{background:#000;color:#fff;padding:18px 26px;display:flex;justify-content:space-between;align-items:center;} .pv-badge{padding:5px 14px;font-weight:900;border-radius:6px;} .pv-body{padding:26px;} .pv-lbl{font-size:.72rem;font-weight:900;color:#888;text-transform:uppercase;border-bottom:2px solid #000;} .pv-dest{font-size:1.9rem;font-weight:900;margin:8px 0 16px;} .pv-addr{font-size:1.1rem;color:#333;margin-bottom:22px;} .pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;} .pv-val{font-size:1.2rem;font-weight:800;} .off-banner{background:#e61e2b;color:#fff;text-align:center;padding:10px;font-weight:900;letter-spacing:2px;} .off-row{display:flex;border-bottom:1px solid #000;} .off-l{width:230px;background:#f2f2f2;padding:14px 18px;border-right:1px solid #000;font-weight:800;} .off-v{padding:14px 22px;flex:1;font-weight:800;font-size:1.2rem;} .off-sig{display:grid;grid-template-columns:1fr 1fr;gap:50px;padding:34px 30px 22px;} .sig-line{border-top:2px solid #000;text-align:center;padding-top:8px;font-weight:900;font-size:.74rem;}';
+    var w=window.open('','_blank','width=820,height=900');
+    // tokens split so the preview-time HTML injector doesn't mangle this string literal
+    var doc='<ht'+'ml><he'+'ad><title>Print</title><sty'+'le>'+css+'</sty'+'le></he'+'ad><bo'+'dy>'+html+'<scr'+'ipt>window.onload=function(){window.print();}</scr'+'ipt></bo'+'dy></ht'+'ml>';
+    w.document.write(doc);
+    w.document.close();
+  };
+
+  /* ---------- stock in ---------- */
+  window.alStockInManual=function(){
+    var sn=(document.getElementById('alInSn').value||'').trim().toUpperCase(); var m=(document.getElementById('alInModel').value||'').trim();
+    if(!sn||!m){ if(window.Swal) Swal.fire({icon:'warning',title:'กรอก S/N และ Model ให้ครบ'}); return; }
+    var sp=lsArr(STOCK);
+    if(sp.some(function(x){return String(x.sn).toUpperCase()===sn;})){ if(window.Swal) Swal.fire({icon:'error',title:'S/N นี้มีในคลังแล้ว'}); return; }
+    sp.unshift({sn:sn, model:m, addedAt:Date.now(), by:adminName}); lsSet(STOCK,sp);
+    document.getElementById('alInSn').value=''; document.getElementById('alInModel').value='';
+    alRenderSpares();
+    if(window.Swal) Swal.fire({icon:'success',title:'เพิ่มเข้าคลังสำรอง',text:sn,timer:1400,showConfirmButton:false});
+  };
+  var _csv=[];
+  window.alPreviewCsv=function(){
+    var f=document.getElementById('alCsv').files[0]; if(!f) return;
+    var r=new FileReader(); r.onload=function(e){
+      var lines=e.target.result.split('\n'); _csv=[]; var body='';
+      for(var i=1;i<lines.length;i++){ var c=lines[i].split(','); if(c.length>=2 && c[0].trim()){ var sn=c[0].trim().toUpperCase(), m=c[1].trim(); _csv.push({sn:sn,model:m}); body+='<tr><td class="mono">'+esc(sn)+'</td><td>'+esc(m)+'</td><td><span class="pill warn">READY</span></td></tr>'; } }
+      document.getElementById('alCsvBody').innerHTML=body; document.getElementById('alCsvPreview').style.display='block';
+      var btn=document.getElementById('alCsvBtn'); btn.disabled=_csv.length===0; btn.textContent='นำเข้าทั้งหมด ('+_csv.length+')';
+    }; r.readAsText(f);
+  };
+  window.alImportCsv=function(){
+    var sp=lsArr(STOCK), added=0;
+    _csv.forEach(function(it){ if(!sp.some(function(x){return String(x.sn).toUpperCase()===it.sn;})){ sp.unshift({sn:it.sn,model:it.model,addedAt:Date.now(),by:adminName}); added++; } });
+    lsSet(STOCK,sp); document.getElementById('alCsvPreview').style.display='none'; document.getElementById('alCsv').value=''; _csv=[];
+    alRenderSpares();
+    if(window.Swal) Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',text:'เพิ่ม '+added+' เครื่อง',confirmButtonColor:'#1faa52'});
+  };
+  window.alDownloadTpl=function(){ var blob=new Blob(['S/N,Model\nSN001,Toshiba 4852-E70\nSN002,iPad 10th Gen'],{type:'text/csv'}); var u=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=u; a.download='ASSET_STOCK_TEMPLATE.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+  function alRenderSpares(){
+    var sp=lsArr(STOCK); document.getElementById('alSpareCount').textContent=sp.length;
+    document.getElementById('alSpareBody').innerHTML=sp.length?sp.map(function(x){
+      return '<tr><td class="mono">'+esc(x.sn)+'</td><td>'+esc(x.model)+'</td><td style="font-size:.78rem">'+esc(fmtDate(x.addedAt))+'</td><td style="text-align:right"><button class="btn btn-dark" style="padding:4px 10px;font-size:.74rem" onclick="alDelSpare(\''+esc(x.sn)+'\')"><i class="fas fa-trash"></i></button></td></tr>';
+    }).join(''):'<tr><td colspan="4" class="empty">ยังไม่มีเครื่องสำรองในคลัง</td></tr>';
+  }
+  window.alDelSpare=function(sn){ var sp=lsArr(STOCK).filter(function(x){return x.sn!==sn;}); lsSet(STOCK,sp); alRenderSpares(); };
+
+  /* ---------- ID card lookup ---------- */
+  window.alOpenIdCard=function(){ document.getElementById('alIdOv').classList.add('show'); document.getElementById('alIdCard').style.display='none'; document.getElementById('alIdInput').value=''; };
+  window.alCloseIdCard=function(){ document.getElementById('alIdOv').classList.remove('show'); };
+  window.alSearchAsset=function(){
+    var sn=(document.getElementById('alIdInput').value||'').trim().toUpperCase(); if(!sn) return;
+    var d=lsArr(DISPATCH).filter(function(x){return String(x.sn).toUpperCase()===sn;})[0];
+    var inv=INVENTORY.filter(function(x){return String(x.sn).toUpperCase()===sn;})[0];
+    if(!d && !inv){ if(window.Swal) Swal.fire({icon:'error',title:'ไม่พบ S/N นี้ในระบบ'}); document.getElementById('alIdCard').style.display='none'; return; }
+    var rec=d?(d.recipient||d.dest):(inv.shopName);
+    var model=d?d.model:(inv.model); var ref=d?d.ref:'(ทะเบียน)'; var date=d?fmtDate(d.at):'-';
+    document.getElementById('alIcRec').textContent=rec||'-'; document.getElementById('alIcModel').textContent=model||'-';
+    document.getElementById('alIcSn').textContent=sn; document.getElementById('alIcRef').textContent=ref||'-'; document.getElementById('alIcDate').textContent=date;
+    document.getElementById('alIdCard').style.display='block';
+  };
+
+  window.initAssetLogistics=function(){
+    try{ adminName=localStorage.getItem('pc_userName')||'IT ADMIN'; }catch(e){}
+    BRANCHES=(window.PC_BRANCH_MASTER||[]).slice();
+    try{ var ml=JSON.parse(localStorage.getItem('pc_master_lists')); if(ml&&Array.isArray(ml.branches)&&!BRANCHES.length) BRANCHES=ml.branches; }catch(e){}
+    var bsel=document.getElementById('alBranchSel'), dsel=document.getElementById('alDeptSel');
+    if(bsel) bsel.innerHTML='<option value="">-- เลือกสาขา --</option>'+BRANCHES.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(b.id)+' · '+esc(b.name||b.nameTH||'')+'</option>';}).join('');
+    if(dsel) dsel.innerHTML='<option value="">-- เลือกแผนก --</option>'+DEPTS.map(function(d){return '<option value="'+esc(d)+'">'+esc(d)+'</option>';}).join('');
+    api('getAssetInventory').then(function(rows){ INVENTORY=rows||[]; alLoadDash(); });
+    alSwitch('DASH');
+  };
+  window.disposeAssetLogistics=function(){};
+})();
+</script>

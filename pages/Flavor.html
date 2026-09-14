@@ -1,0 +1,322 @@
+<style>
+  .flv-scope { font-family:'Kanit',sans-serif; color:#1a1d20; }
+  .flv-scope .mono { font-family:'JetBrains Mono',monospace; }
+  .flv-scope .sec-head { background:var(--pc-dark,#1a1d20); color:#fff; font-weight:700; font-size:.8rem; letter-spacing:.5px; padding:8px 14px; border-radius:8px 8px 0 0; text-transform:uppercase; }
+  .flv-scope .form-control:focus, .flv-scope .form-select:focus { border-color:#ffffff !important; box-shadow:none; }
+  .flv-scope .powder-tbl th { background:#e8f6ee; color:#0b4d2c; font-size:.7rem; text-align:center; padding:6px; white-space:nowrap; }
+  .flv-scope .powder-tbl td { padding:3px; vertical-align:middle; }
+  .flv-scope .it-field { background:#eef1f4 !important; color:#6c757d !important; cursor:not-allowed; border-color:#d4d9de !important; }
+  .flv-scope .it-tag { display:inline-block; font-size:.58rem; font-weight:700; background:#0dcaf0; color:#063b46; padding:0 5px; border-radius:6px; margin-left:4px; vertical-align:middle; letter-spacing:.5px; }
+  .flv-scope .req:after { content:" *"; color:#dc3545; }
+  .flv-scope .cc-resv { display:inline-block; font-size:.6rem; font-weight:700; background:#fff3cd; color:#7a5b00; border:1px solid #e0c25a; border-radius:6px; padding:0 5px; margin-top:3px; white-space:nowrap; }
+  .flv-scope .cc-resv.ok { background:#e8f6ee; color:#0b6b3a; border-color:#bfe3cd; }
+  .flv-scope .hint { font-size:.72rem; color:#8a939b; }
+  .flv-scope .flv-card { border:1px solid #cfd6dd; border-radius:12px; margin-bottom:12px; overflow:hidden; }
+  .flv-scope .flv-card-hd { background:#e8f6ee; border-bottom:1px solid #bfe3cd; padding:8px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .flv-scope .flv-card-hd .ix { font-weight:700; color:#0b4d2c; }
+  .flv-scope .flv-cmpos { font-family:'JetBrains Mono',monospace; font-weight:700; background:#fff; border:1px solid #bfe3cd; border-radius:6px; padding:2px 8px; font-size:.8rem; }
+  .flv-scope .flv-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:10px; padding:12px; }
+  .flv-scope .flv-grid label { font-size:.7rem; font-weight:700; text-transform:uppercase; color:#5a636b; display:block; margin-bottom:2px; }
+  .flv-scope .flv-grid .fc-eng { grid-column:span 6; } .flv-scope .flv-grid .fc-th { grid-column:span 6; }
+  .flv-scope .flv-grid .fc-code { grid-column:span 4; } .flv-scope .flv-grid .fc-desc { grid-column:span 8; }
+  .flv-scope .flv-grid .fc-qty { grid-column:span 3; } .flv-scope .flv-grid .fc-unit { grid-column:span 3; } .flv-scope .flv-grid .fc-spoon { grid-column:span 3; } .flv-scope .flv-grid .fc-price { grid-column:span 3; }
+  .flv-scope .sale-pill { display:inline-flex; align-items:center; gap:5px; border:1.5px solid #cfd6dd; border-radius:20px; padding:4px 11px; font-size:.78rem; font-weight:600; cursor:pointer; user-select:none; background:#fff; margin:0; }
+  .flv-scope .sale-pill input { accent-color:#2e934a; margin:0; }
+  .flv-scope .sale-pill.on { border-color:#2e934a; background:#e8f6ee; color:#0b4d2c; }
+  .flv-scope .sale-pill .dlv { font-size:.58rem; color:#0d6efd; font-weight:700; }
+  .flv-scope .sale-grp { border:1px solid #cfd6dd; border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+  .flv-scope .sale-grp-hd { font-weight:700; color:#0b4d2c; font-size:.85rem; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+  .flv-scope .sale-grp-hd .ss { font-family:'JetBrains Mono',monospace; background:#e8f6ee; border:1px solid #bfe3cd; border-radius:6px; padding:1px 7px; font-size:.78rem; }
+  .flv-scope .vrx { width:1px; height:20px; background:#cfd6dd; display:inline-block; margin:0 3px; }
+  @media (max-width:760px){ .flv-scope .flv-grid > div { grid-column:span 12 !important; } }
+</style>
+
+<div class="p-4 flv-scope" style="background-color:#f4f4f4; min-height:100vh;" data-screen-label="Flavor">
+
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width:10px;height:55px;background:var(--pc-yellow,#2e934a);margin-right:15px;border-radius:5px;"></div>
+      <div>
+        <h3 class="fw-bold m-0" style="font-family:'Montserrat',sans-serif; text-transform:uppercase;"><i class="fas fa-mortar-pestle me-2 text-warning"></i> เพิ่มผงรสชาติใหม่</h3>
+        <small style="opacity:.85;">ฟอร์มแยกสำหรับเพิ่มผงรสชาติใหม่เข้า Subset ที่มีอยู่ · แจ้ง IT ขึ้นปุ่ม + แจ้งสาขาว่ามีผงใหม่</small>
+      </div>
+    </div>
+    <div class="text-end small" style="opacity:.85;"><div><b>Department:</b> Marketing</div><div><b>Brand:</b> Potato Corner</div></div>
+  </div>
+
+  <div class="alert mb-3" style="background:#e7fafd;border:1px solid #8fe0ef;border-radius:12px;"><i class="fas fa-circle-info me-2 text-info"></i>ใช้เมื่อต้องการ <b>เพิ่มผงรสชาติใหม่</b> เข้าระบบ — กรอกผงใหม่ แล้วเลือก <b>Subset ปลายทาง</b> ของแต่ละผง (เลือกจากฐานข้อมูล Subset ที่มีอยู่)</div>
+
+  <div class="d-flex justify-content-end mb-2">
+    <button class="btn btn-sm fw-bold" style="background:#1d7a4d;color:#fff;border:0;border-radius:9px;padding:8px 16px" onclick="window.FLV.importExcel()" title="วางไฟล์ Excel ต้นฉบับจาก RD → ระบบกรอกฟอร์มให้อัตโนมัติ">
+      <i class="fas fa-file-excel me-1"></i>วางไฟล์ Excel → กรอกอัตโนมัติ
+    </button>
+  </div>
+  <div class="bg-white rounded-3 shadow-sm border mb-3">
+    <div class="sec-head"><i class="fas fa-circle-info me-2 text-warning"></i>ข้อมูลทั่วไป (Flavor Project)</div>
+    <div class="p-3"><div class="row g-3">
+      <div class="col-md-5"><label class="small fw-bold text-uppercase mb-1 req">ชื่อผงรสชาติ / Project</label><input id="flvProject" class="form-control border-dark" placeholder="เช่น Flavored Chicken Joint"></div>
+      <div class="col-md-2"><label class="small fw-bold text-uppercase mb-1 req">วันที่เริ่ม</label><input id="flvStart" type="date" class="form-control border-dark"></div>
+      <div class="col-md-2"><label class="small fw-bold text-uppercase mb-1 req">วันที่สิ้นสุด</label><input id="flvEnd" type="date" class="form-control border-dark"></div>
+      <div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">RD ผู้แจ้ง</label><input id="flvRd" class="form-control it-field" readonly></div>
+    </div></div>
+  </div>
+
+  <div class="bg-white rounded-3 shadow-sm border mb-4">
+    <div class="sec-head"><i class="fas fa-mortar-pestle me-2 text-warning"></i>ผงรสชาติใหม่ — เลือก Subset ปลายทางของแต่ละผง</div>
+    <div class="p-3">
+      <div class="border border-dark rounded" style="overflow:visible">
+        <table class="table table-sm align-middle m-0 powder-tbl" style="width:100%;table-layout:auto">
+          <thead><tr><th style="width:34px">No</th><th>Subset ปลายทาง</th><th>CMPOS <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>Name (EN) <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>Name (TH) <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>
+          <tbody id="flvBody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-sm btn-dark fw-bold mt-2" onclick="window.FLV.add()"><i class="fas fa-plus me-1"></i>เพิ่มผงใหม่อีกตัว</button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-3 shadow-sm border mb-4">
+    <div class="sec-head"><i class="fas fa-store me-2 text-warning"></i>Sale Mode — ช่องทางขายของผงแต่ละกลุ่ม (Subset ปลายทาง)</div>
+    <div class="p-3">
+      <div class="hint mb-2"><i class="fas fa-circle-info me-1"></i>เลือกช่องทางที่ผงในแต่ละ Subset ปลายทางจะขึ้นขาย (เหมือนหน้า NPD) — ช่องทางดึงจาก Master กลาง (Sale Mode) และกรองตาม Form Display</div>
+      <div id="flvSaleGroups"></div>
+    </div>
+  </div>
+
+  <div class="text-center mb-5">
+    <button class="btn btn-warning shadow px-5 py-3 fw-bold border border-dark text-dark" style="min-width:380px;font-size:1.15rem;border-radius:12px;" onclick="window.FLV.submit()">
+      ส่งให้ IT ขึ้นปุ่ม <i class="fas fa-paper-plane ms-2"></i>
+    </button>
+  </div>
+
+  <datalist id="flvRmList"></datalist>
+  <datalist id="flvUnitList"></datalist>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var UNITS = ['g', 'ml', 'pcs', 'ช้อน', 'kg'];
+  /* ===== Sale Mode (รายกลุ่ม Subset ปลายทาง) — data-driven จาก master + Form Display filter (เหมือน NPD) ===== */
+  var NPD_CH_DEF = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  function isTakeAway(c) { return /takeaway|take-away|dinein|dine-in/.test(String(c || '').toLowerCase().replace(/\s+/g, '')); }
+  function flvChannels() { try { var m = JSON.parse(localStorage.getItem('pc_salemode_master') || 'null'); if (Array.isArray(m)) { var mf = JSON.parse(localStorage.getItem('pc_mode_forms') || '{}') || {}; var a = m.filter(function (x) { return x && x.active !== 0 && x.active !== false; }).map(function (x) { return String(x.name || '').trim(); }).filter(function (n) { var o = mf[n]; return n && !(o && o.flavor === false); }); if (a.length) return a; } } catch (e) {} return NPD_CH_DEF; }
+  function flvDelivery() { return flvChannels().filter(function (c) { return !isTakeAway(c); }); }
+  /* Subset ปลายทางนี้เปิดให้เลือกในฟอร์มเพิ่มผงไหม? (Form Display — pc_subset_forms[ss].flavor) */
+  function flvSubsetShown(ss) { try { var m = JSON.parse(localStorage.getItem('pc_subset_forms') || '{}') || {}; var o = m[ss]; if (o && o.flavor !== undefined) return !!o.flavor; } catch (e) {} return true; }
+  var RM_MASTER = [
+    { code: '3097', desc: 'ผงปรุงรส Cheese 500G' }, { code: '3095', desc: 'ผงปรุงรส Sour Cream 500G' },
+    { code: '3099', desc: 'ผงปรุงรส สาหร่าย 500G' }, { code: '3112', desc: 'ผงปรุงรส BBQ 500G' },
+    { code: '3114', desc: 'ผงปรุงรส เผ็ด 500G' }, { code: '3110', desc: 'ผงปรุงรส ทรัฟเฟิล 500G' },
+    { code: '3131', desc: 'ผงปรุงรส วาซาบิ 500G' }, { code: '3140', desc: 'ผงปรุงรส ไข่เค็ม 500G' },
+    { code: '3141', desc: 'ผงปรุงรส ต้มยำ 500G' }
+  ];
+  if (window.PC_RM_MASTER && window.PC_RM_MASTER.length) RM_MASTER = window.PC_RM_MASTER.map(function (r) { return { code: r.code, desc: r.desc, unit: r.unit || '' }; });
+  /* Subset ปลายทาง = ดึงจาก Subset master จริง (data/subset-master.js → window.PC_SUBSET_MASTER) */
+  var SUBSETS_MASTER = (window.PC_SUBSET_MASTER && window.PC_SUBSET_MASTER.length)
+    ? window.PC_SUBSET_MASTER.map(function (s) { return { ssCode: s.ssCode, name: s.name }; })
+    : [];
+  var seq = 0;
+  function uid() { return 'w' + (++seq) + '_' + Math.random().toString(36).slice(2, 6); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function rmFind(code) { code = String(code == null ? '' : code).trim(); return RM_MASTER.find(function (r) { return r.code === code; }); }
+  function ccBadge(code) { code = String(code == null ? '' : code).trim(); if (!code) return ''; var st = 'RESERVED'; try { if (window.PC_COUNTER && PC_COUNTER.entryOf) { var e = PC_COUNTER.entryOf(code); if (e && e.status) st = e.status; } } catch (x) {} if (st === 'CONFIRMED') return '<span class="cc-resv ok" title="IT ยืนยันแล้ว"><i class="fas fa-circle-check"></i> CONFIRMED</span>'; return '<span class="cc-resv" title="จองเลขแล้ว · รอ IT บันทึก"><i class="fas fa-hourglass-half"></i> RESERVED</span>'; }
+  function loginUser() { try { return localStorage.getItem('pc_userName') || 'RD (ผู้เข้าสู่ระบบ)'; } catch (e) { return 'RD'; } }
+  /* ===== เลข CMPOS รันจริงจากโค้ดกลาง (PC_COUNTER) — จองทันทีตอนเพิ่มผง · คืนตอนลบ/ออกโดยไม่บันทึก (เหมือนหน้า NPD) ===== */
+  function flvReserveCMPOS() { try { if (window.PC_COUNTER && PC_COUNTER.reserveCat) { var e = PC_COUNTER.reserveCat('103', { where: 'เพิ่มผงรสชาติ (RD · หมวดผง 103)' }); return e ? e.code : ''; } } catch (x) {} return ''; }
+  function flvReturnCMPOS(code) { try { if (window.PC_COUNTER && PC_COUNTER.returnCode && String(code || '').trim()) PC_COUNTER.returnCode(String(code).trim(), 'item', { from: 'เพิ่มผงรสชาติ (RD ลบผง/ออกจากฟอร์ม)' }); } catch (x) {} }
+  function flvConfirmAll() { try { if (window.PC_COUNTER && PC_COUNTER.confirm) powders.forEach(function (w) { if (w.cmpos) PC_COUNTER.confirm(w.cmpos, 'item'); }); } catch (x) {} }
+  var flvJustSubmitted = false;
+  function hasBackend() { return (typeof google !== 'undefined' && google.script && google.script.run); }
+
+  var powders = [];
+  var groupSale = {};   // ssCode -> [channels]
+  function mkW(s) { s = s || {}; return { id: uid(), targetSS: s.targetSS || '', cmpos: (s.cmpos != null ? s.cmpos : flvReserveCMPOS()), eng: s.eng || '', th: s.th || '', code: s.code || '', desc: s.desc || '', qty: s.qty || '', unit: s.unit || 'g', spoon: s.spoon || '', price: s.price || 0 }; }
+  function W(id) { return powders.find(function (w) { return w.id === id; }); }
+
+  function ssOpts(sel) {
+    return '<option value="">— เลือก Subset —</option>' + SUBSETS_MASTER.filter(function (s) { return s.ssCode === sel || flvSubsetShown(s.ssCode); }).map(function (s) {
+      return '<option value="' + esc(s.ssCode) + '"' + (s.ssCode === sel ? ' selected' : '') + '>' + esc(s.ssCode) + ' · ' + esc(s.name) + '</option>';
+    }).join('');
+  }
+  function ssName(ss) { var s = SUBSETS_MASTER.find(function (x) { return x.ssCode === ss; }); return s ? s.name : ''; }
+  function distinctTargets() { var seen = {}, out = []; powders.forEach(function (w) { var ss = String(w.targetSS || '').trim(); if (ss && !seen[ss]) { seen[ss] = 1; out.push(ss); } }); return out; }
+  function renderSaleGroups() {
+    var box = document.getElementById('flvSaleGroups'); if (!box) return;
+    var t = distinctTargets();
+    t.forEach(function (ss) { if (!groupSale[ss]) groupSale[ss] = flvChannels().slice(); });
+    Object.keys(groupSale).forEach(function (ss) { if (t.indexOf(ss) < 0) delete groupSale[ss]; });
+    if (!t.length) { box.innerHTML = '<div class="hint">— เลือก Subset ปลายทางของผงด้านบนก่อน เพื่อกำหนดช่องทางขาย —</div>'; return; }
+    var chs = flvChannels(), dlv = flvDelivery();
+    box.innerHTML = t.map(function (ss) {
+      var sm = groupSale[ss] || [];
+      var allOn = chs.length && chs.every(function (c) { return sm.indexOf(c) !== -1; });
+      var dlvOn = dlv.length && dlv.every(function (c) { return sm.indexOf(c) !== -1; }) && !allOn;
+      var pills = '<label class="sale-pill' + (allOn ? ' on' : '') + '" style="border-color:#2e934a"><input type="checkbox" ' + (allOn ? 'checked' : '') + ' onchange="window.FLV.gSaleAll(\'' + esc(ss) + '\',\'all\',this.checked)">ALL</label>' +
+        '<label class="sale-pill' + (dlvOn ? ' on' : '') + '" style="border-color:#0dcaf0"><input type="checkbox" ' + (dlvOn ? 'checked' : '') + ' onchange="window.FLV.gSaleAll(\'' + esc(ss) + '\',\'delivery\',this.checked)">ALL DELIVERY</label>' +
+        '<span class="vrx"></span>' +
+        chs.map(function (c) { var on = sm.indexOf(c) !== -1; var d = !isTakeAway(c); return '<label class="sale-pill' + (on ? ' on' : '') + '"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="window.FLV.gSale(\'' + esc(ss) + '\',\'' + esc(c) + '\')">' + esc(c) + (d ? ' <span class="dlv">DLV</span>' : '') + '</label>'; }).join('');
+      return '<div class="sale-grp"><div class="sale-grp-hd"><span class="ss">' + esc(ss) + '</span> ' + esc(ssName(ss)) + '</div><div class="d-flex flex-wrap gap-2 align-items-center">' + pills + '</div></div>';
+    }).join('');
+  }
+  function row(w, i) {
+    return '<tr>' +
+      '<td class="text-center fw-bold">' + (i + 1) + '</td>' +
+      '<td><select class="form-select form-select-sm border-dark" style="min-width:150px" onchange="window.FLV.setTarget(\'' + w.id + '\',this.value)">' + ssOpts(w.targetSS) + '</select></td>' +
+      '<td><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง (เลขจอง — IT ยืนยันตอนบันทึก)" style="width:84px" value="' + esc(w.cmpos) + '" placeholder="— IT —"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary" style="min-width:110px" value="' + esc(w.eng) + '" placeholder="Tom Yum" oninput="window.FLV.set(\'' + w.id + '\',\'eng\',this.value)"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary" style="min-width:110px" value="' + esc(w.th) + '" placeholder="ต้มยำ" oninput="window.FLV.set(\'' + w.id + '\',\'th\',this.value)"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary mono flv-code" list="flvRmList" style="width:110px" value="' + esc(w.code) + '" placeholder="รหัส RM" oninput="window.FLV.setCode(\'' + w.id + '\',this)" onchange="window.FLV.rmPick(\'' + w.id + '\',this.value)"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary flv-desc" style="min-width:140px" value="' + esc(w.desc) + '" placeholder="ผงปรุงรส ต้มยำ 500G" oninput="window.FLV.set(\'' + w.id + '\',\'desc\',this.value)"></td>' +
+      '<td><input type="number" step="any" class="form-control form-control-sm border-secondary text-center" style="width:64px" value="' + esc(w.qty) + '" oninput="window.FLV.set(\'' + w.id + '\',\'qty\',this.value)"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary text-center flv-unit" list="flvUnitList" style="width:70px" value="' + esc(w.unit) + '" oninput="window.FLV.set(\'' + w.id + '\',\'unit\',this.value)"></td>' +
+      '<td><input class="form-control form-control-sm border-secondary" style="min-width:110px" value="' + esc(w.spoon) + '" placeholder="ช้อน 5 ml × 1" oninput="window.FLV.set(\'' + w.id + '\',\'spoon\',this.value)"></td>' +
+      '<td><div class="input-group input-group-sm" style="width:88px"><span class="input-group-text px-1">฿</span><input type="number" min="0" class="form-control border-secondary text-center" value="' + esc(w.price) + '" oninput="window.FLV.set(\'' + w.id + '\',\'price\',this.value)"></div></td>' +
+      '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="window.FLV.del(\'' + w.id + '\')"></i></td></tr>';
+  }
+  function render() {
+    var body = document.getElementById('flvBody'); if (!body) return;
+    body.innerHTML = powders.map(row).join('');
+    renderSaleGroups();
+  }
+
+  var FLV = {};
+  FLV.set = function (id, k, v) { var w = W(id); if (w) w[k] = v; };
+  FLV.setTarget = function (id, v) { var w = W(id); if (w) w.targetSS = v; renderSaleGroups(); };
+  FLV.gSale = function (ss, c) { groupSale[ss] = groupSale[ss] || []; var i = groupSale[ss].indexOf(c); if (i === -1) groupSale[ss].push(c); else groupSale[ss].splice(i, 1); renderSaleGroups(); };
+  FLV.gSaleAll = function (ss, kind, on) { groupSale[ss] = groupSale[ss] || []; var aff = (kind === 'all') ? flvChannels() : flvDelivery(); if (kind === 'all' && !on) { groupSale[ss] = []; } else { aff.forEach(function (c) { var i = groupSale[ss].indexOf(c); if (on && i === -1) groupSale[ss].push(c); if (!on && i !== -1) groupSale[ss].splice(i, 1); }); } renderSaleGroups(); };
+  /* Code RM (live oninput): ตั้งค่า code · ถ้าลบจนว่าง → ล้าง Description + Unit ทันที */
+  FLV.setCode = function (id, el) {
+    var w = W(id); if (!w) return; w.code = el.value;
+    if (!String(el.value || '').trim()) {
+      w.desc = ''; w.unit = '';
+      var card = el.closest('.flv-card');
+      if (card) { var d = card.querySelector('.flv-desc'); if (d) d.value = ''; var u = card.querySelector('.flv-unit'); if (u) u.value = ''; }
+    }
+  };
+  FLV.rmPick = function (id, code) { var w = W(id); if (!w) return; w.code = code; if (!String(code || '').trim()) { w.desc = ''; w.unit = ''; render(); return; } var rm = rmFind(code); if (rm) { w.desc = rm.desc; if (rm.unit) w.unit = rm.unit; } render(); };
+  FLV.add = function () { powders.push(mkW({ unit: 'g' })); render(); };
+  FLV.del = function (id) { var w0 = W(id); if (w0) flvReturnCMPOS(w0.cmpos); powders = powders.filter(function (w) { return w.id !== id; }); if (!powders.length) powders.push(mkW({ unit: 'g' })); render(); };
+  FLV.submit = function () {
+    var warn = function (m) { Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลไม่ครบ', text: m, confirmButtonColor: '#000' }); return false; };
+    var project = (document.getElementById('flvProject').value || '').trim();
+    var start = document.getElementById('flvStart').value, end = document.getElementById('flvEnd').value;
+    if (!project) return warn('กรุณาระบุชื่อชุดผงรสชาติ / Project');
+    if (!start) return warn('กรุณาระบุวันที่เริ่ม');
+    if (!end) return warn('กรุณาระบุวันที่สิ้นสุด');
+    if (new Date(start) > new Date(end)) return warn('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
+    var pw = powders.filter(function (w) { return String(w.eng || '').trim(); });
+    if (!pw.length) return warn('กรุณาเพิ่มผงรสชาติอย่างน้อย 1 ตัว (ระบุ ENG Name)');
+    if (pw.some(function (w) { return !w.targetSS; })) return warn('กรุณาเลือก Subset ปลายทางให้ครบทุกผง');
+
+    var byTarget = {}; pw.forEach(function (w) { (byTarget[w.targetSS] = byTarget[w.targetSS] || []).push(w); });
+    var groups = Object.keys(byTarget).map(function (ss) {
+      var sub = SUBSETS_MASTER.find(function (s) { return s.ssCode === ss; });
+      return { ssCode: ss, name: sub ? sub.name : '', saleModes: (groupSale[ss] || flvChannels()).slice(), flavors: byTarget[ss].map(function (w) { return { cmpos: w.cmpos || '', eng: w.eng || '', th: w.th || '', code: w.code || '', desc: w.desc || '', qty: w.qty || '', unit: w.unit || '', spoon: w.spoon || '', price: num(w.price) }; }) };
+    });
+    var payload = { project: project, start: start, end: end, rd: (document.getElementById('flvRd').value || loginUser()), groups: groups };
+
+    if (!hasBackend()) {
+      var gHtml = groups.map(function (g) { return '<div class="border rounded-3 p-2 mb-2"><b>' + esc(g.ssCode) + ' · ' + esc(g.name) + '</b><ul class="mb-0 mt-1" style="font-size:.85rem">' + g.flavors.map(function (x) { return '<li>' + esc(x.eng) + '</li>'; }).join('') + '</ul></div>'; }).join('');
+      return Swal.fire({ title: '<span style="font-size:1rem">สรุป (prototype) — ผงรสชาติใหม่</span>', width: 560, html: '<div class="text-start">' + gHtml + '</div>', confirmButtonColor: '#2e934a' });
+    }
+    Swal.fire({ title: 'ยืนยันการส่งให้ IT?', icon: 'question', showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: 'ส่ง', cancelButtonText: 'ยกเลิก' }).then(function (r) {
+      if (!r.isConfirmed) return;
+      Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      /* ⛔ กันส่งซ้ำ: Subset ซ้ำในฟอร์มเอง / เอกสารเดิมที่ชื่อผงเดียวกัน */
+      var _dupSS = (function () {
+        var seen = {}, dup = [];
+        powders.forEach(function (w) { var k = String(w.targetSS || '').toUpperCase(); if (!k) return; if (seen[k]) dup.push(k); else seen[k] = 1; });
+        return dup;
+      })();
+      if (_dupSS.length) { Swal.fire({ icon: 'error', title: 'มี Subset ซ้ำในฟอร์ม', html: 'ซ้ำ: <b>' + _dupSS.join(' · ') + '</b><br><span class="small text-muted">ต้องเหลือ Subset ละ 1 บรรทัดก่อนส่ง</span>', confirmButtonColor: '#c0392b' }); return; }
+      var _prev = [];
+      try {
+        var _st = JSON.parse(localStorage.getItem('pc_mock_store_v28') || '{}');
+        var _me = String(payload.project || '').trim().toLowerCase();
+        (_st.flavor || []).forEach(function (f) { if (_me && String(f.project || '').trim().toLowerCase() === _me) _prev.push(f.id); });
+      } catch (e) {}
+      if (_prev.length && !window.__flvDupOk) {
+        Swal.fire({
+          icon: 'warning', title: 'ผงชื่อนี้เคยส่งแล้ว',
+          html: 'เอกสารเดิม: <b>' + _prev.join(' · ') + '</b><br><span class="small text-muted">ส่งต่อจะเป็นเอกสารใบใหม่ (ข้อมูลซ้ำในระบบ)</span>',
+          showCancelButton: true, confirmButtonText: 'ส่งซ้ำ', confirmButtonColor: '#c0392b', cancelButtonText: 'ยกเลิก'
+        }).then(function (r) { if (r.isConfirmed) { window.__flvDupOk = true; window.FLV.submit(); } });
+        return;
+      }
+      window.__flvDupOk = false;
+      google.script.run.withSuccessHandler(function (res) {
+        flvJustSubmitted = true; // เลขถูกส่งไปแล้ว — อย่าคืนตอน reset
+        flvConfirmAll();          // ล็อกเลขถาวร (confirm) — ส่งงานแล้วจะไม่ถูก recycle
+        var _id = (res && res.id) || '';
+        /* ⭐ ยืนยันจากต้นทางว่า "บันทึกเข้าระบบจริง" — เดิมขึ้นสำเร็จทั้งที่ข้อมูลไม่เข้า (ตัวซิงค์ทับ) */
+        if (window.PC_SaveVerify) {
+          window.PC_SaveVerify.after({
+            kind: 'flavor', key: _id || payload.project, docId: _id, payload: payload,
+            okTitle: 'ส่งเรียบร้อย!', okHtml: 'เลขที่เอกสาร: <b>' + _id + '</b><br>จำนวนผง: ' + pw.length + ' ตัว',
+            onDone: function (ok) { if (ok) window.initFlavor(); },
+            onRetry: function () { try { window.FLV && window.FLV.submit(); } catch (e) {} }
+          });
+        } else {
+          Swal.fire({ icon: 'success', title: 'ส่งเรียบร้อย!', html: 'เลขที่เอกสาร: <b>' + (_id || '-') + '</b><br>จำนวนผง: ' + pw.length + ' ตัว', confirmButtonColor: '#2e934a' }).then(function () { window.initFlavor(); });
+        }
+      }).withFailureHandler(function (e) { Swal.fire('Error', String(e), 'error'); }).submitFlavor(payload);
+    });
+  };
+
+  /* ⭐ วางไฟล์ Excel ต้นฉบับ (New Item - xxx flavor) → กรอกฟอร์มให้เลย */
+  FLV.importExcel = function () {
+    if (!window.PC_FlavorImport) { if (window.Swal) Swal.fire('ยังไม่พร้อม', 'ตัวอ่านไฟล์ยังไม่โหลด — รีเฟรชหน้าหนึ่งครั้ง', 'info'); return; }
+    window.PC_FlavorImport.pick(function (d) {
+      try {
+        if (d.project) { var p = document.getElementById('flvProject'); if (p) p.value = d.project; }
+        /* ผงเดิมที่จองเลขไว้ → คืนเลขก่อน แล้วสร้างใหม่จากไฟล์ */
+        powders.forEach(function (w) { try { flvReturnCMPOS(w.cmpos); } catch (e) {} });
+        powders = d.rows.map(function (x) {
+          return mkW({ targetSS: x.targetSS, eng: x.eng, code: x.code, desc: x.desc, qty: x.qty, unit: x.unit || 'g', spoon: x.spoon });
+        });
+        if (!powders.length) powders.push(mkW({ unit: 'g' }));
+        /* ช่องทางขายจากไฟล์ → ใส่ให้ทุก Subset ปลายทาง */
+        if (d.channels && d.channels.length) {
+          distinctTargets().forEach(function (ss) { groupSale[ss] = d.channels.slice(); });
+        }
+        render();
+        if (window.Swal) Swal.fire({ icon: 'success', title: 'กรอกลงฟอร์มแล้ว', html: 'ผง <b>' + powders.length + '</b> ตัว' + (d.channels.length ? '<br>ช่องทาง: ' + d.channels.join(' · ') : '') + '<div class="small text-muted mt-2">ตรวจความถูกต้องอีกครั้งก่อนกดส่งให้ IT</div>', confirmButtonColor: '#2e934a' });
+      } catch (e) { if (window.Swal) Swal.fire('กรอกไม่สำเร็จ', String(e.message || e), 'error'); }
+    });
+  };
+
+  window.FLV = FLV;
+  /* ออกจากหน้าโดยไม่บันทึก → คืนเลข CMPOS ที่จองไว้เข้า counter กลาง (เหมือน NPD ลบ/ยกเลิก) */
+  /* ออกจากหน้าโดยไม่บันทึก → คืนเลข CMPOS ที่จองไว้เข้า counter กลาง (เหมือน NPD ลบ/ยกเลิก) */
+  function flvHasData() {
+    try {
+      if (String((document.getElementById('flvProject') || {}).value || '').trim()) return true;
+      if ((powders || []).some(function (w) { return String(w.eng || '').trim() || String(w.th || '').trim() || String(w.code || '').trim(); })) return true;
+    } catch (e) {}
+    return false;
+  }
+  window.disposeFlavor = function () { window.__leaveGuard = null; try { if (!flvJustSubmitted) { powders.forEach(function (w) { flvReturnCMPOS(w.cmpos); }); powders = []; } } catch (e) {} };
+  window.initFlavor = function () {
+    var t = new Date(), iso = function (d) { return d.toISOString().slice(0, 10); };
+    var nm = new Date(t.getFullYear(), t.getMonth() + 1, 1), nme = new Date(t.getFullYear(), t.getMonth() + 2, 0);
+    var s = document.getElementById('flvStart'); if (s) s.value = iso(nm);
+    var e = document.getElementById('flvEnd'); if (e) e.value = iso(nme);
+    var rd = document.getElementById('flvRd'); if (rd) rd.value = loginUser();
+    var dl = document.getElementById('flvRmList'); if (dl) dl.innerHTML = RM_MASTER.map(function (r) { return '<option value="' + esc(r.code) + '">' + esc(r.code) + ' · ' + esc(r.desc) + (r.unit ? ' · ' + esc(r.unit) : '') + '</option>'; }).join('');
+    var ul = document.getElementById('flvUnitList'); if (ul) { var uset = {}; UNITS.forEach(function (u) { uset[u] = 1; }); RM_MASTER.forEach(function (r) { if (r.unit) uset[r.unit] = 1; }); ul.innerHTML = Object.keys(uset).map(function (u) { return '<option value="' + esc(u) + '"></option>'; }).join(''); }
+    var pj = document.getElementById('flvProject'); if (pj) pj.value = '';
+    /* คืนเลข CMPOS ของผงชุดก่อนหน้า (ถ้าไม่ได้ส่ง) — กันเลขรั่วใน counter กลาง */
+    if (!flvJustSubmitted) { powders.forEach(function (w) { flvReturnCMPOS(w.cmpos); }); }
+    flvJustSubmitted = false;
+    groupSale = {};
+    powders = [mkW({ unit: 'g' })];
+    render();
+    window.__leaveGuard = { page: 'Flavor', check: flvHasData };
+  };
+  if (typeof window.loadPage !== 'function') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.initFlavor);
+    else window.initFlavor();
+  }
+})();
+</script>

@@ -1,0 +1,95 @@
+<!-- IT WORK — รวมงาน IT (โปรโมชั่น) ในหน้าเดียว + left-rail แบบ Shop Information -->
+<style>
+  #itwork-page{ padding:0; }
+  #itwork-page .itw-head{ background:linear-gradient(100deg,#1a1d20,#2a2f34); color:#fff; border-radius:0 0 16px 16px; padding:18px 24px; display:flex; align-items:center; gap:14px; }
+  #itwork-page .itw-head .ic{ width:46px; height:46px; border-radius:12px; background:var(--pc-yellow); color:#1a1d20; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex:0 0 auto; }
+  #itwork-page .itw-head h2{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.3rem; margin:0; text-transform:uppercase; letter-spacing:.3px; }
+  #itwork-page .itw-crumb{ font-size:.82rem; color:#9aa7b4; font-weight:600; }
+  #itwork-page .itw-crumb b{ color:var(--pc-yellow); }
+  #itwork-page .pm-layout{ display:flex; gap:18px; align-items:flex-start; margin:18px; }
+  #itwork-page .pm-rail{ width:230px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+  #itwork-page .pm-rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+  #itwork-page .pm-rail-item{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+  #itwork-page .pm-rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+  #itwork-page .pm-rail-item:hover{ background:#f4f6f9; }
+  #itwork-page .pm-rail-item.on{ background:var(--pc-black,#1a1d20); color:#fff; }
+  #itwork-page .pm-rail-item.on i{ color:var(--pc-yellow); }
+  #itwork-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:visible; position:relative; min-height:82vh; }
+</style>
+
+<div id="itwork-page">
+  <div class="itw-head">
+    <div class="ic"><i class="fas fa-screwdriver-wrench"></i></div>
+    <div>
+      <h2 data-en="IT WORK" data-th="งาน IT — โปรโมชั่น">งาน IT — โปรโมชั่น</h2>
+      <div class="itw-crumb" id="itwCrumb"></div>
+    </div>
+  </div>
+  <div class="pm-layout">
+    <aside class="pm-rail" id="itwRail"></aside>
+    <div class="pm-main" id="itwMain">
+      <div class="p-5 text-center text-muted"><div class="spinner-border text-warning" role="status"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ITEMS = [
+    { pg:'IT_Settlement',  icon:'fa-check-double',            en:'IT Settlement',        th:'งาน IT (Settlement)' },
+    { pg:'ItemSet',        icon:'fa-vials',                   en:'Item Set Builder',     th:'สร้าง Item Set' },
+    { pg:'ITTicketQueue',  icon:'fa-screwdriver-wrench',      en:'Branch Issue Queue',   th:'คิวปัญหาจากสาขา' },
+    { pg:'DiffAnalysis',   icon:'fa-magnifying-glass-chart',  en:'Diff Analysis (Audit)', th:'วิเคราะห์ปิดบิลไม่ตรง' }
+  ];
+  function allowedItems() {
+    var role = localStorage.getItem('pc_role') || 'Admin';
+    var perms = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : null;
+    var allow = perms ? (perms[role] || perms.Admin || []) : null;
+    return ITEMS.filter(function (it) { return !allow || allow.indexOf(it.pg) !== -1; });
+  }
+  function lang() { try { return localStorage.getItem('pc_lang') === 'en' ? 'en' : 'th'; } catch (e) { return 'th'; } }
+  var curSub = null;
+
+  function renderRail() {
+    var items = allowedItems(), L = lang();
+    document.getElementById('itwRail').innerHTML =
+      '<div class="pm-rail-grp" data-en="IT WORK" data-th="งาน IT">งาน IT</div>' +
+      items.map(function (it) {
+        return '<div class="pm-rail-item ' + (it.pg === curSub ? 'on' : '') + '" onclick="window.itwGo(\'' + it.pg + '\')">' +
+          '<i class="fas ' + it.icon + '"></i>' +
+          '<span class="navlbl" data-en="' + it.en + '" data-th="' + it.th + '">' + (L === 'en' ? it.en : it.th) + '</span></div>';
+      }).join('');
+    var cur = ITEMS.find(function (x) { return x.pg === curSub; });
+    var cr = document.getElementById('itwCrumb');
+    if (cr && cur) cr.innerHTML = (L === 'en' ? 'IT WORK » <b>' + cur.en + '</b>' : 'งาน IT » <b>' + cur.th + '</b>');
+  }
+
+  window.itwGo = function (pg) {
+    if (pg === curSub) return;
+    if (curSub && typeof window['dispose' + curSub] === 'function') { try { window['dispose' + curSub](); } catch (e) {} }
+    curSub = pg;
+    try { localStorage.setItem('pc_itwork_sub', pg); } catch (e) {}
+    renderRail();
+    var main = document.getElementById('itwMain');
+    if (window.pcLoadSub) window.pcLoadSub(main, pg);
+    else main.innerHTML = '<div class="p-4 text-danger">loader missing</div>';
+  };
+
+  window.disposeITWork = function () {
+    if (curSub && typeof window['dispose' + curSub] === 'function') { try { window['dispose' + curSub](); } catch (e) {} }
+  };
+
+  window.initITWork = function () {
+    var items = allowedItems();
+    if (!items.length) {
+      document.getElementById('itwRail').innerHTML = '';
+      document.getElementById('itwMain').innerHTML = '<div class="p-5 text-center text-muted">ไม่มีสิทธิ์เข้าถึงงานในส่วนนี้</div>';
+      return;
+    }
+    var last = null; try { last = localStorage.getItem('pc_itwork_sub'); } catch (e) {}
+    var start = items.some(function (x) { return x.pg === last; }) ? last : items[0].pg;
+    curSub = null;
+    window.itwGo(start);
+  };
+})();
+</script>

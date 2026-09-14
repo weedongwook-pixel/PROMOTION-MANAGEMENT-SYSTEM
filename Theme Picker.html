@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เลือกธีม · Appearance</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  :root{ --sf:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif; }
+  body{ font-family:var(--sf); background:#000; color:#fff; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:46px 16px 90px; -webkit-font-smoothing:antialiased; }
+  .wrap{ width:100%; max-width:1060px; }
+  .htitle{ font-size:1.6rem; font-weight:700; letter-spacing:-.02em; margin:0 8px; }
+  .hsub{ color:#8e8e93; font-size:.95rem; margin:3px 8px 0; }
+  .seclbl{ color:#8e8e93; font-size:.8rem; margin:30px 16px 9px; }
+  .panel{ background:#1c1c1e; border-radius:20px; padding:24px 22px 10px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(208px,1fr)); gap:24px 20px; }
+  .opt{ cursor:pointer; display:flex; flex-direction:column; }
+  /* web-layout thumbnail */
+  .thumb{ width:100%; aspect-ratio:16/10.4; border-radius:13px; overflow:hidden; display:flex; box-shadow:0 6px 16px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.06); transition:transform .15s; }
+  .opt:hover .thumb{ transform:translateY(-3px); }
+  .t-sb{ width:25%; padding:7px 0; display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .t-logo{ width:64%; height:15px; border-radius:4px; }
+  .t-dot{ width:56%; height:4px; border-radius:2px; opacity:.5; }
+  .t-dot.on{ opacity:1; width:64%; height:6px; }
+  .t-main{ flex:1; padding:7px; display:flex; flex-direction:column; gap:6px; }
+  .t-hd{ height:24px; border-radius:6px; display:flex; align-items:center; gap:5px; padding:0 7px; }
+  .t-bar{ width:4px; height:13px; border-radius:2px; } .t-tt{ width:52%; height:5px; border-radius:2px; opacity:.9; }
+  .t-row{ display:flex; gap:5px; } .t-card{ flex:1; border-radius:5px; padding:5px; }
+  .t-n{ width:62%; height:6px; border-radius:2px; } .t-l{ width:82%; height:3.5px; border-radius:2px; margin-top:4px; opacity:.6; }
+  .t-tbl{ border-radius:5px; overflow:hidden; flex:1; }
+  .t-th{ height:10px; } .t-tr{ height:5px; margin:4px 5px 0; border-radius:2px; opacity:.55; }
+  .opt .nm{ margin-top:13px; font-size:1.02rem; font-weight:500; display:flex; align-items:center; gap:9px; }
+  .opt .desc{ font-size:.74rem; color:#8e8e93; margin-top:1px; }
+  .radio{ width:22px; height:22px; border-radius:50%; border:1.6px solid #5a5a5e; display:flex; align-items:center; justify-content:center; transition:.15s; flex:0 0 auto; }
+  .opt.inc .radio{ background:#34c759; border-color:#34c759; }
+  .opt.inc .radio::after{ content:''; width:8px; height:4px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg); margin-top:-2px; }
+  .opt.sel .thumb{ box-shadow:0 0 0 3px #0a84ff, 0 6px 16px rgba(0,0,0,.42); }
+  .radio{ cursor:pointer; }
+  .divider{ height:1px; background:#38383a; margin:20px 0 0; }
+  .row{ display:flex; align-items:center; justify-content:space-between; padding:15px 2px; }
+  .row .rl{ font-size:1.04rem; } .row .rs{ font-size:.78rem; color:#8e8e93; margin-top:1px; }
+  .sw{ width:51px; height:31px; border-radius:99px; background:#39393d; position:relative; cursor:pointer; transition:.25s; flex:0 0 auto; }
+  .sw::after{ content:''; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; transition:.25s; }
+  .sw.on{ background:#34c759; } .sw.on::after{ left:22px; }
+
+  /* ===== LIVE WEB PREVIEW ===== */
+  .pv-wrap{ margin-top:14px; border-radius:18px; overflow:hidden; border:1px solid #2c2c2e; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .pv-bar{ background:#2c2c2e; display:flex; align-items:center; gap:7px; padding:9px 14px; }
+  .pv-bar .d{ width:11px; height:11px; border-radius:50%; } .pv-bar .d1{ background:#ff5f57; } .pv-bar .d2{ background:#febc2e; } .pv-bar .d3{ background:#28c840; }
+  .pv-bar .u{ margin-left:10px; font-size:.74rem; color:#8e8e93; }
+  .pv{ display:flex; min-height:440px; background:var(--bg); transition:background .3s; }
+  .pv-sb{ width:176px; flex:0 0 auto; background:var(--sb); color:var(--sbtx); padding:0 0 14px; transition:.3s; }
+  .pv.glass .pv-sb,.pv.glass .pv-hd,.pv.glass .card,.pv.glass .pv-web{ backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3); }
+  .pv-logo{ background:var(--accent); color:var(--logotx); font-family:'Montserrat',sans-serif; font-weight:900; font-size:.82rem; line-height:.95; text-align:center; padding:13px 6px; }
+  .pv-nav{ padding:11px 0; }
+  .pv-nav .it{ display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:.8rem; font-weight:600; color:var(--sbtx); opacity:.82; }
+  .pv-nav .it .ic{ width:15px; height:15px; border-radius:4px; background:currentColor; opacity:.55; }
+  .pv-nav .it.on{ background:var(--navon); color:var(--accent); opacity:1; border-left:3px solid var(--accent); }
+  .pv-nav .it.on .ic{ background:var(--accent); opacity:1; }
+  .pv-main{ flex:1; min-width:0; padding:16px; display:flex; flex-direction:column; gap:14px; }
+  .pv-web{ display:flex; align-items:center; gap:18px; background:var(--card); border:1px solid var(--cb); border-radius:13px; padding:11px 18px; transition:.3s; }
+  .pv-web .wl{ font-weight:800; color:var(--accent); font-size:.92rem; }
+  .pv-web .wm{ font-size:.78rem; color:var(--tx); opacity:.8; font-weight:600; }
+  .pv-web .wcta{ margin-left:auto; background:var(--accent); color:var(--logotx); font-size:.74rem; font-weight:700; padding:7px 15px; border-radius:9px; }
+  .pv-hd{ background:var(--hd); color:var(--hdtx); border-radius:13px; padding:15px 18px; display:flex; align-items:center; gap:12px; transition:.3s; }
+  .pv-hd .bar{ width:7px; height:34px; border-radius:4px; background:var(--accent); }
+  .pv-hd .t1{ font-weight:700; font-size:1rem; } .pv-hd .t2{ font-size:.72rem; opacity:.8; margin-top:2px; }
+  .pv-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .card{ background:var(--card); border:1px solid var(--cb); border-radius:13px; padding:14px; color:var(--tx); transition:.3s; }
+  .pv-stats .card .n{ font-size:1.5rem; font-weight:800; color:var(--accent); }
+  .pv-stats .card .l{ font-size:.72rem; color:var(--sub); margin-top:2px; }
+  .pv-tbl .th{ display:flex; gap:10px; padding:9px 12px; background:var(--thbg); color:var(--thtx); font-size:.72rem; font-weight:700; }
+  .pv-tbl .tr{ display:flex; gap:10px; padding:9px 12px; border-top:1px solid var(--cb); font-size:.78rem; color:var(--tx); }
+  .pv-tbl .c1{ width:64px; font-weight:700; color:var(--accent); } .pv-tbl .c2{ flex:1; } .pv-tbl .c3{ width:80px; }
+  .pv-chip{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:.66rem; font-weight:700; background:var(--accent); color:var(--logotx); }
+  .hint{ text-align:center; color:#48484a; font-size:.8rem; margin-top:24px; }
+  .recb{ background:#0a84ff; color:#fff; font-size:.6rem; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .prodb{ background:#34c759; color:#fff; font-size:.6rem; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .prodbtn{ background:#0a84ff; color:#fff; border:0; border-radius:13px; padding:13px 28px; font-family:var(--sf); font-weight:600; font-size:1.02rem; cursor:pointer; transition:.15s; }
+  .prodbtn:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+  .prodstat{ color:#8e8e93; font-size:.88rem; margin-top:11px; }
+  .prodstat b{ color:#34c759; }
+  .mseg{ display:inline-flex; border:1.6px solid #3a3a3c; border-radius:10px; overflow:hidden; }
+  .mseg button{ border:0; background:transparent; color:#fff; padding:8px 16px; font-family:var(--sf); font-weight:600; font-size:.86rem; cursor:pointer; }
+  .mseg button.on{ background:#0a84ff; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="htitle">เลือกธีม</div>
+    <div class="hsub">คลิกการ์ด = พรีวิว · กดวงกลมขวาบนการ์ด = เลือกธีมเข้างานจริง (เลือกได้หลายธีม)</div>
+
+    <div class="seclbl">APPEARANCE · ธีมระบบ</div>
+    <div class="panel">
+      <div class="grid" id="grid"></div>
+      <div class="row" style="border-top:1px solid #38383a;margin-top:8px"><div><div class="rl">โหมดเครื่อง</div><div class="rs">สว่าง / มืด — เฉพาะเครื่องนี้ (พรีวิวเปลี่ยนตาม)</div></div><div class="mseg" id="mseg"><button data-m="light" onclick="setMode('light')">สว่าง</button><button data-m="dark" onclick="setMode('dark')">มืด</button><button data-m="auto" onclick="setMode('auto')">อัตโนมัติ</button></div></div>
+      <div class="divider"></div>
+      <div class="row"><div><div class="rl">อัตโนมัติ</div><div class="rs">สลับสว่าง/มืดตามระบบของเครื่อง</div></div><div class="sw" id="autoSw" onclick="this.classList.toggle('on')"></div></div>
+    </div>
+
+    <div class="seclbl">ตัวอย่างเว็บไซต์ · LIVE PREVIEW</div>
+    <div class="pv-wrap">
+      <div class="pv-bar"><span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="u" id="pvName">Potato Corner — Classic</span></div>
+      <div class="pv" id="pv">
+        <div class="pv-sb">
+          <div class="pv-logo">POTATO<br>CORNER</div>
+          <div class="pv-nav">
+            <div class="it on"><span class="ic"></span>แดชบอร์ด</div>
+            <div class="it"><span class="ic"></span>ข้อมูลสินค้า</div>
+            <div class="it"><span class="ic"></span>แจ้งโปรโมชั่น</div>
+            <div class="it"><span class="ic"></span>งาน IT</div>
+            <div class="it"><span class="ic"></span>ติดตามงาน</div>
+          </div>
+        </div>
+        <div class="pv-main">
+          <div class="pv-web"><span class="wl">Potato Corner</span><span class="wm">หน้าแรก</span><span class="wm">สินค้า</span><span class="wm">โปรโมชั่น</span><span class="wcta">เข้าสู่ระบบ</span></div>
+          <div class="pv-hd"><div class="bar"></div><div><div class="t1">ข้อมูลหลัก — สินค้า / หมวด</div><div class="t2">จัดการสินค้า หมวด และช่องทางขาย</div></div></div>
+          <div class="pv-stats">
+            <div class="card"><div class="n">5,350</div><div class="l">สินค้าทั้งหมด</div></div>
+            <div class="card"><div class="n">98</div><div class="l">Subset</div></div>
+            <div class="card"><div class="n">31</div><div class="l">หมวด</div></div>
+          </div>
+          <div class="card pv-tbl" style="padding:0;overflow:hidden">
+            <div class="th"><span style="width:64px">รหัส</span><span style="flex:1">ชื่อสินค้า</span><span style="width:80px">สถานะ</span></div>
+            <div class="tr"><span class="c1">101000</span><span class="c2">SMALL FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+            <div class="tr"><span class="c1">101001</span><span class="c2">LARGE FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+            <div class="tr"><span class="c1">101003</span><span class="c2">MEGA FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:18px"><div class="prodstat" id="prodStat" style="font-size:.96rem"></div></div>
+    <div class="hint">พรีวิวเป็นตัวอย่าง (Mock) — ยังไม่ผูกกับระบบจริง</div>
+  </div>
+
+<script>
+  var THEMES=[
+    { id:'classic',  nm:'Classic',      desc:'ดำ-เหลือง (แบรนด์)', glass:false, pal:{ bg:'#eef2ef', sb:'#1a1d20', sbtx:'#ffffff', accent:'#2e934a', logotx:'#1a1d20', navon:'rgba(46,147,74,.16)', hd:'#2e934a', hdtx:'#ffffff', card:'#ffffff', cb:'#e2e7e3', tx:'#1a1d20', sub:'#8a9099', thbg:'#1a1d20', thtx:'#ffffff' } },
+    { id:'light',    nm:'Light',        desc:'สว่าง', glass:false, pal:{ bg:'#f5f7f9', sb:'#ffffff', sbtx:'#1a1d20', accent:'#2e934a', logotx:'#ffffff', navon:'rgba(46,147,74,.1)', hd:'#ffffff', hdtx:'#1a1d20', card:'#ffffff', cb:'#e7ebee', tx:'#1a1d20', sub:'#8a9099', thbg:'#eef2f4', thtx:'#1a1d20' } },
+    { id:'dark',     nm:'Dark',         desc:'มืด', glass:false, pal:{ bg:'#16181b', sb:'#0e0f11', sbtx:'#e6e8ea', accent:'#2e934a', logotx:'#1a1d20', navon:'rgba(46,147,74,.14)', hd:'#1f2226', hdtx:'#f0f1f2', card:'#22262b', cb:'#2c3035', tx:'#e6e8ea', sub:'#9aa0a6', thbg:'#2a2f35', thtx:'#e6e8ea' } },
+    { id:'glass',    nm:'Liquid Glass', desc:'กระจกโปร่งแสง', glass:true, pal:{ bg:'linear-gradient(150deg,#a8c8ef,#d3e6f5 45%,#c2ead9)', sb:'rgba(255,255,255,.5)', sbtx:'#16314e', accent:'#0a84ff', logotx:'#ffffff', navon:'rgba(10,132,255,.16)', hd:'rgba(255,255,255,.42)', hdtx:'#14334f', card:'rgba(255,255,255,.55)', cb:'rgba(255,255,255,.65)', tx:'#16314e', sub:'#5c768f', thbg:'rgba(20,40,70,.78)', thtx:'#ffffff' } },
+    { id:'midnight', nm:'Midnight',     desc:'น้ำเงินกระจก', glass:true, pal:{ bg:'linear-gradient(155deg,#0e2148,#16294d 55%,#0a1d3c)', sb:'rgba(30,46,80,.55)', sbtx:'#dbe9ff', accent:'#5ac8fa', logotx:'#06203c', navon:'rgba(90,200,250,.16)', hd:'rgba(40,62,104,.5)', hdtx:'#e3efff', card:'rgba(40,62,104,.45)', cb:'rgba(120,160,220,.28)', tx:'#dbe9ff', sub:'#90a8cc', thbg:'rgba(12,28,56,.8)', thtx:'#dbe9ff' } },
+    { id:'warm',     nm:'Warm',         desc:'ครีม-ส้มอุ่น', glass:false, pal:{ bg:'#f7efe6', sb:'#2b211a', sbtx:'#f6e7d6', accent:'#ff9f43', logotx:'#2b211a', navon:'rgba(255,159,67,.18)', hd:'#8a4b2b', hdtx:'#fff2e6', card:'#fffaf3', cb:'#ecdfd0', tx:'#2b211a', sub:'#9a8472', thbg:'#2b211a', thtx:'#f6e7d6' } },
+    { id:'forest',   nm:'Forest',       desc:'เขียวป่า', glass:false, pal:{ bg:'#eef5f0', sb:'#163a28', sbtx:'#dceee4', accent:'#28a35c', logotx:'#0c2a1a', navon:'rgba(40,163,92,.16)', hd:'#15532f', hdtx:'#eafff2', card:'#ffffff', cb:'#dce8e0', tx:'#16291f', sub:'#7a948a', thbg:'#16291f', thtx:'#eafff2' } },
+    { id:'ocean',    nm:'Ocean',        desc:'ฟ้าทะเล', glass:false, pal:{ bg:'#edf6f8', sb:'#0d2c37', sbtx:'#d6eef3', accent:'#11b0bd', logotx:'#052a30', navon:'rgba(17,176,189,.16)', hd:'#0c6470', hdtx:'#e6fbff', card:'#ffffff', cb:'#d8e9ed', tx:'#122b30', sub:'#6f9099', thbg:'#0d2c37', thtx:'#e6fbff' } },
+    { id:'rose',     nm:'Rose',         desc:'ชมพูกุหลาบ', glass:false, pal:{ bg:'#fbf0f3', sb:'#371824', sbtx:'#f6dde6', accent:'#e84a6f', logotx:'#ffffff', navon:'rgba(232,74,111,.16)', hd:'#93283f', hdtx:'#ffe9ef', card:'#ffffff', cb:'#f0dce2', tx:'#2e1620', sub:'#9a7280', thbg:'#371824', thtx:'#f6dde6' } },
+    { id:'grape',    nm:'Grape',        desc:'ม่วงองุ่น', glass:false, pal:{ bg:'#f3f1fb', sb:'#221a3c', sbtx:'#e4ddf6', accent:'#7c5cff', logotx:'#ffffff', navon:'rgba(124,92,255,.16)', hd:'#3f2c8a', hdtx:'#efeaff', card:'#ffffff', cb:'#e6e0f3', tx:'#221a3c', sub:'#8478a0', thbg:'#221a3c', thtx:'#e4ddf6' } },
+    { id:'mono',     nm:'Mono',         desc:'ขาวดำมินิมอล', glass:false, pal:{ bg:'#f4f4f5', sb:'#18181b', sbtx:'#e4e4e7', accent:'#52525b', logotx:'#ffffff', navon:'rgba(82,82,91,.14)', hd:'#27272a', hdtx:'#f4f4f5', card:'#ffffff', cb:'#e4e4e7', tx:'#18181b', sub:'#71717a', thbg:'#18181b', thtx:'#f4f4f5' } },
+    { id:'ios',      nm:'iOS',          desc:'Apple สว่าง', glass:false, pal:{ bg:'#f2f2f7', sb:'#ffffff', sbtx:'#1c1c1e', accent:'#0a84ff', logotx:'#ffffff', navon:'rgba(10,132,255,.12)', hd:'#ffffff', hdtx:'#1c1c1e', card:'#ffffff', cb:'#e5e5ea', tx:'#1c1c1e', sub:'#8e8e93', thbg:'#e9e9ee', thtx:'#1c1c1e' } },
+    { id:'iosdark',  nm:'iOS Dark',     desc:'Apple มืด', glass:false, pal:{ bg:'#000000', sb:'#1c1c1e', sbtx:'#ffffff', accent:'#0a84ff', logotx:'#ffffff', navon:'rgba(10,132,255,.2)', hd:'#1c1c1e', hdtx:'#ffffff', card:'#1c1c1e', cb:'#2c2c2e', tx:'#ffffff', sub:'#8e8e93', thbg:'#2c2c2e', thtx:'#ffffff' } },
+    { id:'terra',    nm:'Terracotta',   desc:'เอิร์ธโทน · ดินเผา', glass:false, pal:{ bg:'#f3e9df', sb:'#4a3225', sbtx:'#ecd9c8', accent:'#c1714a', logotx:'#ffffff', navon:'rgba(193,113,74,.18)', hd:'#7a4a32', hdtx:'#f7e8db', card:'#fdf6ee', cb:'#e6d5c4', tx:'#3a2a1e', sub:'#9a8270', thbg:'#4a3225', thtx:'#ecd9c8' } },
+    { id:'sage',     nm:'Sage',         desc:'เอิร์ธโทน · เซจ', glass:false, pal:{ bg:'#eef0e8', sb:'#2f3a2a', sbtx:'#dde6d2', accent:'#7d9152', logotx:'#ffffff', navon:'rgba(125,145,82,.18)', hd:'#4c5b38', hdtx:'#eef3e4', card:'#f9faf4', cb:'#dce2d0', tx:'#2c3324', sub:'#8a917c', thbg:'#2f3a2a', thtx:'#dde6d2' } },
+    { id:'sand',     nm:'Sand',         desc:'คุมโทน · ทรายอุ่น', glass:false, pal:{ bg:'#f4ece0', sb:'#3a3025', sbtx:'#ece0d0', accent:'#bfa06a', logotx:'#2a2218', navon:'rgba(191,160,106,.2)', hd:'#6b5a44', hdtx:'#f6ecdb', card:'#fdf8f0', cb:'#e8ddca', tx:'#33291d', sub:'#998a74', thbg:'#3a3025', thtx:'#ece0d0' } },
+    { id:'mocha',    nm:'Mocha',        desc:'คุมโทน · กาแฟ', glass:false, pal:{ bg:'#efe7e0', sb:'#2e231d', sbtx:'#e3d3c6', accent:'#a9744f', logotx:'#ffffff', navon:'rgba(169,116,79,.18)', hd:'#4e372a', hdtx:'#f0e2d6', card:'#faf3ec', cb:'#e2d3c6', tx:'#2e2219', sub:'#947f6e', thbg:'#2e231d', thtx:'#e3d3c6' } }
+  ];
+  var included={}; try{ (JSON.parse(localStorage.getItem('pc_theme_set')||'[]')||[]).forEach(function(id){ included[id]=1; }); }catch(e){}
+  var selected=Object.keys(included)[0]||'classic';
+  var REC={ classic:1, glass:2, sage:3 };
+  function saveInc(){ try{ localStorage.setItem('pc_theme_set', JSON.stringify(Object.keys(included))); }catch(e){} }
+  function thumb(t){ var p=t.pal; var g=t.glass?'backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);':'';
+    return '<div class="thumb" style="background:'+p.bg+'">'+
+      '<div class="t-sb" style="background:'+p.sb+';'+g+'"><div class="t-logo" style="background:'+p.accent+'"></div>'+
+        '<div class="t-dot on" style="background:'+p.accent+'"></div>'+[0,0,0].map(function(){return '<div class="t-dot" style="background:'+p.sbtx+'"></div>';}).join('')+'</div>'+
+      '<div class="t-main">'+
+        '<div class="t-hd" style="background:'+p.hd+';'+g+'"><div class="t-bar" style="background:'+p.accent+'"></div><div class="t-tt" style="background:'+p.hdtx+'"></div></div>'+
+        '<div class="t-row">'+[0,1,2].map(function(){return '<div class="t-card" style="background:'+p.card+';'+g+'border:1px solid '+p.cb+'"><div class="t-n" style="background:'+p.accent+'"></div><div class="t-l" style="background:'+p.tx+'"></div></div>';}).join('')+'</div>'+
+        '<div class="t-tbl" style="background:'+p.card+';'+g+'border:1px solid '+p.cb+'"><div class="t-th" style="background:'+p.thbg+'"></div><div class="t-tr" style="background:'+p.tx+'"></div><div class="t-tr" style="background:'+p.tx+'"></div></div>'+
+      '</div></div>';
+  }
+  function render(){
+    document.getElementById('grid').innerHTML=THEMES.map(function(t){
+      return '<div class="opt'+(t.id===selected?' sel':'')+(included[t.id]?' inc':'')+'" onclick="preview(\''+t.id+'\')">'+
+        thumb(t)+
+        '<div class="nm">'+t.nm+(REC[t.id]?'<span class="recb">แบบที่ '+REC[t.id]+'</span>':'')+(included[t.id]?'<span class="prodb">✓ เข้างานจริง</span>':'')+'<div class="radio" style="margin-left:auto" title="เลือกเข้างานจริง" onclick="event.stopPropagation();toggleInc(\''+t.id+'\')"></div></div><div class="desc">'+t.desc+'</div></div>';
+    }).join('');
+    apply();
+  }
+  function apply(){
+    var t=THEMES.filter(function(x){return x.id===selected;})[0]; if(!t) return;
+    var pv=document.getElementById('pv');
+    Object.keys(t.pal).forEach(function(k){ pv.style.setProperty('--'+k, t.pal[k]); });
+    pv.classList.toggle('glass', !!t.glass);
+    document.getElementById('pvName').textContent='Potato Corner — '+t.nm;
+    var ps=document.getElementById('prodStat'); if(ps){ var names=THEMES.filter(function(x){return included[x.id];}).map(function(x){return x.nm;}); ps.innerHTML = names.length ? '<b style="color:#34c759">✓ ธีมที่จะเข้างานจริง ('+names.length+'):</b> '+names.join(', ')+' · Mock' : 'ยังไม่ได้เลือกธีมเข้างานจริง — กดวงกลมขวาบนการ์ดเพื่อเลือก (เลือกได้หลายธีม)'; }
+  }
+  function preview(id){ selected=id; render(); }
+  function toggleInc(id){ if(included[id]) delete included[id]; else included[id]=1; selected=id; saveInc(); render(); }
+  function setMode(m){ try{ localStorage.setItem('pc_appearance_mode',m); }catch(e){}
+    var seg=document.getElementById('mseg'); if(seg){ [].forEach.call(seg.children,function(b){ b.classList.toggle('on', b.getAttribute('data-m')===m); }); }
+    if(m==='light') selected='light'; else if(m==='dark') selected='dark'; else { selected=(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light'; }
+    render();
+  }
+  render();
+  (function(){ var m=''; try{ m=localStorage.getItem('pc_appearance_mode')||''; }catch(e){} if(m) setMode(m); else { var seg=document.getElementById('mseg'); if(seg){ [].forEach.call(seg.children,function(b){ b.classList.toggle('on', b.getAttribute('data-m')==='light'); }); } } })();
+</script>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#1c1c1e"/><rect x="14" y="32" width="16" height="36" rx="4" fill="#2e934a"/><rect x="34" y="32" width="22" height="36" rx="4" fill="#0a84ff"/><rect x="60" y="32" width="22" height="36" rx="4" fill="#28a35c"/></svg></template>
+</body>
+</html>

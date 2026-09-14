@@ -1,0 +1,891 @@
+<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div class="d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
+    <div>
+      <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
+        <i class="fas fa-ticket-alt text-success me-2"></i>Coupon <span style="color:#2e934a;">Proposal</span>
+      </h2>
+      <p class="mb-0" style="font-size: 0.95rem; margin-top: 7px; color:#8a9099;">สร้างและจัดการโปรโมชันคูปองสำหรับระบบ POS</p>
+    </div>
+    <div class="d-flex align-items-stretch gap-3 flex-wrap justify-content-end">
+      <div style="min-width:190px;background:rgba(255,255,255,.92);border:1.5px solid #d6dbe0;border-radius:10px;padding:9px 13px;">
+        <div class="fw-bold text-uppercase" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-calendar-check me-1"></i>วันที่ทำรายการ</div>
+        <div id="txnDateDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <div class="fw-bold text-uppercase mt-2" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-user-pen me-1"></i>ชื่อผู้ส่งงาน</div>
+        <div id="submitterDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <small class="text-muted d-block mt-1" style="font-size:9px;"><i class="fas fa-lock me-1"></i>บันทึกอัตโนมัติ (แก้ไขไม่ได้)</small>
+        <input type="hidden" id="txnDate"><input type="hidden" id="submittedBy">
+      </div>
+      <div style="min-width: 240px;">
+        <label class="fw-bold text-uppercase d-block mb-1" style="font-size: 12px; color: #6b7280; letter-spacing: 1px;">TARGET MONTH <span class="text-danger">*</span></label>
+        <input type="month" id="globalMonth" class="form-control fw-bold text-dark shadow-none" style="font-size: 1.05rem; border:1.5px solid #d6dbe0; border-radius:9px;" min="2026-06">
+        <small class="text-muted d-block mt-1" style="font-size:10px;"><i class="fas fa-lock me-1"></i>เลือกย้อนหลังไม่ได้</small>
+      </div>
+    </div>
+  </div>
+  <div id="loadingStatus" class="text-center p-5">
+    <div class="spinner-border text-warning" role="status"></div>
+    <p class="mt-2 fw-bold" id="statusMessage">LOADING MASTER DATA (ITEMS & BRANCHES)...</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div id="pcCustomerGroup"></div>
+    <div id="campaignList"></div>
+
+    <div class="mb-4 text-center">
+      <button class="btn btn-dark w-100 fw-bold py-3 text-white shadow-sm" onclick="window.addCampaign()">
+        <i class="fas fa-plus-circle me-2"></i> ADD NEW CAMPAIGN
+      </button>
+    </div>
+    <div class="text-center mb-5">
+      <button class="btn btn-warning shadow px-5 py-3 fw-bold border border-dark text-dark" onclick="window.submitAllData()" id="mainSubmitBtn" style="min-width: 450px; font-size: 1.3rem;">
+        SEND TO IT DEPARTMENT <i class="fas fa-paper-plane ms-2"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="branchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-dark" style="border-radius: 15px; border: 3px solid #000;">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-store me-2 text-warning"></i> SELECT BRANCHES (HIERARCHY)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="fw-bold small">SELECT MODE</label>
+            <select id="mainBranchMode" class="form-select border-dark shadow-none" onchange="window.handleBranchModeChange()">
+              <option value="MASTER">SEARCH BRANCH (ID/NAME)</option>
+              <option value="HIERARCHY">SELECT BY HIERARCHY (GROUP/TYPE)</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">FILTER BY</label>
+            <select id="hItemType" class="form-select border-dark shadow-none" onchange="window.handleHItemChange()">
+              <option value="">-- Select --</option>
+              <option value="type">TYPE (COCO/FRAN)</option>
+              <option value="group">GROUP (BKK/UPC)</option>
+              <option value="class">CLASS (TIER)</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">CONTENT</label>
+            <select id="hItemContent" class="form-select border-dark shadow-none" onchange="window.renderBranchTable()">
+              <option value="ALL">-- All Stores --</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+            <input type="text" id="branchSearch" class="form-control border-dark shadow-none" placeholder="Search by ID or Name..." oninput="window.renderBranchTable()">
+        </div>
+        <div class="table-responsive border border-dark rounded" style="max-height: 400px; background: #fff;">
+          <table class="table table-hover table-bordered m-0">
+            <thead class="table-dark sticky-top">
+              <tr class="text-center">
+                <th width="50"><input type="checkbox" id="selectAllVisible" onchange="window.toggleAllVisible(this.checked)"></th>
+                <th width="100">ID</th>
+                <th>NAME (EN)</th>
+                <th>NAME (TH)</th>
+              </tr>
+            </thead>
+            <tbody id="branchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-white border-top border-dark d-flex justify-content-between">
+        <div class="fw-bold text-primary" id="selectedCountDisplay">Selected: 0</div>
+        <div>
+            <button type="button" class="btn btn-outline-danger fw-bold me-2" onclick="window.clearSelection()"><i class="fas fa-undo"></i> CLEAR ALL</button>
+            <button type="button" class="btn btn-dark fw-bold px-4" onclick="window.confirmBranchSelection()">CONFIRM SELECTION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link class="styles" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+  if (typeof window.isCouponPageActive === 'undefined') {
+      window.masterData = [];
+      window.masterBranches = []; 
+      window.categories = [];
+      window.existingVoucherNames = []; 
+      window.campaignCount = 0;
+      window.activeCampId = null;
+      window.branchModalObj = null;
+      window.isInitializing = false;
+  }
+
+  window.isCouponPageActive = function() {
+    // Robust: the page is "active" as long as its DOM is still mounted in the
+    // content area. Tying this to the nav 'active-menu' class made the loader
+    // hang (stuck on spinner) whenever the page was opened via a path that
+    // didn't set that class, or when the success callback raced a re-nav.
+    return !!document.getElementById('campaignList');
+  };
+
+  window.disposeCoupon = function() {
+      if (window.branchModalObj) {
+          try {
+              const modalEl = document.getElementById('branchModal');
+              if (modalEl) {
+                  const bsModal = bootstrap.Modal.getInstance(modalEl);
+                  if (bsModal) bsModal.dispose();
+                  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+              }
+          } catch(e) {}
+          window.branchModalObj = null;
+      }
+      window.masterData = [];
+      window.masterBranches = [];
+      window.campaignCount = 0;
+      window.isInitializing = false;
+      console.log("Coupon Page Disposed.");
+  };
+
+  window.loadMasterData = function() {
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (!window.isCouponPageActive()) return;
+        window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
+        window.__pcRawMaster = response.items || [];
+        window.masterBranches = response.branches || []; 
+        window.categories = (function(){ var cc={}; window.masterData.forEach(function(it){ if(it.category && it.cateCode && !(it.category in cc)) cc[it.category]=it.cateCode; }); window.catCodeMap=cc; return [...new Set(window.masterData.map(i => i.category))].filter(Boolean).sort(function(a,b){ var na=parseInt(cc[a],10),nb=parseInt(cc[b],10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; if(isNaN(na)&&!isNaN(nb))return 1; if(!isNaN(na)&&isNaN(nb))return -1; return String(a).localeCompare(String(b)); }); })();
+        window.renderPage();
+      })
+      .withFailureHandler(function(err) {
+        console.error("Load Error: ", err);
+        window.isInitializing = false;
+      })
+      .getMasterDataExtended();
+  };
+
+  window.renderPage = function() {
+    if (!window.isCouponPageActive()) return;
+    var ls = document.getElementById('loadingStatus'); if (ls) ls.style.display = 'none';
+    var mc = document.getElementById('mainContent'); if (mc) mc.style.display = 'block';
+    const list = document.getElementById('campaignList');
+    if (list) list.innerHTML = "";
+    window.campaignCount = 0;
+    if (typeof window.addCampaign === 'function') window.addCampaign();
+    window.isInitializing = false;   // init complete — never leave the guard stuck
+  };
+
+  window.resetCouponForm = function() {
+    google.script.run
+      .withSuccessHandler(function(names) {
+        if (!window.isCouponPageActive()) return;
+        window.existingVoucherNames = (names || []).map(n => String(n).toLowerCase().trim());
+      })
+      .getExistingCampaignNames();
+  };
+
+  window.initCoupon = function() {
+    // NOTE: no isInitializing early-return guard — it could leave the page stuck
+    // on the spinner if a prior init aborted. renderPage() is idempotent (it
+    // clears the list first), so a re-entrant init just re-renders cleanly.
+    window.isInitializing = true;
+    var ls = document.getElementById('loadingStatus'); if (ls) ls.style.display = 'block';
+    var mc = document.getElementById('mainContent'); if (mc) mc.style.display = 'none';
+    const list = document.getElementById('campaignList');
+    if (list) list.innerHTML = ""; 
+    const modalEl = document.getElementById('branchModal');
+    if (modalEl) {
+        window.branchModalObj = new bootstrap.Modal(modalEl);
+    }
+    window.loadMasterData();
+    window.resetCouponForm();
+    // failsafe: if master data never arrives, drop the spinner so the page is usable
+    setTimeout(function () {
+      if (window.isInitializing && document.getElementById('campaignList')) { window.renderPage(); }
+    }, 4000);
+  };
+
+  /* หมวดนี้เปิดให้เลือกในฟอร์ม Coupon ไหม? (คุมจากหน้า Form Display — pc_cat_forms) */
+  window.pcCatShownInCoupon = function(cat){
+    try{ var m=JSON.parse(localStorage.getItem('pc_cat_forms')||'{}')||{}; var o=m[cat]; if(o && o.coupon!==undefined) return !!o.coupon; }catch(e){}
+    return true;
+  };
+  window.checkDuplicateName = function(currentInput) {
+    const val = currentInput.value.trim().toLowerCase();
+    if (val.length < 3) return;
+    const uiNames = Array.from(document.querySelectorAll('.camp-name'))
+        .filter(input => input !== currentInput)
+        .map(input => input.value.trim().toLowerCase());
+    if (uiNames.includes(val) || window.existingVoucherNames.includes(val)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'พบข้อมูลซ้ำในระบบ',
+            text: `พบชื่อแคมเปญ "${currentInput.value}" มีอยู่แล้วในระบบ`,
+            confirmButtonColor: '#000'
+        }).then(() => {
+            currentInput.value = '';
+            currentInput.focus();
+        });
+    }
+  };
+
+window.submitAllData = async function() {
+    const monthInput = document.getElementById('globalMonth');
+    if (!monthInput || !monthInput.value) return showError('กรุณาระบุเดือนประจำงวดแคมเปญ (Target Month)', monthInput);
+    const now = new Date();
+    const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    if (monthInput.value < currentMonth) return showError('ไม่สามารถเลือกเดือนย้อนหลังได้', monthInput);
+    const _txnDate = (document.getElementById('txnDate') || {}).value || now.toISOString();
+    const _submittedBy = (document.getElementById('submittedBy') || {}).value || (function(){ try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch(e){ return ''; } })();
+
+    const campaignCards = document.querySelectorAll('.campaign-card');
+    if (campaignCards.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเพิ่มแคมเปญอย่างน้อย 1 รายการ', 'warning');
+
+    if(window.PC_CustomerGroup){ const _cg=PC_CustomerGroup.validate(); if(!_cg.ok){ return Swal.fire('เลือกกลุ่มลูกค้า', _cg.msg, 'warning'); } }
+
+    const payload = []; 
+    const usedShortNames = new Set(); 
+    const usedCampaignNames = [];
+
+    for (const card of campaignCards) {
+        const nameInput = card.querySelector('.camp-name');
+        const startInput = card.querySelector('.camp-start');
+        const endInput = card.querySelector('.camp-end');
+        const storeHidden = card.querySelector('.camp-store');
+        const detailInput = card.querySelector('.camp-detail');
+        const mechanicInput = card.querySelector('.camp-mechanic');
+        const modes = Array.from(card.querySelectorAll('.mode-check:checked, .mode-check-all:checked'));
+
+        if (!nameInput.value.trim()) return showError('กรุณาระบุ "ชื่อแคมเปญ"', nameInput);
+        if (usedCampaignNames.includes(nameInput.value.trim().toLowerCase())) return showError(`ชื่อแคมเปญ "${nameInput.value.trim()}" ถูกใช้ซ้ำ`, nameInput);
+        usedCampaignNames.push(nameInput.value.trim().toLowerCase());
+
+        if (!startInput.value) return showError('กรุณาระบุ "วันที่เริ่มแคมเปญ"', startInput);
+        if (!endInput.value) return showError('กรุณาระบุ "วันที่สิ้นสุดแคมเปญ"', endInput);
+        if (new Date(startInput.value) > new Date(endInput.value)) return showError('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม', endInput);
+
+        if (!detailInput.value.trim()) return showError('กรุณาระบุ "รายละเอียดโปรโมชั่น"', detailInput);
+        if (!mechanicInput.value.trim()) return showError('กรุณาระบุ "เงื่อนไขโปรโมชั่น"', mechanicInput);
+        if (!storeHidden.value || storeHidden.value.trim() === "") return showError('กรุณาเลือก "สาขาที่ร่วมรายการ"', card.querySelector('.manual-branch-input'));
+        if (modes.length === 0) return showError('กรุณาเลือกช่องทาง "SALE MODE" อย่างน้อย 1 ช่องทาง', card.querySelector('.mode-container'));
+
+        const btnBlocks = card.querySelectorAll('.pos-button-block');
+        if (btnBlocks.length === 0) return showError('กรุณาเพิ่ม Coupon Button อย่างน้อย 1 ปุ่ม', card);
+
+        const firstType = btnBlocks[0].querySelector('.coupon-type:checked')?.value;
+        if (!firstType) return showError('กรุณาเลือก "Coupon Type" สำหรับปุ่มในแคมเปญนี้', btnBlocks[0]);
+
+        for (const block of btnBlocks) {
+            const currentTypeInput = block.querySelector('.coupon-type:checked');
+            if (!currentTypeInput || currentTypeInput.value !== firstType) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                Swal.fire({ icon: 'error', title: 'ประเภทคูปองไม่ตรงกัน!', text: `ทุกปุ่มต้องเลือก Coupon Type เดียวกัน (${firstType} เท่านั้น)`, confirmButtonText: 'รับทราบ' });
+                return;
+            }
+
+            const snInput = block.querySelector('.btn-sn');
+            const discInputEl = block.querySelector('.btn-disc-input');
+            const fileInput = block.querySelector('.btn-file');
+            
+            let attachedFileInfo = null;
+            if (firstType === 'Online') {
+                if (fileInput.files.length === 0) return showError('คูปองประเภท Online จำเป็นต้องแนบไฟล์รายชื่อ (.xlsx)', fileInput);
+                try {
+                    const base64Data = await toBase64(fileInput.files[0]);
+                    attachedFileInfo = { base64: base64Data.split(',')[1], mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
+                } catch (err) { return Swal.fire('ข้อผิดพลาด', 'ไม่สามารถประมวลผลไฟล์แนบได้', 'error'); }
+            }
+
+            if (!snInput.value.trim()) return showError('กรุณาระบุ "SHORT NAME (POS)"', snInput);
+            const snValue = snInput.value.trim().toUpperCase();
+            if (usedShortNames.has(snValue)) return showError(`ชื่อปุ่ม "${snValue}" ซ้ำกัน`, snInput);
+            usedShortNames.add(snValue);
+            // ครบวง (option ข): แกะโค้ดในไฟล์ → ลงทะเบียน pc_code_requests → IT ดาวน์โหลด Backoffice + ยืนยัน → สาขาค้นเจอ
+            if (firstType === 'Online') { try { if (window.PC_CodeConvert) PC_CodeConvert.ingestFromInput(fileInput, { campaign: nameInput.value.trim(), button: snInput.value.trim(), kindShort: 'coupon', proStatus: 'Normal', end: endInput.value }); } catch (e) {} }
+
+            if (discInputEl.value === "" || parseFloat(discInputEl.value) <= 0) return showError('กรุณาระบุค่า "DISCOUNT (AUTO)" ให้ถูกต้อง (ต้องมากกว่า 0)', discInputEl);
+
+            let hasItem = false;
+            block.querySelectorAll('.item-body tr').forEach(row => {
+                const ic = row.querySelector('.row-ic').value;
+                const search = row.querySelector('.row-search-input').value;
+                if (ic && search) {
+                    hasItem = true;
+                    const opVal = parseFloat(row.querySelector('.row-op').value.replace(/,/g, '')) || 0;
+                    const netVal = parseFloat(row.querySelector('.row-net').value.replace(/,/g, '')) || 0;
+                    const qty = parseFloat(row.querySelector('.row-qty').value.replace(/,/g, '')) || 0;
+
+                    payload.push({
+                        txnDate: _txnDate,
+                        submittedBy: _submittedBy,
+                        monthYear: monthInput.value,
+                        campaignName: nameInput.value.trim(),
+                        startDate: startInput.value,
+                        endDate: endInput.value,
+                        stores: storeHidden.value,
+                        couponType: firstType,
+                        saleModes: modes.map(cb => cb.value).join(', '),
+                        shortNamePOS: snValue,
+                        itemCode: ic,
+                        itemName: search,
+                        qty: qty,
+                        grossValue: opVal.toFixed(2),
+                        discountValue: (opVal - netVal).toFixed(2), 
+                        discountUnit: block.querySelector('.btn-disc-unit').value,
+                        netPrice: (netVal * qty).toFixed(2), 
+                        promotionDetail: detailInput.value.trim(),
+                        promotionCondition: mechanicInput.value.trim(),
+                        fileInfo: attachedFileInfo,
+                        cateCode: row.querySelector('.row-catecode').value,
+                        cateName: row.querySelector('.row-catname').value,
+                        ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+                    });
+                }
+            });
+            if (!hasItem) return showError('ปุ่มนี้ยังไม่มีการเลือกสินค้า', block.querySelector('.row-search-input'));
+        }
+    }
+
+    Swal.fire({
+      title: 'ยืนยันการบันทึก?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2e934a',
+      confirmButtonText: 'ตกลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        google.script.run
+          .withSuccessHandler(function(res) {
+            Swal.close();
+            if (res && res.status === "success") {
+                Swal.fire({ 
+                    title: 'บันทึกสำเร็จ!', 
+                    text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', 
+                    icon: 'success', 
+                    confirmButtonColor: '#2e934a' 
+                }).then(() => {
+                    resetForm();
+                    var _c = Array.from(new Set((payload || []).map(function (p) { return p.campaignName || p.campaign; }).filter(Boolean)));
+                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
+                });
+            } else { 
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + (res ? res.message : 'Unknown Error'), 'error'); 
+            }
+          })
+          .withFailureHandler(function(err) {
+            Swal.close(); 
+            Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
+          })
+          .submitCouponProposal(payload);
+      }
+    });
+};
+
+/* SPA: หน้าแทรกหลัง DOMContentLoaded → รันทันทีถ้า DOM พร้อมแล้ว */
+(function (fn) { if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', fn); else setTimeout(fn, 0); })(() => {
+    const monthInput = document.getElementById('globalMonth');
+    if (monthInput) {
+        const now = new Date();
+        const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        monthInput.setAttribute('min', currentMonth);
+        if (!monthInput.value) monthInput.value = currentMonth;
+    }
+    try {
+        var _u = (localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || '').trim() || 'ไม่ระบุผู้ใช้';
+        var _pcNow = new Date();
+        var d1=document.getElementById('txnDateDisplay'); if(d1) d1.textContent=_pcNow.toLocaleString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        var d2=document.getElementById('submitterDisplay'); if(d2) d2.textContent=_u;
+        var h1=document.getElementById('txnDate'); if(h1) h1.value=_pcNow.toISOString();
+        var h2=document.getElementById('submittedBy'); if(h2) h2.value=_u;
+    } catch(e) {}
+});
+
+function showError(msg, element) {
+    Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลไม่ครบถ้วน', text: msg, confirmButtonColor: '#000' }).then(() => {
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.focus();
+            element.classList.add('is-invalid');
+            element.style.border = "2px solid red";
+            setTimeout(() => { element.classList.remove('is-invalid'); element.style.border = ""; }, 4000);
+        }
+    });
+    return false;
+}
+
+function resetForm() {
+    const monthEl = document.getElementById('globalMonth');
+    if (monthEl) monthEl.value = '';
+    document.getElementById('campaignList').innerHTML = '';
+    window.campaignCount = 0; 
+    window.addCampaign(); 
+    window.scrollTo(0, 0); 
+}
+
+const toBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+});
+
+  window.openBranchModal = function(campId) {
+    window.activeCampId = campId;
+    var hidden = document.getElementById('hidden-store-' + campId);
+    var initial = (hidden && hidden.value) ? hidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+    StoreSelect.pick({
+      getBranches: function(){ return window.masterBranches || []; },
+      initialIds: initial,
+      onApply: function(ids, tokenStr, summary){
+        var container = document.getElementById('tag-container-' + campId);
+        if (container) container.querySelectorAll('.branch-tag').forEach(function(t){ t.remove(); });
+        var isTok = tokenStr==='ALL' || /(^|,\s*)[GCT]:/i.test(tokenStr||'');
+        if (isTok) window.createBranchTag(campId, summary || tokenStr, false, tokenStr);
+        else if (ids.length > 10) window.createBranchTag(campId, 'SELECTED ' + ids.length + ' STORES', false, ids.join(', '));
+        else ids.forEach(function(v){ window.createBranchTag(campId, v, false); });
+      }
+    });
+  };
+  window._legacyOpenBranchModal = function(campId) {
+    window.activeCampId = campId;
+    document.getElementById('branchSearch').value = '';
+    document.getElementById('mainBranchMode').value = 'MASTER';
+    window.handleBranchModeChange();
+    if (window.branchModalObj) window.branchModalObj.show();
+  };
+
+  window.handleBranchModeChange = function() {
+    const mode = document.getElementById('mainBranchMode').value;
+    const hOptions = document.querySelectorAll('.h-options');
+    hOptions.forEach(el => el.style.display = (mode === 'HIERARCHY' ? 'block' : 'none'));
+    window.renderBranchTable();
+  };
+
+  window.handleHItemChange = function() {
+    const type = document.getElementById('hItemType').value;
+    const contentDrop = document.getElementById('hItemContent');
+    contentDrop.innerHTML = '<option value="ALL">-- All Stores --</option>';
+    if (type) {
+        const uniqueVals = [...new Set(window.masterBranches.map(b => b[type]))].filter(Boolean).sort();
+        uniqueVals.forEach(val => { contentDrop.innerHTML += `<option value="${val}">${val}</option>`; });
+    }
+    window.renderBranchTable();
+  };
+
+  window.renderBranchTable = function() {
+    const search = (document.getElementById('branchSearch').value || "").toLowerCase();
+    const mode = document.getElementById('mainBranchMode').value;
+    const hType = document.getElementById('hItemType').value;
+    const hContent = document.getElementById('hItemContent').value;
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    if (!container) return; 
+    const currentTags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+
+    const filtered = window.masterBranches.filter(b => {
+        const matchSearch = String(b.id + b.name + (b.nameTH || '')).toLowerCase().includes(search);
+        let matchHierarchy = true;
+        if (mode === 'HIERARCHY' && hType && hContent !== 'ALL') {
+            matchHierarchy = (String(b[hType] || "") === hContent);
+        }
+        return matchSearch && matchHierarchy;
+    });
+
+    const body = document.getElementById('branchTableBody');
+    body.innerHTML = filtered.map(b => {
+        const isChecked = currentTags.includes(b.id) ? 'checked' : '';
+        return `
+        <tr class="text-center">
+            <td><input type="checkbox" class="branch-item-check" value="${b.id}" ${isChecked} onchange="window.updateSelectedCounter()"></td>
+            <td class="fw-bold">${b.id}</td>
+            <td class="text-start ps-3">${b.name}</td>
+            <td class="text-start ps-3">${b.nameTH || ''}</td>
+        </tr>`;
+    }).join('');
+    window.updateSelectedCounter();
+  };
+
+  window.confirmBranchSelection = function() {
+    const selected = Array.from(document.querySelectorAll('.branch-item-check:checked')).map(ck => ck.value);
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    container.querySelectorAll('.branch-tag').forEach(t => t.remove());
+    if (selected.length > 10) {
+        window.createBranchTag(window.activeCampId, `SELECTED ${selected.length} STORES`, false, selected.join(', '));
+    } else {
+        selected.forEach(val => window.createBranchTag(window.activeCampId, val, false));
+    }
+    window.branchModalObj.hide();
+  };
+
+  window.createBranchTag = function(campId, value, isManual, fullList = null) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const tag = document.createElement('span');
+    const isAll = value.toUpperCase() === 'ALL';
+    tag.className = `branch-tag badge ${isAll ? 'bg-warning text-dark border border-dark' : 'bg-primary'} d-flex align-items-center gap-1`;
+    tag.dataset.val = fullList || value;
+    tag.innerHTML = `${value} <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove(); window.syncStoreHidden('${campId}')"></i>`;
+    container.insertBefore(tag, container.querySelector('.manual-branch-input'));
+    window.syncStoreHidden(campId);
+  };
+
+  window.syncStoreHidden = function(campId) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const tags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    const hiddenInput = document.getElementById(`hidden-store-${campId}`);
+    if (hiddenInput) hiddenInput.value = tags.join(', ');
+  };
+
+  window.updateSelectedCounter = function() {
+    const display = document.getElementById('selectedCountDisplay');
+    if(display) display.innerText = `Selected: ${document.querySelectorAll('.branch-item-check:checked').length}`;
+  };
+
+  window.toggleAllVisible = function(checked) {
+    document.querySelectorAll('.branch-item-check').forEach(ck => ck.checked = checked);
+    window.updateSelectedCounter();
+  };
+
+  window.clearSelection = function() {
+    document.querySelectorAll('.branch-item-check').forEach(ck => ck.checked = false);
+    window.updateSelectedCounter();
+  };
+
+  window.checkSnLength = function(input) {
+    if (input.value.length >= 40) {
+      Swal.fire({ icon: 'warning', title: 'จำกัดตัวอักษร', text: 'Short Name (POS) ห้ามเกิน 40 ตัวอักษร', timer: 2000, showConfirmButton: false });
+      input.value = input.value.substring(0, 40);
+    }
+  };
+
+  window.pcApplyModeFilter = function(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} };
+window.addCampaign = function() {
+    window.campaignCount++;
+    const campId = 'camp-' + Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    const html = `
+      <div class="card mb-5 border-dark campaign-card shadow" id="${campId}" style="border: 2px solid #000; border-radius: 15px; overflow: hidden;">
+        <div class="card-header bg-dark d-flex justify-content-between align-items-center py-2 border-0">
+          <span class="fw-bold text-white"><i class="fa-solid fa-ticket text-warning me-2"></i> COUPON CAMPAIGN #${window.campaignCount}</span>
+          <i class="fas fa-trash-alt text-danger cursor-pointer" onclick="document.getElementById('${campId}').remove()"></i>
+        </div>
+        <div class="card-body bg-white">
+          <div class="bg-light p-3 rounded border border-dark mx-0 mb-4">
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <label class="small fw-bold text-uppercase">Campaign Name *</label>
+                <input type="text" class="form-control camp-name border-dark shadow-none" oninput="window.checkDuplicateName(this)">
+              </div>
+              <div class="col-md-2"><label class="small fw-bold text-uppercase">Start *</label><input type="date" class="form-control camp-start border-dark shadow-none" min="${(window.PCLock&&PCLock.minStartISO('coupon'))||today}"></div>
+              <div class="col-md-2"><label class="small fw-bold text-uppercase">End *</label><input type="date" class="form-control camp-end border-dark shadow-none" min="${today}"></div>
+              <div class="col-md-5">
+                <label class="small fw-bold text-uppercase">Store Selection *</label>
+                <div class="input-group">
+                  <div class="form-control border-dark d-flex flex-wrap gap-1 p-2 bg-white" style="min-height:38px; height:auto;" id="tag-container-${campId}">
+                    <input type="text" class="border-0 shadow-none flex-grow-1 manual-branch-input" placeholder="Branch ID..." onkeydown="if(event.key==='Enter' && this.value.trim()){window.createBranchTag('${campId}', this.value.toUpperCase().trim(), true); this.value=''}">
+                  </div>
+                  <button class="btn btn-dark" type="button" onclick="window.openBranchModal('${campId}')"><i class="fas fa-list text-warning"></i></button>
+                </div>
+                <input type="hidden" class="camp-store" id="hidden-store-${campId}">
+              </div>
+            </div>
+            <div class="row g-3 border-top border-dark pt-3 mt-1">
+              <div class="col-md-12 mode-container">
+                <label class="small fw-bold text-uppercase d-block mb-3">SALE MODE *</label>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                  <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;"><input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="All Delivery" onchange="window.handleSelectionGlobal(this, '${campId}', 'all')"> <label class="form-check-label small fw-bold">ALL DELIVERY</label></div>
+                  <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;"><input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="All Channel" onchange="window.handleSelectionGlobal(this, '${campId}', 'all')"> <label class="form-check-label small fw-bold">ALL CHANNEL</label></div>
+                  <div class="vr mx-1" style="width: 2px; height: 30px; background-color: #000;"></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Take Away" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Take Away</label></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="GRAB" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">GRAB</label></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="LINEMAN" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">LINEMAN</label></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="ShopeeFood" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">ShopeeFood</label></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Robinhood" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Robinhood</label></div>
+                  <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Gokoo" onchange="window.handleSelectionGlobal(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Gokoo</label></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="button-container" id="btn-container-${campId}"></div>
+          <button class="btn btn-outline-dark btn-sm fw-bold w-100 mt-2 mb-4" type="button" onclick="window.addButton('${campId}')"><i class="fas fa-plus"></i> ADD NEW COUPON BUTTON</button>
+          <div class="mb-3 p-2 border border-dark rounded bg-white d-flex align-items-center gap-3">
+            <span class="small fw-bold text-uppercase"><i class="fas fa-arrow-up-right-dots me-1"></i>เงื่อนไขพิเศษ</span>
+            <div class="form-check m-0"><input class="form-check-input border-dark me-1" type="checkbox" onchange="window.cpTruffle(this)"><label class="form-check-label small fw-bold">เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย</label></div>
+          </div>
+          <div class="row g-3 border-top pt-3 border-dark mx-0">
+            <div class="col-md-6"><div class="detail-header">PROMOTION DETAIL *</div><textarea class="form-control border-dark shadow-none camp-detail" rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุรายละเอียดโปรโมชั่น..."></textarea></div>
+            <div class="col-md-6"><div class="mechanic-header">PROMOTION CONDITION *</div><textarea class="form-control border-dark shadow-none camp-mechanic" rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุเงื่อนไขการใช้งาน..."></textarea></div>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('campaignList').insertAdjacentHTML('beforeend', html);
+    try{ window.pcApplyModeFilter(document.getElementById(campId), 'coupon'); }catch(e){}
+    window.addButton(campId);
+};
+
+window.addButton = function(campId) {
+    const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const html = `
+      <div class="pos-button-block mb-4 p-3 border border-dark rounded bg-white shadow-sm" id="${btnId}" style="border-left: 10px solid #2e934a !important;">
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="small fw-bold text-uppercase">COUPON TYPE *</label>
+            <div class="d-flex gap-4 p-2 bg-light border border-dark rounded">
+              <div class="form-check"><input class="form-check-input coupon-type border-dark" type="radio" name="type-${btnId}" value="Normal" checked onchange="window.toggleFileSection('${btnId}')"> <label class="form-check-label small fw-bold">Normal</label></div>
+              <div class="form-check"><input class="form-check-input coupon-type border-dark" type="radio" name="type-${btnId}" value="Online" onchange="window.toggleFileSection('${btnId}')"> <label class="form-check-label small fw-bold">Online</label></div>
+            </div>
+          </div>
+          <div class="col-md-6" id="file-section-${btnId}" style="display: none;">
+            <label class="small fw-bold text-uppercase">ATTACH FILE (.xlsx) *</label>
+            <input type="file" class="form-control btn-file border-dark shadow-none">
+          </div>
+          <div class="col-md-12">
+            <label class="small fw-bold text-uppercase">SHORT NAME (POS) - COUPON NAME*</label>
+            <input type="text" class="form-control btn-sn border-dark fw-bold text-dark shadow-none" maxlength="40" placeholder="Max 40 Characters..." oninput="window.checkSnLength(this)">
+          </div>
+        </div>
+
+        <table class="table table-sm table-bordered border-dark align-middle mb-2">
+          <thead class="table-dark small text-center">
+            <tr>
+              <th style="width: 20%;">Category</th>
+              <th style="width: 35%;">Search Item *</th>
+              <th style="width: 10%;">QTY *</th>
+              <th style="width: 15%;">Price</th>
+              <th style="width: 15%;">Net Price</th>
+              <th style="width: 5%;"></th>
+            </tr>
+          </thead>
+          <tbody class="item-body"></tbody>
+          <tfoot class="table-light fw-bold small">
+            <tr>
+                <td colspan="4" class="text-end text-danger align-middle">DISCOUNT (AUTO):</td>
+                <td>
+                    <div class="input-group input-group-sm border border-danger rounded bg-white">
+                        <input type="number" class="form-control text-end border-0 fw-bold btn-disc-input shadow-none text-danger" value="0" oninput="window.updateTotals('${btnId}')">
+                        <select class="form-select border-0 fw-bold btn-disc-unit shadow-none text-danger" style="max-width: 65px;" onchange="window.updateTotals('${btnId}')"><option value="CUR">฿</option><option value="PCT">%</option></select>
+                    </div>
+                </td>
+                <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <button class="btn btn-sm btn-dark fw-bold" onclick="window.addItemRow('${btnId}')"><i class="fas fa-plus"></i> ADD ITEM </button>
+            <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove</small>
+        </div>
+      </div>`;
+    document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.addItemRow(btnId);
+};
+
+window.toggleFileSection = function(btnId) {
+    const isOnline = document.querySelector(`input[name="type-${btnId}"]:checked`).value === 'Online';
+    const el = document.getElementById('file-section-' + btnId);
+    if(el) el.style.display = isOnline ? 'block' : 'none';
+};
+
+window.addItemRow = function(btnId) {
+    const tbody = document.querySelector("#" + btnId + " .item-body");
+    const rowId = 'row-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.innerHTML = `
+      <td><select class="form-select form-select-sm border-0 row-cat-select shadow-none" onchange="window.updateDatalist('${rowId}', this.value)"><option value="">-- All --</option>${(window.PC_FormSubset?window.PC_FormSubset.optionHTML('coupon'):'')}${window.categories.filter(window.pcCatShownInCoupon).map(cat => `<option value="${cat}">${(window.catCodeMap&&window.catCodeMap[cat])?window.catCodeMap[cat]+' - ':''}${cat}</option>`).join('')}</select></td>
+      <td>
+        <input type="text" list="list-${rowId}" class="form-control form-control-sm border-0 row-search-input shadow-none fw-bold text-green-custom" oninput="window.handleFill('${rowId}', this.value, '${btnId}')" placeholder="Search product...">
+        <datalist id="list-${rowId}"></datalist>
+        <input type="hidden" class="row-ic"><input type="hidden" class="row-catecode"><input type="hidden" class="row-catname"><input type="hidden" class="row-issubset">
+      </td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-center row-qty shadow-none" value="1" min="1" oninput="window.updateTotals('${btnId}')"></td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-end row-op shadow-none bg-white" step="0.01" oninput="window.updateTotals('${btnId}')"></td>
+      <td><input type="text" class="form-control form-control-sm border-0 text-end row-net shadow-none fw-bold text-success" readonly value="0.00"></td>
+      <td class="text-center">
+        <span class="text-danger cursor-pointer" onclick="this.closest('tr').remove(); window.updateTotals('${btnId}')">
+            <i class="fas fa-times"></i>
+        </span>
+      </td>`;
+    tbody.appendChild(tr);
+    window.updateDatalist(rowId, "");
+};
+
+window.updateTotals = function(btnId) {
+    const btnBlock = document.getElementById(btnId);
+    if (!btnBlock) return;
+    
+    const discInputEl = btnBlock.querySelector('.btn-disc-input');
+    const discUnit = btnBlock.querySelector('.btn-disc-unit').value;
+    const rows = Array.from(btnBlock.querySelectorAll('.item-body tr'));
+    let discInput = parseFloat(discInputEl.value) || 0;
+
+    if (discInput % 1 !== 0) {
+        discInput = Math.floor(discInput);
+        discInputEl.value = discInput;
+        Swal.fire({ 
+            icon: 'warning', 
+            title: 'ไม่รองรับเศษสตางค์', 
+            text: `ระบบปัดเศษทิ้งเป็น ${discInput} ให้อัตโนมัติ`, 
+            timer: 2000, 
+            showConfirmButton: false 
+        });
+    }
+
+    if (discInput <= 0) {
+        discInputEl.style.borderColor = 'red';
+    } else {
+        discInputEl.style.borderColor = '';
+    }
+
+    rows.forEach(row => {
+        const op = parseFloat(row.querySelector('.row-op').value.replace(/,/g, '')) || 0;
+        let netPerItem = (discUnit === 'PCT') 
+            ? (op - (op * discInput / 100)) 
+            : (op - discInput);
+        netPerItem = Math.max(0, netPerItem);
+        row.querySelector('.row-net').value = netPerItem.toFixed(2);
+    });
+};
+
+window.toggleCouponView = function(campId, type) {
+    const fileSection = document.getElementById('file-section-' + campId);
+    if (type === 'Online') {
+        fileSection.style.display = 'block';
+    } else {
+        fileSection.style.display = 'none';
+    }
+};
+  window.cpTruffle = function(el){
+    var n=el, ta=null;
+    while(n && !ta){ n=n.parentElement; if(n && n.querySelector) ta=n.querySelector('.camp-mechanic'); }
+    if(!ta) return;
+    var L='• เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย', OLD='• ผงทรัฟเฟิล +10 บาท';
+    var lines=ta.value.split('\n').filter(function(x){var t=x.trim(); return t!==L && t!==OLD;});
+    if(el.checked) lines.push(L);
+    ta.value=lines.filter(function(x){return x.trim();}).join('\n');
+  };
+  window.handleFill = function(rowId, val, btnId) {
+    const row = document.getElementById(rowId);
+    const btnBlock = document.getElementById(btnId);
+    if (!row || !btnBlock) return;
+    // ----- SUBSET MODE (เลือกสินค้าเป็นกลุ่ม) -----
+    var _isSub = row.querySelector('.row-issubset') && row.querySelector('.row-issubset').value === '1';
+    if (_isSub) {
+      window.updateDatalist(rowId, '__SUBSET__', val);
+      var s = window.PC_FormSubset ? window.PC_FormSubset.resolve('coupon', val) : null;
+      var _op = row.querySelector('.row-op');
+      if (s) {
+        row.querySelector('.row-search-input').value = s.name || s.ssCode;
+        row.querySelector('.row-ic').value = s.ssCode;
+        if (row.querySelector('.row-catname')) row.querySelector('.row-catname').value = 'Subset';
+        if (row.querySelector('.row-catecode')) row.querySelector('.row-catecode').value = '';
+        if (_op) { _op.value = window.PC_FormSubset.price(s.ssCode) || 0; _op.readOnly = true; _op.classList.add('bg-light'); }
+      } else {
+        row.querySelector('.row-ic').value = '';
+        if (_op) { _op.readOnly = false; _op.classList.remove('bg-light'); }
+      }
+      window.updateTotals(btnId);
+      return;
+    }
+    const item = window.masterData.find(d => d.itemNameEN === val || String(d.itemCode) === String(val) || (String(d.itemCode) + ' - ' + d.itemNameEN) === val);
+    // refresh suggestions (capped) based on typed text + row category
+    const _catSel = row.querySelector('.row-cat-select');
+    window.updateDatalist(rowId, _catSel ? _catSel.value : '', val);
+
+    if (item) {
+      row.querySelector('.row-search-input').value = item.itemCode + ' - ' + item.itemNameEN; 
+      row.querySelector('.row-ic').value = item.itemCode; 
+      row.querySelector('.row-catecode').value = item.cateCode;
+      row.querySelector('.row-catname').value = item.category;
+      
+      const deliveryKeywords = ["GRAB", "LINEMAN", "SHOPEE", "ROBINHOOD", "DELIVERY", "GOKOO"];
+      let isDelivery = false;
+      
+      const campCard = btnBlock.closest('.campaign-card');
+      if (campCard) {
+          campCard.querySelectorAll('.mode-check:checked, .mode-check-all:checked').forEach(cb => {
+            if (deliveryKeywords.some(key => cb.value.toUpperCase().includes(key))) isDelivery = true;
+          });
+      }
+      
+      row.querySelector('.row-op').value = isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0); 
+    } else {
+      row.querySelector('.row-ic').value = ""; row.querySelector('.row-catecode').value = "";
+      row.querySelector('.row-catname').value = ""; row.querySelector('.row-op').value = ""; 
+      row.querySelector('.row-qty').value = "1"; 
+    }
+    window.updateTotals(btnId);
+  };
+
+  // Build a SMALL capped datalist (max 50) filtered by category + typed query.
+  // Dumping all 5,350 products per row froze the page (huge DOM + i18n observer walk).
+  window.updateDatalist = function(rowId, catName, query) {
+    const dl = document.getElementById('list-' + rowId);
+    if (!dl) return;
+    if (catName === '__SUBSET__') {
+      var _r = document.getElementById(rowId);
+      if (_r) { var _is = _r.querySelector('.row-issubset'); if (_is) _is.value = '1'; var _si = _r.querySelector('.row-search-input'); if (_si) _si.placeholder = 'ค้นหากลุ่มสินค้า…'; }
+      dl.innerHTML = window.PC_FormSubset ? window.PC_FormSubset.dlOptions('coupon') : '';
+      return;
+    }
+    (function(){ var _r=document.getElementById(rowId); if(_r && !query){ var _is=_r.querySelector('.row-issubset'); if(_is) _is.value=''; var _op=_r.querySelector('.row-op'); if(_op){ _op.readOnly=false; _op.classList.remove('bg-light'); } } })();
+    const q = String(query || '').trim().toLowerCase();
+    const cat = catName ? String(catName) : '';
+    const CAP = 50;
+    const md = window.masterData || [];
+    const out = [];
+    for (let i = 0; i < md.length && out.length < CAP; i++) {
+      const d = md[i];
+      if (cat && String(d.category) !== cat) continue;
+      if (q) {
+        const hay = (String(d.itemNameEN || '') + ' ' + String(d.itemCode || '')).toLowerCase();
+        if (hay.indexOf(q) === -1) continue;
+      }
+      out.push('<option value="' + (d.itemCode || '') + ' - ' + (d.itemNameEN || '') + '">' + (d.category || '') + '</option>');
+    }
+    dl.innerHTML = out.join('');
+  };
+
+  window.handleSelectionGlobal = function(el, campId, type) {
+    const card = document.getElementById(campId);
+    const allChecks = card.querySelectorAll('.mode-check-all');
+    const singleChecks = card.querySelectorAll('.mode-check');
+
+    if (el.checked) {
+      if (el.value === "Take Away") {
+        card.querySelectorAll('.mode-check, .mode-check-all').forEach(cb => { if (cb !== el) cb.checked = false; });
+      } else {
+        const takeAway = card.querySelector('input[value="Take Away"]');
+        if (takeAway) takeAway.checked = false;
+
+        if (type === 'all') {
+          allChecks.forEach(cb => { if (cb !== el) cb.checked = false; });
+          singleChecks.forEach(cb => { if (cb.value !== "Take Away") cb.checked = false; });
+        } else {
+          allChecks.forEach(cb => cb.checked = false);
+        }
+      }
+    }
+
+    card.querySelectorAll('.pos-button-block').forEach(block => {
+        block.querySelectorAll('.item-body tr').forEach(row => {
+          const itemName = row.querySelector('.row-search-input').value;
+          if(itemName) window.handleFill(row.id, itemName, block.id);
+        });
+    });
+};
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
+  .cursor-pointer { cursor: pointer; }
+  .text-green-custom { color: #28a745 !important; font-weight: bold !important; }
+  .detail-header { background: #000; color: #ffffff; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 5px 5px 0 0; }
+  .mechanic-header { background: var(--pc-yellow,#2e934a); color: #000; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 5px 5px 0 0; border: 1px solid #000; }
+  .form-control:focus { border-color: #ffffff !important; box-shadow: none; border-width: 2px; }
+  .form-check-input:checked { background-color: #000 !important; border-color: #000 !important; }
+  .branch-tag { border-radius: 4px; padding: 4px 8px; font-weight: bold; font-size: 12px; }
+  .sticky-top { position: sticky; top: 0; z-index: 1020; }
+  .pc-promo-io .btn { white-space: nowrap; }
+</style>
+<script>/* import bar ถอดออกทุกฟอร์มแล้ว (จะเปิดใช้เฉพาะหน้า Item Set ผ่านหน้าตั้งค่าในอนาคต) — window.PromoIO && window.PromoIO.mount('coupon'); */</script>

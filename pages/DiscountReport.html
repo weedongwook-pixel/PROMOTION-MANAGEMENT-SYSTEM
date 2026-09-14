@@ -1,0 +1,322 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+  #content-area .dr-scope { font-family: 'Kanit', sans-serif; }
+  .dr-scope { --pc-dark:#1a1d20; --pc-green:#2e934a; --pc-yellow:#fbbc04; --pc-red:#dc3545; }
+  .dr-scope .dr-header { background:#2e934a; color:#fff; border-radius:14px; }
+  .dr-scope .dr-tab { background:none; border:none; border-bottom:3px solid transparent; padding:10px 6px; font-weight:700; font-size:.95rem; color:#7a7a7a; cursor:pointer; transition:.15s; }
+  .dr-scope .dr-tab:hover { color:var(--pc-green); }
+  .dr-scope .dr-tab.active { color:var(--pc-green); border-bottom-color:var(--pc-green); }
+  .dr-stat { background:#fff; border-radius:12px; padding:18px 20px; box-shadow:0 .4rem 1rem rgba(0,0,0,.08); border-left:6px solid var(--pc-green); }
+  .dr-stat .lbl { font-size:.72rem; font-weight:700; color:#8a8f95; text-transform:uppercase; letter-spacing:.5px; }
+  .dr-stat .val { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.7rem; color:var(--pc-dark); line-height:1.1; }
+  .dr-stat.amber { border-left-color:var(--pc-yellow); }
+  .dr-stat.red { border-left-color:var(--pc-red); }
+  .dr-stat.dark { border-left-color:var(--pc-dark); }
+  .dr-card { background:#fff; border-radius:12px; box-shadow:0 .4rem 1rem rgba(0,0,0,.08); overflow:hidden; }
+  .dr-bundle { border-bottom:1px solid #eef0f2; }
+  .dr-bundle-head { display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background .12s; }
+  .dr-bundle-head:hover { background:#f7faf8; }
+  .dr-bundle.open .dr-bundle-head { background:#f1f8f3; }
+  .dr-type { font-size:.66rem; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .dr-type.itemset { background:#e7f1ff; color:#0d6efd; }
+  .dr-type.combo { background:#e9f7ef; color:#1f7a47; }
+  .dr-type.value { background:#fff4e0; color:#9a6700; }
+  .dr-type.price { background:#fde8ec; color:#a01a2e; }
+  .dr-bundle-name { font-weight:600; color:var(--pc-dark); }
+  .dr-bundle-meta { font-size:.78rem; color:#9097a0; }
+  .dr-bundle-num { text-align:right; min-width:96px; }
+  .dr-bundle-num .n { font-family:'Montserrat',sans-serif; font-weight:800; }
+  .dr-bundle-num .k { font-size:.62rem; color:#9097a0; text-transform:uppercase; letter-spacing:.4px; }
+  .dr-discpill { font-family:'Montserrat',sans-serif; font-weight:800; font-size:.8rem; padding:4px 10px; border-radius:8px; background:#fde8ec; color:#a01a2e; white-space:nowrap; }
+  .dr-lines { display:none; padding:4px 18px 18px; }
+  .dr-bundle.open .dr-lines { display:block; }
+  .dr-lines table { width:100%; border-collapse:separate; border-spacing:0; font-size:.85rem; }
+  .dr-lines thead th { background:var(--pc-dark); color:#fff; font-weight:600; padding:8px 10px; font-size:.74rem; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0; }
+  .dr-lines thead th:first-child { border-radius:8px 0 0 0; }
+  .dr-lines thead th:last-child { border-radius:0 8px 0 0; }
+  .dr-lines tbody td { padding:8px 10px; border-bottom:1px solid #eef0f2; }
+  .dr-lines tbody tr:hover { background:#f7faf8; }
+  .dr-lines .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .dr-lines .alloc { color:#a01a2e; font-weight:600; }
+  .dr-lines tfoot td { padding:9px 10px; font-weight:700; background:#f1f8f3; border-top:2px solid var(--pc-green); }
+  .dr-ftable { width:100%; border-collapse:separate; border-spacing:0; font-size:.82rem; min-width:1500px; }
+  .dr-ftable thead th { background:var(--pc-dark); color:#fff; font-weight:600; padding:10px 8px; font-size:.72rem; white-space:nowrap; position:sticky; top:0; z-index:5; }
+  .dr-ftable tbody td { padding:8px; border-bottom:1px solid #eef0f2; white-space:nowrap; }
+  .dr-ftable tbody tr:nth-child(even) { background:#fafbfc; }
+  .dr-scroll { overflow:auto; max-height:calc(100vh - 320px); border-radius:12px; }
+  .dr-empty { text-align:center; padding:70px 20px; color:#9097a0; }
+  .dr-empty img { width:120px; opacity:.5; margin-bottom:16px; }
+  .dr-btn { border:none; border-radius:9px; font-weight:700; padding:8px 18px; cursor:pointer; transition:.15s; font-family:'Kanit',sans-serif; }
+  .dr-btn-x { background:#1f7a47; color:#fff; }
+  .dr-btn-x:hover { background:#176038; }
+  .dr-btn-g { background:var(--pc-yellow); color:#1a1d20; }
+  .dr-btn-g:hover { background:#e0a800; }
+  .dr-sel { border:2px solid rgba(255,255,255,.4); background:rgba(255,255,255,.12); color:#fff; border-radius:9px; padding:7px 12px; font-weight:600; font-family:'Kanit',sans-serif; outline:none; }
+  .dr-sel option { color:#1a1d20; }
+</style>
+
+<div class="p-4 dr-scope" style="background:#f4f4f4; min-height:100vh;">
+  <div class="dr-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 shadow">
+    <div class="d-flex align-items-center">
+      <div style="width:10px;height:60px;background:var(--pc-yellow);margin-right:20px;border-radius:5px;"></div>
+      <div>
+        <h2 class="fw-bold m-0 text-white" style="font-family:'Montserrat',sans-serif;font-size:1.7rem;letter-spacing:.5px;line-height:1.1;text-transform:uppercase;"><i class="fas fa-coins me-2" style="color:var(--pc-yellow)"></i> <span data-en="DISCOUNT ALLOCATION" data-th="รายงานเฉลี่ยส่วนลด">รายงานเฉลี่ยส่วนลด</span></h2>
+        <p class="mb-0 fw-bold" style="font-size:.92rem;margin-top:4px;color:rgba(255,255,255,.85);"><span data-en="Per-item discount allocation across bundles · Full promo export" data-th="เฉลี่ยส่วนลดลงรายไอเทมในชุด · ส่งออกข้อมูลโปรเต็ม">เฉลี่ยส่วนลดลงรายไอเทมในชุด · ส่งออกข้อมูลโปรเต็ม</span></p>
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <label class="text-white fw-bold small me-1" data-en="Month" data-th="เดือน">เดือน</label>
+      <select class="dr-sel" id="drMonth" onchange="window.drRender()"></select>
+      <button class="dr-btn dr-btn-g" onclick="window.drLoad()"><i class="fas fa-sync-alt me-1"></i> <span data-en="Refresh" data-th="รีเฟรช">รีเฟรช</span></button>
+    </div>
+  </div>
+
+  <div class="d-flex gap-4 mb-3 border-bottom" style="border-color:#e3e6e9 !important;">
+    <button class="dr-tab active" data-tab="alloc" onclick="window.drTab('alloc')"><i class="fas fa-layer-group me-2"></i><span data-en="Discount Allocation" data-th="เฉลี่ยส่วนลดต่อไอเทม">เฉลี่ยส่วนลดต่อไอเทม</span></button>
+    <button class="dr-tab" data-tab="full" onclick="window.drTab('full')"><i class="fas fa-table me-2"></i><span data-en="Full Promo Export" data-th="ส่งออกข้อมูลโปรเต็ม">ส่งออกข้อมูลโปรเต็ม</span></button>
+  </div>
+
+  <!-- ALLOCATION TAB -->
+  <div id="drAllocPane">
+    <div class="row gx-3 mb-3" id="drStats"></div>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold" style="color:#5a6068;font-size:.9rem;" id="drAllocCount"></div>
+      <button class="dr-btn dr-btn-x" onclick="window.drExportAlloc()"><i class="fas fa-file-excel me-1"></i> <span data-en="Export Allocation (Excel)" data-th="ส่งออกตารางเฉลี่ย (Excel)">ส่งออกตารางเฉลี่ย (Excel)</span></button>
+    </div>
+    <div class="dr-card" id="drBundles"></div>
+  </div>
+
+  <!-- FULL EXPORT TAB -->
+  <div id="drFullPane" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+      <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1">
+        <select id="drFullCamp" onchange="window.drRender()" style="max-width:400px;border:1.5px solid #d3d8de;border-radius:9px;padding:8px 12px;font-size:.86rem;font-family:inherit;background:#fff;color:#2b323a"><option value="">ทุกแคมเปญ (ทั้งหมด)</option></select>
+        <div class="fw-bold" style="color:#5a6068;font-size:.9rem;white-space:nowrap;" id="drFullCount"></div>
+      </div>
+      <button class="dr-btn dr-btn-x" onclick="window.drExportFull()"><i class="fas fa-file-excel me-1"></i> <span data-en="Export Full (Excel)" data-th="ส่งออกทั้งหมด (Excel)">ส่งออกทั้งหมด (Excel)</span></button>
+    </div>
+    <div class="dr-card dr-scroll"><table class="dr-ftable" id="drFullTable"></table></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DR = { alloc: [], full: [], tab: 'alloc' };
+  window.__DR = DR;
+  var baht = function (n) { return '฿' + (Math.round((+n || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
+  var typeClass = function (t) { t = String(t || '').toLowerCase(); if (/item\s*set/.test(t)) return 'itemset'; if (/combo/.test(t)) return 'combo'; if (/value/.test(t)) return 'value'; if (/price/.test(t)) return 'price'; return 'itemset'; };
+
+  function run(fn, arg, cb) {
+    try {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(cb).withFailureHandler(function (e) { console.warn('DR', fn, e); cb([]); })[fn](arg);
+        return;
+      }
+    } catch (e) { console.warn(e); }
+    cb([]);
+  }
+
+  window.drLoad = function () {
+    var box = document.getElementById('drBundles');
+    if (box) box.innerHTML = '<div class="text-center p-5"><div class="spinner-border" style="color:#2e934a"></div></div>';
+    run('getDiscountAllocationReport', 'ALL', function (a) {
+      DR.alloc = a || [];
+      run('getFullPromoExport', 'ALL', function (f) {
+        DR.full = f || [];
+        buildMonthOptions();
+        window.drRender();
+      });
+    });
+  };
+
+  /* FX-P50 — คีย์เดือนในฐานปน 2 รูปแบบ ('2026-08' กับ 'AUG 2026')
+     เดิมเทียบสตริงตรง ๆ → เลือก "2026-08" ได้ 49 ชุด แต่ชุดที่เก็บใต้ 'AUG 2026' หายไป
+     ตอนนี้แปลงเป็น YYYY-MM ก่อนเสมอ ทั้งตัวเลือกและตัวเทียบ */
+  var DR_MON = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, SEPT:9, OCT:10, NOV:11, DEC:12 };
+  function drNormMonth(m) {
+    var s = String(m || '').trim(); if (!s) return '';
+    var a = s.match(/^(\d{4})-(\d{1,2})$/); if (a) return a[1] + '-' + ('0' + a[2]).slice(-2);
+    var b = s.toUpperCase().match(/^([A-Z]{3,4})[\s.]+(\d{4})$/);
+    if (b && DR_MON[b[1]]) return b[2] + '-' + ('0' + DR_MON[b[1]]).slice(-2);
+    var c = s.toUpperCase().match(/^(\d{4})[\s.]+([A-Z]{3,4})$/);
+    if (c && DR_MON[c[2]]) return c[1] + '-' + ('0' + DR_MON[c[2]]).slice(-2);
+    return s;
+  }
+  function buildMonthOptions() {
+    var sel = document.getElementById('drMonth'); if (!sel) return;
+    var prev = sel.value;
+    var months = {};
+    DR.alloc.forEach(function (b) { if (b.month) months[drNormMonth(b.month)] = 1; });
+    DR.full.forEach(function (r) { if (r.month) months[drNormMonth(r.month)] = 1; });
+    var list = Object.keys(months).sort().reverse();
+    sel.innerHTML = '<option value="ALL">ทั้งหมด · All</option>' + list.map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + '</option>'; }).join('');
+    if (prev && (prev === 'ALL' || months[prev])) sel.value = prev;
+  }
+
+  window.drTab = function (t) {
+    DR.tab = t;
+    document.querySelectorAll('.dr-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === t); });
+    document.getElementById('drAllocPane').style.display = t === 'alloc' ? '' : 'none';
+    document.getElementById('drFullPane').style.display = t === 'full' ? '' : 'none';
+  };
+
+  function monthFilter() { var s = document.getElementById('drMonth'); return s ? s.value : 'ALL'; }
+  function passMonth(m) { var f = monthFilter(); return f === 'ALL' || !f || drNormMonth(m) === drNormMonth(f); }
+
+  window.drRender = function () {
+    renderAlloc();
+    renderFull();
+    if (window.PC_i18n && window.PC_i18n.apply) try { window.PC_i18n.apply(document.querySelector('.dr-scope')); } catch (e) {}
+  };
+
+  function renderAlloc() {
+    var rows = DR.alloc.filter(function (b) { return passMonth(b.month); });
+    var box = document.getElementById('drBundles');
+    var stats = document.getElementById('drStats');
+    var cnt = document.getElementById('drAllocCount');
+    var nBundles = rows.length;
+    var nItems = 0, totGross = 0, totDisc = 0;
+    rows.forEach(function (b) { nItems += (b.itemCount || 0); totGross += (+b.totalGross || 0); totDisc += (+b.bundleDiscount || 0); });
+    var avgPct = totGross > 0 ? (totDisc / totGross * 100) : 0;
+    stats.innerHTML =
+      statCard('', 'ชุดโปร · Bundles', nBundles, '') +
+      statCard('dark', 'รวมไอเทม · Line items', nItems, '') +
+      statCard('amber', 'มูลค่าเต็ม · Gross', baht(totGross), '') +
+      statCard('red', 'ส่วนลดรวม · Discount', baht(totDisc), Math.round(avgPct * 10) / 10 + '% เฉลี่ย');
+    var nBad = rows.filter(function (b) { return b.incomplete; }).length;
+    cnt.textContent = nBundles + ' ชุดโปร' + (nBad ? ' · ข้อมูลไม่ครบ ' + nBad : '');
+    if (!nBundles) {
+      box.innerHTML = '<div class="dr-empty"><img src="assets/brand/mascot.png" onerror="this.style.display=\'none\'"><div class="fw-bold">ยังไม่มีชุดโปร (Item Set / Combo / Value / Price)</div><div class="small mt-1">เมื่อมีโปรประเภทชุดในเดือนที่เลือก ระบบจะเฉลี่ยส่วนลดลงรายไอเทมให้อัตโนมัติ</div></div>';
+      return;
+    }
+    box.innerHTML = rows.map(function (b, i) {
+      var lines = (b.lines || []).map(function (ln) {
+        return '<tr><td>' + esc(ln.itemCode) + '</td><td>' + esc(ln.itemNameEN || '—') + '</td>' +
+          '<td class="num">' + esc(ln.qty) + '</td>' +
+          '<td class="num">' + baht(ln.gross) + '</td>' +
+          '<td class="num alloc">−' + baht(ln.allocDiscount) + '</td>' +
+          '<td class="num">' + baht(ln.allocNet) + '</td>' +
+          '<td class="num">' + esc(ln.discPct) + '%</td></tr>';
+      }).join('');
+      return '<div class="dr-bundle" id="drB' + i + '">' +
+        '<div class="dr-bundle-head" onclick="window.drToggle(' + i + ')">' +
+          '<i class="fas fa-chevron-right" style="color:#b5bcc4;transition:.15s;width:14px;"></i>' +
+          '<span class="dr-type ' + typeClass(b.type) + '">' + esc(b.type || 'Item Set') + '</span>' +
+          '<div class="flex-grow-1"><div class="dr-bundle-name">' + esc(b.campaign) + (b.shortName ? ' <span class="dr-bundle-meta">· ' + esc(b.shortName) + '</span>' : '') + '</div>' +
+            '<div class="dr-bundle-meta">' + esc(b.month) + (b.code ? ' · code ' + esc(b.code) : '') + ' · ' + (b.itemCount || 0) + ' ไอเทม</div></div>' +
+          '<div class="dr-bundle-num"><div class="n">' + baht(b.totalGross) + '</div><div class="k">gross</div></div>' +
+          '<div class="dr-bundle-num"><div class="n">' + baht(b.net) + '</div><div class="k">net (ชุด)</div></div>' +
+          (b.incomplete
+            ? '<span class="dr-discpill" style="background:#fff4d6;color:#8a6412;" title="ยังไม่มีราคาปกติ/รายการสินค้าในชุดครบ — คำนวณส่วนลดไม่ได้"><i class="fas fa-triangle-exclamation me-1"></i>ข้อมูลไม่ครบ</span>'
+            : '<span class="dr-discpill">−' + baht(b.bundleDiscount) + ' · ' + esc(b.discPct) + '%</span>') +
+        '</div>' +
+        '<div class="dr-lines"><table><thead><tr><th>Item Code</th><th>Item Name (EN)</th><th class="num">Qty</th><th class="num">Gross</th><th class="num">ส่วนลดเฉลี่ย</th><th class="num">Net เฉลี่ย</th><th class="num">ส่วนลด%</th></tr></thead>' +
+          '<tbody>' + lines + '</tbody>' +
+          '<tfoot><tr><td colspan="3">รวม</td><td class="num">' + baht(b.totalGross) + '</td><td class="num alloc">−' + baht(b.bundleDiscount) + '</td><td class="num">' + baht(b.net) + '</td><td class="num">' + esc(b.discPct) + '%</td></tr></tfoot>' +
+        '</table></div></div>';
+    }).join('');
+  }
+
+  function statCard(cls, lbl, val, sub) {
+    return '<div class="col"><div class="dr-stat ' + cls + '"><div class="lbl">' + esc(lbl) + '</div><div class="val">' + esc(val) + '</div>' + (sub ? '<div class="lbl mt-1" style="color:#a01a2e">' + esc(sub) + '</div>' : '') + '</div></div>';
+  }
+
+  window.drToggle = function (i) {
+    var el = document.getElementById('drB' + i); if (!el) return;
+    var open = el.classList.toggle('open');
+    var chev = el.querySelector('.dr-bundle-head .fa-chevron-right');
+    if (chev) chev.style.transform = open ? 'rotate(90deg)' : '';
+  };
+
+  var FULL_COLS = [
+    ['month', 'Month'], ['campaign', 'Campaign'], ['typePromotion', 'Type'],
+    ['codePromotion', 'Code Promotion'], ['codeItemSet', 'Code Item Set'],
+    ['productCategoryPOS', 'Category (POS)'], ['shortName', 'Short Name'], ['kitchen', 'Kitchen'],
+    ['start', 'Start'], ['end', 'End'], ['saleMode', 'Sale Mode'], ['stores', 'Stores'],
+    ['itemCode', 'Item Code'], ['itemNameEN', 'Item Name EN'], ['qty', 'Qty'],
+    ['gross', 'Gross'], ['discount', 'Discount'], ['netPrice', 'Net'], ['minAmount', 'Min Amount'],
+    ['detail', 'Detail'], ['mechanic', 'Mechanic'],
+    ['itStatus', 'IT Status'], ['opStatus', 'OP Status'], ['changeStatus', 'Change'],
+    ['submittedDate', 'Submitted'], ['itDoneDate', 'IT Done'], ['opDoneDate', 'OP Done']
+  ];
+
+  function renderFull() {
+    var camp = ((document.getElementById('drFullCamp') || {}).value || '').toLowerCase().trim();
+    var rows = DR.full.filter(function (r) { return passMonth(r.month) && (!camp || String(r.campaign || '').toLowerCase().indexOf(camp) >= 0); });
+    var sel = document.getElementById('drFullCamp');
+    if (sel && !sel.dataset.built) { var cs = Array.from(new Set(DR.full.map(function (r) { return r.campaign; }).filter(Boolean))).sort(); sel.innerHTML = '<option value="">ทุกแคมเปญ (ทั้งหมด)</option>' + cs.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join(''); sel.dataset.built = '1'; }
+    var tbl = document.getElementById('drFullTable');
+    document.getElementById('drFullCount').textContent = rows.length + ' แถว';
+    if (!rows.length) { tbl.innerHTML = '<tbody><tr><td class="dr-empty">ไม่มีข้อมูลในเดือนที่เลือก</td></tr></tbody>'; return; }
+    if (window.PC_PromoReport && PC_PromoReport.buildAOA) {
+      var built = PC_PromoReport.buildAOA(rows);
+      var aoa = built.aoa, kinds = built.kinds || [];
+      var bg = { header: '#14202b', camp: '#dff3e7', type: '#f3f7f4', btn: '#f1f3f5' };
+      var out = '';
+      for (var i = 0; i < aoa.length; i++) {
+        var k = kinds[i] || 'item';
+        if (k === 'type') continue; // ซ่อนแถว "ประเภทปุ่มโปรโมชั่น : ..." บนหน้าเว็บ
+        if (k === 'gap') { out += '<tr style="height:10px"><td colspan="' + aoa[i].length + '" style="border:0;background:#eef1f4"></td></tr>'; continue; }
+        var tag = k === 'header' ? 'th' : 'td';
+        var st = 'padding:11px 15px;line-height:1.5;font-size:.78rem;vertical-align:top;white-space:pre-line;border-bottom:1px solid #edf0f3;border-right:1px solid #f1f4f7;';
+        if (k === 'header') st += 'background:#14202b;color:#fff;font-weight:700;font-size:.72rem;letter-spacing:.2px;position:sticky;top:0;z-index:2;border-color:#2a3a48;';
+        else if (k === 'camp') st += 'background:#e6f5ec;color:#14532d;font-weight:800;font-size:.82rem;border-top:2px solid #1f8a4e;border-bottom:1px solid #bfe3cd;';
+        else if (k === 'btn') st += 'background:#f6f8fa;color:#23303b;font-weight:700;';
+        else st += 'background:#fff;color:#48505a;';
+        out += '<tr>' + aoa[i].map(function (cell, ci) { if (ci === 19) return ''; return '<' + tag + ' style="' + st + '">' + esc(cell == null ? '' : cell) + '</' + tag + '>'; }).join('') + '</tr>';
+      }
+      tbl.style.cssText = 'border-collapse:collapse;width:max-content;min-width:100%;';
+      tbl.innerHTML = '<tbody>' + out + '</tbody>';
+      return;
+    }
+    var head = '<thead><tr>' + FULL_COLS.map(function (c) { return '<th>' + esc(c[1]) + '</th>'; }).join('') + '</tr></thead>';
+    var body = '<tbody>' + rows.map(function (r) {
+      return '<tr>' + FULL_COLS.map(function (c) { return '<td>' + esc(r[c[0]]) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    tbl.innerHTML = head + body;
+  }
+
+  function ensureXLSX() {
+    if (typeof XLSX === 'undefined') { Swal.fire('Error', 'XLSX library ยังไม่โหลด', 'error'); return false; }
+    return true;
+  }
+
+  window.drExportAlloc = function () {
+    if (!ensureXLSX()) return;
+    var rows = DR.alloc.filter(function (b) { return passMonth(b.month); });
+    if (!rows.length) { Swal.fire('ไม่มีข้อมูล', 'ยังไม่มีชุดโปรให้ส่งออก', 'info'); return; }
+    var head = ['Month', 'Campaign', 'Short Name', 'Type', 'Code', 'Bundle Gross', 'Bundle Net', 'Bundle Discount', 'Bundle Disc%', 'Item Code', 'Item Name EN', 'Qty', 'Line Gross', 'Alloc Discount', 'Alloc Net', 'Line Disc%'];
+    var aoa = [head];
+    rows.forEach(function (b) {
+      (b.lines || []).forEach(function (ln) {
+        aoa.push([b.month, b.campaign, b.shortName, b.type, b.code, b.totalGross, b.net, b.bundleDiscount, b.discPct, ln.itemCode, ln.itemNameEN, ln.qty, ln.gross, ln.allocDiscount, ln.allocNet, ln.discPct]);
+      });
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = head.map(function (h) { return { wch: Math.max(10, h.length + 2) }; });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Discount Allocation');
+    XLSX.writeFile(wb, 'Discount_Allocation_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    Swal.fire({ icon: 'success', title: 'ส่งออกสำเร็จ', html: 'เฉลี่ยส่วนลด <b>' + (aoa.length - 1) + '</b> รายไอเทม', timer: 2200, showConfirmButton: false });
+  };
+
+  window.drExportFull = function () {
+    if (!ensureXLSX()) return;
+    var rows = DR.full.filter(function (r) { return passMonth(r.month); });
+    if (!rows.length) { Swal.fire('ไม่มีข้อมูล', 'ยังไม่มีรายการให้ส่งออก', 'info'); return; }
+    var aoa = [FULL_COLS.map(function (c) { return c[1]; })];
+    rows.forEach(function (r) { aoa.push(FULL_COLS.map(function (c) { var v = r[c[0]]; return v == null ? '' : v; })); });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = FULL_COLS.map(function (c) { return { wch: Math.max(10, c[1].length + 2) }; });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Full Promo Export');
+    XLSX.writeFile(wb, 'Full_Promo_Export_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    Swal.fire({ icon: 'success', title: 'ส่งออกสำเร็จ', html: 'ส่งออก <b>' + rows.length + '</b> แถว', timer: 2200, showConfirmButton: false });
+  };
+
+  window.initDiscountReport = function () { window.drLoad(); };
+})();
+</script>

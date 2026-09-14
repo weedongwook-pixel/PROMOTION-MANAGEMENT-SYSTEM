@@ -1,0 +1,200 @@
+<!-- ============================================================================
+     pages/RDReopen.html — RD แจ้งเปิด/ปิดปุ่มสินค้าเดิม (→ IT ยืนยัน → อัปเดตตารางสินค้า)
+     entry: initRDReopen()
+     ตาราง: pc_product_reopen · IT ยืนยัน = อัปเดต pc_product_flags (Active/Inactive + วันที่)
+     ============================================================ -->
+<style>
+  .rr-scope { background:#f4f6f9; min-height:100vh; padding:24px 26px 60px; font-family:'Kanit',sans-serif; color:#3b4753; }
+  .rr-scope .rr-head { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .rr-scope .rr-head .ic { width:52px; height:52px; border-radius:14px; background:#fff0e6; color:#a24a12; display:grid; place-items:center; font-size:1.35rem; flex:none; }
+  .rr-scope .rr-head h1 { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; color:#1a1d20; margin:0; }
+  .rr-scope .rr-head .sub { font-size:.9rem; color:#6c757d; font-weight:600; margin-top:3px; max-width:640px; line-height:1.4; }
+  .rr-scope .card2 { background:#fff; border:1px solid #e6eaef; border-radius:16px; box-shadow:0 1px 2px rgba(20,32,43,.05); margin-bottom:20px; }
+  .rr-scope .ch { padding:15px 20px; border-bottom:1px solid #eef1f4; font-weight:700; font-family:'Montserrat',sans-serif; color:#14202b; display:flex; align-items:center; gap:9px; }
+  .rr-scope .cb { padding:18px 20px; }
+  .rr-scope label.fl { display:block; font-size:.76rem; font-weight:700; color:#48505a; margin:10px 0 3px; }
+  .rr-scope input, .rr-scope select, .rr-scope textarea { width:100%; border:1.5px solid #d3d8de; border-radius:9px; padding:9px 11px; font-family:inherit; font-size:.9rem; }
+  .rr-scope input:focus, .rr-scope select:focus, .rr-scope textarea:focus { outline:none; border-color:#1f8a4e; }
+  .rr-scope .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .rr-scope .seg { display:inline-flex; background:#eef1f4; border-radius:11px; padding:3px; gap:2px; }
+  .rr-scope .seg button { border:0; background:transparent; padding:9px 18px; border-radius:9px; font-family:inherit; font-weight:700; font-size:.88rem; color:#5a616b; cursor:pointer; }
+  .rr-scope .seg button.on.open { background:#1f8a4e; color:#fff; } .rr-scope .seg button.on.close { background:#c0392b; color:#fff; }
+  .rr-scope .btnp { background:#a24a12; color:#fff; border:0; border-radius:11px; padding:11px 22px; font-weight:800; font-size:.94rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .rr-scope .btnp:hover { background:#843c0e; }
+  .rr-scope table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .rr-scope thead th { background:#14202b; color:#fff; padding:10px 12px; text-align:left; font-size:.76rem; white-space:nowrap; }
+  .rr-scope tbody td { padding:9px 12px; border-bottom:1px solid #eef1f4; vertical-align:top; }
+  .rr-scope .tag { font-size:.66rem; font-weight:800; padding:2px 9px; border-radius:20px; white-space:nowrap; }
+  .rr-scope .tag.open { background:#eafaf1; color:#1f8a4e; } .rr-scope .tag.close { background:#fbe9e7; color:#c0392b; }
+  .rr-scope .st { font-size:.68rem; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+  .rr-scope .st.wait { background:rgba(201,138,30,.16); color:#a06d13; } .rr-scope .st.done { background:rgba(31,138,78,.16); color:#1f8a4e; }
+  .rr-scope .rowbtn { border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font-family:inherit; font-weight:700; font-size:.78rem; }
+  .rr-scope .rowbtn.ok { background:#e8f0fe; color:#2c5cc5; } .rr-scope .rowbtn.del { background:#fbe9e7; color:#c0392b; }
+  .rr-scope .muted { color:#9aa5b1; }
+  .rr-scope .empty { padding:40px; text-align:center; color:#9aa5b1; font-weight:600; }
+  @media(max-width:640px){ .rr-scope{ padding:16px 12px 50px; } .rr-scope .grid2{ grid-template-columns:1fr; } .rr-scope .tblwrap{ overflow:auto; } }
+</style>
+
+<div class="rr-scope">
+  <div class="rr-head">
+    <div class="ic"><i class="fas fa-rotate"></i></div>
+    <div>
+      <h1>เปิด/ปิดปุ่มสินค้าเดิม (RD)</h1>
+      <div class="sub">ดึงสินค้าจากตารางสินค้า → แจ้ง IT เปิดปุ่มขายอีกครั้ง หรือปิดปุ่ม (สินค้าหมด/เลิกขาย) · IT ยืนยันแล้วอัปเดตสถานะ + วันที่กลับเข้าตารางสินค้าอัตโนมัติ</div>
+    </div>
+  </div>
+
+  <div class="card2">
+    <div class="ch"><i class="fas fa-plus text-warning"></i> แจ้งเปิด/ปิดปุ่มสินค้า</div>
+    <div class="cb">
+      <label class="fl">การดำเนินการ</label>
+      <div class="seg" id="rrSeg">
+        <button class="on open" data-a="OPEN" onclick="rrSetAction(this,'OPEN')"><i class="fas fa-play"></i> เปิดปุ่มขายอีกครั้ง</button>
+        <button data-a="CLOSE" onclick="rrSetAction(this,'CLOSE')"><i class="fas fa-stop"></i> ปิดปุ่ม (สินค้าหมด/เลิกขาย)</button>
+      </div>
+      <label class="fl">เลือกสินค้า (จากตารางสินค้า)</label>
+      <div class="grid2">
+        <div><label class="fl" style="margin-top:0">หมวด (Category)</label><select id="rrCate" onchange="rrBuildItemDL()"><option value="">— ทุกหมวด —</option></select></div>
+        <div><label class="fl" style="margin-top:0">ค้นหาสินค้า</label><input id="rrItem" list="rrItemDL" placeholder="พิมพ์ค้นหา รหัส / ชื่อ..." oninput="rrPickItem()"></div>
+      </div>
+      <datalist id="rrItemDL"></datalist>
+      <div id="rrItemInfo" class="muted" style="font-size:.78rem;margin-top:5px"></div>
+      <div class="grid2">
+        <div><label class="fl" id="rrDateLbl">วันที่เริ่มขายอีกครั้ง</label><input type="date" id="rrDate"></div>
+        <div><label class="fl">หมายเหตุ</label><input id="rrNote" placeholder="เช่น กลับมาขายตามฤดูกาล / วัตถุดิบหมด"></div>
+      </div>
+      <div id="rrCartWrap" style="margin-top:14px;display:none">
+        <label class="fl" style="margin-top:0">ปุ่มที่จะแจ้ง (เพิ่มได้หลายปุ่ม)</label>
+        <div id="rrCart" style="display:flex;flex-direction:column;gap:7px"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btnp" style="background:#14202b" onclick="rrAddToCart()"><i class="fas fa-plus"></i> เพิ่มปุ่มในรายการ</button>
+        <button class="btnp" onclick="rrSubmit()"><i class="fas fa-paper-plane"></i> <span id="rrSubmitLbl">แจ้ง IT</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card2">
+    <div class="ch"><i class="fas fa-list-check text-info"></i> รายการที่แจ้ง <span class="muted" id="rrCount" style="font-weight:500;font-size:.82rem"></span></div>
+    <div class="cb" style="padding:0"><div class="tblwrap" style="overflow:auto">
+      <table>
+        <thead><tr><th>วันที่แจ้ง</th><th>การดำเนินการ</th><th>สินค้า</th><th>รหัส</th><th>วันที่</th><th>หมายเหตุ</th><th>โดย</th><th>สถานะ</th><th>จัดการ</th></tr>
+          <tr style="background:#20303d"><th></th><th><select id="rf_act" onchange="rrRender()" style="width:100%;border:0;border-radius:6px;padding:4px;font-family:inherit;font-size:.72rem"><option value="">ทั้งหมด</option><option value="open">เปิดปุ่ม</option><option value="close">ปิดปุ่ม</option></select></th><th><input id="rf_name" oninput="rrRender()" placeholder="กรอง" style="width:100%;border:0;border-radius:6px;padding:4px;font-family:inherit;font-size:.72rem"></th><th><input id="rf_code" oninput="rrRender()" placeholder="กรอง" style="width:100%;border:0;border-radius:6px;padding:4px;font-family:inherit;font-size:.72rem"></th><th></th><th></th><th></th><th><select id="rf_st" onchange="rrRender()" style="width:100%;border:0;border-radius:6px;padding:4px;font-family:inherit;font-size:.72rem"><option value="">ทั้งหมด</option><option value="pending">รอ IT</option><option value="done">ยืนยันแล้ว</option></select></th><th></th></tr></thead>
+        <tbody id="rrBody"></tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ACTION = 'OPEN', ITEMS = [], ROWS = [], CART = [];
+  function role() { try { return localStorage.getItem('pc_role') || ''; } catch (e) { return ''; } }
+  function uname() { try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch (e) { return ''; } }
+  function isIT() { var r = role(); return r === 'IT' || r === 'Admin'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function run(fn, a, b) { return new Promise(function (res, rej) { try { if (b !== undefined) google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](a, b); else google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](a); } catch (e) { rej(e); } }); }
+
+  window.rrSetAction = function (btn, a) {
+    ACTION = a;
+    document.querySelectorAll('#rrSeg button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    document.getElementById('rrDateLbl').textContent = a === 'OPEN' ? 'วันที่เริ่มขายอีกครั้ง' : 'วันที่สินค้าหมด/ปิดปุ่ม';
+  };
+  window.rrPickItem = function () {
+    var v = (document.getElementById('rrItem').value || '').trim().toLowerCase();
+    var hit = ITEMS.find(function (it) { return String(it.itemCode).toLowerCase() === v || (String(it.itemCode) + ' - ' + (it.itemNameEN || it.itemNameTH || '')).toLowerCase() === v; });
+    var info = document.getElementById('rrItemInfo');
+    info.textContent = hit ? ('✓ ' + (hit.itemNameEN || hit.itemNameTH || '') + ' · หมวด ' + (hit.category || '-') + ' · รหัส ' + hit.itemCode) : '';
+    info.dataset.code = hit ? hit.itemCode : '';
+    info.dataset.name = hit ? (hit.itemNameEN || hit.itemNameTH || '') : '';
+    info.dataset.cat = hit ? (hit.category || '') : '';
+  };
+  function rrCurrentRec() {
+    var info = document.getElementById('rrItemInfo');
+    var code = info.dataset.code || '';
+    if (!code) return null;
+    return { action: ACTION, itemCode: code, itemName: info.dataset.name || '', category: info.dataset.cat || '', saleDate: document.getElementById('rrDate').value || '', note: (document.getElementById('rrNote').value || '').trim(), by: uname() };
+  }
+  function rrClearForm() {
+    var info = document.getElementById('rrItemInfo');
+    document.getElementById('rrItem').value = ''; document.getElementById('rrNote').value = ''; document.getElementById('rrDate').value = '';
+    info.textContent = ''; info.dataset.code = ''; info.dataset.name = ''; info.dataset.cat = '';
+  }
+  window.rrAddToCart = function () {
+    var rec = rrCurrentRec();
+    if (!rec) { Swal.fire('เลือกสินค้า', 'กรุณาเลือกสินค้าจากรายการก่อน', 'info'); return; }
+    if (CART.some(function (c) { return c.itemCode === rec.itemCode && c.action === rec.action; })) { Swal.fire('ซ้ำ', 'ปุ่มนี้อยู่ในรายการแล้ว', 'info'); return; }
+    CART.push(rec); rrClearForm(); rrRenderCart();
+  };
+  window.rrRemoveCart = function (i) { CART.splice(i, 1); rrRenderCart(); };
+  function rrRenderCart() {
+    var wrap = document.getElementById('rrCartWrap'), box = document.getElementById('rrCart'), lbl = document.getElementById('rrSubmitLbl');
+    wrap.style.display = CART.length ? 'block' : 'none';
+    lbl.textContent = CART.length ? ('แจ้ง IT (' + CART.length + ' ปุ่ม)') : 'แจ้ง IT';
+    box.innerHTML = CART.map(function (c, i) {
+      var tag = c.action === 'OPEN' ? '<span class="tag open"><i class="fas fa-play"></i> เปิด</span>' : '<span class="tag close"><i class="fas fa-stop"></i> ปิด</span>';
+      return '<div style="display:flex;align-items:center;gap:9px;background:#f7f9fb;border:1px solid #e6eaef;border-radius:9px;padding:7px 11px">' + tag +
+        '<span style="font-weight:700;color:#14202b">' + esc(c.itemName || c.itemCode) + '</span>' +
+        '<span class="muted" style="font-size:.76rem">' + esc(c.itemCode) + (c.saleDate ? ' · ' + esc(c.saleDate) : '') + (c.note ? ' · ' + esc(c.note) : '') + '</span>' +
+        '<button class="rowbtn del" style="margin-left:auto" onclick="rrRemoveCart(' + i + ')"><i class="fas fa-times"></i></button></div>';
+    }).join('');
+  }
+  window.rrSubmit = function () {
+    if (!CART.length) { var rec = rrCurrentRec(); if (!rec) { Swal.fire('เลือกสินค้า', 'กรุณาเลือกสินค้าจากรายการก่อน', 'info'); return; } CART.push(rec); }
+    var items = CART.slice();
+    Swal.fire({ title: 'กำลังส่ง...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    items.reduce(function (p, rec) { return p.then(function () { return run('saveProductReopen', rec); }); }, Promise.resolve())
+      .then(function () {
+        Swal.fire({ icon: 'success', title: 'แจ้ง IT แล้ว', html: items.length + ' ปุ่ม · รอ IT ยืนยัน', timer: 2000, showConfirmButton: false });
+        CART = []; rrClearForm(); rrRenderCart(); rrLoad();
+      }).catch(function (e) { Swal.fire('Error', String(e && e.message || e), 'error'); });
+  };
+  window.rrConfirm = function (id) {
+    Swal.fire({ icon: 'question', title: 'ยืนยันดำเนินการ?', html: 'ระบบจะอัปเดตสถานะ + วันที่ กลับเข้าตารางสินค้าให้อัตโนมัติ', showCancelButton: true, confirmButtonText: 'ยืนยัน', confirmButtonColor: '#2c5cc5', cancelButtonText: 'ยกเลิก' })
+      .then(function (r) { if (!r.isConfirmed) return; run('confirmProductReopen', id, uname()).then(function () { Swal.fire({ icon: 'success', title: 'ยืนยันแล้ว · อัปเดตตารางสินค้า', timer: 1800, showConfirmButton: false }); rrLoad(); }); });
+  };
+  window.rrDel = function (id) { Swal.fire({ icon: 'warning', title: 'ลบรายการ?', showCancelButton: true, confirmButtonColor: '#c0392b', confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก' }).then(function (r) { if (r.isConfirmed) run('deleteProductReopen', id).then(rrLoad); }); };
+
+  window.rrLoad = function () {
+    run('getProductReopen').then(function (list) { ROWS = list || []; rrRender(); });
+  };
+  function rrRender() {
+    var b = document.getElementById('rrBody');
+    function rrf(id) { var el = document.getElementById(id); return el ? (el.value || '').toLowerCase().trim() : ''; }
+    var list = ROWS.filter(function (r) {
+      var a = rrf('rf_act'); if (a && String(r.action || '').toLowerCase() !== a) return false;
+      var n = rrf('rf_name'); if (n && String(r.itemName || '').toLowerCase().indexOf(n) < 0) return false;
+      var c = rrf('rf_code'); if (c && String(r.itemCode || '').toLowerCase().indexOf(c) < 0) return false;
+      var s = rrf('rf_st'); if (s && String(r.status || '').toLowerCase() !== s) return false;
+      return true;
+    });
+    document.getElementById('rrCount').textContent = list.length ? '(' + list.length + ' / ' + ROWS.length + ')' : '';
+    if (!list.length) { b.innerHTML = '<tr><td colspan="9" class="empty">ไม่พบรายการ</td></tr>'; return; }
+    b.innerHTML = list.map(function (r) {
+      var act = r.action === 'OPEN' ? '<span class="tag open"><i class="fas fa-play"></i> เปิดปุ่ม</span>' : '<span class="tag close"><i class="fas fa-stop"></i> ปิดปุ่ม</span>';
+      var st = r.status === 'DONE' ? '<span class="st done"><i class="fas fa-check"></i> IT ยืนยันแล้ว</span>' + (r.confirmedBy ? '<div class="muted" style="font-size:.66rem">' + esc(r.confirmedBy) + '</div>' : '') : '<span class="st wait"><i class="fas fa-hourglass-half"></i> รอ IT</span>';
+      var acts = (r.status !== 'DONE' && isIT() ? '<button class="rowbtn ok" onclick="rrConfirm(\'' + r.id + '\')">ยืนยัน</button> ' : '') + '<button class="rowbtn del" onclick="rrDel(\'' + r.id + '\')">ลบ</button>';
+      return '<tr><td style="white-space:nowrap">' + esc(String(r.at || '').slice(0, 10)) + '</td><td>' + act + '</td><td>' + esc(r.itemName || '-') + '</td><td>' + esc(r.itemCode || '-') + '</td><td style="white-space:nowrap">' + esc(r.saleDate || '-') + '</td><td>' + esc(r.note || '-') + '</td><td>' + esc(r.by || '-') + '</td><td>' + st + '</td><td style="white-space:nowrap">' + acts + '</td></tr>';
+    }).join('');
+  }
+
+  window.rrBuildItemDL = function () {
+    var cat = (document.getElementById('rrCate') || {}).value || '';
+    var list = (cat ? ITEMS.filter(function (it) { return String(it.category || '') === cat; }) : ITEMS).slice().sort(function (a, b) { var na = parseInt(a.itemCode, 10), nb = parseInt(b.itemCode, 10); if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb; return String(a.itemCode).localeCompare(String(b.itemCode)); });
+    document.getElementById('rrItemDL').innerHTML = list.slice(0, 4000).map(function (it) { return '<option value="' + esc(it.itemCode + ' - ' + (it.itemNameEN || it.itemNameTH || '')) + '"></option>'; }).join('');
+  };
+  window.initRDReopen = function () {
+    google.script.run.withSuccessHandler(function (d) {
+      var raw = (d && d.items) || [];
+      ITEMS = raw.filter(function (it) { return it.itemCode && (it.itemNameEN || it.itemNameTH); });
+      var catMap = {}; ITEMS.forEach(function (it) { var c = it.category; if (c && !(c in catMap)) catMap[c] = String(it.cateCode || it.catCode || ''); });
+      var cats = Object.keys(catMap).sort(function (a, b) { var na = parseInt(catMap[a], 10), nb = parseInt(catMap[b], 10); if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb; return String(catMap[a] || a).localeCompare(String(catMap[b] || b)); });
+      var sel = document.getElementById('rrCate');
+      if (sel) sel.innerHTML = '<option value="">— ทุกหมวด —</option>' + cats.map(function (c) { var cc = catMap[c]; return '<option value="' + esc(c) + '">' + (cc ? esc(cc) + ' · ' : '') + esc(c) + '</option>'; }).join('');
+      rrBuildItemDL();
+    }).getMasterDataExtended();
+    rrLoad();
+  };
+  if (document.getElementById('rrBody') && typeof google !== 'undefined') { try { window.initRDReopen(); } catch (e) {} }
+})();
+</script>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วิธีใช้งาน — เลขสติ๊กเกอร์สรรพากร</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:70px; }
+  .topbar{ background:#2e934a; color:#fff; padding:13px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:30; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.04rem; margin:0; display:flex; align-items:center; gap:9px; }
+  .topbar h1 i{ color:var(--pc-yellow); }
+  .topbar .sub{ font-size:.72rem; color:#aab0b8; font-weight:400; margin-top:2px; }
+  .links{ margin-left:auto; display:flex; gap:8px; }
+  .tlink{ border:0; background:rgba(255,255,255,.12); color:#fff; font-weight:600; font-size:.85rem; border-radius:10px; padding:9px 14px; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:7px; }
+  .tlink:hover{ background:rgba(255,255,255,.22); }
+
+  .wrap{ max-width:980px; margin:0 auto; padding:22px 16px 0; }
+  .hero{ background:linear-gradient(120deg,#1a1d20,#2a2f34); color:#fff; border-radius:20px; padding:28px 30px; margin-bottom:22px; }
+  .hero h2{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.7rem; margin:0 0 8px; }
+  .hero p{ margin:0; color:#c8ccd1; font-size:.96rem; line-height:1.6; max-width:680px; }
+  .hero .flow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; }
+  .hchip{ background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:8px 15px; font-size:.84rem; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .hchip i{ color:var(--pc-yellow); }
+  .harr{ color:#6b7178; }
+
+  .sectlabel{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:.78rem; letter-spacing:1.5px; text-transform:uppercase; color:#8a9099; margin:26px 4px 13px; }
+
+  .mcard{ background:#fff; border:1px solid #e7eaee; border-radius:18px; padding:0; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:18px; overflow:hidden; }
+  .mhead{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-bottom:1px solid #f1f4f7; }
+  .micon{ width:48px; height:48px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#fff; flex-shrink:0; }
+  .mh-txt h3{ margin:0; font-size:1.16rem; font-weight:700; }
+  .mh-txt .who{ font-size:.83rem; color:#8a9099; margin-top:2px; }
+  .mbadge{ margin-left:auto; font-size:.74rem; font-weight:700; border-radius:999px; padding:5px 13px; }
+  .b-int{ background:#eef4ff; color:#2c4a82; } .b-ext{ background:#eafaf1; color:#1d7a4d; } .b-sys{ background:#f3ecff; color:#6b3fa0; }
+
+  .steps{ padding:18px 22px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0; }
+  .step{ position:relative; padding:4px 16px 4px 0; }
+  .step .num{ width:28px; height:28px; border-radius:50%; background:var(--pc-green); color:#fff; font-weight:700; font-size:.82rem; display:flex; align-items:center; justify-content:center; margin-bottom:9px; font-family:'JetBrains Mono',monospace; }
+  .step .st{ font-weight:600; font-size:.92rem; line-height:1.3; }
+  .step .sd{ font-size:.8rem; color:#8a9099; margin-top:4px; line-height:1.45; }
+  .step::after{ content:'\f054'; font-family:'Font Awesome 6 Free'; font-weight:900; position:absolute; right:2px; top:8px; color:#dde2e7; font-size:.7rem; }
+  .step:last-child::after{ display:none; }
+
+  .mfoot{ padding:14px 22px 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-top:1px dashed #eef1f4; }
+  .mfoot .tip{ font-size:.8rem; color:#8a9099; }
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.9rem; padding:11px 18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-d{ background:var(--pc-black); color:#fff; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+
+  .cmp{ background:#fff; border:1px solid #e7eaee; border-radius:18px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .cmp table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .cmp th, .cmp td{ text-align:left; padding:14px 18px; border-bottom:1px solid #f1f4f7; vertical-align:top; }
+  .cmp thead th{ font-size:.78rem; text-transform:uppercase; letter-spacing:.5px; color:#8a9099; background:#fafbfc; }
+  .cmp tbody td:first-child{ font-weight:600; color:#5a616b; width:170px; }
+  .cmp .yes{ color:var(--pc-green); font-weight:600; } .cmp .no{ color:#c0392b; }
+  .cmp td i{ width:18px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <h1><i class="fas fa-circle-question"></i> วิธีใช้งาน — เลขสติ๊กเกอร์สรรพากร</h1>
+    <div class="sub">ตัวอย่างการใช้งานแต่ละช่องทาง · กดเปิดลองใช้ได้ทันที</div>
+  </div>
+  <div class="links">
+    <a class="tlink" href="RD Sticker Management.html"><i class="fas fa-receipt"></i> หน้าแจ้งเพิ่มเลข</a>
+    <a class="tlink" href="RD Access Settings.html"><i class="fas fa-shield-halved"></i> ตั้งค่าสิทธิ์</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h2>เพิ่มเลขสติ๊กเกอร์สรรพากรเข้า POS</h2>
+    <p>ระบบรวมการแจ้งเพิ่มเลขสติ๊กเกอร์สรรพากรของทุกสาขา (รวมแฟรนไชส์) ไว้ที่เดียว — แจ้ง → IT ลงเลขเข้า POS → สาขาตรวจใบเสร็จ → ยืนยันเรียบร้อย โดยผู้แจ้งเห็นสถานะทุกขั้นตอน</p>
+    <div class="flow">
+      <span class="hchip"><i class="fas fa-user-pen"></i> แจ้งเพิ่ม</span><i class="fas fa-arrow-right harr"></i>
+      <span class="hchip"><i class="fas fa-screwdriver-wrench"></i> IT ลงเลข POS</span><i class="fas fa-arrow-right harr"></i>
+      <span class="hchip"><i class="fas fa-magnifying-glass"></i> สาขาตรวจใบเสร็จ</span><i class="fas fa-arrow-right harr"></i>
+      <span class="hchip"><i class="fas fa-circle-check"></i> เรียบร้อย</span>
+    </div>
+  </div>
+
+  <div class="sectlabel">ช่องทางการแจ้ง (เลือกตามประเภทสาขา)</div>
+  <div id="cards"></div>
+
+  <div class="sectlabel">เปรียบเทียบ: Gen-link vs ล็อกอินด้วยเมล (สำหรับแฟรนไชส์)</div>
+  <div class="cmp">
+    <table>
+      <thead><tr><th></th><th><i class="fas fa-link" style="color:#9a6700"></i> Gen-link (BD ส่งให้)</th><th><i class="fas fa-right-to-bracket" style="color:#2c4a82"></i> ล็อกอินด้วยเมล</th></tr></thead>
+      <tbody>
+        <tr><td>ต้องมีบัญชีผู้ใช้</td><td class="no"><i class="fas fa-xmark"></i> ไม่ต้อง</td><td class="yes"><i class="fas fa-check"></i> ต้องเพิ่มเมลในระบบ</td></tr>
+        <tr><td>วิธีเข้าใช้</td><td>กดลิงก์ในอีเมล</td><td>Sign-in Google / Outlook</td></tr>
+        <tr><td>เห็นสาขา</td><td>เฉพาะสาขาในลิงก์</td><td>เฉพาะสาขาที่ผูกกับเมล</td></tr>
+        <tr><td>อายุการใช้งาน</td><td>มีวันหมดอายุ (ตั้งได้)</td><td>ถาวรจนกว่าจะลบสิทธิ์</td></tr>
+        <tr><td>เหมาะกับ</td><td>FRC ที่แจ้งนานๆครั้ง / รายใหม่</td><td>FRC รายใหญ่ที่เข้าระบบประจำ</td></tr>
+        <tr><td>ใครจัดการ</td><td>ทีม BD</td><td>Admin / BD</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="js/branch-master.js"></script>
+<script src="js/rd-sticker.js"></script>
+<script>
+RD.seed();
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// demo link token from seed
+const demoLink = (RD.getLinks().find(l=>l.status==='active')||{}).token || '';
+
+const METHODS = [
+  { color:'#2f5fb3', icon:'fa-user-pen', badge:['ภายใน','b-int'], title:'ผู้แจ้งส่วนกลาง (HO)', who:'ฝ่ายบัญชี / HO — แจ้งหลายสาขาพร้อมกัน',
+    steps:[
+      ['เลือกสาขา','เลือกได้หลายสาขา กรองตามบริษัท/ค้นหา'],
+      ['กรอกเลข','Cash RD Number + RD Shop Code + แนบรูปสติ๊กเกอร์'],
+      ['ตั้งสิทธิ์มองเห็น','เฉพาะสาขา / ทั้งบริษัท / ทุกสาขา'],
+      ['ส่งให้ IT','ติดตามสถานะทุกใบในแท็บ “ติดตามสถานะ”']],
+    btns:[['RD Sticker Management.html?role=HO','เปิดฟอร์มแจ้งเพิ่ม','btn-g']] },
+
+  { color:'#9a6700', icon:'fa-link', badge:['แฟรนไชส์','b-ext'], title:'FRC ผ่าน Gen-link (ไม่ต้องล็อกอิน)', who:'ทีม BD สร้างลิงก์ → ส่งอีเมลให้ FRC',
+    steps:[
+      ['BD สร้างลิงก์','เลือกสาขาของ FRC + ตั้งวันหมดอายุ'],
+      ['ส่งอีเมล','ระบบส่งลิงก์ให้ FRC (เทมเพลตแก้ได้)'],
+      ['FRC กดลิงก์','เปิดฟอร์มเฉพาะสาขาตน ไม่ต้องล็อกอิน'],
+      ['แจ้ง + ติดตาม','เห็นเฉพาะรายการสาขาตัวเอง']],
+    btns:[ demoLink?['RD Sticker Management.html?link='+demoLink,'ลองเปิดลิงก์ FRC (ตัวอย่าง)','btn-g']:null,
+           ['RD Access Settings.html','BD: สร้าง/จัดการลิงก์','btn-o']] },
+
+  { color:'#6b3fa0', icon:'fa-right-to-bracket', badge:['แฟรนไชส์','b-ext'], title:'FRC ผ่านล็อกอินด้วยเมล', who:'FRC รายใหญ่ที่เข้าระบบประจำ (Gmail/Outlook)',
+    steps:[
+      ['Admin เพิ่มเมล','เพิ่มอีเมล FRC + ผูกสาขา/บริษัท'],
+      ['FRC ล็อกอิน','Sign-in ด้วย Google หรือ Outlook'],
+      ['เห็นเฉพาะสาขาตน','สิทธิ์ผูกกับเมล ไม่ใช่โดเมน'],
+      ['แจ้ง + ติดตาม','ใช้งานเหมือนผู้แจ้งแต่จำกัดขอบเขต']],
+    btns:[['RD Access Settings.html','ตั้งค่ารายชื่อล็อกอิน','btn-o']] },
+
+  { color:'#2e934a', icon:'fa-screwdriver-wrench', badge:['ระบบ','b-sys'], title:'IT — ลงเลขเข้า POS', who:'ทีม IT รับคิวจากผู้แจ้ง',
+    steps:[
+      ['เปิดคิวรอลงเลข','เห็นทุกรายการสถานะ “รอ IT ลงเลข”'],
+      ['ลงเลขใน POS','ตั้งค่าเลขสติ๊กเกอร์ในเครื่อง POS'],
+      ['กดเสร็จ','ระบบแจ้งกลับผู้แจ้ง + แจ้งสาขาตรวจใบเสร็จ']],
+    btns:[['RD Sticker Management.html?role=IT','เปิดคิวงาน IT','btn-d']] },
+
+  { color:'#c0392b', icon:'fa-magnifying-glass', badge:['สาขา','b-ext'], title:'สาขา — ตรวจใบเสร็จ', who:'สาขายืนยันเลขขึ้นบนใบเสร็จ',
+    steps:[
+      ['ออกใบเสร็จทดสอบ','หลัง IT ลงเลขเข้า POS แล้ว'],
+      ['ตรวจเลขสติ๊กเกอร์','ดูว่าเลขขึ้นถูกต้องไหม'],
+      ['ยืนยัน / แจ้งปัญหา','เรียบร้อย ✓ หรือ ตีกลับให้ IT แก้']],
+    btns:[['RD Sticker Management.html?role=BRANCH','เปิดหน้าตรวจใบเสร็จ','btn-o']] }
+];
+
+document.getElementById('cards').innerHTML = METHODS.map(m=>`
+  <div class="mcard">
+    <div class="mhead">
+      <div class="micon" style="background:${m.color}"><i class="fas ${m.icon}"></i></div>
+      <div class="mh-txt"><h3>${esc(m.title)}</h3><div class="who">${esc(m.who)}</div></div>
+      <span class="mbadge ${m.badge[1]}">${esc(m.badge[0])}</span>
+    </div>
+    <div class="steps">
+      ${m.steps.map((s,i)=>`<div class="step"><div class="num">${i+1}</div><div class="st">${esc(s[0])}</div><div class="sd">${esc(s[1])}</div></div>`).join('')}
+    </div>
+    <div class="mfoot">
+      ${m.btns.filter(Boolean).map(b=>`<a class="btn ${b[2]}" href="${b[0]}"><i class="fas fa-arrow-up-right-from-square"></i> ${esc(b[1])}</a>`).join('')}
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

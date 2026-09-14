@@ -1,0 +1,167 @@
+/* ================================================================
+ *  PC TABLE STANDARD — Potato Corner Promotion System
+ *  ใช้ร่วมกับ js/table-engine.js
+ *  ================================================================
+ *  .pct-shell   — wrapper ทั้งหมด (search + table + pager)
+ *  .pct-wrap    — scrollable container รอบ <table>
+ *  .pct         — <table>
+ *  thead tr.pct-f   — filter row (gray, sticky top:0)
+ *  thead tr.pct-h   — header row (dark, sticky top:pct-f height)
+ *  .pct-fi      — filter input/select
+ *  .cfit        — shrink-to-content column
+ *  .cflex       — flex-grow column (ชื่อ/ข้อความ)
+ * ================================================================ */
+
+/* ── variables ── */
+:root {
+  --pct-hd:   #1a1d20;
+  --pct-hdc:  #ffffff;
+  --pct-acc:  #2e934a;
+  --pct-grn:  #2e934a;
+  --pct-filt: #eef1f4;
+  --pct-line: #eef1f4;
+  --pct-hover:#f8fafb;
+  --pct-fi-h: 36px;   /* filter row height — ใช้เป็น top offset ของ header row */
+}
+
+/* ── shell / toolbar ── */
+.pct-shell { display:flex; flex-direction:column; gap:0; }
+.pct-top {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 0; font-size:.85rem;
+}
+.pct-top .pct-show-lbl { color:#8a9099; white-space:nowrap; }
+.pct-top select.pct-per {
+  border:1.4px solid #dde2e7; border-radius:8px; padding:5px 10px;
+  font-family:inherit; font-size:.82rem; color:#3a4150; background:#fff;
+}
+.pct-top .pct-search-wrap {
+  margin-left:auto; display:flex; align-items:center;
+  border:1.4px solid #dde2e7; border-radius:9px; overflow:hidden;
+  background:#fff;
+}
+.pct-top .pct-search-wrap i { padding:0 10px; color:#9aa1aa; }
+.pct-top .pct-search-wrap input {
+  border:none; outline:none; padding:7px 8px; font-family:inherit;
+  font-size:.84rem; min-width:180px; color:#1a1d20;
+}
+.pct-top .pct-search-wrap input::placeholder { color:#b0b8c1; }
+
+/* ── scrollable wrapper ── */
+.pct-wrap {
+  overflow:auto; border:1px solid var(--pct-line);
+  border-radius:12px; scrollbar-gutter:stable;
+  max-height:60vh;
+}
+
+/* ── table base ── */
+.pct {
+  width:100%; border-collapse:separate; border-spacing:0;
+  font-size:.86rem; table-layout:auto;
+}
+
+/* ── filter row ── */
+.pct thead tr.pct-f th {
+  position:sticky; top:0; z-index:6;
+  background:var(--pct-filt); padding:5px 7px;
+  border-bottom:0; border-right:1px solid #dde2e7;
+  height:var(--pct-fi-h);
+}
+.pct thead tr.pct-f th:last-child { border-right:0; }
+
+/* ── filter inputs ── */
+.pct-fi {
+  width:100%; border:1.4px solid #dde2e7; border-radius:7px;
+  padding:4px 7px; font-family:inherit; font-size:.78rem;
+  background:#fff; color:#3a4150; font-weight:500;
+  height:26px; line-height:1;
+}
+.pct-fi:focus { outline:none; border-color:var(--pct-grn); box-shadow:0 0 0 2px rgba(46,147,74,.1); }
+
+/* ── header row ── */
+.pct thead tr.pct-h th {
+  position:sticky; top:var(--pct-fi-h); z-index:5;
+  background:var(--pct-hd); color:var(--pct-hdc);
+  font-size:.72rem; font-weight:700; letter-spacing:.3px;
+  text-transform:uppercase; white-space:nowrap; text-align:left;
+  padding:9px 11px; border-bottom:2px solid var(--pct-acc);
+  user-select:none;
+}
+.pct thead tr.pct-h th.sortable { cursor:pointer; }
+.pct thead tr.pct-h th.sortable:hover { background:#2a2f34; }
+.pct thead tr.pct-h th .sort-icon { margin-left:5px; opacity:.4; font-size:.65rem; }
+.pct thead tr.pct-h th.sort-asc .sort-icon,
+.pct thead tr.pct-h th.sort-desc .sort-icon { opacity:1; color:var(--pct-acc); }
+
+/* ── data rows ── */
+.pct tbody td {
+  padding:8px 11px; border-bottom:1px solid var(--pct-line);
+  vertical-align:middle; white-space:nowrap;
+}
+.pct tbody td.wrap { white-space:normal; min-width:140px; }
+.pct tbody tr:hover td { background:var(--pct-hover); }
+.pct tbody tr.pct-off td { opacity:.5; }
+.pct tbody tr:last-child td { border-bottom:0; }
+
+/* ── column width helpers ── */
+.pct th.cfit, .pct td.cfit { width:1%; white-space:nowrap; }
+.pct th.cflex { min-width:150px; }
+
+/* ── action buttons (row) ── */
+.pct-act { display:inline-flex; gap:5px; align-items:center; }
+.pct-btn {
+  border:1.4px solid #dde2e7; border-radius:7px; padding:4px 9px;
+  font-family:inherit; font-size:.78rem; font-weight:700; cursor:pointer;
+  background:#fff; color:#3a4150; transition:background .1s, border-color .1s;
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+}
+.pct-btn:hover { background:#f3f5f7; border-color:#b8bfc8; }
+.pct-btn.btn-edit { border-color:var(--pct-grn); color:var(--pct-grn); }
+.pct-btn.btn-edit:hover { background:#f0faf5; }
+.pct-btn.btn-del { border-color:#e53935; color:#e53935; }
+.pct-btn.btn-del:hover { background:#fef3f2; }
+.pct-btn.btn-view { border-color:#2563eb; color:#2563eb; }
+.pct-btn.btn-view:hover { background:#eff6ff; }
+
+/* ── bottom bar ── */
+.pct-bot {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 4px 4px; font-size:.82rem; color:#8a9099;
+}
+.pct-info { flex:1; }
+.pct-pages { display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+.pct-pg {
+  border:1.4px solid #dde2e7; border-radius:7px; padding:5px 11px;
+  font-family:inherit; font-size:.8rem; cursor:pointer;
+  background:#fff; color:#3a4150; min-width:34px; text-align:center;
+  transition:background .1s;
+}
+.pct-pg:hover:not(:disabled) { background:#f3f5f7; }
+.pct-pg.on { background:var(--pct-hd); color:#fff; border-color:var(--pct-hd); }
+.pct-pg:disabled { opacity:.35; cursor:not-allowed; }
+.pct-pg.gap { border:0; background:transparent; cursor:default; color:#b0b8c1; padding:5px 4px; }
+
+/* ── empty state ── */
+.pct-empty { text-align:center; padding:40px; color:#b0b8c1; font-size:.9rem; }
+.pct-empty i { display:block; font-size:2rem; margin-bottom:10px; opacity:.3; }
+
+/* ===== ตารางรายละเอียดโปร (ศูนย์ติดตามงาน) — ให้เห็นข้อความทั้งหมดทุกช่อง ===== */
+.ct-detail-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+.ct-detail{ min-width:1560px; }
+.ct-detail th, .ct-detail td{ white-space:nowrap; padding:.35rem .4rem !important; }
+.ct-detail .item-input{ width:100%; min-width:0; }
+/* กว้างพอสำหรับข้อความจริงของแต่ละคอลัมน์ */
+.ct-detail th:nth-child(1),.ct-detail td:nth-child(1){ min-width:120px }   /* Type Promotion */
+.ct-detail th:nth-child(2),.ct-detail td:nth-child(2){ min-width:110px }   /* Code Promo */
+.ct-detail th:nth-child(3),.ct-detail td:nth-child(3){ min-width:120px }   /* Code Item Set */
+.ct-detail th:nth-child(4),.ct-detail td:nth-child(4){ min-width:130px }   /* Kitchen */
+.ct-detail th:nth-child(5),.ct-detail td:nth-child(5){ min-width:190px }   /* Short Name */
+.ct-detail th:nth-child(6),.ct-detail td:nth-child(6){ min-width:190px }   /* Item Code + ปุ่ม */
+.ct-detail th:nth-child(7),.ct-detail td:nth-child(7){ min-width:230px }   /* Name EN */
+.ct-detail th:nth-child(8),.ct-detail td:nth-child(8){ min-width:230px }   /* Name TH */
+.ct-detail th:nth-child(9),.ct-detail td:nth-child(9){ min-width:76px }    /* Qty */
+.ct-detail th:nth-child(10),.ct-detail td:nth-child(10){ min-width:96px }  /* Gross */
+.ct-detail th:nth-child(11),.ct-detail td:nth-child(11){ min-width:110px } /* ราคารวมปกติ */
+.ct-detail th:nth-child(12),.ct-detail td:nth-child(12){ min-width:106px } /* Discount */
+.ct-detail th:nth-child(13),.ct-detail td:nth-child(13){ min-width:100px } /* Net */
+.ct-detail th:nth-child(14),.ct-detail td:nth-child(14){ min-width:56px }  /* File */

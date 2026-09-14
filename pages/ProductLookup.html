@@ -1,0 +1,739 @@
+<style>
+  .pl-scope{ background:#f8fafc; min-height:100vh; font-family:'Kanit','Montserrat',sans-serif; color:#1a1d20; }
+  .pl-wrap{ max-width:1080px; margin:0 auto; padding:22px 20px 90px; }
+
+  /* search hero */
+  .pl-hero{ background:#F4D03F; border-radius:18px; padding:26px 26px 24px; border-bottom:5px solid #1D8348; margin-bottom:18px; }
+  .pl-hero h2{ font-family:'Montserrat',sans-serif; font-weight:800; color:#1A1A1A; margin:0 0 3px; font-size:1.3rem; text-transform:uppercase; letter-spacing:.4px; }
+  .pl-hero h2 i{ color:#1D8348; margin-right:8px; }
+  .pl-hero p{ color:#6a5800; margin:0 0 16px; font-size:.86rem; }
+  .pl-searchbox{ display:flex; align-items:center; gap:12px; background:#fff; border-radius:14px; padding:4px 6px 4px 18px; box-shadow:0 6px 22px rgba(0,0,0,.18); }
+  .pl-searchbox i.s{ color:#9aa1a9; font-size:1.15rem; }
+  .pl-searchbox input{ flex:1; border:0; outline:0; font-family:'Kanit',sans-serif; font-size:1.12rem; padding:13px 0; background:transparent; }
+  .pl-searchbox .clr{ border:0; background:#eef1f4; color:#6b727b; width:36px; height:36px; border-radius:10px; cursor:pointer; font-size:1rem; display:none; }
+  .pl-searchbox .clr.show{ display:block; }
+
+  /* quick filters */
+  .pl-quick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .pl-chip{ border:1.5px solid rgba(0,0,0,.18); background:rgba(255,255,255,.55); color:#1A1A1A; font-family:'Kanit',sans-serif; font-size:.82rem; font-weight:600; padding:6px 15px; border-radius:999px; cursor:pointer; transition:.12s; display:inline-flex; align-items:center; gap:6px; }
+  .pl-chip:hover{ border-color:#1D8348; }
+  .pl-chip.on{ background:#1D8348; color:#fff; border-color:#1D8348; }
+
+  /* breadcrumb */
+  .pl-crumb{ display:flex; align-items:center; gap:9px; margin:4px 2px 14px; font-size:.92rem; color:#6b727b; min-height:24px; }
+  .pl-crumb a{ color:#2e934a; font-weight:600; cursor:pointer; text-decoration:none; }
+  .pl-crumb b{ color:#1a1d20; }
+
+  /* category grid */
+  .pl-cats{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:13px; }
+  .pl-cat{ background:#fff; border:1.5px solid #e3e7ec; border-radius:15px; padding:18px 16px; cursor:pointer; transition:.13s; position:relative; overflow:hidden; }
+  .pl-cat:hover{ border-color:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,.08); transform:translateY(-2px); }
+  .pl-cat .ci{ width:46px; height:46px; border-radius:13px; background:#fef6e0; color:#9a6700; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:11px; }
+  .pl-cat h4{ margin:0 0 3px; font-size:1.02rem; font-weight:700; line-height:1.25; }
+  .pl-cat .meta{ font-size:.78rem; color:#9aa1a9; }
+  .pl-cat .go{ position:absolute; right:14px; top:18px; color:#cfd5db; font-size:1rem; }
+
+  /* product cards */
+  .pl-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; }
+  .pcard{ background:#fff; border:1.5px solid #e3e7ec; border-radius:15px; overflow:hidden; display:flex; flex-direction:column; }
+  .pcard .ph{ padding:14px 16px 12px; border-bottom:1px solid #f0f2f5; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .pcard .ph .nm{ font-size:1.05rem; font-weight:700; line-height:1.25; }
+  .pcard .ph .sub{ font-size:.74rem; color:#9aa1a9; font-family:'JetBrains Mono',monospace; margin-top:2px; }
+  .pcard .badge2{ flex:none; font-size:.68rem; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
+  .b-on{ background:#e7f6ee; color:#1d7a4d; } .b-off{ background:#f1f3f5; color:#9aa1a9; } .b-seasonal{ background:#fff4e0; color:#9a6700; }
+  .pcard .prices{ padding:6px 16px 14px; }
+  .prow{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px dashed #f0f2f5; }
+  .prow:last-child{ border-bottom:0; }
+  .prow .ch{ display:flex; align-items:center; gap:9px; font-size:.86rem; color:#4a5158; }
+  .prow .ch i{ width:20px; text-align:center; color:#9aa1a9; }
+  .prow .pr{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.95rem; }
+  .prow .pr.empty{ color:#cfd5db; font-weight:400; }
+  .pcard .pf{ background:#fafbfc; padding:8px 16px; font-size:.74rem; color:#9aa1a9; display:flex; flex-wrap:wrap; gap:5px; align-items:center; border-top:1px solid #f0f2f5; }
+  .pcard .pf .ft{ background:#eef1f4; border-radius:6px; padding:1px 7px; color:#6b727b; }
+
+  .pl-empty{ text-align:center; padding:60px 20px; color:#aab1b9; }
+  .pl-empty i{ font-size:2.4rem; display:block; margin-bottom:10px; }
+
+  /* brand / store format selector */
+  .pl-brands{ display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .pl-brandbtn{ position:relative; border:2.5px solid rgba(0,0,0,.12); background:#fff; border-radius:14px; padding:10px 18px; cursor:pointer; height:62px; display:flex; align-items:center; justify-content:center; transition:.13s; min-width:170px; }
+  .pl-brandbtn img{ max-height:40px; max-width:200px; width:auto; object-fit:contain; display:block; }
+  .pl-brandbtn:hover{ border-color:rgba(29,131,72,.5); }
+  .pl-brandbtn.on{ border-color:#1D8348; box-shadow:0 6px 20px rgba(29,131,72,.22); }
+  .pl-brandbtn .cnt{ position:absolute; top:-9px; right:-9px; background:#1D8348; color:#fff; font-family:'JetBrains Mono',monospace; font-size:.66rem; font-weight:700; padding:2px 8px; border-radius:999px; border:1.5px solid #fff; }
+  .pl-brandbtn.on .cnt{ background:#1D8348; color:#fff; border-color:#fff; }
+  /* branch selector */
+  .pl-branchbar{ display:flex; align-items:center; gap:9px; margin-top:13px; color:#3a3000; font-size:.86rem; flex-wrap:wrap; }
+  .pl-branchbar i{ color:#1D8348; }
+  .pl-branchbar select{ background:#fff; border:0; border-radius:9px; padding:7px 12px; font-family:'Kanit',sans-serif; font-size:.86rem; font-weight:600; color:#1a1d20; max-width:320px; }
+  .pl-branchnote{ font-size:.76rem; color:rgba(0,0,0,.5); }
+  /* searchable branch combobox */
+  .pl-brsel{ position:relative; }
+  .pl-brsel input{ background:#fff; border:0; border-radius:9px; padding:7px 12px; font-family:'Kanit',sans-serif; font-size:.86rem; font-weight:600; color:#1a1d20; width:320px; max-width:72vw; }
+  .pl-brsel input:focus{ outline:2px solid #1D8348; }
+  .pl-brmenu{ display:none; position:absolute; left:0; top:calc(100% + 4px); z-index:60; width:360px; max-width:82vw; max-height:340px; overflow:auto; background:#fff; border:1px solid #e2e6ea; border-radius:11px; box-shadow:0 12px 30px rgba(0,0,0,.16); padding:4px; }
+  .pl-brmenu.show{ display:block; }
+  .pl-britem{ padding:8px 11px; border-radius:8px; font-size:.84rem; font-weight:600; color:#1a1d20; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pl-britem:hover{ background:#eaf6ef; }
+  .pl-britem.on{ background:#1D8348; color:#fff; }
+  .pl-britem.empty{ color:#9aa1aa; cursor:default; font-weight:500; }
+
+  /* view toggle */  .pl-views{ display:inline-flex; gap:4px; background:rgba(255,255,255,.5); border:1px solid rgba(0,0,0,.12); border-radius:11px; padding:4px; margin-top:14px; }
+  .pl-views button{ border:0; background:transparent; color:#5a4a00; font-family:'Kanit',sans-serif; font-weight:600; font-size:.84rem; padding:7px 16px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .pl-views button.on{ background:#1D8348; color:#fff; }
+
+  /* ===== POS-screen view — CMPOS look (read-only price reference) ===== */
+  .pos-screen{ background:#1f7fd2; border-radius:14px; overflow:hidden; border:1px solid #0c4c8a; box-shadow:0 12px 34px rgba(0,0,0,.16); font-family:'Kanit','Montserrat',sans-serif; }
+  /* top bar */
+  .pos-top{ display:flex; align-items:center; gap:16px; padding:9px 18px; background:linear-gradient(180deg,#2a8ade,#1873c9); color:#fff; border-bottom:3px solid #0c4c8a; }
+  .pos-cart{ display:flex; align-items:center; gap:8px; cursor:pointer; border-radius:10px; padding:3px 8px 3px 3px; transition:.12s; }
+  .pos-cart:hover{ background:rgba(255,255,255,.1); }
+  .pos-ico{ position:relative; width:46px; height:38px; display:flex; align-items:center; justify-content:center; }
+  .pos-ico i{ font-size:2.1rem; color:#e8412a; }
+  .pos-ico .bdg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#fff; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1rem; text-shadow:0 1px 1px rgba(0,0,0,.4); }
+  .pos-ico.ppl .bdg{ left:50%; transform:translate(-50%,-46%); }
+  .pos-mode{ font-weight:700; font-size:1.35rem; }
+  .pos-mode i{ font-size:.7rem; opacity:.85; margin-left:5px; }
+  .pos-logo{ margin:0 auto; height:46px; display:flex; align-items:center; cursor:pointer; }
+  .pos-logo img{ height:46px; width:auto; display:block; }
+  .pos-home{ display:flex; align-items:center; gap:9px; font-weight:700; font-size:1.35rem; cursor:pointer; }
+  .pos-home .chev{ width:0; height:0; border-top:11px solid transparent; border-bottom:11px solid transparent; border-left:15px solid #e0218a; }
+  /* body: bill left + grid right */
+  .pos-body{ display:grid; grid-template-columns:330px 1fr; }
+  .pos-left{ background:#1f7fd2; padding:8px; display:flex; flex-direction:column; gap:7px; }
+  .pos-bill{ background:#e9eef0; border:1px solid #c7d2da; border-radius:3px; overflow:hidden; display:flex; flex-direction:column; min-height:360px; }
+  .pos-bill .bhd{ display:flex; justify-content:space-between; padding:7px 12px 3px; font-size:.98rem; color:#15202a; font-weight:600; }
+  .pos-bill .bhd.r2{ padding-top:0; padding-bottom:8px; }
+  .pos-bill .btot{ background:#000; display:flex; align-items:flex-end; justify-content:space-between; padding:8px 16px 9px; }
+  .pos-bill .btot .qty{ color:#fff; font-weight:700; font-size:.95rem; }
+  .pos-bill .btot .amt{ color:#ffd23f; font-family:'Montserrat',sans-serif; font-weight:800; font-size:2.3rem; line-height:.9; }
+  .pos-bill .lines{ flex:1; background:#fff; display:flex; align-items:center; justify-content:center; text-align:center; color:#9aa1aa; padding:20px; font-size:.86rem; line-height:1.5; }
+  .pos-bill .lines i{ font-size:1.7rem; opacity:.5; display:block; margin-bottom:8px; }
+  .pos-bill .bfoot{ background:#dfe9f3; border-top:1px solid #c7d2da; display:flex; align-items:center; justify-content:space-between; padding:6px 12px; color:#2b3742; font-weight:600; font-size:.92rem; }
+  .pos-bill .bfoot i.s{ color:#3b6ea5; } .pos-bill .bfoot i.c{ color:#e8412a; }
+  .pos-status{ display:flex; justify-content:space-around; gap:4px; padding:2px; margin-top:auto; }
+  .pos-st{ display:flex; flex-direction:column; align-items:center; gap:3px; color:#eaf2fb; font-size:.72rem; text-align:center; width:25%; }
+  .pos-st .ic{ position:relative; font-size:1.7rem; line-height:1; color:#cfe0f0; }
+  .pos-st .ic.fold{ color:#3b73c4; }
+  .pos-st .ic .b{ position:absolute; right:-7px; top:-5px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.58rem; color:#fff; }
+  .pos-st .ic .b.x{ background:#e8412a; } .pos-st .ic .b.ok{ background:#27ae60; }
+  .pos-warn{ background:#fff; border:1px solid #d8dde2; border-radius:3px; color:#e8412a; font-weight:600; font-size:.86rem; padding:5px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* right grid */
+  .pos-right{ display:flex; flex-direction:column; background:linear-gradient(180deg,#bcd9f0,#a0c6e6); border-left:3px solid #0c4c8a; }
+  .pos-crumb{ color:#15334f; font-weight:600; padding:11px 16px 0; font-size:.92rem; display:flex; align-items:center; gap:8px; }
+  .pos-crumb a{ color:#1d4e8c; cursor:pointer; font-weight:700; }
+  .pos-area{ height:332px; padding:12px 16px; display:grid; grid-template-columns:repeat(6,1fr); grid-auto-rows:94px; gap:12px; align-content:start; overflow:hidden; margin-bottom:106px; }
+  .pos-cat, .pos-prod{ border:0; border-radius:14px; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:7px 8px; color:#ffd23f; position:relative; overflow:hidden; background:linear-gradient(165deg,#4f93d6,#3576bf); box-shadow:0 5px 0 #2a5f9e, 0 7px 13px rgba(0,0,0,.25); transition:transform .06s; }
+  .pos-cat:active, .pos-prod:active{ transform:translateY(3px); box-shadow:0 2px 0 #2a5f9e, 0 4px 9px rgba(0,0,0,.3); }
+  .pos-cat i{ font-size:1.02rem; margin-bottom:4px; opacity:.92; }
+  .pos-cat .cn{ font-weight:800; font-size:.86rem; line-height:1.12; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .pos-cat .cc{ color:rgba(255,255,255,.9); font-weight:500; font-size:.68rem; margin-top:4px; font-family:'Kanit',sans-serif; }
+  .pos-prod .pp{ color:#fff; font-family:'Montserrat',sans-serif; font-weight:800; font-size:1rem; line-height:1; }
+  .pos-prod .pn{ font-weight:700; font-size:.76rem; line-height:1.12; margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .pos-prod .pcd{ font-family:'JetBrains Mono',monospace; font-size:.6rem; opacity:.82; margin-top:2px; color:#fff; }
+  .pos-prod.off{ opacity:.55; }
+  .pos-prod .off-tag{ position:absolute; top:6px; right:6px; background:rgba(0,0,0,.5); color:#fff; font-size:.56rem; font-weight:700; padding:2px 7px; border-radius:999px; }
+  .pos-gridmsg{ grid-column:1/-1; text-align:center; color:#3b5870; padding:50px 20px; font-weight:600; }
+  .pos-area .pos-catband{ grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#fff; font-weight:800; font-family:'Montserrat',sans-serif; font-size:.9rem; background:rgba(0,0,0,.2); border-radius:9px; padding:7px 12px; margin-top:2px; }
+  /* flavor (page 2) picker */
+  .fl-tabs{ display:flex; gap:10px; padding:12px 16px 2px; flex-wrap:wrap; }
+  .fl-tab{ border:0; border-radius:12px; padding:9px 18px; font-family:'Kanit',sans-serif; font-weight:700; font-size:.92rem; color:#fff; background:#c0392b; cursor:pointer; display:flex; flex-direction:column; align-items:center; line-height:1.22; box-shadow:0 3px 0 rgba(0,0,0,.18); }
+  .fl-tab:nth-child(2n){ background:#2e8b57; }
+  .fl-tab.on{ outline:3px solid #fff; outline-offset:-1px; }
+  .fl-tab .cnt{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:.82rem; opacity:.95; }
+  .pos-prod.fl-prod{ position:relative; }
+  .pos-prod .flq{ position:absolute; top:6px; left:8px; background:#fff; color:#1f7fd2; font-family:'Montserrat',sans-serif; font-weight:800; font-size:.78rem; min-width:20px; height:20px; padding:0 5px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+  .fl-actions{ display:flex; gap:9px; padding:9px 16px 12px; flex-wrap:wrap; }
+  .fl-act{ border:0; border-radius:12px; padding:11px 17px; font-family:'Kanit',sans-serif; font-weight:800; font-size:.92rem; color:#fff; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.2); }
+  .fl-act.g{ background:#1f9d55; } .fl-act.b{ background:#2f6dba; } .fl-act.o{ background:#d98324; } .fl-act.r{ background:#c0392b; } .fl-act.y{ background:#e0a106; }
+  .fl-spacer{ flex:1; min-width:10px; }
+  .pos-prod .fl-badge{ position:absolute; top:6px; left:8px; background:#27ae60; color:#fff; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.62rem; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .fl-status{ font-family:'Kanit',sans-serif; font-weight:700; font-size:.78rem; padding:2px 9px; border-radius:999px; margin-left:4px; }
+  .fl-status.on{ background:#e7f7ee; color:#1f8a4d; } .fl-status.off{ background:#fdecea; color:#c0392b; }
+  .pos-pager{ display:flex; align-items:center; justify-content:center; gap:18px; padding:4px 26px 12px; color:#fff; }
+  .pos-pager .pgnums{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .pos-pager .pgnum{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.02rem; min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; cursor:pointer; background:rgba(255,255,255,.16); }
+  .pos-pager .pgnum.on{ background:#fff; color:#1f7fd2; }
+  .pos-pager .grp{ display:flex; gap:14px; cursor:pointer; }
+  .pos-pager .grp.dis{ opacity:.35; pointer-events:none; }
+  .pos-pager i{ font-size:1.5rem; text-shadow:0 2px 3px rgba(0,0,0,.3); }
+  /* bottom action bar (CMPOS look, decorative / read-only) */
+  .pos-actions{ display:flex; align-items:stretch; gap:10px; padding:9px 16px 11px; background:linear-gradient(180deg,#a0c6e6,#8db9de); flex-wrap:wrap; }
+  .pos-act{ border:0; border-radius:13px; font-family:inherit; font-weight:700; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px 16px; box-shadow:0 3px 6px rgba(0,0,0,.2); cursor:default; }
+  .pos-act i{ font-size:1.5rem; } .pos-act .lb{ font-size:.9rem; }
+  .pos-act.pay{ background:#1faa52; border-radius:50%; width:74px; height:74px; padding:0; }
+  .pos-act.del{ background:#e8412a; } .pos-act.blue{ background:#3f97d6; }
+  .pos-actnote{ margin-left:auto; align-self:center; font-family:'Kanit',sans-serif; font-size:.8rem; color:#274968; font-weight:600; display:flex; align-items:center; gap:6px; max-width:230px; text-align:right; }
+  /* Sales Mode popup */
+  .smode{ position:fixed; inset:0; background:transparent; display:none; align-items:flex-start; justify-content:flex-start; z-index:55; }
+  .smode.show{ display:flex; }
+  .smode .sbox{ background:#eef1f4; border-radius:14px; width:300px; max-width:92vw; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.34); margin:118px 0 0 24px; }
+  .smode .sh{ background:#2f6dba; color:#fff; padding:11px 16px; font-weight:800; display:flex; justify-content:space-between; align-items:center; font-family:'Montserrat'; }
+  .smode .sh .x{ cursor:pointer; opacity:.85; }
+  .smode .sbody{ padding:12px; display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow:auto; }
+  .smode .grp{ font-family:'Montserrat'; font-weight:800; color:#4a5158; font-size:.78rem; background:#fff; border-radius:9px; padding:9px 12px; text-align:center; }
+  .smode .opt{ border:1.5px solid #cfd8e2; background:#fff; border-radius:11px; padding:11px 14px; display:flex; align-items:center; gap:11px; cursor:pointer; font-family:'Kanit'; font-weight:700; color:#2a3038; font-size:.92rem; }
+  .smode .opt:hover{ border-color:#2f6dba; }
+  .smode .opt.on{ border-color:#27a35a; background:#eafaf1; }
+  .smode .opt i{ width:24px; text-align:center; color:#2f6dba; font-size:1.1rem; }
+
+  /* price detail popup (POS view tap) */
+  .pl-modal{ position:fixed; inset:0; background:rgba(15,18,22,.55); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .pl-modal.show{ display:flex; }
+  .pl-modal .box{ background:#fff; border-radius:16px; max-width:380px; width:100%; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.3); }
+  .pl-modal .mh{ background:var(--pc-dark,#1a1d20); color:#fff; padding:16px 18px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .pl-modal .mh .nm{ font-size:1.1rem; font-weight:700; } .pl-modal .mh .sub{ font-size:.74rem; color:#9aa1a9; font-family:'JetBrains Mono',monospace; margin-top:2px; }
+  .pl-modal .mh .x{ background:rgba(255,255,255,.12); border:0; color:#fff; width:32px; height:32px; border-radius:9px; cursor:pointer; flex:none; }
+  .pl-modal .mb{ padding:6px 18px 16px; }
+  .pl-count{ font-size:.82rem; color:#9aa1a9; margin:0 2px 12px; }
+  .pl-more{ text-align:center; margin-top:18px; }
+  .pl-more button{ border:1.5px solid #d6dbe0; background:#fff; color:#4a5158; font-family:'Kanit'; font-weight:600; padding:9px 22px; border-radius:11px; cursor:pointer; }
+  @media(max-width:560px){
+    .pl-grid{ grid-template-columns:1fr; }
+    .pl-cats{ grid-template-columns:1fr 1fr; }
+    .pl-wrap{ padding:16px 12px 80px; }
+    /* POS-screen mock is wide — keep its CMPOS look, let it scroll sideways instead of breaking */
+    .pl-scope .pos-screen{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .pl-scope .pos-body{ min-width:680px; }
+  }
+</style>
+
+<div class="pl-scope">
+<div class="pl-wrap">
+
+  <div class="pl-hero">
+    <h2><i class="fas fa-magnifying-glass"></i>สินค้าที่ขายอยู่</h2>
+    <p>พิมพ์ชื่อหรือรหัสสินค้า เพื่อดูราคาแต่ละช่องทาง · แสดงเฉพาะสินค้าที่ขายจริง (Active)</p>
+    <div class="pl-brands">
+      <button id="plBrandPC" class="pl-brandbtn on" onclick="plSetBrand('Potato Corner')">
+        <img src="assets/brand/potato-corner.png" alt="Potato Corner"><span class="cnt" id="plBrandPCn"></span></button>
+      <button id="plBrandSF" class="pl-brandbtn" onclick="plSetBrand('Shakes &amp; Fries')">
+        <img src="assets/brand/shakes-fries.png" alt="Shakes &amp; Fries"><span class="cnt" id="plBrandSFn"></span></button>
+    </div>
+    <div class="pl-searchbox">
+      <i class="fas fa-magnifying-glass s"></i>
+      <input id="plSearch" type="text" placeholder="เช่น MEGA FRIES, 101003, ชีส…" autocomplete="off" oninput="plOnSearch()">
+      <button class="clr" id="plClr" onclick="plClear()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="pl-branchbar">
+      <i class="fas fa-store"></i>
+      <span>สาขา:</span>
+      <div class="pl-brsel">
+        <input id="plBranchInput" type="text" autocomplete="off" placeholder="ทุกสาขา — พิมพ์ค้นหา รหัส/ชื่อไทย/อังกฤษ" onfocus="window.plBranchOpen()" oninput="window.plBranchFilter()" onblur="setTimeout(window.plBranchClose,180)">
+        <div class="pl-brmenu" id="plBranchMenu"></div>
+      </div>
+      <span class="pl-branchnote" id="plBranchNote"></span>
+    </div>
+    <div class="pl-quick">
+      <span class="pl-chip on" data-q="all" onclick="plQuick('all')"><i class="fas fa-grip"></i> ทั้งหมด</span>
+      <span class="pl-chip" data-q="core" onclick="plQuick('core')"><i class="fas fa-star"></i> ขายตลอด</span>
+      <span class="pl-chip" data-q="seasonal" onclick="plQuick('seasonal')"><i class="fas fa-clock"></i> ขายชั่วคราว</span>
+    </div>
+    <div class="pl-views">
+      <button id="plViewData" class="on" onclick="plSetView('data')"><i class="fas fa-table-cells-large"></i> มุมมองข้อมูล</button>
+      <button id="plViewPos" onclick="plSetView('pos')"><i class="fas fa-cash-register"></i> มุมมองหน้า POS</button>
+    </div>
+  </div>
+
+  <div class="pl-crumb" id="plCrumb"></div>
+  <div id="plBody"></div>
+
+  <div class="pl-modal" id="plModal" onclick="if(event.target===this)plCloseModal()">
+    <div class="box" id="plModalBox"></div>
+  </div>
+
+  <div class="smode" id="plSmode" onclick="if(event.target===this)plCloseSmode()">
+    <div class="sbox" id="plSmodeBox"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+window.initProductLookup = function () {
+  var CHANS = [
+    {k:'priceTA',   label:'Take Away', icon:'fa-store'},
+    {k:'priceGrab', label:'Grab',      icon:'fa-motorcycle'},
+    {k:'priceLineman',label:'LINE MAN', icon:'fa-hashtag'},
+    {k:'pricePanda',label:'foodpanda', icon:'fa-drumstick-bite'},
+    {k:'priceShopee',label:'Shopee',   icon:'fa-bag-shopping'},
+    {k:'priceRobinhood',label:'Robinhood', icon:'fa-leaf'},
+    {k:'priceGokoo',label:'Gokoo',     icon:'fa-bolt'},
+  ];
+  var FK='pc_product_flags', EDITK='pc_product_edits', CATSK='pc_cat_stores';
+  var ITEMS=[], ITEM_BY_CODE={}, STATUS_ALL={}, CAT_CODE={}, BR=[], FLAGS={}, state={ q:'', quick:'all', cat:null, limit:60, view:'data', posCat:null, posMode:'priceTA', brand:'Potato Corner', branch:'', posCodes:null, posCampaign:'', posPage:0, flavorView:false, flavorItem:null, flavorSubs:[], flavorTab:0, flavorPage:0, flavorPick:{} };
+  var BRAND_LOGO={ 'Potato Corner':'assets/brand/potato-corner.png', 'Shakes & Fries':'assets/brand/shakes-fries.png' };
+
+  function ls(k,d){ try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function fmt(v){ if(v===''||v==null) return null; var n=Number(v); return isNaN(n)?null:n.toLocaleString('th-TH',{maximumFractionDigits:2}); }
+  function isActive(c){ var f=FLAGS[c]||{}; if(f.active===0) return false; if(f.active===1) return true; var s=STATUS_ALL[c]; if(s==null){ var it=ITEM_BY_CODE[c]; s=it&&it.status; } return String(s==null?'':s).toLowerCase()!=='inactive'; }
+  function statusActive(it){ var f=FLAGS[it.itemCode]||{}; if(f.status===0) return false; if(f.active===0) return false; if(f.active===1) return true; return String(it.status||'').toLowerCase()!=='inactive'; }
+  function isSeasonal(it){ return /ชั่วคราว|กำหนด|seasonal/i.test(it.core||it.salesType||''); }
+  // สินค้ามีขายในช่องทาง (Sale mode) ที่เลือกหรือไม่
+  function availInMode(it){ var v=it[state.posMode]; if(v===''||v==null) return false; return !isNaN(Number(v)); }
+
+  function applyEdits(items){ var e=ls(EDITK,{}); items.forEach(function(it){ var o=e[it.itemCode]; if(o) Object.keys(o).forEach(function(k){ if(o[k]!==''&&o[k]!=null) it[k]=o[k]; }); }); return items; }
+
+  function brandsOf(it){
+    if(Array.isArray(it.brands)&&it.brands.length) return it.brands;
+    return it.storeFormat?String(it.storeFormat).split(',').map(function(x){return x.trim();}).filter(Boolean):[];
+  }
+  function passBrand(it){
+    var bs=brandsOf(it);
+    if(!bs.length) return true; // no format = ขายทุก format
+    return bs.some(function(b){ return b.replace(/&amp;/g,'&').toLowerCase()===state.brand.replace(/&amp;/g,'&').toLowerCase(); });
+  }
+
+  function passQuick(it){
+    if(state.quick==='core') return !isSeasonal(it);
+    if(state.quick==='seasonal') return isSeasonal(it);
+    return true;
+  }
+
+  var CAT_ICON={Fries:'fa-french-fries','Specialty Fries':'fa-french-fries',Flavors:'fa-mortar-pestle',Drinks:'fa-cup-straw',Beverage:'fa-mug-hot',Topping:'fa-cheese',Snack:'fa-cookie-bite',Combo:'fa-layer-group',Set:'fa-layer-group'};
+  function catIcon(c){ return CAT_ICON[c]||'fa-box'; }
+  // sort category names by their real cateCode (101,102,103…) instead of alphabetically
+  function sortCats(names){
+    return names.slice().sort(function(a,b){
+      var ca=CAT_CODE[a]||'', cb=CAT_CODE[b]||'';
+      var na=parseInt(ca,10), nb=parseInt(cb,10);
+      if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
+      if(ca!==cb) return String(ca).localeCompare(String(cb));
+      return a.localeCompare(b);
+    });
+  }
+
+  window.plOnSearch=function(){
+    state.q=(document.getElementById('plSearch').value||'').toLowerCase().trim();
+    document.getElementById('plClr').classList.toggle('show', !!state.q);
+    if(state.q) state.cat=null; // searching exits category browse
+    state.limit=60; render();
+  };
+  window.plClear=function(){ document.getElementById('plSearch').value=''; state.q=''; document.getElementById('plClr').classList.remove('show'); state.limit=60; render(); };
+  window.plQuick=function(q){ state.quick=q; document.querySelectorAll('.pl-chip').forEach(function(c){ c.classList.toggle('on', c.getAttribute('data-q')===q); }); state.limit=60; state.posPage=0; state.flavorView=false; render(); };
+  window.plOpenCat=function(c){ state.cat=c; state.q=''; document.getElementById('plSearch').value=''; document.getElementById('plClr').classList.remove('show'); state.limit=60; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  window.plBackCats=function(){ state.cat=null; state.limit=60; render(); };
+  window.plMore=function(){ state.limit+=60; render(); };
+
+  window.plSetBrand=function(b){
+    b=b.replace(/&amp;/g,'&');
+    state.brand=b; state.cat=null; state.posCat=null; state.limit=60;
+    document.getElementById('plBrandPC').classList.toggle('on', b==='Potato Corner');
+    document.getElementById('plBrandSF').classList.toggle('on', b==='Shakes & Fries');
+    render();
+  };
+  function updateBrandCounts(){
+    var pc=0, sf=0;
+    ITEMS.forEach(function(it){ var bs=brandsOf(it).map(function(x){return x.replace(/&amp;/g,'&').toLowerCase();});
+      if(!bs.length||bs.indexOf('potato corner')>=0) pc++;
+      if(!bs.length||bs.indexOf('shakes & fries')>=0) sf++; });
+    var a=document.getElementById('plBrandPCn'), b=document.getElementById('plBrandSFn');
+    if(a) a.textContent=pc.toLocaleString(); if(b) b.textContent=sf.toLocaleString();
+  }
+
+  window.plSetView=function(v){
+    state.view=v;
+    state.posCodes=null; state.posCampaign=''; state.posPage=0; state.flavorView=false; // manual view toggle = full POS (clear campaign focus)
+    document.getElementById('plViewData').classList.toggle('on', v==='data');
+    document.getElementById('plViewPos').classList.toggle('on', v==='pos');
+    render();
+  };
+  window.plPosCat=function(c){ state.posCat=c; state.posPage=0; state.flavorView=false; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  window.plPosBack=function(){ state.posCat=null; state.posPage=0; state.flavorView=false; render(); };
+  window.plPosClearCampaign=function(){ state.posCodes=null; state.posCampaign=''; state.posCat=null; state.posPage=0; state.flavorView=false; render(); };
+  window.plPosPage=function(p){ p=parseInt(p,10); if(isNaN(p)||p<0)p=0; state.posPage=p; render(); };
+  window.plPosButton=function(code){ var it=ITEM_BY_CODE[code]||ITEMS.filter(function(x){return x.itemCode===code;})[0]; if(!it) return; var subs=subsetsOf(code); if(subs.length){ state.flavorView=true; state.flavorItem=it; state.flavorSubs=subs; state.flavorTab=0; state.flavorPage=0; state.flavorPick={}; render(); window.scrollTo({top:0,behavior:'smooth'}); } /* ยังไม่ผูกผงในระบบ → คลิกแล้วไม่เกิดอะไร */ };
+  window.plFlavorTab=function(i){ state.flavorTab=parseInt(i,10)||0; state.flavorPage=0; render(); };
+  window.plFlavorPage=function(p){ p=parseInt(p,10); if(isNaN(p)||p<0)p=0; state.flavorPage=p; render(); };
+  window.plFlavorPick=function(fcode){ var subs=state.flavorSubs||[]; var s=subs[Math.min(state.flavorTab,subs.length-1)]; if(!s) return; var pk=state.flavorPick||(state.flavorPick={}); var m=pk[s.ssCode]||(pk[s.ssCode]={}); var tot=0; Object.keys(m).forEach(function(k){tot+=m[k];}); if(tot>=s.max) return; m[fcode]=(m[fcode]||0)+1; render(); };
+  window.plFlavorReset=function(){ var subs=state.flavorSubs||[]; var s=subs[Math.min(state.flavorTab,subs.length-1)]; if(s&&state.flavorPick) state.flavorPick[s.ssCode]={}; render(); };
+  window.plFlavorDefault=function(){ var subs=state.flavorSubs||[]; var s=subs[Math.min(state.flavorTab,subs.length-1)]; if(!s)return; var m={},need=s.max; for(var i=0;i<s.flavors.length&&need>0;i++){ m[s.flavors[i].code]=1; need--; } (state.flavorPick||(state.flavorPick={}))[s.ssCode]=m; render(); };
+  window.plFlavorQty=function(){ render(); };
+  window.plFlavorExit=function(){ state.flavorView=false; state.flavorItem=null; state.flavorSubs=[]; state.flavorPick={}; render(); };
+  window.plPosMode=function(m){ state.posMode=m; render(); };
+  window.plOpenModal=function(code){
+    var it=ITEMS.filter(function(x){return x.itemCode===code;})[0]; if(!it) return;
+    var act=isActive(it.itemCode), seas=isSeasonal(it);
+    var badge = !act?'<span class="badge2 b-off"><i class="fas fa-circle"></i>ไม่ขาย</span>':seas?'<span class="badge2 b-seasonal"><i class="fas fa-clock"></i>ชั่วคราว</span>':'<span class="badge2 b-on"><i class="fas fa-circle-check"></i>ขายอยู่</span>';
+    var prices=CHANS.map(function(c){ var v=fmt(it[c.k]);
+      return '<div class="prow"><span class="ch"><i class="fas '+c.icon+'"></i>'+esc(c.label)+'</span>'+(v!=null?'<span class="pr">฿'+v+'</span>':'<span class="pr empty">—</span>')+'</div>'; }).join('');
+    document.getElementById('plModalBox').innerHTML=
+      '<div class="mh"><div><div class="nm">'+esc(it.itemNameEN||it.itemNameTH||'—')+'</div>'+
+        '<div class="sub">'+esc(it.itemCode||'')+(it.category?' · '+esc(it.category):'')+'</div>'+
+        '<div style="margin-top:7px">'+badge+'</div></div>'+
+        '<button class="x" onclick="plCloseModal()"><i class="fas fa-xmark"></i></button></div>'+
+      '<div class="mb"><div class="prices">'+prices+'</div></div>';
+    document.getElementById('plModal').classList.add('show');
+  };
+  window.plCloseModal=function(){ document.getElementById('plModal').classList.remove('show'); };
+
+  function matchSearch(it){
+    if(!state.q) return true;
+    return String(it.itemCode||'').toLowerCase().indexOf(state.q)>=0
+      || String(it.itemNameEN||'').toLowerCase().indexOf(state.q)>=0
+      || String(it.itemNameTH||'').toLowerCase().indexOf(state.q)>=0;
+  }
+
+  function cardHTML(it){
+    var act=isActive(it.itemCode), seas=isSeasonal(it);
+    var badge = !act ? '<span class="badge2 b-off"><i class="fas fa-circle"></i>ไม่ขาย</span>'
+      : seas ? '<span class="badge2 b-seasonal"><i class="fas fa-clock"></i>ชั่วคราว</span>'
+      : '<span class="badge2 b-on"><i class="fas fa-circle-check"></i>ขายอยู่</span>';
+    var prices = CHANS.map(function(c){
+      var v=fmt(it[c.k]);
+      return '<div class="prow"><span class="ch"><i class="fas '+c.icon+'"></i>'+esc(c.label)+'</span>'+
+        (v!=null?'<span class="pr">฿'+v+'</span>':'<span class="pr empty">—</span>')+'</div>';
+    }).join('');
+    var brands=Array.isArray(it.brands)?it.brands:(it.storeFormat?String(it.storeFormat).split(',').map(function(x){return x.trim();}):[]);
+    var ft = brands.filter(Boolean).map(function(b){return '<span class="ft">'+esc(b)+'</span>';}).join('');
+    return '<div class="pcard">'+
+      '<div class="ph"><div><div class="nm">'+esc(it.itemNameEN||it.itemNameTH||'—')+'</div>'+
+        '<div class="sub">'+esc(it.itemCode||'')+(it.category?' · '+esc(it.category):'')+'</div></div>'+badge+'</div>'+
+      '<div class="prices">'+prices+'</div>'+
+      (ft?'<div class="pf"><i class="fas fa-store" style="color:#cfd5db"></i>'+ft+'</div>':'')+
+    '</div>';
+  }
+
+  // bilingual labels for POS buttons (synced with Category Setting Name EN/TH + i18n)
+  function catLabel(catName){
+    var a=ls('pc_cat_attrs',{})[catName]||{};
+    if(window.PC_LANG==='EN') return a.nameEN||catName;
+    return a.nameTH||a.nameEN||catName;
+  }
+  function prodName(it){
+    if(window.PC_LANG==='EN') return it.itemNameEN||it.itemNameTH||'—';
+    return it.itemNameTH||it.itemNameEN||'—';
+  }
+
+  function passQuickAll(it){ return passBrand(it) && passQuick(it) && catVisible(it.category||'(ไม่ระบุหมวด)') && depVisible(it); }
+  // ปิดแผนก (pc_dep_flags) → สินค้าในแผนกถูกซ่อนจากหน้า POS ด้วย (sync กับ POSSim/BillDiff)
+  function depVisible(it){ var df=ls('pc_dep_flags',{})[it && it.department]; return !(df && df.active===0); }
+
+  // — category visibility by branch (synced with Category Setting / pc_cat_stores) —
+  function catTokenIds(tok){
+    var set={};
+    String(tok).split(',').map(function(s){return s.trim();}).filter(Boolean).forEach(function(t){
+      if(/^G:/i.test(t)){ var v=t.slice(2); BR.forEach(function(b){if(String(b.group)===v)set[b.id]=1;}); }
+      else if(/^C:/i.test(t)){ var v=t.slice(2); BR.forEach(function(b){if(String(b.class)===v)set[b.id]=1;}); }
+      else if(/^T:/i.test(t)){ var v=t.slice(2); BR.forEach(function(b){if(String(b.type)===v)set[b.id]=1;}); }
+      else set[t]=1;
+    });
+    return set;
+  }
+  function catVisible(catName){
+    var cf=ls('pc_cat_flags',{})[catName]; if(cf && cf.active===0) return false;
+    var tok=(ls(CATSK,{})[catName]);
+    if(tok==null||String(tok).trim()==='') return true;          // not set = ทุกสาขา
+    if(/(^|,)\s*ALL\s*(,|$)/i.test(tok)) return true;
+    if(String(tok).trim().toUpperCase()==='NONE') return false;   // ซ่อนทุกสาขา
+    if(!state.branch) return true;                                // ยังไม่เลือกสาขา → โชว์ทั้งหมด
+    return !!catTokenIds(tok)[state.branch];
+  }
+
+  function render(){
+    var crumb=document.getElementById('plCrumb'), body=document.getElementById('plBody');
+
+    // ===== POS-SCREEN VIEW =====
+    if(state.view==='pos'){
+      crumb.innerHTML='';
+      renderPOS(body);
+      return;
+    }
+
+    // CATEGORY BROWSE MODE (no search, no category selected) → show category tiles
+    if(!state.q && !state.cat){
+      crumb.innerHTML='<i class="fas fa-grip-vertical" style="color:#cfd5db"></i> เลือกหมวดสินค้า หรือพิมพ์ค้นหาด้านบน';
+      var byCat={};
+      ITEMS.forEach(function(it){ if(!passQuickAll(it)) return; var c=it.category||'(ไม่ระบุหมวด)'; (byCat[c]=byCat[c]||[]).push(it); });
+      var cats=sortCats(Object.keys(byCat));
+      if(!cats.length){ body.innerHTML='<div class="pl-empty"><i class="fas fa-box-open"></i>ไม่มีสินค้าตามตัวกรอง</div>'; return; }
+      body.innerHTML='<div class="pl-cats">'+cats.map(function(c){
+        var n=byCat[c].length, on=byCat[c].filter(function(x){return isActive(x.itemCode);}).length;
+        return '<div class="pl-cat" onclick="plOpenCat(\''+esc(c).replace(/'/g,"\\'")+'\')">'+
+          '<div class="ci"><i class="fas '+catIcon(c)+'"></i></div>'+
+          '<h4>'+esc(catLabel(c))+'</h4><div class="meta">'+n+' รายการ · ขายอยู่ '+on+'</div>'+
+          '<i class="fas fa-chevron-right go"></i></div>';
+      }).join('')+'</div>';
+      return;
+    }
+
+    // LIST MODE (search results OR inside a category)
+    var rows=ITEMS.filter(function(it){
+      if(state.cat && (it.category||'(ไม่ระบุหมวด)')!==state.cat) return false;
+      if(!passQuickAll(it)) return false;
+      if(!matchSearch(it)) return false;
+      return true;
+    });
+    // active first
+    rows.sort(function(a,b){ return (isActive(b.itemCode)?1:0)-(isActive(a.itemCode)?1:0); });
+
+    if(state.cat){
+      crumb.innerHTML='<a onclick="plBackCats()"><i class="fas fa-arrow-left"></i> ทุกหมวด</a> <i class="fas fa-chevron-right" style="font-size:.7rem;color:#cfd5db"></i> <b>'+esc(state.cat)+'</b>';
+    } else {
+      crumb.innerHTML='<i class="fas fa-magnifying-glass" style="color:#cfd5db"></i> ผลการค้นหา “'+esc(state.q)+'”';
+    }
+
+    if(!rows.length){ body.innerHTML='<div class="pl-empty"><i class="fas fa-box-open"></i>ไม่พบสินค้า'+(state.q?' “'+esc(state.q)+'”':'')+'</div>'; return; }
+    var shown=rows.slice(0,state.limit);
+    body.innerHTML='<div class="pl-count">พบ '+rows.length+' รายการ'+(rows.length>state.limit?' · แสดง '+shown.length:'')+'</div>'+
+      '<div class="pl-grid">'+shown.map(cardHTML).join('')+'</div>'+
+      (rows.length>state.limit?'<div class="pl-more"><button onclick="plMore()"><i class="fas fa-chevron-down me-1"></i>ดูเพิ่ม ('+(rows.length-state.limit)+')</button></div>':'');
+  }
+
+  function priceLabelOf(m){ var c=CHANS.filter(function(x){return x.k===m;})[0]; return c?c.label:m; }
+  // a few blue shades to vary the text buttons (like the real POS)
+  var TXT_BG=['linear-gradient(180deg,#4a90d6,#3f86c6)','linear-gradient(180deg,#56c0f0,#33a8e8)','linear-gradient(180deg,#5a9ad6,#4a86c8)','linear-gradient(180deg,#3f86c6,#2f6dba)'];
+
+  function posSectionName(){
+    if(state.flavorView && state.flavorItem) return catLabel(state.flavorItem.category||'');
+    if(state.posCodes && state.posCodes.length){
+      var cats=[]; state.posCodes.forEach(function(c){ var it=ITEM_BY_CODE[c]||ITEMS.filter(function(x){return x.itemCode===c;})[0]; if(it){ var cc=it.category||''; if(cc&&cats.indexOf(cc)<0)cats.push(cc); } });
+      return cats.map(catLabel).join(' / ');
+    }
+    if(state.posCat) return catLabel(state.posCat);
+    return '';
+  }
+  function posTop(){
+    return '<div class="pos-top">'+
+      '<div class="pos-cart" onclick="plOpenSmode()" title="เลือกช่องทางขาย">'+
+        '<div class="pos-ico"><i class="fas fa-cart-shopping"></i><span class="bdg">0</span></div>'+
+        '<div class="pos-ico ppl"><i class="fas fa-users"></i><span class="bdg">1</span></div>'+
+        '<div class="pos-mode">'+esc(priceLabelOf(state.posMode))+' <i class="fas fa-chevron-down"></i></div>'+
+      '</div>'+
+      '<div class="pos-logo" onclick="plOpenBrandPop()" title="เลือก Store Format"><img src="'+BRAND_LOGO[state.brand]+'" alt="'+esc(state.brand)+'"></div>'+
+      '<div class="pos-home" onclick="plPosBack()" title="กลับหน้าแรก">'+(window.PC_LANG==='EN'?'Home':'หน้าแรก')+' <span class="chev"></span>'+(function(){var s=posSectionName();return s?' <b style="margin-left:7px;font-weight:800">'+esc(s)+'</b>':'';})()+'</div>'+
+    '</div>';
+  }
+  function posBill(){
+    var today=new Date(); var dt=('0'+today.getDate()).slice(-2)+'/'+('0'+(today.getMonth()+1)).slice(-2)+'/'+today.getFullYear();
+    return '<div class="pos-bill">'+
+      '<div class="bhd"><span>XXXX: SHOP TEST</span><span>เครื่อง: 01</span></div>'+
+      '<div class="bhd r2"><span>'+dt+'</span><span>เลขที่บิล: 0100007</span></div>'+
+      '<div class="btot"><span class="qty">จำนวน 0</span><span class="amt">0.00</span></div>'+
+      '<div class="lines"><div><i class="fas fa-magnifying-glass-dollar"></i>มุมมองดูราคา (read-only)<br>แตะสินค้าเพื่อดูราคาทุกช่องทาง</div></div>'+
+      '<div class="bfoot"><span><i class="fas fa-print s"></i> #107</span><span><i class="fas fa-user-tie c"></i> CMPOS</span></div>'+
+    '</div>';
+  }
+  function posLeft(){
+    return '<div class="pos-left">'+posBill()+
+    '</div>';
+  }
+  function posProdBtn(it){
+    var act=isActive(it.itemCode), v=fmt(it[state.posMode]), bound=hasSubset(it.itemCode);
+    return '<button class="pos-prod'+(act?'':' off')+'" onclick="plPosButton(\''+esc(it.itemCode)+'\')">'+
+      (act?'':'<span class="off-tag">ไม่ขาย</span>')+
+      (bound?'<span class="fl-badge" title="มีผง · กดเลือกผง"><i class="fas fa-mortar-pestle"></i></span>':'')+
+      '<span class="pp">'+(v!=null?'฿'+v:'<span style="opacity:.6;font-size:.85rem">—</span>')+'</span>'+
+      '<span class="pn">'+esc(prodName(it))+'</span>'+
+      '<span class="pcd">'+esc(it.itemCode||'')+'</span></button>';
+  }
+  var POS_PER_PAGE=18; // 6 คอลัมน์ × 3 แถว
+  function posPageInfo(total){ var pages=Math.max(1,Math.ceil(total/POS_PER_PAGE)); if(state.posPage>=pages)state.posPage=pages-1; if(state.posPage<0)state.posPage=0; return {pages:pages, start:state.posPage*POS_PER_PAGE, end:state.posPage*POS_PER_PAGE+POS_PER_PAGE}; }
+  function posPager(pages){ return posPagerN(pages,state.posPage,'plPosPage'); }
+  function posPagerN(pages,cur,fn){
+    pages=pages||1; cur=Math.min(cur||0,pages-1); if(cur<0)cur=0;
+    var nums=''; for(var i=0;i<pages;i++){ nums+='<span class="pgnum'+(i===cur?' on':'')+'" onclick="'+fn+'('+i+')">'+(i+1)+'</span>'; }
+    return '<div class="pos-pager"><div class="grp'+(cur<=0?' dis':'')+'" onclick="'+fn+'('+(cur-1)+')"><i class="fas fa-angle-left"></i></div><div class="pgnums">'+nums+'</div><div class="grp'+(cur>=pages-1?' dis':'')+'" onclick="'+fn+'('+(cur+1)+')"><i class="fas fa-angle-right"></i></div></div>';
+  }
+  /* subsets ผูกกับปุ่ม (item) → ผงสำหรับ "หน้า 2" */
+  function subsetsOf(code){
+    var comp=(ls('pc_itemset_comp',{})||{})[code];
+    if(!(comp&&comp.length)) comp=(window.PC_PRODUCT_FORMULA&&window.PC_PRODUCT_FORMULA[code])||[];
+    var FL=window.PC_SUBSET_FLAVORS||{}, SM=window.PC_SUBSET_MASTER||[];
+    return (comp||[]).map(function(b){
+      var ss=b.code, rec=FL[ss]||{}, m=SM.filter(function(s){return s.ssCode===ss;})[0]||{};
+      return { ssCode:ss, name:(rec.name||m.name||ss), short:(rec.short||m.short||ss), min:(b.min||1), max:(b.max||b.min||1), flavors:(rec.flavors||[]) };
+    });
+  }
+  function hasSubset(code){ var c=(ls('pc_itemset_comp',{})||{})[code]; if(c&&c.length)return true; return !!(window.PC_PRODUCT_FORMULA&&window.PC_PRODUCT_FORMULA[code]&&window.PC_PRODUCT_FORMULA[code].length); }
+  function flavorTotal(ss){ var p=(state.flavorPick||{})[ss]||{}, t=0; Object.keys(p).forEach(function(k){t+=p[k];}); return t; }
+  function renderFlavorScreen(body){
+    var subs=state.flavorSubs||[]; if(!subs.length){ state.flavorView=false; renderPOS(body); return; }
+    var tab=Math.min(state.flavorTab,subs.length-1); if(tab<0)tab=0;
+    var item=state.flavorItem||{}, act=isActive(item.itemCode);
+    var statusBadge=act?'<span class="fl-status on"><i class="fas fa-circle-check"></i> Active</span>':'<span class="fl-status off"><i class="fas fa-circle"></i> ไม่ขาย</span>';
+    var tabs=subs.map(function(s,i){ return '<button class="fl-tab'+(i===tab?' on':'')+'" onclick="plFlavorTab('+i+')">'+esc(s.short||s.name)+'<span class="cnt">'+flavorTotal(s.ssCode)+'/'+s.max+'</span></button>'; }).join('');
+    var fl=((subs[tab]&&subs[tab].flavors)||[]).filter(function(f){ return isActive(f.code); });
+    var per=POS_PER_PAGE, pages=Math.max(1,Math.ceil(fl.length/per)); if(state.flavorPage>=pages)state.flavorPage=pages-1; if(state.flavorPage<0)state.flavorPage=0;
+    var page=fl.slice(state.flavorPage*per,(state.flavorPage+1)*per);
+    var picks=(state.flavorPick||{})[subs[tab].ssCode]||{};
+    var grid=fl.length?page.map(function(f){ var q=picks[f.code]||0; return '<button class="pos-prod fl-prod" onclick="plFlavorPick(\''+esc(String(f.code).replace(/\\/g,"\\\\").replace(/'/g,"\\'"))+'\')"><span class="flq"'+(q?'':' style="opacity:.4"')+'>'+q+'</span><span class="pn">'+esc(f.flavor)+'</span><span class="pcd">'+esc(f.code)+'</span></button>'; }).join(''):'<div class="pos-gridmsg">ยังไม่มีผงผูกกับชุดนี้</div>';
+    var crumb='<div class="pos-crumb"><a onclick="plFlavorExit()"><i class="fas fa-arrow-left"></i> กลับปุ่ม</a> <i class="fas fa-chevron-right" style="font-size:.65rem;color:#5a7596"></i> <b style="color:#15334f">'+esc(prodName(item))+'</b> '+statusBadge+' <span style="color:#3b5870;font-weight:600">· เลือกผง (หน้า 2)</span></div>';
+    var actions='<div class="fl-actions"><button class="fl-act g" onclick="plFlavorQty()"><i class="fas fa-plus me-1"></i>Qty</button><button class="fl-act b">Change Qty</button><button class="fl-act b">Change Set</button><button class="fl-act o" onclick="plFlavorReset()">Reset</button><div class="fl-spacer"></div><button class="fl-act y" onclick="plFlavorDefault()">Default</button><button class="fl-act g" onclick="plFlavorExit()">OK</button><button class="fl-act r" onclick="plFlavorExit()">Exit</button></div>';
+    var right='<div class="pos-right">'+crumb+'<div class="fl-tabs">'+tabs+'</div><div class="pos-area">'+grid+'</div>'+posPagerN(pages,state.flavorPage,'plFlavorPage')+actions+'</div>';
+    body.innerHTML='<div class="pos-screen">'+posTop()+'<div class="pos-body">'+posLeft()+right+'</div></div>';
+  }
+  function posActions(){
+    return '<div class="pos-actions">'+
+      '<span class="pos-act pay"><i class="fas fa-dollar-sign"></i></span>'+
+      '<span class="pos-act del"><i class="fas fa-trash-can"></i><span class="lb">ลบรายการ</span></span>'+
+      '<span class="pos-act blue"><i class="fas fa-print"></i><span class="lb">พิมพ์ดร๊าว</span></span>'+
+      '<span class="pos-act blue"><i class="fas fa-user"></i><span class="lb">สมาชิก</span></span>'+
+      '<span class="pos-actnote"><i class="fas fa-circle-info"></i> มุมมองอ้างอิงราคา · ปุ่มขายใช้งานจริงที่เครื่อง POS</span>'+
+    '</div>';
+  }
+
+  function renderPOS(body){
+    if(state.flavorView){ renderFlavorScreen(body); return; }
+    var right;
+
+    // CAMPAIGN-FOCUSED POS — only this promo's buttons (opened from a Branch View card)
+    if(state.posCodes && state.posCodes.length){
+      var fset={}; state.posCodes.forEach(function(c){ fset[String(c)]=1; });
+      var fitems=ITEMS.filter(function(it){ return fset[String(it.itemCode)] && isActive(it.itemCode) && availInMode(it); });
+      fitems.sort(function(a,b){ return (isActive(b.itemCode)?1:0)-(isActive(a.itemCode)?1:0); });
+      fitems.sort(function(a,b){ var ca=(a.category||''), cb=(b.category||''); if(ca!==cb) return ca<cb?-1:1; return (isActive(b.itemCode)?1:0)-(isActive(a.itemCode)?1:0); });
+      var fcatList=[]; fitems.forEach(function(it){ var c=catLabel(it.category||'(ไม่ระบุหมวด)'); if(fcatList.indexOf(c)<0) fcatList.push(c); });
+      var fcrumb='<div class="pos-crumb"><a onclick="plPosClearCampaign()"><i class="fas fa-arrow-left"></i> ทุกปุ่ม</a> <i class="fas fa-chevron-right" style="font-size:.65rem;color:#5a7596"></i> <b style="color:#15334f"><i class="fas fa-bullhorn me-1"></i>'+esc(state.posCampaign||'โปรที่เลือก')+'</b> <span style="color:#3b5870;font-weight:600">· หมวด '+esc(fcatList.join(', '))+' · '+fitems.length+' ปุ่ม</span></div>';
+      var fpinfo=posPageInfo(fitems.length);
+      var fpage=fitems.slice(fpinfo.start,fpinfo.end);
+      var fgrid='', flastCat=null;
+      fpage.forEach(function(it){ var rc=it.category||'(ไม่ระบุหมวด)'; if(rc!==flastCat){ fgrid+='<div class="pos-catband"><i class="fas '+catIcon(rc)+'"></i> '+esc(catLabel(rc))+'</div>'; flastCat=rc; } fgrid+=posProdBtn(it); });
+      if(!fitems.length) fgrid='<div class="pos-gridmsg">ไม่พบปุ่มของโปรนี้</div>';
+      right='<div class="pos-right">'+fcrumb+'<div class="pos-area">'+fgrid+'</div>'+posPager(fpinfo.pages)+posActions()+'</div>';
+      body.innerHTML='<div class="pos-screen">'+posTop()+'<div class="pos-body">'+posLeft()+right+'</div></div>';
+      return;
+    }
+
+    // category grid
+    if(!state.posCat){
+      var byCat={};
+      ITEMS.forEach(function(it){ if(!passQuickAll(it)||!isActive(it.itemCode)||!availInMode(it)) return; var c=it.category||'(ไม่ระบุหมวด)'; (byCat[c]=byCat[c]||[]).push(it); });
+      var cats=sortCats(Object.keys(byCat));
+      var crumb='<div class="pos-crumb"><i class="fas fa-hand-pointer"></i> แตะหมวดเพื่อดูสินค้า · ช่องทาง '+esc(priceLabelOf(state.posMode))+'</div>';
+      var grid=cats.length?cats.map(function(c){
+        var ca=ls('pc_cat_attrs',{})[c]||{};
+        var stl=(ca.bg||ca.font)?(' style="background:'+esc(ca.bg||'#3576bf')+';color:'+esc(ca.font||'#ffd23f')+'"'):'';
+        return '<button class="pos-cat" onclick="plPosCat(\''+esc(c).replace(/'/g,"\\'")+'\')"'+stl+'>'+
+          '<i class="fas '+catIcon(c)+'"></i><span class="cn">'+esc(catLabel(c))+'</span><span class="cc">'+byCat[c].length+' รายการ</span></button>';
+      }).join(''):'<div class="pos-gridmsg">ไม่มีสินค้าตามตัวกรอง</div>';
+      right='<div class="pos-right">'+crumb+'<div class="pos-area">'+grid+'</div>'+posPager(1)+posActions()+'</div>';
+      body.innerHTML='<div class="pos-screen">'+posTop()+'<div class="pos-body">'+posLeft()+right+'</div></div>';
+      return;
+    }
+
+    // product grid inside category
+    var items=ITEMS.filter(function(it){ return (it.category||'(ไม่ระบุหมวด)')===state.posCat && passQuickAll(it) && isActive(it.itemCode) && availInMode(it); });
+    items.sort(function(a,b){ return (isActive(b.itemCode)?1:0)-(isActive(a.itemCode)?1:0); });
+    var crumb2='<div class="pos-crumb"><a onclick="plPosBack()"><i class="fas fa-arrow-left"></i> ทุกหมวด</a> <i class="fas fa-chevron-right" style="font-size:.65rem;color:#5a7596"></i> <b style="color:#15334f">'+esc(catLabel(state.posCat))+'</b> · '+items.length+' รายการ</div>';
+    var pinfo=posPageInfo(items.length);
+    var grid=items.length?items.slice(pinfo.start,pinfo.end).map(posProdBtn).join(''):'<div class="pos-gridmsg">ไม่มีสินค้าในหมวดนี้</div>';
+    right='<div class="pos-right">'+crumb2+'<div class="pos-area">'+grid+'</div>'+posPager(pinfo.pages)+posActions()+'</div>';
+    body.innerHTML='<div class="pos-screen">'+posTop()+'<div class="pos-body">'+posLeft()+right+'</div></div>';
+  }
+
+  // Sales Mode popup (matches real POS) — เฉพาะช่องทางที่ Active (pc_salemode_master)
+  function activeSaleModes(){
+    var MAP={'Take Away':'priceTA','Grab':'priceGrab','Lineman':'priceLineman','ShopeeFood':'priceShopee','Robinhood':'priceRobinhood','foodpanda':'pricePanda','Gokoo':'priceGokoo'};
+    var ICO={priceTA:'fa-bag-shopping',priceGrab:'fa-motorcycle',priceLineman:'fa-hashtag',priceRobinhood:'fa-leaf',pricePanda:'fa-drumstick-bite',priceShopee:'fa-bag-shopping',priceGokoo:'fa-bolt'};
+    var COL={priceTA:'#1a1d20',priceGrab:'#00b14f',priceLineman:'#06c755',priceRobinhood:'#e2497a',pricePanda:'#d70f64',priceShopee:'#ee4d2d',priceGokoo:'#f5a623'};
+    var modes=ls('pc_salemode_master',null);
+    if(!Array.isArray(modes)||!modes.length) modes=[{name:'Take Away',active:1},{name:'Grab',active:1},{name:'Lineman',active:1},{name:'ShopeeFood',active:1},{name:'Robinhood',active:1},{name:'foodpanda',active:1},{name:'Gokoo',active:1}];
+    var out=[];
+    modes.forEach(function(m){ if(m.active===0) return; var k=MAP[m.name]; if(!k) return; out.push({k:k,label:(m.name==='Take Away'?'Take Away':(m.name+'-Delivery')),icon:ICO[k],col:COL[k]}); });
+    return out;
+  }
+  window.plOpenSmode=function(){
+    var ms=activeSaleModes();
+    var ta=ms.filter(function(o){return o.k==='priceTA';}), dlv=ms.filter(function(o){return o.k!=='priceTA';});
+    function optHTML(o){ return '<div class="opt'+(state.posMode===o.k?' on':'')+'" onclick="plPickMode(\''+o.k+'\')"><i class="fas '+o.icon+'" style="color:'+o.col+'"></i>'+esc(o.label)+(state.posMode===o.k?'<i class="fas fa-check" style="margin-left:auto;color:#27a35a"></i>':'')+'</div>'; }
+    document.getElementById('plSmodeBox').innerHTML=
+      '<div class="sh"><span><i class="fas fa-shuffle me-2"></i>Sales Mode</span><span class="x" onclick="plCloseSmode()"><i class="fas fa-xmark"></i></span></div>'+
+      '<div class="sbody">'+(ta.length?'<div class="grp">General Mode</div>'+ta.map(optHTML).join(''):'')+(dlv.length?'<div class="grp">Delivery Mode</div>'+dlv.map(optHTML).join(''):'')+'</div>';
+    var sc=document.querySelector('.pos-screen'), box=document.getElementById('plSmodeBox');
+    if(sc&&box){ var r=sc.getBoundingClientRect(); box.style.position='fixed'; box.style.top=Math.max(8,r.top+62)+'px'; box.style.left=(r.left+10)+'px'; box.style.margin='0'; }
+    document.getElementById('plSmode').classList.add('show');
+  };
+  window.plCloseSmode=function(){ var box=document.getElementById('plSmodeBox'); if(box){ box.style.position=''; box.style.top=''; box.style.left=''; box.style.margin=''; } document.getElementById('plSmode').classList.remove('show'); };
+  window.plPickMode=function(m){ state.posMode=m; plCloseSmode(); render(); };
+
+  // Store Format picker (opened from the POS logo)
+  window.plOpenBrandPop=function(){
+    var brands=['Potato Corner','Shakes & Fries'];
+    document.getElementById('plSmodeBox').innerHTML=
+      '<div class="sh"><span><i class="fas fa-shop me-2"></i>Store Format</span><span class="x" onclick="plCloseSmode()"><i class="fas fa-xmark"></i></span></div>'+
+      '<div class="sbody">'+brands.map(function(b){
+        return '<div class="opt'+(state.brand===b?' on':'')+'" onclick="plPickBrand(\''+b.replace(/'/g,"\\'")+'\')" style="justify-content:center;padding:14px">'+
+          '<img src="'+BRAND_LOGO[b]+'" alt="'+esc(b)+'" style="height:34px;width:auto">'+(state.brand===b?'<i class="fas fa-check" style="margin-left:auto;color:#27a35a"></i>':'')+'</div>';
+      }).join('')+'</div>';
+    document.getElementById('plSmode').classList.add('show');
+  };
+  window.plPickBrand=function(b){ plCloseSmode(); plSetBrand(b); };
+
+  // ===== searchable branch combobox (รหัส/ชื่อไทย/อังกฤษ) =====
+  // รวมสาขาจาก seed + Shop Master (pc_master_lists) → สาขาที่เพิ่มใหม่ขึ้นอัตโนมัติ
+  function plAllBranches(){
+    var byId={}, order=[];
+    function put(b){ if(!b||!b.id) return; var id=String(b.id);
+      if(!(id in byId)){ order.push(id); byId[id]={id:b.id}; }
+      var t=byId[id];
+      t.name=b.name||t.name||''; t.nameTH=b.nameTH||t.nameTH||'';
+      t.type=b.type||t.type; t.group=b.group||t.group; t['class']=b['class']||t['class'];
+    }
+    (window.PC_BRANCH_MASTER||[]).forEach(put);
+    try{ var o=JSON.parse(localStorage.getItem('pc_master_lists')||'null'); if(o && Array.isArray(o.branches)) o.branches.forEach(put); }catch(e){}
+    return order.map(function(id){ return byId[id]; });
+  }
+  function brById(id){ for(var i=0;i<BR.length;i++){ if(String(BR[i].id)===String(id)) return BR[i]; } return null; }
+  function brLabelOf(id){ var b=brById(id); if(!b) return id||''; return b.id+' · '+(b.name||'')+((b.nameTH&&b.nameTH!==b.name)?' · '+b.nameTH:''); }
+  function plBranchMenuHTML(filter){
+    filter=String(filter||'').toLowerCase().trim();
+    var head='<div class="pl-britem'+(state.branch?'':' on')+'" onclick="window.plBranchPick(\'\')">— ทุกสาขา (ไม่กรอง) —</div>';
+    var rows=BR.filter(function(b){ return !filter || (b.id+' '+(b.name||'')+' '+(b.nameTH||'')).toLowerCase().indexOf(filter)>=0; })
+      .map(function(b){ return '<div class="pl-britem'+(String(state.branch)===String(b.id)?' on':'')+'" onclick="window.plBranchPick(\''+esc(String(b.id)).replace(/'/g,"\\'")+'\')">'+esc(b.id)+' · '+esc(b.name||'')+(b.nameTH?' · '+esc(b.nameTH):'')+'</div>'; }).join('');
+    if(filter && !rows) rows='<div class="pl-britem empty">ไม่พบสาขา “'+esc(filter)+'”</div>';
+    return head+rows;
+  }
+  function plBranchSyncInput(){ var inp=document.getElementById('plBranchInput'); if(!inp) return; inp.value = state.branch ? brLabelOf(state.branch) : ''; inp.setAttribute('placeholder','ทุกสาขา — พิมพ์ค้นหา รหัส/ชื่อไทย/อังกฤษ'); }
+  window.plBranchOpen=function(){ var m=document.getElementById('plBranchMenu'); var inp=document.getElementById('plBranchInput'); if(!m) return; if(inp){ if(state.branch) inp.setAttribute('placeholder', brLabelOf(state.branch)); inp.value=''; } m.innerHTML=plBranchMenuHTML(''); m.classList.add('show'); };
+  window.plBranchFilter=function(){ var m=document.getElementById('plBranchMenu'); var inp=document.getElementById('plBranchInput'); if(!m) return; m.innerHTML=plBranchMenuHTML(inp?inp.value:''); m.classList.add('show'); };
+  window.plBranchClose=function(){ var m=document.getElementById('plBranchMenu'); if(m) m.classList.remove('show'); plBranchSyncInput(); };
+  window.plBranchPick=function(id){
+    state.branch=id||''; state.cat=null; state.posCat=null; state.limit=60;
+    var note=document.getElementById('plBranchNote');
+    if(note) note.textContent = state.branch ? 'กรองหมวดตามที่ตั้งค่าให้สาขานี้' : 'ไม่เลือกสาขา = โชว์ทุกหมวด';
+    var m=document.getElementById('plBranchMenu'); if(m) m.classList.remove('show');
+    plBranchSyncInput(); render();
+  };
+  window.plSetBranch=function(id){ window.plBranchPick(id); };   // back-compat
+
+  function loadItems(items){
+    // STATUS_ALL = สถานะทุกตัวจากตารางสินค้าจริงทั้งหมด (อ้างอิงสถานะ active ของผง/สินค้าที่ไม่ได้อยู่ในรายการขาย)
+    // หน้าสาขา — โชว์เฉพาะสินค้า ItemStatus = Active
+    var all = applyEdits(items);
+    // map ราคาแต่ละช่องทางจาก item master prices{} → ฟิลด์ที่หน้านี้ใช้ (priceTA/priceGrab/...)
+    var CHMAP={priceTA:'Take Away',priceGrab:'Grab',priceLineman:'LINE MAN',pricePanda:'foodpanda',priceShopee:'ShopeeFood',priceRobinhood:'Robinhood',priceGokoo:'Gokoo'};
+    all.forEach(function(it){ if(!it) return; var pr=it.prices||{};
+      Object.keys(CHMAP).forEach(function(fk){ if(it[fk]===undefined||it[fk]===''||it[fk]==null){ var pv=pr[CHMAP[fk]]; if(pv!==undefined&&pv!=='') it[fk]=pv; } });
+    });
+    STATUS_ALL = {}; all.forEach(function(it){ if(it) STATUS_ALL[it.itemCode]=String(it.status||''); });
+    ITEMS = all.filter(statusActive);
+    ITEM_BY_CODE = {}; CAT_CODE = {};
+    ITEMS.forEach(function(it){ it && (ITEM_BY_CODE[it.itemCode]=it); if(it.category && it.cateCode && !(it.category in CAT_CODE)) CAT_CODE[it.category]=it.cateCode; });
+    BR=plAllBranches();
+    plBranchSyncInput();
+  }
+
+  function applyDeepLink(){
+    var d; try{ d=JSON.parse(localStorage.getItem('pc_pl_open')||'null'); }catch(e){ d=null; }
+    if(!d) return;
+    try{ localStorage.removeItem('pc_pl_open'); }catch(e){}
+    if(d.branch){ state.branch=d.branch; plBranchSyncInput(); }
+    if(d.view==='pos'){ state.view='pos'; }
+    if(d.cat){ state.posCat=d.cat; }
+    // campaign-focused POS: only this promo's buttons (from a Branch View card)
+    if(d.itemCodes && d.itemCodes.length){ state.posCodes=d.itemCodes.map(String); state.posCampaign=d.campaign||''; state.posCat=null; state.posPage=0; }
+    // reflect UI
+    var vd=document.getElementById('plViewData'), vp=document.getElementById('plViewPos');
+    if(vd&&vp){ vd.classList.toggle('on', state.view!=='pos'); vp.classList.toggle('on', state.view==='pos'); }
+  }
+
+  FLAGS=ls(FK,{});
+  google.script.run
+    .withSuccessHandler(function(d){ loadItems((d&&d.items)||[]); updateBrandCounts(); applyDeepLink(); render(); })
+    .withFailureHandler(function(){ loadItems((window.PC_ITEM_MASTER||[]).slice()); updateBrandCounts(); applyDeepLink(); render(); })
+    .getMasterDataExtended();
+  render();
+};
+window.disposeProductLookup=function(){};

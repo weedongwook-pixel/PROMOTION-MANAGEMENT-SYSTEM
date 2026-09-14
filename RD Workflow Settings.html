@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่า Workflow — แจ้งยกเลิก / จดใหม่ สติ๊กเกอร์สรรพากร</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; --red:#c0392b; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:60px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .topbar{ background:#2e934a; color:#fff; padding:13px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:30; flex-wrap:wrap; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.02rem; margin:0; display:flex; align-items:center; gap:9px; }
+  .topbar h1 i{ color:var(--pc-yellow); }
+  .topbar .sub{ font-size:.72rem; color:#aab0b8; font-weight:400; margin-top:2px; }
+  .right{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .right select{ border:0; background:rgba(255,255,255,.12); color:#fff; font-family:inherit; font-weight:600; font-size:.85rem; border-radius:10px; padding:9px 12px; }
+  .tlink{ border:0; background:rgba(255,255,255,.12); color:#fff; font-weight:600; font-size:.85rem; border-radius:10px; padding:9px 14px; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:7px; }
+  .tlink:hover{ background:rgba(255,255,255,.22); }
+
+  .wrap{ max-width:940px; margin:0 auto; padding:18px 16px 0; }
+  .note{ background:#f3fbf6; border:1px solid #bfe6cf; border-radius:12px; padding:13px 16px; font-size:.85rem; color:#1d6b45; line-height:1.55; margin-bottom:16px; }
+  .note i{ color:var(--pc-green); margin-right:6px; }
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:16px; }
+  .card h2{ font-size:1.04rem; font-weight:700; margin:0 0 3px; display:flex; align-items:center; gap:9px; }
+  .card h2 i{ color:var(--pc-green); }
+  .card .sub{ color:#8a9099; font-size:.85rem; margin:0 0 14px; }
+
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.92rem; padding:11px 18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-d{ background:var(--pc-black); color:#fff; } .btn-r{ background:var(--red); color:#fff; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-sm{ padding:8px 13px; font-size:.83rem; border-radius:9px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+  .casecard{ border:1px solid #e7eaee; border-radius:14px; padding:15px 17px; margin-bottom:13px; background:#fff; }
+  .casecard .ch{ display:flex; align-items:flex-start; gap:11px; flex-wrap:wrap; }
+  .casecard .cn{ font-weight:700; font-size:1.04rem; } .casecard .cid{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#8a9099; }
+  .casecard .cd{ font-size:.83rem; color:#8a9099; margin-top:2px; }
+  .flags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+  .flag{ font-size:.72rem; font-weight:700; border-radius:7px; padding:3px 9px; background:#f1f4f7; color:#5a616b; display:inline-flex; gap:5px; align-items:center; }
+  .flag.on{ background:#eafaf1; color:#1d7a4d; }
+  .routes{ margin-top:11px; display:flex; flex-direction:column; gap:7px; }
+  .rrow{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; background:#fafbfc; border:1px solid #eef1f4; border-radius:10px; padding:8px 11px; font-size:.83rem; }
+  .rto{ font-size:.72rem; font-weight:700; color:#fff; border-radius:6px; padding:2px 9px; }
+  .rto.FRC{ background:#9a6700; } .rto.COCO{ background:#6b3fa0; }
+  .rtypes{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#5a616b; }
+  .ract{ margin-left:auto; font-weight:600; color:#5a616b; }
+  .cacts{ display:flex; gap:8px; margin-top:13px; }
+
+  .ptbl{ width:100%; border-collapse:collapse; font-size:.88rem; }
+  .ptbl th,.ptbl td{ text-align:center; padding:9px 10px; border-bottom:1px solid #f1f4f7; }
+  .ptbl th{ font-size:.74rem; color:#8a9099; text-transform:uppercase; letter-spacing:.4px; }
+  .ptbl td:first-child,.ptbl th:first-child{ text-align:left; font-weight:600; }
+  .ptbl input{ width:19px; height:19px; cursor:pointer; }
+
+  .fld{ margin-bottom:13px; } .fld label{ display:block; font-size:.82rem; font-weight:600; color:#5a616b; margin-bottom:6px; }
+  .inp{ width:100%; border:1.6px solid #dde2e7; border-radius:10px; padding:9px 12px; font-family:inherit; font-size:.92rem; }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .chk{ display:inline-flex; align-items:center; gap:7px; font-size:.86rem; font-weight:600; color:#3a4150; margin-right:16px; }
+
+  .ov{ position:fixed; inset:0; background:rgba(20,22,25,.55); display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  .ov.on{ display:flex; }
+  .modal{ background:#fff; border-radius:18px; width:620px; max-width:100%; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+  .mhead{ padding:15px 20px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; }
+  .mhead h3{ margin:0; font-size:1.05rem; font-weight:700; } .mhead h3 i{ color:var(--pc-green); margin-right:7px; }
+  .mhead .x{ margin-left:auto; border:0; background:#f1f4f7; width:34px; height:34px; border-radius:9px; cursor:pointer; }
+  .mbody{ padding:16px 20px; overflow:auto; }
+  .mfoot{ padding:13px 20px; border-top:1px solid #eef1f4; display:flex; gap:10px; }
+  .reditor{ border:1px solid #eef1f4; border-radius:11px; padding:11px; margin-bottom:9px; }
+  .reditor .tline{ display:flex; gap:6px; flex-wrap:wrap; margin:7px 0; }
+  .tpill{ font-size:.74rem; font-weight:700; border:1.4px solid #dde2e7; border-radius:7px; padding:3px 10px; cursor:pointer; color:#5a616b; }
+  .tpill.on{ border-color:var(--pc-green); background:#f3fbf6; color:#1d7a4d; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <h1><i class="fas fa-diagram-project"></i> ตั้งค่า Workflow — แจ้งยกเลิก / จดใหม่</h1>
+    <div class="sub">เพิ่ม/แก้ไข/ลบ เคส · ทุกเคสแจ้ง Admin COCO · COCO ส่งต่อ FRC (ประเภทไม่ใช่ COCO) · สิทธิ์</div>
+  </div>
+  <div class="right">
+    <span style="font-size:.78rem;color:#aab0b8">บทบาท</span>
+    <select id="roleSel" onchange="curRole=this.value;render()"></select>
+    <a class="tlink" href="RD Cancel &amp; Re-register.html"><i class="fas fa-rotate"></i> หน้าแจ้งยกเลิก/จดใหม่</a>
+  </div>
+</div>
+
+<div class="wrap" id="wrap"></div>
+
+<!-- edit case modal -->
+<div class="ov" id="ovCase"><div class="modal">
+  <div class="mhead"><h3><i class="fas fa-pen"></i> <span id="cmTitle">แก้ไขเคส</span></h3><button class="x" onclick="closeC()">✕</button></div>
+  <div class="mbody" id="cmBody"></div>
+  <div class="mfoot"><button class="btn btn-o btn-sm" style="margin-left:auto" onclick="closeC()">ยกเลิก</button>
+    <button class="btn btn-g btn-sm" onclick="saveCase()"><i class="fas fa-check"></i> บันทึกเคส</button></div>
+</div></div>
+
+<script src="js/branch-master.js"></script>
+<script src="js/rd-sticker.js"></script>
+<script>
+RD.seed();
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ROLES=['Admin','IT','MKT','OP','BD'];
+const TYPES=['COCO','DOCO','DODO','DODO-M','EXPR','SE'];
+let curRole='IT';
+$('#roleSel').innerHTML=ROLES.map(r=>`<option ${r==='IT'?'selected':''}>${r}</option>`).join('');
+
+let edit=null; // working case copy
+
+function can(act){ const p=RD.getWfPerms()[curRole]||{}; return !!p[act]; }
+
+function render(){
+  const wf=RD.getWorkflow(), perms=RD.getWfPerms(), coco=RD.getCocoAdmin();
+  let html=`<div class="note"><i class="fas fa-circle-info"></i> เคสเหล่านี้ใช้คำนวณว่าเมื่อ IT แก้ Master สาขา (เปลี่ยนประเภท/ปิดสาขา ฯลฯ) งานจะไหลไปหน้าแจ้งยกเลิก/จดใหม่อย่างไร<br>
+    <b style="color:#6b3fa0">ระบบใหม่ (v7):</b> ทุกเคส ทุกประเภทสาขา → ส่งเมลแจ้ง <b>Admin COCO (บริษัทแม่)</b> เป็นจุดเดียว · ถ้าเป็นประเภทที่<b>ไม่ใช่ COCO</b> (แฟรนไชส์) COCO จะ<b>ประสาน/ส่งต่อให้ Admin FRC</b> เอง — IT ไม่ต้องระบุ FRC โดยตรง</div>`;
+
+  html+=`<div class="card"><h2><i class="fas fa-list-check"></i> เคสทั้งหมด <span style="font-size:.8rem;color:#8a9099;font-weight:400">(${wf.length})</span></h2>
+    <p class="sub">${can('edit')?'คุณ ('+curRole+') แก้ไข/เพิ่มได้':'บทบาท '+curRole+' ดูได้อย่างเดียว — ตั้งสิทธิ์ด้านล่าง'}</p>`;
+  wf.forEach((c,i)=>{ html+=caseCard(c,i); });
+  if(can('edit')) html+=`<button class="btn btn-d btn-sm" style="margin-top:6px" onclick="openCase(-1)"><i class="fas fa-plus"></i> เพิ่มเคสใหม่</button>`;
+  html+=`</div>`;
+
+  // admins
+  html+=`<div class="card"><h2><i class="fas fa-user-tie"></i> Admin บริษัทแม่ (COCO)</h2>
+    <p class="sub">ผู้รับแจ้งหลักของทุกเคส · สำหรับประเภทแฟรนไชส์ COCO จะส่งต่อ Admin FRC เอง (ดึงรายบริษัทจาก “ตั้งค่าสิทธิ์ → ทะเบียน Admin บริษัท”)</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input class="inp" style="flex:2;min-width:160px" id="cocoName" value="${esc(coco.name)}" placeholder="ชื่อ Admin COCO">
+      <input class="inp mono" style="flex:3;min-width:200px" id="cocoEmail" value="${esc(coco.email)}" placeholder="coco-admin@email">
+      <button class="btn btn-g btn-sm" onclick="saveCoco()"><i class="fas fa-check"></i> บันทึก</button>
+    </div></div>`;
+
+  // permissions
+  html+=`<div class="card"><h2><i class="fas fa-user-shield"></i> สิทธิ์จัดการ Workflow</h2>
+    <p class="sub">กำหนดว่าบทบาทใดแก้ไข/ลบเคสได้ — ค่าเริ่มต้น IT แก้ไขได้</p>
+    <table class="ptbl"><thead><tr><th>บทบาท</th><th>แก้ไข / เพิ่ม</th><th>ลบ</th></tr></thead><tbody>
+    ${ROLES.map(r=>{ const p=perms[r]||{}; const lock=r==='Admin';
+      return `<tr><td>${r}${lock?' <span style="font-size:.7rem;color:#9aa1aa">(เต็มเสมอ)</span>':''}</td>
+        <td><input type="checkbox" ${p.edit?'checked':''} ${lock?'disabled':''} onchange="setPerm('${r}','edit',this.checked)"></td>
+        <td><input type="checkbox" ${p.del?'checked':''} ${lock?'disabled':''} onchange="setPerm('${r}','del',this.checked)"></td></tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+
+  $('#wrap').innerHTML=html;
+}
+
+function caseCard(c,i){
+  const fl=(k,t)=>`<span class="flag ${c[k]?'on':''}"><i class="fas ${c[k]?'fa-check':'fa-xmark'}"></i> ${t}</span>`;
+  const trigMeta=RD.TRIGGER_META[c.trigger]||{};
+  const allTypes=[...new Set((c.routes||[]).flatMap(r=>r.types))];
+  const allActs=[...new Set((c.routes||[]).flatMap(r=>r.actions))];
+  const fwdTypes=allTypes.filter(t=>t!=='COCO');
+  return `<div class="casecard">
+    <div class="ch"><div><div class="cn">${esc(c.name)} <span class="cid">${esc(c.id)}</span></div><div class="cd">${esc(c.desc||'')}</div></div>
+      <span class="flag" style="margin-left:auto;background:${trigMeta.color||'#f1f4f7'};color:#fff"><i class="fas ${trigMeta.icon||'fa-bolt'}"></i> trigger: ${esc(c.trigger)}</span></div>
+    <div class="flags">${fl('machineChange','เปลี่ยนเครื่อง')}${fl('oldMachineAllowed','ใช้เครื่องเก่าได้ (ไม่แจ้ง)')}${fl('franchiseGuide','แนวทางแฟรนไชส์')}${fl('editBranch','แก้ข้อมูลสาขา')}</div>
+    <div class="routes">
+      <div class="rrow"><span class="rto COCO">COCO</span><span class="rtypes">ใช้กับ: ${allTypes.join(', ')||'—'}</span><span class="ract">${allActs.map(a=>a==='cancel'?'ยกเลิก':'ขอใหม่').join(' + ')||'—'}</span></div>
+      ${fwdTypes.length?`<div class="rrow" style="background:#f8f4fd;border-color:#e6dbf5"><span class="rto" style="background:#9a6700">COCO → FRC</span><span class="rtypes">ส่งต่อ FRC เมื่อ: ${fwdTypes.join(', ')}</span><span class="ract" style="color:#6b3fa0">COCO ประสานเอง</span></div>`:''}
+    </div>
+    <div class="cacts">
+      <button class="btn btn-o btn-sm" onclick="openCase(${i})" ${can('edit')?'':'disabled'}><i class="fas fa-pen"></i> แก้ไข</button>
+      <button class="btn btn-r btn-sm" onclick="delCase(${i})" ${can('del')?'':'disabled'}><i class="fas fa-trash"></i> ลบ</button>
+    </div></div>`;
+}
+
+function setPerm(role,k,v){ const p=RD.getWfPerms(); p[role]=Object.assign({},p[role]); p[role][k]=v; RD.setWfPerms(p); toast('บันทึกสิทธิ์แล้ว'); }
+function saveCoco(){ RD.setCocoAdmin({name:$('#cocoName').value.trim(),email:$('#cocoEmail').value.trim()}); toast('บันทึก Admin COCO แล้ว'); }
+
+// ---- edit case ----
+function openCase(i){
+  if(!can('edit')) return;
+  const wf=RD.getWorkflow();
+  edit = i<0 ? { id:'case_'+Date.now().toString(36).slice(-4), name:'', desc:'', trigger:'broken', machineChange:true, oldMachineAllowed:false, franchiseGuide:false, editBranch:false, routes:[{types:['COCO'],to:'COCO',actions:['cancel','new']}], _idx:-1 }
+              : Object.assign(JSON.parse(JSON.stringify(wf[i])), {_idx:i});
+  $('#cmTitle').textContent = i<0?'เพิ่มเคสใหม่':'แก้ไขเคส';
+  renderCaseForm(); $('#ovCase').classList.add('on');
+}
+function closeC(){ $('#ovCase').classList.remove('on'); }
+function renderCaseForm(){
+  const c=edit;
+  const flag=(k,t)=>`<label class="chk"><input type="checkbox" ${c[k]?'checked':''} onchange="edit.${k}=this.checked;renderCaseForm()"> ${t}</label>`;
+  $('#cmBody').innerHTML=`
+    <div class="fld"><label>ชื่อเคส</label><input class="inp" value="${esc(c.name)}" oninput="edit.name=this.value"></div>
+    <div class="fld"><label>คำอธิบาย</label><input class="inp" value="${esc(c.desc||'')}" oninput="edit.desc=this.value"></div>
+    <div class="fld"><label>Trigger (งานไหลจาก Master เมื่อ)</label>
+      <select class="inp" onchange="edit.trigger=this.value">${Object.keys(RD.TRIGGER_META).map(k=>`<option value="${k}" ${c.trigger===k?'selected':''}>${k} — ${esc(RD.TRIGGER_META[k].label)}</option>`).join('')}</select></div>
+    <div class="fld"><label>คุณสมบัติ</label><div>${flag('machineChange','เปลี่ยนเครื่อง POS')}${flag('oldMachineAllowed','ใช้เครื่องเก่าได้ (ไม่ต้องแจ้ง)')}${flag('franchiseGuide','แนวทางแฟรนไชส์ (ภ.พ.06.1)')}${flag('editBranch','เปิดแก้ข้อมูลสาขา')}</div></div>
+    <div class="fld"><label>เส้นทางแจ้ง (Routes) — เลือกประเภทสาขา + การดำเนินการ (ทุก route แจ้ง COCO เสมอ)</label>
+      ${(c.routes||[]).map((r,ri)=>routeEditor(r,ri)).join('')}
+      <button class="btn btn-o btn-sm" style="margin-top:6px" onclick="addRoute()"><i class="fas fa-plus"></i> เพิ่ม route</button></div>`;
+}
+function routeEditor(r,ri){
+  return `<div class="reditor">
+    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+      <span class="rto COCO" style="font-size:.72rem">→ Admin COCO</span>
+      <label class="chk"><input type="checkbox" ${r.actions.includes('cancel')?'checked':''} onchange="toggleAct(${ri},'cancel',this.checked)"> ยกเลิก</label>
+      <label class="chk"><input type="checkbox" ${r.actions.includes('new')?'checked':''} onchange="toggleAct(${ri},'new',this.checked)"> ขอใหม่</label>
+      <button class="btn btn-r btn-sm" style="margin-left:auto" onclick="edit.routes.splice(${ri},1);renderCaseForm()"><i class="fas fa-trash"></i></button>
+    </div>
+    <div style="font-size:.74rem;color:#8a9099;margin-top:7px">ประเภทสาขาที่ใช้เคสนี้ <span style="color:#6b3fa0">(ประเภทไม่ใช่ COCO → ระบบให้ COCO ส่งต่อ FRC อัตโนมัติ)</span></div>
+    <div class="tline">${TYPES.map(t=>`<span class="tpill ${r.types.includes(t)?'on':''}" onclick="toggleType(${ri},'${t}')">${t}${t!=='COCO'?' →FRC':''}</span>`).join('')}</div>
+  </div>`;
+}
+function addRoute(){ edit.routes.push({types:['COCO'],to:'COCO',actions:['cancel']}); renderCaseForm(); }
+function toggleType(ri,t){ const a=edit.routes[ri].types; const j=a.indexOf(t); if(j>=0)a.splice(j,1); else a.push(t); renderCaseForm(); }
+function toggleAct(ri,a,v){ const arr=edit.routes[ri].actions; const j=arr.indexOf(a); if(v&&j<0)arr.push(a); if(!v&&j>=0)arr.splice(j,1); }
+function saveCase(){
+  if(!edit.name.trim()) return Swal.fire('กรอกชื่อเคส','','warning');
+  if(!edit.routes.length||edit.routes.some(r=>!r.types.length||!r.actions.length)) return Swal.fire('ตรวจ Routes','แต่ละ route ต้องมีประเภทสาขาและการดำเนินการอย่างน้อย 1','warning');
+  const wf=RD.getWorkflow(); const idx=edit._idx; const rec=JSON.parse(JSON.stringify(edit)); delete rec._idx;
+  if(idx<0) wf.push(rec); else wf[idx]=rec;
+  RD.setWorkflow(wf); closeC(); render(); toast(idx<0?'เพิ่มเคสแล้ว':'บันทึกเคสแล้ว');
+}
+function delCase(i){ if(!can('del'))return; const wf=RD.getWorkflow();
+  Swal.fire({title:'ลบเคสนี้?',html:`<b>${esc(wf[i].name)}</b>`,icon:'warning',showCancelButton:true,confirmButtonText:'ลบ',confirmButtonColor:'#c0392b'})
+  .then(r=>{ if(r.isConfirmed){ wf.splice(i,1); RD.setWorkflow(wf); render(); toast('ลบแล้ว'); }}); }
+function resetWf(){ Swal.fire({title:'คืนค่าเริ่มต้นทั้งหมด?',icon:'warning',showCancelButton:true,confirmButtonText:'คืนค่า',confirmButtonColor:'#c0392b'})
+  .then(r=>{ if(r.isConfirmed){ RD.setWorkflow(JSON.parse(JSON.stringify(RD.DEFAULT_WORKFLOW))); render(); toast('คืนค่าแล้ว'); }}); }
+function toast(t){ Swal.fire({toast:true,position:'top-end',icon:'success',title:t,showConfirmButton:false,timer:1800}); }
+
+render();
+</script>
+</body>
+</html>

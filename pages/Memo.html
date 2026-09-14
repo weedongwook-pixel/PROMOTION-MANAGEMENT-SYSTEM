@@ -1,0 +1,198 @@
+<style>
+  .memo-scope { font-family: 'Kanit', sans-serif; }
+  @media print {
+    body * { visibility: hidden !important; }
+    #memoPaper, #memoPaper * { visibility: visible !important; }
+    #memoPaper { position:absolute; left:0; top:0; width:100%; box-shadow:none !important; border:none !important; margin:0 !important; }
+    .no-print { display:none !important; }
+    @page { size:A4; margin:14mm 16mm; }
+  }
+  .memo-scope .tpl-btn { border:2px solid #2e934a; background:#fff; color:#2e934a; font-weight:700; border-radius:8px; padding:6px 14px; cursor:pointer; font-size:.85rem; }
+  .memo-scope .tpl-btn:hover { background:#2e934a; color:#fff; }
+  .memo-scope .fld-lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#5a616b; margin-bottom:2px; display:block; }
+  .memo-scope .sec-card { background:#fff; border-radius:12px; }
+  .memo-scope .sec-head { background:var(--pc-dark,#1a1d20); color:#fff; border-radius:12px 12px 0 0; font-size:.8rem; }
+  .memo-scope .mb-row { display:grid; grid-template-columns: 1.6fr 1fr .8fr 1fr 26px; gap:6px; align-items:center; margin-bottom:6px; }
+  .memo-scope .mb-row input { font-size:.82rem; }
+  .memo-scope .mb-x { border:none; background:#fbe9e7; color:#c0392b; border-radius:6px; width:26px; height:30px; cursor:pointer; font-weight:700; }
+
+  /* ===== printed memo paper (emulates official INTERNAL MEMO template) ===== */
+  .memo-scope #memoPaper { color:#1a1d20; }
+  .mp-top { border-top:6px solid #2e934a; padding-top:18px; }
+  .mp-brand { font-family:'Montserrat',sans-serif; font-weight:800; font-size:.82rem; letter-spacing:.16em; color:#2e934a; text-transform:uppercase; }
+  .mp-title { font-weight:800; font-size:1.7rem; letter-spacing:.06em; line-height:1; margin-top:6px; }
+  .mp-title small { display:block; font-size:.78rem; font-weight:700; letter-spacing:.34em; color:#9aa2ab; margin-top:4px; }
+  .mp-subject { font-weight:700; font-size:1.12rem; line-height:1.35; text-wrap:pretty; }
+  .mp-supersede { color:#c0392b; font-style:italic; font-size:.86rem; line-height:1.45; background:#fdecea; border:1px solid #f3c6c0; border-radius:8px; padding:8px 12px; }
+  .mp-keys { width:100%; border-collapse:collapse; font-size:.92rem; }
+  .mp-keys th { text-align:left; vertical-align:top; font-weight:700; color:#15623c; width:190px; padding:7px 12px 7px 0; white-space:nowrap; }
+  .mp-keys td { vertical-align:top; padding:7px 0; border-bottom:1px dashed #e6e9ec; }
+  .mp-keys tr:last-child td, .mp-keys tr:last-child th { border-bottom:none; }
+  .mp-sect { font-weight:800; font-size:1rem; color:#1a1d20; border-left:5px solid #2e934a; padding-left:10px; margin:0 0 8px; }
+  .mp-list { margin:0; padding-left:0; list-style:none; counter-reset:mp; }
+  .mp-list li { counter-increment:mp; position:relative; padding:6px 0 6px 34px; font-size:.95rem; line-height:1.5; border-bottom:1px solid #f1f3f5; text-wrap:pretty; }
+  .mp-list li:last-child { border-bottom:none; }
+  .mp-list li::before { content:counter(mp); position:absolute; left:0; top:6px; width:23px; height:23px; background:#2e934a; color:#fff; border-radius:50%; font-size:.78rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .mp-note { font-size:.9rem; line-height:1.5; background:#f6f8f5; border-radius:8px; padding:10px 14px; }
+  .mp-btns { width:100%; border-collapse:collapse; font-size:.86rem; }
+  .mp-btns thead th { background:#1a1d20; color:#fff; font-weight:600; padding:8px 10px; text-align:center; }
+  .mp-btns thead th:first-child { text-align:left; }
+  .mp-btns thead th:nth-child(2), .mp-btns tbody td:nth-child(2) { text-align:left; }
+  .mp-btns tbody td { border:1px solid #e3e6ea; padding:7px 10px; text-align:center; }
+  .mp-btns tbody td:first-child { text-align:left; font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; }
+  .mp-foot { border:1.5px solid #1a1d20; border-radius:8px; font-size:.86rem; }
+  .mp-foot .r { display:flex; border-bottom:1px solid #d7dbe0; }
+  .mp-foot .r:last-child { border-bottom:none; }
+  .mp-foot .k { width:150px; flex:none; font-weight:700; background:#f4f6f8; padding:7px 12px; border-right:1px solid #d7dbe0; }
+  .mp-foot .v { padding:7px 12px; flex:1; }
+  .mp-conf { font-size:.68rem; color:#9aa2ab; text-align:center; border-top:1px solid #eceef0; padding-top:8px; }
+  .memo-scope .mp-sect-red { border-left-color:#d5420c !important; color:#c0392b !important; }
+  .memo-scope .mp-special { margin:0; padding:0; list-style:none; }
+  .memo-scope .mp-special li { display:flex; align-items:flex-start; gap:8px; background:linear-gradient(90deg,#d5420c,#e8632a); color:#fff; font-weight:700; font-size:.9rem; padding:8px 13px; border-radius:9px; margin-bottom:6px; line-height:1.4; box-shadow:0 2px 7px rgba(213,66,12,.30); }
+  .memo-scope .mp-special li i { margin-top:3px; flex:none; }
+</style>
+
+<div class="p-4 memo-scope" style="background-color:#f4f6f9; min-height:100vh;">
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow no-print" style="background:#2e934a;color:#fff;">
+    <div>
+      <h3 class="fw-bold m-0" style="text-transform:uppercase;"><i class="fas fa-file-lines me-2 text-warning"></i> สร้าง MEMO แจ้งสาขา</h3>
+      <p class="m-0" style="opacity:.85;">พิมพ์เองได้ทุกช่อง หรือกด “ดึงจากแคมเปญ” เพื่อเติมอัตโนมัติ · เลย์เอาต์ล้อแบบฟอร์ม “บันทึกภายใน” ทางการ</p>
+    </div>
+    <i class="fas fa-file-contract fa-2x" style="opacity:.3;"></i>
+  </div>
+
+  <div class="row g-3 no-print">
+    <!-- builder panel -->
+    <div class="col-lg-5">
+
+      <!-- pull from campaign -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-database me-2 text-warning"></i>ดึงข้อมูลจากแคมเปญ (ถ้ามี)</div>
+        <div class="p-3">
+          <label class="fld-lbl">ค้นหาชื่อโปรโมชั่น</label>
+          <div class="input-group input-group-sm mb-2">
+            <span class="input-group-text bg-white border-dark"><i class="fas fa-magnifying-glass"></i></span>
+            <input id="memoPullSearch" class="form-control form-control-sm border-dark" placeholder="พิมพ์ชื่อโปรเพื่อค้นหา…" oninput="window.memoFilterCampaigns()" autocomplete="off">
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-5"><label class="fld-lbl">เดือน</label>
+              <select id="memoMonth" class="form-select form-select-sm border-dark" onchange="window.memoLoadCampaigns()"><option value="ALL">ทุกเดือน</option></select></div>
+            <div class="col-7"><label class="fld-lbl">แคมเปญที่กรอกแล้ว</label>
+              <select id="memoPull" class="form-select form-select-sm border-dark"><option value="">— เลือกเพื่อเติมข้อมูล —</option></select></div>
+          </div>
+          <button class="btn btn-dark btn-sm fw-bold w-100 mt-2" onclick="window.memoFillFromCampaign()"><i class="fas fa-download me-1"></i>ดึงข้อมูลมากรอก</button>
+          <div class="text-muted mt-2" style="font-size:.74rem;"><i class="fas fa-circle-info me-1"></i>ยังไม่มีแคมเปญในระบบก็ได้ — พิมพ์ข้อมูลด้านล่างเองได้เลย แล้วค่อยให้ทีมกรอกแจ้ง IT ทีหลัง</div>
+        </div>
+      </div>
+
+      <!-- header / subject -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-heading me-2 text-warning"></i>หัวข้อเรื่อง</div>
+        <div class="p-3">
+          <label class="fld-lbl">หัวข้อเรื่อง</label>
+          <input id="memoSubject" class="form-control form-control-sm border-dark mb-2" oninput="window.memoBuild()" placeholder="เช่น Grab + Lineman + Robinhood - Wavy Fries โปเตโต้ ฟรายส์: เริ่มวันที่ 6 ก.ค. 2569">
+          <label class="fld-lbl"><i class="fas fa-triangle-exclamation text-danger me-1"></i>หมายเหตุยกเลิก / ยึดฉบับนี้แทน (ถ้ามี)</label>
+          <textarea id="memoSupersede" rows="2" class="form-control form-control-sm border-dark" oninput="window.memoBuild()" placeholder="*ยกเลิกฉบับที่ออกวันที่ ... และยึดฉบับนี้แทน*"></textarea>
+        </div>
+      </div>
+
+      <!-- key fields -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-list-ul me-2 text-warning"></i>ข้อมูลหลัก</div>
+        <div class="p-3">
+          <label class="fld-lbl">ระยะเวลาโปรโมชั่น</label>
+          <input id="memoPeriod" class="form-control form-control-sm border-dark mb-2" oninput="window.memoBuild()" placeholder="เช่น 6 ก.ค. – 2 ส.ค. 2569">
+          <label class="fld-lbl">ช่องทางขาย</label>
+          <input id="memoChannels" class="form-control form-control-sm border-dark mb-2" oninput="window.memoBuild()" placeholder="เช่น Grab / Lineman / Robinhood">
+          <label class="fld-lbl">สาขาที่เข้าร่วม</label>
+          <input id="memoBranches" class="form-control form-control-sm border-dark mb-2" oninput="window.memoBuild()" placeholder="เช่น ทุกสาขาที่มีบริการ Delivery">
+          <label class="fld-lbl">ประเภทปุ่มโปรโมชั่นบน POS</label>
+          <input id="memoBtnType" class="form-control form-control-sm border-dark" oninput="window.memoBuild()" placeholder="เช่น Item set / Bill discount / Coupon">
+        </div>
+      </div>
+
+      <!-- detail -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-align-left me-2 text-warning"></i>รายละเอียดโปรโมชั่น</div>
+        <div class="p-3">
+          <label class="fld-lbl">พิมพ์ 1 บรรทัด = 1 ข้อ (ระบบจะใส่เลขข้อให้อัตโนมัติ)</label>
+          <textarea id="memoDetail" rows="6" class="form-control form-control-sm border-dark" oninput="window.memoBuild()" placeholder="ลด 42% Mega Wavy Fries + cheese sauce ฟรี Large chicken pop เพียง 134 บาท จากราคาปกติ 213 บาท
+ลด 18% Jumbo Wavy Fries + Jumbo Fries เพียง 139 บาท จากราคาปกติ 170 บาท"></textarea>
+        </div>
+      </div>
+
+      <!-- เงื่อนไข (ต่อท้ายรายละเอียด ก่อนปุ่ม POS) -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-clipboard-check me-2 text-warning"></i>เงื่อนไข</div>
+        <div class="p-3">
+          <label class="fld-lbl">พิมพ์ 1 บรรทัด = 1 ข้อ · ดึงจากแคมเปญอัตโนมัติ</label>
+          <textarea id="memoCondition" rows="4" class="form-control form-control-sm border-dark" oninput="window.memoBuild()" placeholder="เช่น เฉพาะสินค้าราคาปกติ ไม่ร่วมรายการโปรโมชั่นอื่น&#10;เลือกผงรสได้ 1 รส"></textarea>
+        </div>
+      </div>
+
+      <!-- เงื่อนไขพิเศษ (แถบแดง — ดึงจากหมายเหตุเด่นหน้าสาขา) -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head" style="background:#c0392b;"><i class="fas fa-bullhorn me-2 text-warning"></i>เงื่อนไขพิเศษ (แสดงเป็นแถบแดง)</div>
+        <div class="p-3">
+          <label class="fld-lbl">พิมพ์ 1 บรรทัด = 1 ข้อ · ดึงจาก“หมายเหตุเด่น”ของโปรอัตโนมัติ</label>
+          <textarea id="memoSpecial" rows="2" class="form-control form-control-sm border-dark" oninput="window.memoBuild()" placeholder="เช่น เฉพาะสาขาเดอะมอลล์ งามวงศ์วาน"></textarea>
+        </div>
+      </div>
+
+      <!-- POS buttons -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-hand-pointer me-2 text-warning"></i>ปุ่มกด POS (ชื่อปุ่มของ IT)</div>
+        <div class="p-3">
+          <div class="mb-row" style="font-size:.7rem;font-weight:700;color:#5a616b;text-transform:uppercase;">
+            <span>ชื่อปุ่ม POS (IT ตั้ง)</span><span>ครัว / บิล</span><span>ราคาปกติ</span><span>ราคาหลังลด</span><span></span>
+          </div>
+          <div id="memoBtnRows"></div>
+          <button class="btn btn-outline-dark btn-sm fw-bold mt-1" onclick="window.memoAddBtn()"><i class="fas fa-plus me-1"></i>เพิ่มปุ่ม</button>
+          <label class="fld-lbl mt-3">ข้อความใต้ตารางปุ่ม</label>
+          <textarea id="memoPosNote" rows="2" class="form-control form-control-sm border-dark" oninput="window.memoBuild()">ทาง IT จะเซตปุ่มกด POS ให้มีผลตามช่วงเวลาโปรโมชั่น หากพบปัญหารบกวนติดต่อ Area Manager ค่ะ</textarea>
+        </div>
+      </div>
+
+      <!-- footer block -->
+      <div class="sec-card shadow-sm border mb-3">
+        <div class="px-3 py-2 fw-bold text-uppercase sec-head"><i class="fas fa-stamp me-2 text-warning"></i>ข้อมูลท้ายเอกสาร</div>
+        <div class="p-3">
+          <div class="row g-2">
+            <div class="col-6"><label class="fld-lbl">จากแผนก</label><input id="memoFrom" class="form-control form-control-sm border-dark" value="Marketing" oninput="window.memoBuild()"></div>
+            <div class="col-6"><label class="fld-lbl">วันที่มีผล</label><input id="memoEff" type="date" class="form-control form-control-sm border-dark" oninput="window.memoBuild()"></div>
+          </div>
+          <label class="fld-lbl mt-2">ถึง</label>
+          <input id="memoTo" class="form-control form-control-sm border-dark" value="หน้าร้านทุกสาขาที่มีจำหน่าย" oninput="window.memoBuild()">
+        </div>
+      </div>
+
+      <!-- section toggles -->
+      <div class="sec-card shadow-sm border">
+        <div class="px-3 py-2 fw-bold text-uppercase" style="background:var(--pc-yellow,#F4D03F);color:#000;border-radius:12px 12px 0 0;font-size:.8rem;border-bottom:2px solid #000;"><i class="fas fa-eye me-2"></i>เปิด/ปิดส่วนที่จะแสดง</div>
+        <div class="p-3 d-flex flex-wrap gap-3" id="memoBlocks"></div>
+      </div>
+    </div>
+
+    <!-- preview -->
+    <div class="col-lg-7">
+      <div class="mb-2" style="position:sticky;top:0;z-index:5;background:#f4f6f9;padding:6px 0;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span class="fw-bold text-muted small text-uppercase"><i class="fas fa-eye me-1"></i>ตัวอย่าง Memo (แก้ด้านซ้าย เห็นผลทันที)</span>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-dark fw-bold btn-sm" onclick="window.memoCheckStatus()"><i class="fas fa-rotate me-1"></i>เช็คสถานะโปร</button>
+            <button class="btn btn-dark fw-bold btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>พิมพ์</button>
+            <button class="btn btn-success fw-bold btn-sm" onclick="window.memoDownload()"><i class="fas fa-download me-1"></i>ดาวน์โหลดไฟล์</button>
+            <button class="btn btn-warning fw-bold btn-sm border border-dark text-dark" onclick="window.memoConfirmSend()"><i class="fas fa-paper-plane me-1"></i>ยืนยันส่ง Memo เข้าระบบ</button>
+          </div>
+        </div>
+        <div id="memoStatus" class="small mt-2 p-2 rounded" style="background:#fff;border:1px solid #e3e6ea;"></div>
+      </div>
+      <div id="memoPaper" class="bg-white shadow-sm border rounded-3" style="padding:40px 44px; min-height:400px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script src="js/memo.js?v=4"></script>

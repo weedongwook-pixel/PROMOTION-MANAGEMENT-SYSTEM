@@ -1,0 +1,352 @@
+<style>
+  /* lock table headers, scroll body only */
+  .perm-scope .table-responsive{ max-height: 66vh; overflow: auto; }
+  .perm-scope .table-responsive table thead th{ position: sticky; z-index: 4; }
+  .perm-scope .table-responsive table:not(#permTable) thead th{ top: 0; background: #f1f3f5; }
+  .perm-scope #permTable thead tr:first-child th{ top: 0; z-index: 5; background: var(--pc-dark,#1a1d20); }
+  .perm-scope #permTable thead tr:nth-child(2) th{ top: 38px; z-index: 5; background: var(--pc-dark,#1a1d20); }
+  /* หัวตารางพื้นดำ — บังคับตัวหนังสือสว่าง (กัน Bootstrap table color ทับ) */
+  .perm-scope #permTable thead th{ color:#ffffff !important; }
+  .perm-scope #permTable thead tr:first-child th{ font-weight:800; font-size:.92rem; letter-spacing:.4px; }
+  .perm-scope #permTable thead tr:nth-child(2) th{ color:#c4cbd4 !important; }
+</style>
+<div class="container-fluid p-4 perm-scope" style="background-color:#f4f7f6; min-height:100vh;">
+  <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width:10px; height:55px; background:var(--pc-yellow,#2e934a); margin-right:15px; border-radius:5px;"></div>
+      <div>
+        <h3 class="fw-bold m-0" style="text-transform:uppercase;"><i class="fas fa-user-shield me-2 text-warning"></i> USER PERMISSIONS</h3>
+        <small style="opacity:.8;">กำหนดสิทธิ์แต่ละบทบาท — อ่าน / แก้ไข / ลบ รายหน้า (Admin เท่านั้น)</small>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-light fw-bold" onclick="window.permReset()"><i class="fas fa-rotate-left me-1"></i> ค่าเริ่มต้น</button>
+      <button class="btn btn-warning fw-bold px-4 text-dark" onclick="window.permSave()"><i class="fas fa-save me-1"></i> บันทึกสิทธิ์</button>
+    </div>
+  </div>
+
+  <div id="permDenied" class="text-center p-5 bg-white rounded-3 shadow-sm border" style="display:none;">
+    <i class="fas fa-lock fa-3x text-danger mb-3 d-block"></i>
+    <h5 class="fw-bold text-muted">เฉพาะ Admin เท่านั้น</h5>
+    <p class="text-muted small">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+  </div>
+
+  <div id="permContent">
+    <!-- USER MANAGEMENT -->
+    <div class="bg-white rounded-3 shadow-sm border mb-4">
+      <div class="px-4 py-3 fw-bold text-uppercase d-flex justify-content-between align-items-center" style="background:var(--pc-dark,#1a1d20);color:#fff; border-radius:12px 12px 0 0; font-size:.85rem;">
+        <span><i class="fas fa-users me-2 text-warning"></i>จัดการผู้ใช้งาน (User Management)</span>
+        <button class="btn btn-sm btn-warning fw-bold text-dark" onclick="window.permOpenAddUser()"><i class="fas fa-user-plus me-1"></i> เพิ่มผู้ใช้</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle m-0 pct">
+          <thead>
+            <tr class="pct-f">
+              <th><input class="pct-fi" id="pfName" placeholder="กรองชื่อ…" oninput="window.permFilterUsers()"></th>
+              <th><input class="pct-fi" id="pfUser" placeholder="กรอง username…" oninput="window.permFilterUsers()"></th>
+              <th><select class="pct-fi" id="pfRole" onchange="window.permFilterUsers()"><option value="">ทั้งหมด</option><option>Admin</option><option>MKT</option><option>IT</option><option>SC</option><option>OP</option><option>ACC</option><option>BD</option><option>RD</option></select></th>
+              <th></th><th></th>
+            </tr>
+            <tr class="pct-h">
+              <th>Name</th><th>Username / Email</th><th class="cfit">Role</th><th class="cfit">Type</th><th class="cfit">Action</th>
+            </tr>
+          </thead>
+          <tbody id="permUserBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-3 shadow-sm border">
+      <div class="px-4 py-3 fw-bold text-uppercase" style="background:var(--pc-dark,#1a1d20);color:#fff; border-radius:12px 12px 0 0; font-size:.85rem;"><i class="fas fa-key me-2 text-warning"></i>สิทธิ์รายหน้า — อ่าน / แก้ไข / ลบ (Access Matrix)</div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle m-0" id="permTable">
+          <thead class="text-center" style="background:var(--pc-dark,#1a1d20);color:#fff;">
+            <tr id="permHeadRow"></tr>
+            <tr id="permHeadRow2"></tr>
+          </thead>
+          <tbody id="permBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-muted small mt-3"><i class="fas fa-circle-info me-1"></i> <b>อ่าน</b> = เห็นเมนู/เปิดดูข้อมูล · <b>แก้ไข</b> = เพิ่ม/แก้ไขข้อมูล · <b>ลบ</b> = ลบข้อมูล — ติ๊กแก้ไข/ลบ ระบบจะเปิดสิทธิ์อ่านให้อัตโนมัติ · Dashboard เปิดทุกบทบาท · เปลี่ยนแล้วกด “บันทึกสิทธิ์”</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+  var PERM_ROLES = ['Admin','MKT','IT','OP','ACC','BD','RD','SC','Branch'];
+  var PERM_ACTS = [['r','อ่าน'],['e','แก้ไข'],['d','ลบ']];
+  var PERM_PAGES = [
+    { id:'Dashboard', label:'Dashboard', group:'งานโปรโมชั่น', always:true },
+    { id:'CreatePromotion', label:'แจ้งโปรโมชั่น', group:'งานโปรโมชั่น' },
+    { id:'Proposal', label:'Item Set Proposal', group:'งานโปรโมชั่น' },
+    { id:'Coupon', label:'Coupon Proposal', group:'งานโปรโมชั่น' },
+    { id:'BillDiscountProposal', label:'Bill Discount Proposal', group:'งานโปรโมชั่น' },
+    { id:'VoucherProposal', label:'Voucher Proposal', group:'งานโปรโมชั่น' },
+    { id:'CoPromotion', label:'Co-Promotion (ACC)', group:'งานโปรโมชั่น' },
+    { id:'VoucherMaster', label:'Voucher Master', group:'งานโปรโมชั่น' },
+    { id:'DiscountReport', label:'Discount Report', group:'งานโปรโมชั่น' },
+    { id:'CompCode', label:'Comp Code', group:'งานโปรโมชั่น' },
+    { id:'RDReopen', label:'เปิด/ปิดปุ่มสินค้าเดิม (RD)', group:'งานโปรโมชั่น' },
+    { id:'InterfaceERP', label:'Interface ERP (Co-Promo)', group:'งาน IT — โปรโมชั่น' },
+    { id:'Memo', label:'Create Memo', group:'งานโปรโมชั่น' },
+    { id:'MemberCard', label:'บัตรสมาชิก', group:'งานโปรโมชั่น' },
+    { id:'CreateRD', label:'RD / สินค้าใหม่', group:'งานโปรโมชั่น' },
+    { id:'NPD', label:'NPD New Item', group:'งานโปรโมชั่น' },
+    { id:'Flavor', label:'เพิ่มผงรสชาติ', group:'งานโปรโมชั่น' },
+    { id:'Products', label:'ข้อมูลหลัก (สินค้า)', group:'ข้อมูลสินค้า' },
+    { id:'IT_Settlement', label:'IT Settlement', group:'งาน IT — โปรโมชั่น' },
+    { id:'ItemSet', label:'Item Set Builder', group:'งาน IT — โปรโมชั่น' },
+    { id:'CodeMgmt', label:'จัดการโค้ด/บัตร', group:'งาน IT — โปรโมชั่น' },
+    { id:'CardLink', label:'ผูกบัตร (สิทธิ์บัตรสมาชิก)', group:'งาน IT — โปรโมชั่น' },
+    { id:'CodeCounter', label:'ระบบเลขโค้ด (Code Counter)', group:'งาน IT — โปรโมชั่น' },
+    { id:'ITTicketQueue', label:'คิวปัญหาจากสาขา — IT', group:'งาน IT — โปรโมชั่น' },
+    { id:'DiffAnalysis', label:'วิเคราะห์ปิดบิลไม่ตรง (Audit)', group:'งาน IT — โปรโมชั่น' },
+    { id:'BranchWork', label:'งานสาขา (รวม)', group:'ติดตาม & สาขา' },
+    { id:'Campaign_Tracking', label:'Promotions Tracking', group:'ติดตาม & สาขา' },
+    { id:'Op_Tracking', label:'OP Tracking', group:'ติดตาม & สาขา' },
+    { id:'Branch_View', label:'Branch View', group:'ติดตาม & สาขา' },
+    { id:'ProductLookup', label:'สินค้าที่ขายอยู่ (สาขา)', group:'ติดตาม & สาขา' },
+    { id:'BranchTickets', label:'ปัญหาที่สาขาแจ้ง', group:'ติดตาม & สาขา' },
+    { id:'Tender', label:'แจ้งเปิด-ปิด Tender', group:'ติดตาม & สาขา' },
+    { id:'BranchEDC', label:'ข้อมูลเครื่อง EDC (สาขา)', group:'ติดตาม & สาขา' },
+    { id:'BranchIssues', label:'ภาพรวมปัญหาสาขา', group:'ติดตาม & สาขา' },
+    { id:'BillDiff', label:'แจ้งปิดบิลไม่ตรง (Diff)', group:'ติดตาม & สาขา' },
+    { id:'TeamQueue', label:'คิวรับเรื่อง — ตามทีม/แผนก', group:'ติดตาม & สาขา' },
+    { id:'ITForms', label:'แจ้งงาน IT (รวมฟอร์ม)', group:'งาน IT · อุปกรณ์' },
+    { id:'Asset', label:'ทะเบียนเครื่อง (Asset)', group:'งาน IT · อุปกรณ์' },
+    { id:'Plan2026', label:'แผนเครื่อง (Plan)', group:'งาน IT · อุปกรณ์' },
+    { id:'CmposForm', label:'ฟอร์มส่งเครื่อง CMPOS', group:'งาน IT · อุปกรณ์' },
+    { id:'Maintenance', label:'แจ้งซ่อม / Audit', group:'งาน IT · อุปกรณ์' },
+    { id:'RDSticker', label:'สติ๊กเกอร์ — แจ้งเพิ่มเลข', group:'งานสติ๊กเกอร์ RD' },
+    { id:'RDCancel', label:'สติ๊กเกอร์ — แจ้งยกเลิก / จดใหม่', group:'งานสติ๊กเกอร์ RD' },
+    { id:'MasterData', label:'ข้อมูลหลัก (สาขา)', group:'งานสติ๊กเกอร์ RD' },
+    { id:'RDWorkflow', label:'สติ๊กเกอร์ — ตั้งค่าเคส', group:'งานสติ๊กเกอร์ RD' },
+    { id:'RDAccess', label:'สติ๊กเกอร์ — ตั้งค่าสิทธิ์ / ลิงก์', group:'งานสติ๊กเกอร์ RD' },
+    { id:'RDGuide', label:'สติ๊กเกอร์ — วิธีใช้งาน', group:'งานสติ๊กเกอร์ RD' },
+    { id:'TenderSettings', label:'ตั้งค่า Tender / EDC', group:'ตั้งค่าระบบ' },
+    { id:'ImportSettings', label:'ตั้งค่า Import (Excel)', group:'ตั้งค่าระบบ' },
+    { id:'Permissions', label:'User Permissions', group:'ตั้งค่าระบบ', adminOnly:true },
+  ];
+  // สิทธิ์ R/E/D ต่อ role — ดึงจาก localStorage; read อิงกับ access matrix (legacy) เพื่อ shell ซ่อน/แสดงเมนู
+  // หน้างานสาขา — ทุกแผนกเห็น (อ่านอย่างเดียว) · เฉพาะ OP (สาขา) แก้ไขได้ตามปกติ
+  var BRANCH_VIEW_PAGES = ['BranchWork','Branch_View','ProductLookup'];
+  // RD — กรอก NPD/ผง ได้ (แก้ไขงานตัวเอง) · หน้า Tracking ดูเหมือน MKT
+  var RD_EDIT_PAGES = ['CreateRD','NPD','Flavor'];
+  window.PC_getRWD = function () {
+    try { const s = JSON.parse(localStorage.getItem('pc_permissions_rwd')); if (s) return s; } catch(e){}
+    // derive from legacy access (read = access). Admin = full.
+    const legacy = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : {};
+    const out = {};
+    PERM_ROLES.forEach(r => { out[r] = {};
+      PERM_PAGES.forEach(p => {
+        const acc = r === 'Admin' || (legacy[r] || []).includes(p.id) || p.always;
+        // OP (สาขา) แก้ไขงานสาขาได้ · RD แก้ไขงาน NPD/ผง ได้ · แผนกอื่นดูอย่างเดียว
+        const opBranchEdit = (r === 'OP' && BRANCH_VIEW_PAGES.includes(p.id) && acc);
+        const rdEdit = (r === 'RD' && RD_EDIT_PAGES.includes(p.id) && acc);
+        out[r][p.id] = { r: !!acc, e: r === 'Admin' || opBranchEdit || rdEdit, d: r === 'Admin' };
+      });
+    });
+    return out;
+  };
+
+  window.initPermissions = function () {
+    const role = localStorage.getItem('pc_role') || 'Admin';
+    if (role !== 'Admin') {
+      document.getElementById('permDenied').style.display = 'block';
+      document.getElementById('permContent').style.display = 'none';
+      return;
+    }
+    const rwd = window.PC_getRWD();
+    // header row 1: role names spanning 3 action cols
+    document.getElementById('permHeadRow').innerHTML = '<th rowspan="2" class="text-start ps-4 align-middle" style="min-width:230px;">Menu / Function</th>' +
+      PERM_ROLES.map(r => `<th colspan="3" style="border-left:2px solid #3a3f44;">${r}</th>`).join('');
+    // header row 2: R/E/D per role
+    document.getElementById('permHeadRow2').innerHTML =
+      PERM_ROLES.map(r => PERM_ACTS.map((a,ai) => `<th style="font-size:.72rem;font-weight:600;${ai===0?'border-left:2px solid #3a3f44;':''}">${a[1]}</th>`).join('')).join('');
+    // body
+    document.getElementById('permBody').innerHTML = (function(){
+      var span = 1 + PERM_ROLES.length * 3, curG = null, html = '';
+      PERM_PAGES.forEach(function(p){
+        if (p.group !== curG) { curG = p.group; html += `<tr><td colspan="${span}" style="background:var(--pc-dark,#1a1d20);color:#ffffff;font-weight:800;font-size:.72rem;letter-spacing:1px;padding:7px 16px;text-transform:uppercase;">${curG}</td></tr>`; }
+        html += `<tr>
+        <td class="text-start ps-4 fw-bold">${p.label}${p.always ? ' <span class="badge bg-secondary ms-1">ทุกบทบาท</span>' : ''}${p.adminOnly ? ' <span class="badge bg-warning text-dark ms-1">Admin</span>' : ''}</td>
+        ${PERM_ROLES.map(r => PERM_ACTS.map((a,ai) => {
+          const cur = (rwd[r] && rwd[r][p.id]) ? rwd[r][p.id] : {};
+          const checked = !!cur[a[0]];
+          const isAdmin = r === 'Admin';
+          const adminLock = p.adminOnly && r !== 'Admin';
+          const alwaysRead = p.always && a[0] === 'r';
+          const locked = isAdmin || adminLock || alwaysRead;
+          return `<td class="text-center" style="${ai===0?'border-left:2px solid #eef1f4;':''}"><input type="checkbox" class="form-check-input perm-ck" data-role="${r}" data-page="${p.id}" data-act="${a[0]}" ${checked ? 'checked' : ''} ${locked ? 'disabled' : ''} onchange="window.permOnToggle(this)" style="width:18px;height:18px;cursor:pointer;"></td>`;
+        }).join('')).join('')}
+      </tr>`;
+      });
+      return html;
+    })();
+    window.permRenderUsers();
+  };
+
+  window.permRenderUsers = function () {
+    google.script.run.withSuccessHandler(function (users) {
+      window._permUsers = users || [];
+      try{ window.permAutoBindZones(); }catch(e){}
+      window.permFilterUsers();
+    }).getUsers();
+  };
+
+  window.permFilterUsers = function () {
+    var body = document.getElementById('permUserBody'); if (!body) return;
+    var list = window._permUsers || [];
+    var fn = (document.getElementById('pfName') || {}).value || '';
+    var fu = (document.getElementById('pfUser') || {}).value || '';
+    var fr = (document.getElementById('pfRole') || {}).value || '';
+    fn = fn.trim().toLowerCase(); fu = fu.trim().toLowerCase();
+    var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var rows = list.filter(function (u) {
+      if (fn && String(u.name || '').toLowerCase().indexOf(fn) < 0) return false;
+      if (fu && (String(u.username || '') + ' ' + String(u.email || '')).toLowerCase().indexOf(fu) < 0) return false;
+      if (fr && String(u.role || '') !== fr) return false;
+      return true;
+    });
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">ไม่พบผู้ใช้</td></tr>'; return; }
+    body.innerHTML = rows.map(function (u) {
+      var uname = esc(u.username || ''); var jsName = uname.replace(/'/g, "\\'");
+      var idln = esc(u.username || '') + (u.email ? '<div class="text-muted" style="font-size:.72rem">' + esc(u.email) + '</div>' : '');
+      var del = u.builtin ? '' : '<button class="btn btn-sm btn-outline-danger" title="ลบ" onclick="window.permDeleteUser(\'' + jsName + '\')"><i class="fas fa-trash"></i></button>';
+      return '<tr>' +
+        '<td class="text-start fw-bold">' + esc(u.name || '-') + '</td>' +
+        '<td class="text-start">' + idln + '</td>' +
+        '<td class="text-center"><span class="badge bg-dark">' + esc(u.role || '-') + '</span>' + (window.permZoneOfUser(u.username) ? ' <span class="badge bg-success" title="โซนที่ดูแล">โซน ' + esc(window.permZoneOfUser(u.username)) + '</span>' : '') + '</td>' +
+        '<td class="text-center"><span class="badge ' + (u.builtin ? 'bg-secondary' : 'bg-success') + '">' + (u.builtin ? 'ระบบ' : 'เพิ่มเอง') + '</span></td>' +
+        '<td class="text-center"><div class="d-inline-flex gap-1">' +
+          '<button class="btn btn-sm btn-outline-dark" title="แก้ไข" onclick="window.permEditUser(\'' + jsName + '\')"><i class="fas fa-pen"></i></button>' + del +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  };
+
+  window.permLoadOpZones = function(){ try{ return JSON.parse(localStorage.getItem('pc_op_zones'))||{}; }catch(e){ return {}; } };
+  window.permZoneOfUser = function(username){ var m=window.permLoadOpZones(); var u=String(username||'').trim().toLowerCase(); var f=''; Object.keys(m).forEach(function(z){ if((m[z]||[]).some(function(x){return String(x).trim().toLowerCase()===u;})) f=z; }); return f; };
+  window.permSetUserZone = function(username, zone){ var m=window.permLoadOpZones(); var u=String(username||'').trim(); Object.keys(m).forEach(function(z){ m[z]=(m[z]||[]).filter(function(x){return String(x).trim().toLowerCase()!==u.toLowerCase();}); if(!m[z].length) delete m[z]; }); if(zone){ if(!m[zone]) m[zone]=[]; m[zone].push(u); } try{ localStorage.setItem('pc_op_zones', JSON.stringify(m)); }catch(e){} };
+  window.permZoneOptions = function(sel){ var az={}; try{ az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; }catch(e){} var zs={}; Object.keys(az).forEach(function(id){ var z=String(az[id].zone||'').trim(); if(z && !zs[z]) zs[z]=(az[id].area||''); }); var keys=Object.keys(zs).sort(function(a,b){return (parseInt(a,10)||99)-(parseInt(b,10)||99);}); var o='<option value="">— ไม่ผูกโซน —</option><option value="ALL"'+(String(sel)==='ALL'?' selected':'')+'>ทุกโซน (All zones)</option>'; keys.forEach(function(z){ o+='<option value="'+z+'"'+(String(sel)===String(z)?' selected':'')+'>โซน '+z+(zs[z]?' · '+zs[z]:'')+'</option>'; }); return o; };
+
+  window.permAutoBindZones = function(){ var az={}; try{ az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; }catch(e){} var areaZone={}; Object.keys(az).forEach(function(id){ var a=String(az[id].area||'').trim().toLowerCase(); var z=String(az[id].zone||'').trim(); if(a && z && !areaZone[a]) areaZone[a]=z; }); var m=window.permLoadOpZones(); var assigned={}; Object.keys(m).forEach(function(z){ (m[z]||[]).forEach(function(u){ assigned[String(u).trim().toLowerCase()]=1; }); }); var changed=false; (window._permUsers||[]).forEach(function(u){ if(u.role!=='OP') return; var uname=String(u.username||'').trim().toLowerCase(); if(!uname||assigned[uname]) return; var nm=String(u.name||'').trim().toLowerCase(); var z=areaZone[uname]||areaZone[nm]||areaZone[nm.split(/\s+/)[0]]; if(z){ if(!m[z]) m[z]=[]; m[z].push(u.username); assigned[uname]=1; changed=true; } }); if(changed){ try{ localStorage.setItem('pc_op_zones', JSON.stringify(m)); }catch(e){} } };
+
+  window.permOpenAddUser = function () {
+    Swal.fire({
+      title: 'เพิ่มผู้ใช้งานใหม่',
+      width: '520px',
+      html: `<div class="text-start">
+        <label class="small fw-bold mb-1">ชื่อ-นามสกุล (Name) *</label>
+        <input id="auName" class="form-control mb-2" placeholder="เช่น สมชาย ใจดี">
+        <label class="small fw-bold mb-1">Username / Email *</label>
+        <input id="auUser" class="form-control mb-2" placeholder="เช่น somchai@rocksgroup.com">
+        <label class="small fw-bold mb-1">รหัสผ่าน (Password)</label>
+        <input id="auPass" class="form-control mb-2" placeholder="ค่าเริ่มต้น 1234 ถ้าเว้นว่าง">
+        <label class="small fw-bold mb-1">บทบาท (Role) *</label>
+        <select id="auRole" class="form-select"><option value="MKT">MKT</option><option value="IT">IT</option><option value="OP">OP</option><option value="ACC">ACC</option><option value="SC">SC</option><option value="BD">BD</option><option value="RD">RD</option><option value="Admin">Admin</option></select>
+        <label class="small fw-bold mb-1 mt-2">โซนที่ดูแล (Zone) — สำหรับ OP/Area</label>
+        <select id="auZone" class="form-select">${window.permZoneOptions('')}</select>
+        <div id="auErr" class="text-danger small fw-bold mt-2" style="min-height:18px;"></div>
+      </div>`,
+      showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: 'เพิ่มผู้ใช้', cancelButtonText: 'ยกเลิก',
+      preConfirm: () => {
+        const name = document.getElementById('auName').value.trim();
+        const user = document.getElementById('auUser').value.trim();
+        const err = document.getElementById('auErr'); const fail = m => { err.textContent = m; return false; };
+        if (!name) return fail('⚠ กรุณาระบุชื่อ');
+        if (!user) return fail('⚠ กรุณาระบุ Username / Email');
+        if (user.includes('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(user)) return fail('⚠ รูปแบบอีเมลไม่ถูกต้อง');
+        return { name, username: user, email: user.includes('@') ? user : '', password: document.getElementById('auPass').value.trim(), role: document.getElementById('auRole').value, zone: document.getElementById('auZone').value };
+      }
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      google.script.run.withSuccessHandler(function (res) {
+        if (res.status === 'success') { try{ window.permSetUserZone(r.value.username, r.value.zone); }catch(e){} Swal.fire({ icon: 'success', title: 'เพิ่มผู้ใช้เรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => window.permRenderUsers()); }
+        else Swal.fire('ผิดพลาด', res.message, 'error');
+      }).addUser(r.value);
+    });
+  };
+
+  window.permEditUser = function (username) {
+    const u = (window._permUsers || []).find(x => x.username === username);
+    if (!u) return;
+    Swal.fire({
+      title: 'แก้ไขผู้ใช้งาน', width: '520px',
+      html: `<div class="text-start">
+        <label class="small fw-bold mb-1">ชื่อ-นามสกุล *</label>
+        <input id="euName" class="form-control mb-2" value="${(u.name||'').replace(/"/g,'&quot;')}">
+        <label class="small fw-bold mb-1">Username / Email</label>
+        <input class="form-control mb-2" value="${u.username}" disabled style="background:#eee;">
+        <label class="small fw-bold mb-1">รหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label>
+        <input id="euPass" class="form-control mb-2" placeholder="••••">
+        <label class="small fw-bold mb-1">บทบาท (Role) *</label>
+        <select id="euRole" class="form-select">${['MKT','IT','OP','ACC','BD','RD','Admin'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}</select>
+        <label class="small fw-bold mb-1 mt-2">โซนที่ดูแล (Zone) — สำหรับ OP/Area</label>
+        <select id="euZone" class="form-select">${window.permZoneOptions(window.permZoneOfUser(u.username))}</select>
+        <div id="euErr" class="text-danger small fw-bold mt-2" style="min-height:18px;"></div>
+      </div>`,
+      showCancelButton: true, confirmButtonColor: '#0d6efd', confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก',
+      preConfirm: () => {
+        const name = document.getElementById('euName').value.trim();
+        if (!name) { document.getElementById('euErr').textContent = '⚠ กรุณาระบุชื่อ'; return false; }
+        return { name, role: document.getElementById('euRole').value, password: document.getElementById('euPass').value.trim(), zone: document.getElementById('euZone').value };
+      }
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      google.script.run.withSuccessHandler(function (res) {
+        if (res.status === 'success') { try{ window.permSetUserZone(username, r.value.zone); }catch(e){} Swal.fire({ icon:'success', title:'แก้ไขเรียบร้อย', timer:1400, showConfirmButton:false }).then(() => window.permRenderUsers()); }
+        else Swal.fire('ผิดพลาด', res.message, 'error');
+      }).updateUser(username, r.value);
+    });
+  };
+
+  window.permDeleteUser = function (username) {
+    Swal.fire({ title: 'ลบผู้ใช้?', text: username, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก' })
+      .then(r => { if (!r.isConfirmed) return; google.script.run.withSuccessHandler(() => { Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false }); window.permRenderUsers(); }).deleteUser(username); });
+  };
+
+  // ติ๊กแก้ไข/ลบ → บังคับติ๊ก “อ่าน” ของแถวเดียวกัน
+  window.permOnToggle = function (ck) {
+    if (ck.checked && ck.dataset.act !== 'r') {
+      const row = ck.closest('tr');
+      const readCk = row.querySelector(`.perm-ck[data-role="${ck.dataset.role}"][data-page="${ck.dataset.page}"][data-act="r"]`);
+      if (readCk && !readCk.disabled) readCk.checked = true;
+    }
+  };
+
+  window.permSave = function () {
+    const legacy = {}; const rwd = {};
+    PERM_ROLES.forEach(r => { legacy[r] = []; rwd[r] = {}; });
+    document.querySelectorAll('.perm-ck').forEach(ck => {
+      const r = ck.dataset.role, pg = ck.dataset.page, act = ck.dataset.act;
+      rwd[r][pg] = rwd[r][pg] || { r:false, e:false, d:false };
+      if (ck.checked) rwd[r][pg][act] = true;
+    });
+    // edit/delete ต้องมี read; legacy access = read
+    PERM_ROLES.forEach(r => {
+      PERM_PAGES.forEach(p => {
+        const c = rwd[r][p.id] || (rwd[r][p.id] = { r:false, e:false, d:false });
+        if (c.e || c.d) c.r = true;
+        if (p.always) c.r = true;
+        if (c.r) legacy[r].push(p.id);
+      });
+    });
+    PERM_ROLES.forEach(r => { if (!legacy[r].includes('Dashboard')) legacy[r].push('Dashboard'); });
+    // Admin always full
+    legacy.Admin = PERM_PAGES.map(p => p.id);
+    PERM_PAGES.forEach(p => { rwd.Admin[p.id] = { r:true, e:true, d:true }; });
+    localStorage.setItem('pc_permissions', JSON.stringify(legacy));
+    localStorage.setItem('pc_permissions_rwd', JSON.stringify(rwd));
+    if (typeof window.PC_applyPermissions === 'function') window.PC_applyPermissions();
+    Swal.fire({ icon:'success', title:'บันทึกสิทธิ์เรียบร้อย', text:'สิทธิ์อ่าน/แก้ไข/ลบ ถูกบันทึกแล้ว', timer:1800, showConfirmButton:false });
+  };
+
+  window.permReset = function () {
+    Swal.fire({ title:'รีเซ็ตเป็นค่าเริ่มต้น?', icon:'warning', showCancelButton:true, confirmButtonColor:'#dc3545', confirmButtonText:'รีเซ็ต', cancelButtonText:'ยกเลิก' })
+      .then(r => { if (!r.isConfirmed) return; localStorage.removeItem('pc_permissions'); localStorage.removeItem('pc_permissions_rwd'); if (typeof window.PC_applyPermissions === 'function') window.PC_applyPermissions(); window.initPermissions(); Swal.fire({ icon:'success', title:'รีเซ็ตแล้ว', timer:1400, showConfirmButton:false }); });
+  };
+</script>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Explorer — Potato Corner Promotion (Cloudflare D1)</title>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1d20"/><text x="50" y="44" font-size="26" text-anchor="middle" fill="#ffc107" font-family="sans-serif" font-weight="bold">D1</text><text x="50" y="70" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">EXPLORER</text></svg></template>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{font-family:'Kanit',sans-serif;margin:0;background:#eef1f4;color:#1a1d20;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  a{color:#1e40af}a:hover{color:#152c80}
+  .top{background:#1a1d20;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;border-bottom:5px solid #ffc107;flex-shrink:0}
+  .top h1{font-size:1.1rem;font-weight:600;margin:0;display:flex;align-items:center;gap:10px}
+  .top h1 .db{font-family:'JetBrains Mono',monospace;font-size:.72rem;background:#ffc107;color:#000;padding:2px 8px;border-radius:5px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:.78rem;font-weight:500;border:1px solid #3a3f45;background:#26292d;color:#cfd4d9;border-radius:8px;padding:5px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .chip:hover{background:#31353a}
+  .dot{width:9px;height:9px;border-radius:50%;background:#6c757d}
+  .dot.ok{background:#2ecc71}.dot.err{background:#e74c3c}.dot.load{background:#ffc107;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .wrap{flex:1;display:flex;min-height:0}
+  .side{width:290px;background:#fff;border-right:1px solid #e2e6ea;overflow-y:auto;flex-shrink:0}
+  .side .sh{font-size:.7rem;font-weight:700;letter-spacing:.04em;color:#9aa3ab;text-transform:uppercase;padding:14px 16px 6px}
+  .navitem{padding:9px 16px;border-bottom:1px solid #f2f4f6;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.86rem}
+  .navitem:hover{background:#f7f9fb}
+  .navitem.sel{background:#fff8e1;border-left:4px solid #ffc107;padding-left:12px}
+  .navitem .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .navitem .nm small{display:block;color:#9aa3ab;font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:400}
+  .navitem .ct{font-size:.72rem;font-weight:700;background:#eef1f4;color:#556;border-radius:20px;padding:2px 9px;flex-shrink:0}
+  .main{flex:1;overflow:auto;padding:22px 26px 60px}
+  .mh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .mh h2{font-size:1.25rem;margin:0;font-weight:600}
+  .mh .meta{font-size:.78rem;color:#6c757d;font-family:'JetBrains Mono',monospace}
+  .btn{font-size:.78rem;font-weight:500;border:1px solid #ced4da;background:#fff;border-radius:7px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+  .btn:hover{background:#f1f3f5}
+  .btn.dk{background:#1a1d20;color:#fff;border-color:#1a1d20}.btn.dk:hover{background:#2b2f34}
+  .search{flex:1;min-width:180px;max-width:340px;border:1px solid #ced4da;border-radius:7px;padding:6px 12px;font-family:'Kanit';font-size:.85rem}
+  table.data{width:100%;border-collapse:collapse;font-size:.8rem;background:#fff;border:1px solid #e2e6ea;border-radius:10px;overflow:hidden}
+  table.data th{background:#2f3439;color:#fff;padding:7px 10px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;font-size:.74rem}
+  table.data td{padding:6px 10px;border-bottom:1px solid #f0f2f4;vertical-align:top;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+  table.data tr:hover td{background:#fafbfc}
+  table.data td.mono{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:#00783E;white-space:nowrap}
+  .tag{display:inline-block;font-size:.66rem;font-weight:700;padding:2px 7px;border-radius:5px}
+  .t-PENDING,.t-WAITING{background:#fff3cd;color:#856404}.t-COMPLETE,.t-CONFIRMED,.t-DONE,.t-INTERFACED{background:#d4edda;color:#155724}
+  .t-REJECTED,.t-CANCELLED{background:#f8d7da;color:#721c24}.t-EXTENDED,.t-REDUCED{background:#cce5ff;color:#004085}
+  .kv{background:#fff;border:1px solid #e2e6ea;border-radius:10px;padding:4px 0}
+  .kv .r{display:flex;padding:7px 16px;border-bottom:1px solid #f2f4f6;gap:14px}
+  .kv .r:last-child{border:none}
+  .kv .k{font-family:'JetBrains Mono',monospace;font-weight:600;color:#00783E;font-size:.78rem;width:200px;flex-shrink:0}
+  .kv .v{font-size:.84rem;word-break:break-word;white-space:pre-wrap}
+  .empty{padding:50px 20px;text-align:center;color:#9aa3ab}
+  .empty .big{font-size:1rem;color:#6c757d;margin-bottom:6px}
+  pre.raw{background:#1a1d20;color:#cfe3d0;padding:16px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:.74rem;overflow:auto;max-height:60vh;white-space:pre-wrap;word-break:break-word}
+  .card{background:#fff;border:1px solid #e2e6ea;border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .stat{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .stat .box{background:#fff;border:1px solid #e2e6ea;border-radius:10px;padding:12px 18px;min-width:130px}
+  .stat .box .n{font-size:1.5rem;font-weight:700}
+  .stat .box .l{font-size:.72rem;color:#9aa3ab}
+  dialog{border:none;border-radius:14px;padding:0;max-width:520px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  dialog .dh{background:#1a1d20;color:#fff;padding:14px 20px;font-weight:600}
+  dialog .db2{padding:20px}
+  dialog label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 4px}
+  dialog input{width:100%;border:1px solid #ced4da;border-radius:7px;padding:8px 11px;font-family:'JetBrains Mono',monospace;font-size:.78rem}
+  dialog .df{padding:14px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eef1f4}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>🗄️ Database Explorer <span class="db">D1 · promo_store</span></h1>
+  <div class="spacer"></div>
+  <span class="chip" id="statusChip"><span class="dot" id="dot"></span><span id="statusTxt">กำลังเชื่อมต่อ…</span></span>
+  <span class="chip" onclick="reload()">↻ รีเฟรช</span>
+  <span class="chip" onclick="dlAllColumns()">⬇ CSV ชื่อคอลัมน์ (ทุกตาราง)</span>
+  <span class="chip" onclick="openCfg()">⚙️ ตั้งค่าการเชื่อมต่อ</span>
+</div>
+<div class="wrap">
+  <div class="side" id="side"></div>
+  <div class="main" id="main"><div class="empty"><div class="big">กำลังโหลดข้อมูลจากฐาน…</div></div></div>
+</div>
+
+<dialog id="cfgDlg">
+  <div class="dh">ตั้งค่าการเชื่อมต่อ Cloudflare Worker</div>
+  <div class="db2">
+    <label>Worker URL</label>
+    <input id="cfgUrl" placeholder="https://potato-promo-sync.xxx.workers.dev">
+    <label>SYNC_TOKEN (Bearer)</label>
+    <input id="cfgToken" placeholder="pc_...">
+    <p style="font-size:.76rem;color:#6c757d;margin:14px 0 0">ค่าเริ่มต้นตรงกับที่ระบบใช้ซิงค์อยู่แล้ว · เก็บไว้ในเบราว์เซอร์นี้เท่านั้น</p>
+  </div>
+  <div class="df">
+    <button class="btn" onclick="cfgDlg.close()">ปิด</button>
+    <button class="btn dk" onclick="saveCfg()">บันทึก + เชื่อมต่อ</button>
+  </div>
+</dialog>
+
+<script>
+const DEFAULT_CFG={url:'https://potato-promo-sync.quiet-surf-dda2.workers.dev',token:'pc_ccd639fc5548ee482bccb1efca6791db69aad84aef9b15f2829a35f0847dc40c'};
+const CFG_KEY='pc_dbx_cfg';
+function cfg(){try{const c=JSON.parse(localStorage.getItem(CFG_KEY));if(c&&c.url&&c.token)return c;}catch(e){}return DEFAULT_CFG;}
+let RAW={};      // ทุก key ดิบจาก cloud (k -> JSON string)
+let META={};     // updated_at ต่อ key
+let TABLES=[];   // [{id,label,sub,rows,type,data}]
+let SEL=null;
+
+function setStatus(s,txt){const d=document.getElementById('dot');d.className='dot '+s;document.getElementById('statusTxt').textContent=txt;}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function tsFmt(ms){if(!ms)return'';const d=new Date(+ms);return d.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});}
+
+async function reload(){
+  const c=cfg();
+  setStatus('load','กำลังเชื่อมต่อ…');
+  document.getElementById('main').innerHTML='<div class="empty"><div class="big">กำลังโหลดข้อมูลจากฐาน…</div></div>';
+  try{
+    const r=await fetch(c.url.replace(/\/$/,'')+'/promo/store',{headers:{'Authorization':'Bearer '+c.token}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    RAW=j.keys||{};META=j.meta||{};
+    build();
+    const n=Object.keys(RAW).length;
+    setStatus('ok','เชื่อมต่อแล้ว · '+n+' key');
+  }catch(e){
+    setStatus('err','เชื่อมต่อไม่ได้');
+    document.getElementById('side').innerHTML='';
+    document.getElementById('main').innerHTML='<div class="empty"><div class="big">❌ ดึงข้อมูลไม่สำเร็จ</div>'+
+      '<div>'+esc(e.message)+'</div><div style="margin-top:14px;font-size:.82rem">เปิดหน้านี้ในเบราว์เซอร์ปกติ (ไม่ใช่ตัวพรีวิว) และตรวจ URL/Token ที่ปุ่ม ⚙️<br>Worker ต้องออนไลน์ · ลองเปิด <code>'+esc(cfg().url)+'/health</code></div>'+
+      '<div style="margin-top:16px"><button class="btn dk" onclick="openCfg()">⚙️ ตั้งค่าการเชื่อมต่อ</button></div></div>';
+  }
+}
+
+// รวมงานโปรฯ กลับจาก promo::meta + promo::c::* → store {months, working, npd, ...}
+function reassemble(){
+  const PFX='promo::c::';let meta={};
+  try{meta=JSON.parse(RAW['promo::meta']||'{}');}catch(e){}
+  const store={};Object.keys(meta).forEach(k=>store[k]=meta[k]);
+  store.working=[];store.months={};
+  Object.keys(RAW).forEach(ck=>{
+    if(ck.indexOf(PFX)!==0)return;
+    let b;try{b=JSON.parse(RAW[ck]);}catch(e){return;}
+    (b.w||[]).forEach(r=>store.working.push(r));
+    Object.keys(b.m||{}).forEach(mk=>{(store.months[mk]=store.months[mk]||[]);(b.m[mk]||[]).forEach(r=>store.months[mk].push(r));});
+  });
+  return store;
+}
+
+function parseKey(k){try{return JSON.parse(RAW[k]);}catch(e){return RAW[k];}}
+// ดึงชื่อคอลัมน์ (union) จาก data ของตาราง — ไม่แตะค่าจริง
+function colsOf(t){
+  if(Array.isArray(t.data)){const cols=[],seen={};t.data.forEach(r=>r&&typeof r==='object'&&Object.keys(r).forEach(k=>{if(!seen[k]){seen[k]=1;cols.push(k);}}));return cols;}
+  if(t.data&&typeof t.data==='object')return Object.keys(t.data);
+  return['value'];
+}
+function toRows(v){ // normalize a store value → array of record objects (best-effort)
+  if(Array.isArray(v))return v.filter(x=>x&&typeof x==='object');
+  if(v&&typeof v==='object'){
+    const vals=Object.values(v);
+    if(vals.length&&vals.every(x=>x&&typeof x==='object'&&!Array.isArray(x)))
+      return Object.keys(v).map(kk=>Object.assign({_key:kk},v[kk]));
+    // object-of-arrays (เช่น pc_product_promo, pc_member_coupons)
+    if(vals.length&&vals.every(x=>Array.isArray(x)))
+      return Object.keys(v).flatMap(kk=>(v[kk]||[]).map(o=>Object.assign({_key:kk},o&&typeof o==='object'?o:{value:o})));
+  }
+  return null;
+}
+
+function build(){
+  const store=reassemble();
+  TABLES=[];
+  // งานโปรฯ หลัก
+  const lines=[];Object.keys(store.months||{}).forEach(m=>(store.months[m]||[]).forEach(r=>lines.push(r)));
+  if(lines.length)TABLES.push({id:'promotion_line',label:'promotion_line',sub:'งานโปรฯ (months) · item-grain',rows:lines.length,data:lines,updated:META['promo::meta']});
+  if((store.working||[]).length)TABLES.push({id:'working',label:'working',sub:'view รายปุ่ม',rows:store.working.length,data:store.working});
+  [['npd','npd','สินค้าใหม่'],['flavor','flavor','ผงรสชาติ'],['npdProducts','npdProducts','สินค้าที่ขึ้นแล้ว'],['assets','assets','ทรัพย์สิน'],['plan2026','plan2026','แผนงาน'],['users','users','ผู้ใช้ (เพิ่มเอง)']].forEach(([k,lb,sb])=>{
+    const a=store[k];if(Array.isArray(a)&&a.length)TABLES.push({id:'meta:'+k,label:lb,sub:sb,rows:a.length,data:a});
+  });
+  // ทุก key อื่น ๆ (pc_*) จาก cloud โดยตรง
+  Object.keys(RAW).sort().forEach(k=>{
+    if(k==='promo::meta'||k.indexOf('promo::c::')===0)return;
+    const v=parseKey(k);const rows=toRows(v);
+    TABLES.push({id:'raw:'+k,label:k,sub:'',rows:rows?rows.length:(v&&typeof v==='object'?Object.keys(v).length:1),data:rows||v,isRaw:!rows,rawKey:k,updated:META[k]});
+  });
+  TABLES.forEach(t=>t.cols=colsOf(t));
+  renderSide();
+  if(!SEL||!TABLES.find(t=>t.id===SEL))SEL=TABLES.length?TABLES[0].id:null;
+  renderMain();
+}
+
+function renderSide(){
+  const promo=TABLES.filter(t=>['promotion_line','working'].includes(t.id)||t.id.indexOf('meta:')===0);
+  const raw=TABLES.filter(t=>t.id.indexOf('raw:')===0);
+  const item=t=>`<div class="navitem ${t.id===SEL?'sel':''}" onclick="pick('${t.id.replace(/'/g,"\\'")}')"><span class="nm">${esc(t.label)}${t.sub?`<small>${esc(t.sub)}</small>`:''}</span><span class="ct">${(t.cols||[]).length} คอลัมน์</span></div>`;
+  document.getElementById('side').innerHTML=
+    '<div class="sh">งานโปรโมชัน (pc_mock_store)</div>'+promo.map(item).join('')+
+    '<div class="sh">Stores อื่น ('+raw.length+' key)</div>'+raw.map(item).join('');
+}
+function pick(id){SEL=id;renderSide();renderMain();}
+
+function renderMain(){
+  const t=TABLES.find(x=>x.id===SEL);const m=document.getElementById('main');
+  if(!t){m.innerHTML='<div class="empty"><div class="big">ไม่มีข้อมูล</div></div>';return;}
+  const cols=t.cols||[];
+  const mono=c=>/code|Code|^id$|itemCode|prefix|^k$|_key|ss|^num$/.test(c);
+  m.innerHTML=`<div class="mh"><h2>${esc(t.label)}</h2>`+
+    `<span class="meta">${cols.length} คอลัมน์ · ${t.rows.toLocaleString()} แถวในฐาน${t.updated?' · อัปเดต '+tsFmt(t.updated):''}</span>`+
+    `<div class="spacer" style="flex:1"></div>`+
+    `<button class="btn dk" onclick="dlCols('${t.id.replace(/'/g,"\\'")}')">⬇ CSV ชื่อคอลัมน์</button></div>`+
+    `<div class="card" style="background:#fff8e1;border-color:#ffe08a;color:#7a5c00;font-size:.82rem">🔒 อ่านอย่างเดียว · หน้านี้แสดงเฉพาะ <b>ชื่อคอลัมน์</b> ของแต่ละตาราง ไม่ดึงค่าข้อมูลจริงมาโชว์</div>`+
+    `<table class="data"><thead><tr><th style="width:60px">#</th><th>ชื่อคอลัมน์ (field)</th></tr></thead><tbody>`+
+    cols.map((c,i)=>`<tr><td class="mono" style="color:#9aa3ab">${i+1}</td><td class="${mono(c)?'mono':''}">${esc(c)}</td></tr>`).join('')+
+    `</tbody></table>`;
+}
+
+// export ชื่อคอลัมน์ของ 1 ตาราง (แถวเดียว = header)
+function dlCols(id){
+  const t=TABLES.find(x=>x.id===id);if(!t)return;
+  const q=s=>{s=String(s==null?'':s);return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const csv='\ufeff'+(t.cols||[]).map(q).join(',')+'\n';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=t.label.replace(/[^a-z0-9_]/gi,'_')+'_columns.csv';a.click();
+}
+
+// export ชื่อคอลัมน์ของ "ทุกตาราง" ในไฟล์เดียว (ตาราง, ลำดับ, ชื่อคอลัมน์) — ไม่มีข้อมูลจริง
+function dlAllColumns(){
+  if(!TABLES.length){alert('ยังไม่มีข้อมูล — เชื่อมต่อฐานก่อน');return;}
+  const q=s=>{s=String(s==null?'':s);return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=['ตาราง,ลำดับคอลัมน์,ชื่อคอลัมน์'];
+  TABLES.forEach(t=>(t.cols||[]).forEach((c,i)=>lines.push([q(t.label),i+1,q(c)].join(','))));
+  const csv='\ufeff'+lines.join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='promo_store_columns_ALL.csv';a.click();
+}
+
+const cfgDlg=document.getElementById('cfgDlg');
+function openCfg(){const c=cfg();document.getElementById('cfgUrl').value=c.url;document.getElementById('cfgToken').value=c.token;cfgDlg.showModal();}
+function saveCfg(){const u=document.getElementById('cfgUrl').value.trim(),t=document.getElementById('cfgToken').value.trim();if(u&&t)localStorage.setItem(CFG_KEY,JSON.stringify({url:u,token:t}));cfgDlg.close();reload();}
+
+reload();
+</script>
+</body>
+</html>

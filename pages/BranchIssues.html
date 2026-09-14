@@ -1,0 +1,167 @@
+<style>
+  .bi-scope{ padding:22px 24px 46px; font-family:'Kanit',sans-serif; color:#1a1d20; }
+  .bi-scope .wrap{ max-width:1180px; margin:8px auto 0; }
+  .bi-scope .subtabs{ max-width:1180px; margin:14px auto 2px; padding:0 2px; display:flex; gap:8px; flex-wrap:wrap; }
+  .bi-scope .stab{ border:1px solid #e0e5ea; background:#fff; color:#5a616b; font-family:inherit; font-weight:700; font-size:.92rem; border-radius:11px; padding:10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .bi-scope .stab.on{ background:#2e934a; color:#fff; border-color:#2e934a; }
+  .bi-scope .filt{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:4px 0 18px; }
+  .bi-scope .filt select{ border:1.5px solid #dde2e7; border-radius:11px; padding:10px 13px; font-family:inherit; font-size:.94rem; background:#fff; min-width:220px; }
+  .bi-scope .filt .lbl{ font-size:.82rem; font-weight:700; color:#5a616b; }
+  .bi-scope .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  .bi-scope .kpi{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.05); display:flex; align-items:center; gap:14px; }
+  .bi-scope .kpi .ic{ width:48px; height:48px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex:none; }
+  .bi-scope .kpi .n{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.7rem; line-height:1; }
+  .bi-scope .kpi .t{ font-size:.82rem; color:#6c757d; margin-top:3px; }
+  .bi-scope .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .bi-scope .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:16px; }
+  .bi-scope .card h2{ font-size:1.04rem; font-weight:700; margin:0 0 14px; display:flex; align-items:center; gap:9px; }
+  .bi-scope .card h2 i{ color:#2e934a; }
+  .bi-scope .card h2 .c{ margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:.78rem; font-weight:700; background:#eef1f4; color:#5a616b; border-radius:999px; padding:2px 10px; }
+  .bi-scope table{ width:100%; border-collapse:collapse; font-size:.88rem; }
+  .bi-scope th{ text-align:left; font-size:.7rem; color:#8a9099; font-weight:700; padding:7px 9px; border-bottom:2px solid #eef1f4; text-transform:uppercase; letter-spacing:.4px; }
+  .bi-scope td{ padding:9px 9px; border-bottom:1px solid #f1f4f7; vertical-align:middle; }
+  .bi-scope .tcode{ font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; }
+  .bi-scope .pill{ font-size:.72rem; font-weight:700; border-radius:999px; padding:3px 11px; white-space:nowrap; display:inline-block; }
+  .bi-scope .pill.bad{ background:#fdecea; color:#c0392b; } .bi-scope .pill.ok{ background:#eafaf1; color:#1d7a4d; }
+  .bi-scope .pill.warn{ background:#fff4e0; color:#9a6700; } .bi-scope .pill.info{ background:#e7f0ff; color:#2c4a82; }
+  .bi-scope .zt{ font-size:.74rem; color:#8a9099; }
+  .bi-scope .empty{ text-align:center; color:#9aa1aa; padding:22px 12px; font-size:.9rem; }
+  .bi-scope .scopebar{ background:#eafaf1; border:1px solid #d6eade; border-radius:11px; padding:8px 13px; font-size:.84rem; color:#1d7a4d; margin-bottom:14px; display:inline-flex; align-items:center; gap:8px; }
+  @media(max-width:900px){ .bi-scope .kpis{ grid-template-columns:1fr 1fr; } .bi-scope .grid2{ grid-template-columns:1fr; } }
+  @media(max-width:560px){ .bi-scope{ padding:14px 12px 40px; } .bi-scope .kpis{ grid-template-columns:1fr 1fr; } }
+</style>
+
+<div class="bi-scope" data-screen-label="BranchIssues">
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow no-print" style="background:#2e934a;color:#fff;">
+    <div>
+      <h3 class="fw-bold m-0"><i class="fas fa-triangle-exclamation me-2 text-warning"></i> ภาพรวมปัญหาสาขา</h3>
+      <p class="m-0" style="opacity:.85;">รวมทุกเรื่องที่สาขาแจ้ง — เครื่อง EDC · ปัญหาปุ่ม/โค้ด · Tender · ปิดบิลไม่ตรง · กรองตามโซนที่ดูแล</p>
+    </div>
+  </div>
+  <div class="subtabs">
+    <button class="stab" onclick="loadPage('BranchEDC')"><i class="fas fa-credit-card"></i> เครื่อง EDC</button>
+    <button class="stab on"><i class="fas fa-triangle-exclamation"></i> ภาพรวมปัญหาสาขา</button>
+    <button class="stab" onclick="loadPage('BranchTickets')"><i class="fas fa-flag"></i> ติดตามงานแจ้งปัญหา</button>
+  </div>
+  <div class="wrap" id="biView"></div>
+</div>
+
+<script>
+(function(){
+  function ls(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function branches(){ return (window.PC_BRANCH_MASTER||[]).slice(); }
+  function azMap(){ return ls('pc_area_zones')||{}; }
+  function bName(id){ var b=branches().filter(function(x){return x.id===id;})[0]; if(b) return b.name; var z=azMap()[id]; return (z&&z.store)||id; }
+  function zoneOf(id){ var z=azMap()[id]||{}; return { zone:String(z.zone||''), area:String(z.area||'') }; }
+  function fmtTs(ts){ if(!ts) return '-'; var d=new Date(ts); var p=function(n){return (n<10?'0':'')+n;}; return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+  function fmtIso(s){ if(!s) return '-'; var d=new Date(s); if(isNaN(d)) return '-'; return fmtTs(d.getTime()); }
+
+  /* --- zone scope: HQ เห็นทุกโซน · OP เห็นเฉพาะโซนของชื่อตัวเอง (pc_op_zones + fallback ชื่อ Area) --- */
+  var HQ=['Admin','Admin HQ','IT','MKT','ACC','BD','SC'];
+  function myZones(){
+    var role=String(localStorage.getItem('pc_role')||'').trim(); if(HQ.indexOf(role)>=0) return null;
+    var user=String(localStorage.getItem('pc_userName')||'').trim().toLowerCase(); if(!user) return null;
+    var m=ls('pc_op_zones')||{}; var zs=[]; Object.keys(m).forEach(function(z){ if((m[z]||[]).some(function(u){return String(u).trim().toLowerCase()===user;})) zs.push(String(z)); });
+    if(zs.indexOf('ALL')>-1) return null;
+    return zs.length?zs:{ areaName:user };  // fallback: ชื่อผู้ใช้ = ชื่อ Area
+  }
+  var SCOPE=null, FZONE='';
+  function branchVisible(id){
+    var info=zoneOf(id);
+    if(SCOPE===null) return true;
+    if(SCOPE.areaName!==undefined) return info.area && info.area.toLowerCase().trim()===SCOPE.areaName;
+    return info.zone && SCOPE.indexOf(info.zone)>-1;
+  }
+  function passFilter(id){ if(!branchVisible(id)) return false; if(FZONE && String(zoneOf(id).zone)!==FZONE) return false; return true; }
+
+  function edcLatest(){
+    var log=ls('pc_edc_status_log')||[]; var m={};
+    log.forEach(function(x){ if(!m[x.branchId]||(x.ts||0)>(m[x.branchId].ts||0)) m[x.branchId]=x; });
+    return m;
+  }
+
+  function zoneFilterOptions(){
+    var az=azMap(); var zs={}; Object.keys(az).forEach(function(id){ var z=String(az[id].zone||'').trim(); if(z && branchVisible(id)) zs[z]=(az[id].area||''); });
+    var keys=Object.keys(zs).sort(function(a,b){ return (parseInt(a,10)||99)-(parseInt(b,10)||99); });
+    var o='<option value="">ทุกโซนที่ดูแล</option>';
+    keys.forEach(function(z){ o+='<option value="'+esc(z)+'"'+(FZONE===z?' selected':'')+'>โซน '+esc(z)+(zs[z]?' · '+esc(zs[z]):'')+'</option>'; });
+    return o;
+  }
+
+  function render(){
+    var view=document.getElementById('biView'); if(!view) return;
+    SCOPE=myZones();
+    var el=edcLatest();
+    // ---- EDC problem list ----
+    var edcRows=Object.keys(el).map(function(id){ return el[id]; }).filter(function(x){ return x.ok===0 && passFilter(x.branchId); })
+      .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    // ---- branch tickets ----
+    var tks=(ls('pc_branch_tickets')||[]).filter(function(t){ var code=t.branchCode||t.branchId||''; return String(t.status||'').toUpperCase()!=='DONE' && String(t.status||'').toUpperCase()!=='CLOSED' && passFilter(code); })
+      .sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+    // ---- tender pending ----
+    var tnd=(ls('pc_tender_requests')||[]).filter(function(r){ var s=String(r.status||'').toUpperCase(); return (s==='PENDING_AREA'||s==='SUBMITTED'||s==='APPROVED') && passFilter(r.branchId); })
+      .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    // ---- bill diff ----
+    var bd=(ls('pc_billdiff_reports')||[]).filter(function(r){ var s=String(r.status||'').toUpperCase(); return s!=='DONE' && s!=='RESOLVED' && s!=='CLOSED' && passFilter(r.branchId||r.branchCode||''); })
+      .sort(function(a,b){ return (b.ts||b.createdAt||0)-(a.ts||a.createdAt||0); });
+
+    var h='';
+    if(SCOPE!==null){ var lbl = SCOPE.areaName!==undefined ? ('Area: '+esc(localStorage.getItem('pc_userName')||'')) : ('โซน '+SCOPE.join(', ')); h+='<div class="scopebar"><i class="fas fa-user-shield"></i> เห็นเฉพาะสาขาในความดูแลของคุณ ('+lbl+')</div>'; }
+
+    h+='<div class="filt"><span class="lbl"><i class="fas fa-filter"></i> กรองโซน</span><select id="biZone" onchange="window.BI.zone(this.value)">'+zoneFilterOptions()+'</select></div>';
+
+    // KPIs
+    h+='<div class="kpis">'
+      +kpi('#fdecea','#c0392b','fa-credit-card', edcRows.length, 'เครื่อง EDC มีปัญหา')
+      +kpi('#fff4e0','#9a6700','fa-flag', tks.length, 'ปัญหาที่สาขาแจ้ง (ค้าง)')
+      +kpi('#e7f0ff','#2c4a82','fa-cash-register', tnd.length, 'Tender รอดำเนินการ')
+      +kpi('#f3eefe','#6d3bd1','fa-file-invoice-dollar', bd.length, 'ปิดบิลไม่ตรง (ค้าง)')
+      +'</div>';
+
+    // EDC problems
+    h+='<div class="card"><h2><i class="fas fa-credit-card"></i> เครื่อง EDC ที่แจ้งมีปัญหา <span class="c">'+edcRows.length+'</span></h2>';
+    if(!edcRows.length) h+='<div class="empty"><i class="fas fa-circle-check" style="color:#54b585"></i> ไม่มีเครื่องที่แจ้งปัญหาในตอนนี้</div>';
+    else{ h+='<div style="overflow-x:auto"><table><thead><tr><th>รหัส</th><th>สาขา</th><th>โซน / Area</th><th>TID</th><th>สถานะ</th><th>แจ้งเมื่อ</th></tr></thead><tbody>'
+      +edcRows.map(function(x){ var z=zoneOf(x.branchId); return '<tr><td class="tcode">'+esc(x.branchId)+'</td><td>'+esc(bName(x.branchId))+'</td><td class="zt">'+(z.zone?'โซน '+esc(z.zone):'-')+(z.area?' · '+esc(z.area):'')+'</td><td>'+(x.tid?esc(x.tid):'<span class="zt">-</span>')+'</td><td><span class="pill bad"><i class="fas fa-triangle-exclamation"></i> มีปัญหา</span></td><td class="zt">'+fmtTs(x.ts)+(x.by?' · '+esc(x.by):'')+'</td></tr>'; }).join('')
+      +'</tbody></table></div>'; }
+    h+='</div>';
+
+    // Branch tickets
+    h+='<div class="card"><h2><i class="fas fa-flag"></i> ปัญหาที่สาขาแจ้ง (ปุ่ม / โค้ด) <span class="c">'+tks.length+'</span></h2>';
+    if(!tks.length) h+='<div class="empty">ไม่มีปัญหาค้าง</div>';
+    else{ h+='<div style="overflow-x:auto"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>โซน / Area</th><th>เรื่อง</th><th>สถานะ</th><th>เมื่อ</th></tr></thead><tbody>'
+      +tks.slice(0,40).map(function(t){ var code=t.branchCode||t.branchId||''; var z=zoneOf(code); var sum=(t.buttons||[]).map(function(b){return b.sn||b.shortName||'';}).filter(Boolean).slice(0,2).join(', ')||t.campaign||'-'; var st=String(t.status||'OPEN').toUpperCase(); var cls=st==='OPEN'?'warn':(st==='REJECTED'?'bad':'info');
+        return '<tr><td class="tcode">'+esc(t.id||'-')+'</td><td>'+esc(t.branch||bName(code))+'</td><td class="zt">'+(z.zone?'โซน '+esc(z.zone):'-')+(z.area?' · '+esc(z.area):'')+'</td><td>'+esc(sum)+'</td><td><span class="pill '+cls+'">'+esc(t.status||'OPEN')+'</span></td><td class="zt">'+fmtIso(t.createdAt||t.at)+'</td></tr>'; }).join('')
+      +'</tbody></table></div>'; }
+    h+='</div>';
+
+    // Tender + Bill diff (2 col)
+    h+='<div class="grid2">';
+    h+='<div class="card"><h2><i class="fas fa-cash-register"></i> Tender รอดำเนินการ <span class="c">'+tnd.length+'</span></h2>';
+    if(!tnd.length) h+='<div class="empty">ไม่มีคำขอค้าง</div>';
+    else{ h+='<div style="overflow-x:auto"><table><thead><tr><th>สาขา</th><th>โซน</th><th>เรื่อง</th><th>สถานะ</th></tr></thead><tbody>'
+      +tnd.slice(0,20).map(function(r){ var z=zoneOf(r.branchId); var s=String(r.status||'').toUpperCase(); var mp={PENDING_AREA:['warn','รอ Area'],SUBMITTED:['warn','รอบัญชี'],APPROVED:['info','รอ IT เปิด']}; var pill=mp[s]||['info',r.status];
+        return '<tr><td class="tcode">'+esc(r.branchId)+'</td><td class="zt">'+(z.zone?esc(z.zone):'-')+'</td><td>'+esc((r.action==='CLOSE'?'ปิด':'เปิด')+' '+(r.reason||'ช่องทางรับชำระ')).slice(0,40)+'</td><td><span class="pill '+pill[0]+'">'+esc(pill[1])+'</span></td></tr>'; }).join('')
+      +'</tbody></table></div>'; }
+    h+='</div>';
+
+    h+='<div class="card"><h2><i class="fas fa-file-invoice-dollar"></i> ปิดบิลไม่ตรง (Diff) <span class="c">'+bd.length+'</span></h2>';
+    if(!bd.length) h+='<div class="empty">ไม่มีรายการค้าง</div>';
+    else{ h+='<div style="overflow-x:auto"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>โซน</th><th>สถานะ</th></tr></thead><tbody>'
+      +bd.slice(0,20).map(function(r){ var code=r.branchId||r.branchCode||''; var z=zoneOf(code);
+        return '<tr><td class="tcode">'+esc(r.id||'-')+'</td><td>'+esc(bName(code))+'</td><td class="zt">'+(z.zone?esc(z.zone):'-')+'</td><td><span class="pill warn">'+esc(r.status||'ค้าง')+'</span></td></tr>'; }).join('')
+      +'</tbody></table></div>'; }
+    h+='</div>';
+    h+='</div>';
+
+    view.innerHTML=h;
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+  function kpi(bg,fg,icon,n,t){ return '<div class="kpi"><div class="ic" style="background:'+bg+';color:'+fg+'"><i class="fas '+icon+'"></i></div><div><div class="n" style="color:'+fg+'">'+n+'</div><div class="t">'+t+'</div></div></div>'; }
+
+  window.BI={ zone:function(v){ FZONE=v||''; render(); } };
+  window.initBranchIssues=function(){ FZONE=''; render(); };
+  window.disposeBranchIssues=function(){ FZONE=''; };
+})();
+</script>

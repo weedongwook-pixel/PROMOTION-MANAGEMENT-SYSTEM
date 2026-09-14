@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Work Plan — แผนอุปกรณ์ POS รายสาขา 2026</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3;
+    --hi:#d64545; --md:#dd9b1c; --lo:#6b7280; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:60px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:var(--pc-black); color:#fff; padding:14px 22px; display:flex; align-items:center; gap:13px; position:sticky; top:0; z-index:30; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.02rem; margin:0; letter-spacing:.4px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .topbar .role{ margin-left:auto; font-size:.72rem; font-weight:700; background:rgba(255,255,255,.12); border-radius:8px; padding:5px 11px; letter-spacing:.5px; }
+
+  .hero{ background:radial-gradient(120% 140% at 80% -10%, #25303a 0%, #16191c 55%, #0d0f11 100%); color:#fff; padding:30px 26px 34px; position:relative; overflow:hidden; }
+  .hero .inner{ max-width:1160px; margin:0 auto; }
+  .hero .lbl{ font-size:.74rem; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--pc-yellow); display:flex; align-items:center; gap:9px; }
+  .hero .lead{ font-size:1.02rem; color:rgba(255,255,255,.72); margin:8px 0 2px; font-weight:300; }
+  .morphwrap{ position:relative; height:92px; margin-top:4px; }
+  .morphwrap #t1, .morphwrap #t2{ position:absolute; inset:0; display:flex; align-items:center; font-family:'Montserrat',sans-serif; font-weight:900; font-size:clamp(2.2rem,5.6vw,4rem); letter-spacing:-.5px; color:var(--pc-yellow); line-height:1; white-space:nowrap; }
+  .goo{ filter:url(#goothresh); }
+  .hero .pills{ display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; }
+  .hpill{ font-size:.76rem; font-weight:600; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:rgba(255,255,255,.85); border-radius:20px; padding:5px 13px; display:flex; align-items:center; gap:7px; }
+  .hpill i{ color:var(--pc-yellow); font-size:.74rem; }
+
+  .wrap{ max-width:1160px; margin:0 auto; padding:20px 18px 0; }
+
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:16px; }
+  .stat{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:15px 17px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .stat .ic{ width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex:none; }
+  .stat .v{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.7rem; line-height:1; }
+  .stat .k{ font-size:.76rem; color:#8a9099; font-weight:600; margin-top:3px; }
+
+  .legend{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#fff; border:1px solid #e7eaee; border-radius:12px; padding:9px 14px; margin-bottom:16px; font-size:.78rem; }
+  .legend b{ color:#5a616b; font-weight:700; margin-right:4px; }
+  .lchip{ display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:7px; padding:3px 9px; }
+  .legend .info{ margin-left:auto; }
+
+  .toolbar{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:12px 15px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .fld{ display:flex; align-items:center; gap:7px; }
+  .fld label{ font-size:.72rem; font-weight:700; color:#9aa1aa; text-transform:uppercase; letter-spacing:.4px; }
+  select.sel, input.search{ font-family:inherit; font-size:.86rem; border:1.5px solid #dde2e7; border-radius:9px; padding:8px 11px; background:#fff; color:#3a4150; font-weight:500; }
+  input.search{ min-width:190px; }
+  .btn{ border:0; border-radius:11px; font-family:inherit; font-weight:700; font-size:.88rem; padding:10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-d{ background:var(--pc-black); color:#fff; } .btn-d:hover{ opacity:.92; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+
+  .pgroup{ margin-bottom:22px; }
+  .ghead{ display:flex; align-items:center; gap:10px; margin-bottom:11px; }
+  .ghead .gdot{ width:11px; height:11px; border-radius:50%; }
+  .ghead h3{ font-size:1rem; font-weight:700; margin:0; }
+  .ghead .gcount{ font-size:.78rem; color:#9aa1aa; font-weight:600; background:#fff; border:1px solid #e7eaee; border-radius:20px; padding:2px 11px; }
+  .ghead .gline{ flex:1; height:1px; background:#e0e4e8; }
+
+  .task{ background:#fff; border:1px solid #e7eaee; border-left:5px solid #ccc; border-radius:13px; padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:.13s; }
+  .task:hover{ box-shadow:0 6px 18px rgba(0,0,0,.08); transform:translateY(-1px); }
+  .task.hi{ border-left-color:var(--hi); } .task.md{ border-left-color:var(--md); } .task.lo{ border-left-color:var(--lo); }
+  .task.done{ opacity:.62; background:#fafbfc; }
+  .tmain{ min-width:0; }
+  .trow1{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tname{ font-weight:600; font-size:1rem; }
+  .shopcode{ font-family:'JetBrains Mono',monospace; font-size:.72rem; font-weight:700; color:#8a9099; background:#f1f4f7; border-radius:6px; padding:2px 7px; }
+  .chip{ font-size:.7rem; font-weight:700; border-radius:7px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .typebadge{ font-family:'JetBrains Mono',monospace; font-size:.68rem; font-weight:700; border-radius:6px; padding:2px 8px; letter-spacing:.3px; }
+  .tdev{ display:flex; gap:7px; flex-wrap:wrap; margin-top:9px; }
+  .dchip{ font-size:.72rem; font-weight:600; border-radius:7px; padding:3px 9px 3px 8px; display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; }
+  .dchip .dk{ font-size:.6rem; font-weight:700; text-transform:uppercase; opacity:.7; letter-spacing:.3px; }
+  .tmeta{ display:flex; align-items:center; gap:14px; margin-top:10px; flex-wrap:wrap; }
+  .mitem{ font-size:.78rem; color:#6b7280; display:flex; align-items:center; gap:6px; }
+  .mitem i{ color:#aab0b8; font-size:.74rem; }
+  .due.soon{ color:#b07d00; font-weight:600; } .due.soon i{ color:#b07d00; }
+  .av{ width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; color:#fff; flex:none; }
+  .status{ font-size:.72rem; font-weight:700; border-radius:20px; padding:3px 11px; }
+  .st-tentative{ background:#fdf3e0; color:#9a6700; } .st-confirmed{ background:#e7f0ff; color:#2c4a82; } .st-done{ background:#eafaf1; color:#1d7a4d; }
+  .tactions{ display:flex; align-items:center; gap:6px; }
+  .iconbtn{ width:34px; height:34px; border-radius:9px; border:1.5px solid #e3e7eb; background:#fff; color:#6b7280; cursor:pointer; font-size:.84rem; display:flex; align-items:center; justify-content:center; transition:.12s; }
+  .iconbtn:hover{ border-color:#b6bcc4; color:#1a1d20; }
+  .iconbtn.go:hover{ border-color:#bfe3cc; color:var(--pc-green); background:#f3fbf6; }
+  .iconbtn.del:hover{ border-color:#f1c6bf; color:#c0392b; background:#fdf4f3; }
+
+  .empty{ background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:44px; color:#9aa1aa; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+
+  .pf{ text-align:left; font-size:14px; }
+  .pf label{ font-weight:600; display:block; margin:8px 0 4px; }
+  .pf .req{ color:#c0392b; }
+  .pf input, .pf select, .pf textarea{ width:100%; font-family:inherit; font-size:14px; border:1.5px solid #dde2e7; border-radius:9px; padding:9px 11px; }
+  .pf .two{ display:flex; gap:11px; } .pf .two>div{ flex:1; }
+  .pf .four{ display:flex; gap:9px; } .pf .four>div{ flex:1; }
+  .pf h5{ font-size:.74rem; text-transform:uppercase; letter-spacing:.5px; color:#9aa1aa; margin:14px 0 2px; font-weight:700; }
+  .segp{ display:flex; gap:8px; } .segp label{ flex:1; margin:0; }
+  .segp input{ display:none; }
+  .segp span{ display:block; text-align:center; border:1.5px solid #dde2e7; border-radius:9px; padding:9px; font-weight:700; cursor:pointer; font-size:.84rem; color:#6b7280; }
+  .segp input:checked + span{ border-color:var(--pc-black); background:var(--pc-black); color:#fff; }
+  @media(max-width:780px){ .stats{ grid-template-columns:repeat(2,1fr); } .task{ grid-template-columns:1fr; } .tactions{ justify-content:flex-end; } }
+</style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0"><defs>
+    <filter id="goothresh"><feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 60 -22"/></filter>
+  </defs></svg>
+
+  <div class="topbar">
+    <h1><i class="fas fa-list-check"></i>IT WORK PLAN · แผนอุปกรณ์ POS รายสาขา</h1>
+    <span class="role">IT TEAM</span>
+  </div>
+
+  <div class="hero">
+    <div class="inner">
+      <div class="lbl"><i class="fas fa-bolt"></i> IT Device Management · Plan 2026</div>
+      <div class="lead">แผนติดตั้ง / เปลี่ยนอุปกรณ์ POS รายสาขา — มอบหมาย PIC · วันเปิด · จัดการเครื่อง POS · Printer · Kitchen</div>
+      <div class="morphwrap">
+        <div id="t1" class="goo"></div>
+        <div id="t2" class="goo"></div>
+      </div>
+      <div class="pills">
+        <div class="hpill"><i class="fas fa-store"></i> เปิดสาขาใหม่</div>
+        <div class="hpill"><i class="fas fa-screwdriver-wrench"></i> Renovate</div>
+        <div class="hpill"><i class="fas fa-truck-ramp-box"></i> Relocate</div>
+        <div class="hpill"><i class="fas fa-desktop"></i> POS</div>
+        <div class="hpill"><i class="fas fa-receipt"></i> Printer</div>
+        <div class="hpill"><i class="fas fa-utensils"></i> Kitchen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="stats" id="stats"></div>
+
+    <div class="legend" id="legend">
+      <b>รหัสอุปกรณ์:</b>
+      <span class="lchip" style="background:#f1f4f7;color:#5a616b"><i class="fas fa-recycle"></i> Old · ใช้เครื่องเดิม</span>
+      <span class="lchip" style="background:#fdf3e0;color:#9a6700"><i class="fas fa-rotate"></i> Replace · สั่งใหม่ทดแทน</span>
+      <span class="lchip" style="background:#eef4ff;color:#2c4a82"><i class="fas fa-plus"></i> Add Dev · สั่งเพิ่ม</span>
+      <span class="lchip" style="background:#eafaf1;color:#1d7a4d"><i class="fas fa-box-open"></i> Opening · ชุดเปิดใหม่</span>
+      <button class="btn btn-o" style="padding:6px 12px;font-size:.78rem" onclick="showCriteria()"><i class="fas fa-circle-info"></i> เกณฑ์จัดซื้อ</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="fld"><label>PIC</label>
+        <select class="sel" id="fAssignee" onchange="render()"><option value="">ทุกคน</option></select></div>
+      <div class="fld"><label>ประเภทงาน</label>
+        <select class="sel" id="fWork" onchange="render()"><option value="">ทั้งหมด</option></select></div>
+      <div class="fld"><label>Type</label>
+        <select class="sel" id="fType" onchange="render()"><option value="">ทั้งหมด</option></select></div>
+      <div class="fld"><label>สถานะ</label>
+        <select class="sel" id="fStatus" onchange="render()">
+          <option value="">ทั้งหมด</option>
+          <option value="tentative">รอยืนยัน</option>
+          <option value="confirmed">ยืนยันแล้ว</option>
+          <option value="done">เปิดแล้ว</option>
+        </select></div>
+      <input class="search" id="fSearch" placeholder="ค้นหาสาขา…" oninput="render()">
+      <div style="flex:1"></div>
+      <button class="btn btn-d" onclick="addTask()"><i class="fas fa-plus"></i>เพิ่มสาขา</button>
+    </div>
+
+    <div id="board"></div>
+    <div class="demo-note">— ข้อมูลจาก Sheet “Plan 2026” (IT Device Management) · 13 สาขา · บันทึกในเครื่องนี้ (localStorage: pc_it_plan_v2) —</div>
+  </div>
+
+<script>
+const KEY='pc_it_plan_v2';
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+const TEAM = [
+  { id:'Jel',   name:'Jel',   color:'#2e934a' },
+  { id:'Chun',  name:'Chun',  color:'#2f5fb3' },
+  { id:'Bell',  name:'Bell',  color:'#b07d00' },
+  { id:'Sine',  name:'Sine',  color:'#9b59b6' },
+  { id:'Smart', name:'Smart', color:'#c0392b' },
+  { id:'Mean',  name:'Mean',  color:'#0f766e' },
+];
+const WORKS = {
+  'FULL':     { label:'เปิดสาขาใหม่', icon:'fa-store',                bg:'#eafaf1', fg:'#1d7a4d' },
+  'Renovate': { label:'Renovate',     icon:'fa-screwdriver-wrench',   bg:'#fdf3e0', fg:'#9a6700' },
+  'Relocate': { label:'Relocate',     icon:'fa-truck-ramp-box',       bg:'#eef4ff', fg:'#2c4a82' },
+  'other':    { label:'อื่นๆ',        icon:'fa-gear',                 bg:'#f1f4f7', fg:'#5a616b' },
+};
+const TYPE_COLOR = { 'COCO':'#1d7a4d', 'DODO M':'#b03048', 'DOCO':'#7a3aa8', 'COCO-M':'#0f766e', 'FRC':'#2c4a82' };
+const PRIOS = { hi:{label:'ต้องเร่ง · รอยืนยัน', c:'#d64545'}, md:{label:'ยืนยันแล้ว', c:'#dd9b1c'}, lo:{label:'ทั่วไป', c:'#6b7280'} };
+const STATUS = { tentative:{label:'รอยืนยัน', cls:'st-tentative'}, confirmed:{label:'ยืนยันแล้ว', cls:'st-confirmed'}, done:{label:'เปิดแล้ว', cls:'st-done'} };
+
+/* device-action code → display */
+const DEV = {
+  'Old':     { t:'ใช้เครื่องเดิม', bg:'#f1f4f7', fg:'#5a616b', bd:'#e3e7eb' },
+  'Replace': { t:'สั่งใหม่ทดแทน',  bg:'#fdf3e0', fg:'#9a6700', bd:'#f0dca0' },
+  'Add Dev': { t:'สั่งเพิ่ม',      bg:'#eef4ff', fg:'#2c4a82', bd:'#cfe0fb' },
+  'Opening': { t:'ชุดเปิดใหม่',     bg:'#eafaf1', fg:'#1d7a4d', bd:'#bfe3cc' },
+  'ประเมิน': { t:'ประเมินสภาพ',     bg:'#f3eafd', fg:'#7a3aa8', bd:'#e3d2f5' },
+};
+function devNorm(v){ v=String(v||'').trim(); if(!v||v==='-') return ''; if(/ประเมิน/.test(v)) return 'ประเมิน'; return v; }
+
+/* ===== seed from Plan 2026 ===== */
+const SEED = [
+  { shop:'PC1025', name:'Central Festival Chiang Mai', type:'COCO',   work:'Renovate', pic:'Jel',   due:'2026-01-30', conf:'Confirmed', pos:'Old',     prn:'Old',     kit:'Add Dev', acc:'ประเมิน' },
+  { shop:'PC6032', name:'Robinson Kampangphet',        type:'DODO M', work:'FULL',     pic:'Chun',  due:'2026-01-30', conf:'Confirmed', pos:'Opening',  prn:'',        kit:'',        acc:'' },
+  { shop:'PC1019', name:'Central Salaya',              type:'COCO',   work:'Renovate', pic:'Bell',  due:'2026-02-25', conf:'Confirmed', pos:'Replace',  prn:'Replace', kit:'',        acc:'Replace' },
+  { shop:'PC1104', name:'RTR-Robinson Trang',          type:'COCO',   work:'Relocate', pic:'Sine',  due:'2026-02-23', conf:'Confirmed', pos:'Replace',  prn:'Replace', kit:'',        acc:'Replace' },
+  { shop:'PC1103', name:'Park Silom',                  type:'COCO',   work:'FULL',     pic:'Bell',  due:'2026-02-26', conf:'Confirmed', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'',       name:'Italthai',                    type:'DODO M', work:'FULL',     pic:'Smart', due:'2026-02-26', conf:'Confirmed', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'',       name:'101 True Digital Park',       type:'DODO M', work:'FULL',     pic:'Mean',  due:'2026-03-12', conf:'Confirmed', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'PC1042', name:'RSP-Robinson Suphanburi',     type:'COCO',   work:'Renovate', pic:'Smart', due:'',           conf:'Tentative', pos:'Old',      prn:'Old',     kit:'Old',     acc:'ประเมิน' },
+  { shop:'',       name:'Mahasarakham University',     type:'COCO',   work:'FULL',     pic:'Smart', due:'2026-03-20', conf:'Confirmed', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'',       name:'Motorway Inbound',            type:'DODO M', work:'FULL',     pic:'Jel',   due:'',           conf:'Tentative', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'',       name:'Midtown Asok',                type:'COCO',   work:'FULL',     pic:'Sine',  due:'2026-04-02', conf:'Confirmed', pos:'',         prn:'',        kit:'',        acc:'' },
+  { shop:'PC1022', name:'Central Bangna',              type:'COCO',   work:'Renovate', pic:'Sine',  due:'2026-04-06', conf:'Tentative', pos:'Replace',  prn:'Replace', kit:'',        acc:'Replace' },
+  { shop:'PC1005', name:'T21-Terminal 21',             type:'COCO',   work:'Renovate', pic:'Smart', due:'',           conf:'Tentative', pos:'Old',      prn:'Replace', kit:'',        acc:'ประเมิน' },
+].map((r,i)=>({
+  id:'p'+(i+1),
+  shop:r.shop, name:r.name, type:r.type, work:r.work, assignee:r.pic, due:r.due,
+  status: r.conf==='Confirmed' ? 'confirmed' : 'tentative',
+  prio: r.conf==='Confirmed' ? 'md' : 'hi',
+  pos:devNorm(r.pos), prn:devNorm(r.prn), kit:devNorm(r.kit), acc:devNorm(r.acc), remark:''
+}));
+
+function load(){ let a=null; try{ a=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!Array.isArray(a)){ a=JSON.parse(JSON.stringify(SEED)); save(a); } return a; }
+let TASKS = load();
+function save(a){ try{ localStorage.setItem(KEY, JSON.stringify(a||TASKS)); }catch(e){} }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function member(id){ return TEAM.find(m=>m.id===id)||{name:'—',color:'#aab0b8'}; }
+
+function dueInfo(d, status){
+  if(!d) return { txt:'รอกำหนดวันเปิด', cls:'soon', ic:'fa-hourglass-half' };
+  const dt=new Date(d+'T00:00:00'); dt.setHours(0,0,0,0);
+  const diff=Math.round((dt-TODAY)/86400000);
+  const fmt=dt.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+  if(status==='done') return { txt:'เปิด '+fmt, cls:'', ic:'fa-flag-checkered' };
+  if(diff===0) return { txt:fmt+' · วันนี้', cls:'soon', ic:'fa-calendar-day' };
+  if(diff>0 && diff<=30) return { txt:fmt+' · อีก '+diff+' วัน', cls:'soon', ic:'fa-calendar-day' };
+  return { txt:fmt, cls:'', ic:'fa-calendar' };
+}
+
+function fillFilters(){
+  const a=document.getElementById('fAssignee');
+  TEAM.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; a.appendChild(o); });
+  const w=document.getElementById('fWork');
+  ['FULL','Renovate','Relocate'].forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=WORKS[k].label; w.appendChild(o); });
+  const t=document.getElementById('fType');
+  [...new Set(TASKS.map(x=>x.type))].filter(Boolean).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; t.appendChild(o); });
+}
+
+function renderStats(){
+  const total=TASKS.length;
+  const conf=TASKS.filter(t=>t.status==='confirmed').length;
+  const tent=TASKS.filter(t=>t.status==='tentative').length;
+  const soon=TASKS.filter(t=>{ if(t.status==='done'||!t.due) return false; const dt=new Date(t.due+'T00:00:00'); const diff=Math.round((dt-TODAY)/86400000); return diff>=0 && diff<=30; }).length;
+  const S=[
+    { v:total, k:'สาขาในแผน', ic:'fa-store', bg:'#1a1d20', fg:'#2e934a' },
+    { v:conf, k:'ยืนยันแล้ว', ic:'fa-circle-check', bg:'#e7f0ff', fg:'#2c4a82' },
+    { v:tent, k:'รอยืนยัน', ic:'fa-clock', bg:'#fdf3e0', fg:'#b07d00' },
+    { v:soon, k:'เปิดใน 30 วัน', ic:'fa-calendar-day', bg:'#eafaf1', fg:'#1d7a4d' },
+  ];
+  document.getElementById('stats').innerHTML = S.map(s=>`<div class="stat">
+    <div class="ic" style="background:${s.bg};color:${s.fg}"><i class="fas ${s.ic}"></i></div>
+    <div><div class="v">${s.v}</div><div class="k">${s.k}</div></div></div>`).join('');
+}
+
+function devChips(t){
+  const map=[['POS',t.pos],['Cashier',t.prn],['Kitchen',t.kit],['Acc.',t.acc]];
+  let chips=map.filter(([k,v])=>v).map(([k,v])=>{ const d=DEV[v]||DEV['Old'];
+    return `<span class="dchip" style="background:${d.bg};color:${d.fg};border-color:${d.bd}"><span class="dk">${k}</span>${esc(d.t)}</span>`; }).join('');
+  if(!chips && t.work==='FULL') chips=`<span class="dchip" style="background:#eafaf1;color:#1d7a4d;border-color:#bfe3cc"><i class="fas fa-box-open"></i> ชุดเปิดสาขาใหม่ (ครบชุด)</span>`;
+  return chips?`<div class="tdev">${chips}</div>`:'';
+}
+
+function taskHTML(t){
+  const w=WORKS[t.work]||WORKS.other, m=member(t.assignee), st=STATUS[t.status]||STATUS.tentative, du=dueInfo(t.due,t.status);
+  const initial=(m.name||'?').trim().slice(0,1).toUpperCase();
+  const tcol=TYPE_COLOR[t.type]||'#5a616b';
+  return `<div class="task ${t.prio} ${t.status==='done'?'done':''}">
+    <div class="tmain">
+      <div class="trow1">
+        ${t.shop?`<span class="shopcode">${esc(t.shop)}</span>`:''}
+        <span class="tname">${esc(t.name)}</span>
+        <span class="typebadge" style="background:${tcol}1a;color:${tcol}">${esc(t.type)}</span>
+        <span class="chip" style="background:${w.bg};color:${w.fg}"><i class="fas ${w.icon}"></i>${esc(w.label)}</span>
+      </div>
+      ${devChips(t)}
+      <div class="tmeta">
+        <span class="mitem"><span class="av" style="background:${m.color}">${esc(initial)}</span>${esc(m.name)}</span>
+        <span class="mitem due ${du.cls}"><i class="far ${du.ic}"></i>${esc(du.txt)}</span>
+        <span class="status ${st.cls}">${st.label}</span>
+        ${t.remark?`<span class="mitem"><i class="fas fa-note-sticky"></i>${esc(t.remark)}</span>`:''}
+      </div>
+    </div>
+    <div class="tactions">
+      ${t.status!=='done'?`<button class="iconbtn go" title="เปิดสาขาแล้ว" onclick="setDone('${t.id}')"><i class="fas fa-flag-checkered"></i></button>`
+        :`<button class="iconbtn" title="กลับมาเป็นแผน" onclick="reopen('${t.id}')"><i class="fas fa-rotate-left"></i></button>`}
+      <button class="iconbtn" title="แก้ไข" onclick="editTask('${t.id}')"><i class="fas fa-pen"></i></button>
+      <button class="iconbtn del" title="ลบ" onclick="delTask('${t.id}')"><i class="fas fa-trash"></i></button>
+    </div>
+  </div>`;
+}
+function passFilter(t){
+  const fa=document.getElementById('fAssignee').value, fw=document.getElementById('fWork').value,
+        ft=document.getElementById('fType').value, fs=document.getElementById('fStatus').value,
+        q=(document.getElementById('fSearch').value||'').trim().toLowerCase();
+  if(fa && t.assignee!==fa) return false;
+  if(fw && t.work!==fw) return false;
+  if(ft && t.type!==ft) return false;
+  if(fs && t.status!==fs) return false;
+  if(q && !((t.name||'')+' '+(t.shop||'')).toLowerCase().includes(q)) return false;
+  return true;
+}
+function render(){
+  renderStats();
+  const list=TASKS.filter(passFilter);
+  const board=document.getElementById('board');
+  if(!list.length){ board.innerHTML='<div class="empty"><i class="fas fa-clipboard-list fa-2x" style="opacity:.4;display:block;margin-bottom:12px"></i>ไม่มีสาขาตามเงื่อนไขที่เลือก</div>'; return; }
+  const order=['hi','md','lo'];
+  const dueRank=t=>t.due? new Date(t.due+'T00:00:00').getTime():Infinity;
+  let html='';
+  order.forEach(p=>{
+    let items=list.filter(t=>t.prio===p);
+    if(!items.length) return;
+    items.sort((a,b)=>{ if((a.status==='done')!==(b.status==='done')) return a.status==='done'?1:-1; return dueRank(a)-dueRank(b); });
+    html+=`<div class="pgroup"><div class="ghead">
+      <span class="gdot" style="background:${PRIOS[p].c}"></span>
+      <h3>${PRIOS[p].label}</h3>
+      <span class="gcount">${items.length} สาขา</span>
+      <span class="gline"></span></div>
+      ${items.map(taskHTML).join('')}</div>`;
+  });
+  board.innerHTML=html;
+}
+
+function setDone(id){ const t=TASKS.find(x=>x.id===id); if(t){ t.status='done'; save(); render(); } }
+function reopen(id){ const t=TASKS.find(x=>x.id===id); if(t){ t.status='confirmed'; save(); render(); } }
+function delTask(id){ const t=TASKS.find(x=>x.id===id); if(!t) return;
+  Swal.fire({ icon:'warning', title:'ลบสาขานี้ออกจากแผน?', html:`<b>${esc(t.name)}</b>`, showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก' })
+  .then(r=>{ if(r.isConfirmed){ TASKS=TASKS.filter(x=>x.id!==id); save(); render(); } }); }
+
+function showCriteria(){
+  Swal.fire({ title:'เกณฑ์จัดซื้ออุปกรณ์ (Renovate / Relocate)', width:600, confirmButtonColor:'#2e934a', confirmButtonText:'เข้าใจแล้ว',
+    html:`<div style="text-align:left;font-size:13.5px">
+      <div style="background:#eafaf1;border-left:4px solid #1d7a4d;border-radius:10px;padding:11px 14px;margin-bottom:11px">
+        <div style="font-weight:700;color:#1d7a4d;margin-bottom:5px"><i class="fas fa-store"></i> สาขา COCO</div>
+        <div style="color:#3a4047;line-height:1.6">
+          • POS (4852-E70) → <b>สั่งเครื่องใหม่ทดแทน</b><br>
+          • Printer cashier / kitchen / Accessories → <b>ตรวจเช็คสภาพ</b> หากใช้งานได้ตามปกติ ใช้เครื่องเดิมได้</div>
+      </div>
+      <div style="background:#fdeef0;border-left:4px solid #b03048;border-radius:10px;padding:11px 14px">
+        <div style="font-weight:700;color:#b03048;margin-bottom:5px"><i class="fas fa-handshake"></i> สาขา DOCO / DODO-M (แฟรนไชส์)</div>
+        <div style="color:#3a4047;line-height:1.6">
+          • POS / Printer cashier / kitchen → หากอายุใช้งาน <b>เกิน 3 ปี ไม่รับซื้อคืน</b> ให้สั่งอุปกรณ์ใหม่ทั้งหมด<br>
+          • Accessories → <b>ไม่รับซื้อคืน</b> สั่งอุปกรณ์ใหม่ทั้งหมด</div>
+      </div></div>` });
+}
+
+function taskForm(t){ t=t||{};
+  const workOpt=['FULL','Renovate','Relocate','other'].map(k=>`<option value="${k}" ${t.work===k?'selected':''}>${WORKS[k].label}</option>`).join('');
+  const typeOpt=['COCO','DODO M','DOCO','COCO-M','FRC'].map(k=>`<option value="${k}" ${t.type===k?'selected':''}>${k}</option>`).join('');
+  const asOpt=TEAM.map(m=>`<option value="${m.id}" ${t.assignee===m.id?'selected':''}>${m.name}</option>`).join('');
+  const devSel=(id,val)=>{ const opts=['','Old','Replace','Add Dev','Opening','ประเมิน']; return `<select id="${id}">${opts.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o===''?'— ไม่เกี่ยว —':(DEV[o]?o+' · '+DEV[o].t:o)}</option>`).join('')}</select>`; };
+  const prio=t.prio||'md', status=t.status||'tentative';
+  const seg=(name,val,opts)=>`<div class="segp">${opts.map(o=>`<label><input type="radio" name="${name}" value="${o.v}" ${val===o.v?'checked':''}><span>${o.t}</span></label>`).join('')}</div>`;
+  return `<div class="pf">
+    <label>ชื่อสาขา <span class="req">*</span></label>
+    <input id="pName" placeholder="เช่น Central Festival Chiang Mai" value="${esc(t.name)}">
+    <div class="two">
+      <div><label>Shop Code</label><input id="pShop" class="mono" placeholder="PC1025 (ถ้ามี)" value="${esc(t.shop)}"></div>
+      <div><label>Type</label><select id="pType">${typeOpt}</select></div>
+    </div>
+    <div class="two">
+      <div><label>ประเภทงาน</label><select id="pWork">${workOpt}</select></div>
+      <div><label>PIC ผู้รับผิดชอบ</label><select id="pAssignee">${asOpt}</select></div>
+    </div>
+    <div class="two">
+      <div><label>วันเปิด (Opening)</label><input id="pDue" type="date" value="${esc(t.due||'')}"></div>
+      <div><label>ความสำคัญ</label>${seg('pPrio',prio,[{v:'hi',t:'สูง'},{v:'md',t:'กลาง'},{v:'lo',t:'ต่ำ'}])}</div>
+    </div>
+    <h5>อุปกรณ์ที่ต้องจัดการ</h5>
+    <div class="four">
+      <div><label style="font-size:.78rem">POS</label>${devSel('pPos',t.pos)}</div>
+      <div><label style="font-size:.78rem">Printer cashier</label>${devSel('pPrn',t.prn)}</div>
+      <div><label style="font-size:.78rem">Printer kitchen</label>${devSel('pKit',t.kit)}</div>
+      <div><label style="font-size:.78rem">Accessories</label>${devSel('pAcc',t.acc)}</div>
+    </div>
+    <label>สถานะ</label>${seg('pStatus',status,[{v:'tentative',t:'รอยืนยัน'},{v:'confirmed',t:'ยืนยันแล้ว'},{v:'done',t:'เปิดแล้ว'}])}
+    <label>หมายเหตุ</label>
+    <textarea id="pRemark" rows="2" placeholder="โน้ตเพิ่มเติม">${esc(t.remark)}</textarea>
+  </div>`;
+}
+function readTask(){
+  const name=(document.getElementById('pName').value||'').trim();
+  if(!name){ Swal.showValidationMessage('กรอกชื่อสาขา'); return false; }
+  const g=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+  const v=id=>document.getElementById(id).value;
+  return { name, shop:(v('pShop')||'').trim().toUpperCase(), type:v('pType'), work:v('pWork'), assignee:v('pAssignee'),
+    due:v('pDue'), prio:g('pPrio')||'md', status:g('pStatus')||'tentative',
+    pos:v('pPos'), prn:v('pPrn'), kit:v('pKit'), acc:v('pAcc'), remark:(v('pRemark')||'').trim() };
+}
+function addTask(){ Swal.fire({ title:'เพิ่มสาขาในแผน', width:600, html:taskForm({type:'COCO',work:'FULL'}), showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก', preConfirm:readTask })
+  .then(r=>{ if(!r.isConfirmed) return; const v=r.value; v.id='p'+Date.now().toString(36); TASKS.unshift(v); fillTypeFilter(); save(); render(); }); }
+function editTask(id){ const t=TASKS.find(x=>x.id===id); if(!t) return;
+  Swal.fire({ title:'แก้ไขสาขา', width:600, html:taskForm(t), showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'บันทึก', cancelButtonText:'ยกเลิก', preConfirm:readTask })
+  .then(r=>{ if(!r.isConfirmed) return; Object.assign(t, r.value); save(); render(); }); }
+function fillTypeFilter(){ const t=document.getElementById('fType'); const cur=t.value; t.innerHTML='<option value="">ทั้งหมด</option>';
+  [...new Set(TASKS.map(x=>x.type))].filter(Boolean).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; t.appendChild(o); }); t.value=cur; }
+
+/* ===== gooey text morphing ===== */
+(function(){
+  const texts=['PLAN 2026','เปิดสาขาใหม่','RENOVATE','RELOCATE','POS DEPLOYMENT','DEVICE PLAN'];
+  const t1=document.getElementById('t1'), t2=document.getElementById('t2');
+  const morphTime=1.0, holdTime=1.7;
+  let idx=texts.length-1, morph=0, hold=holdTime, last=performance.now();
+  t1.textContent=texts[idx%texts.length]; t2.textContent=texts[(idx+1)%texts.length];
+  function setMorph(f){
+    t2.style.filter=`blur(${Math.min(8/f-8,100)}px)`; t2.style.opacity=`${Math.pow(f,0.4)*100}%`;
+    const inv=1-f; t1.style.filter=`blur(${Math.min(8/inv-8,100)}px)`; t1.style.opacity=`${Math.pow(inv,0.4)*100}%`;
+  }
+  function plain(){ t1.style.filter=''; t1.style.opacity='100%'; t2.style.filter=''; t2.style.opacity='0%'; }
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dt=(now-last)/1000; last=now;
+    hold-=dt;
+    if(hold>0){ morph=0; plain(); return; }
+    morph+=dt;
+    let f=morph/morphTime;
+    if(f>=1){ setMorph(1); idx++; t1.textContent=texts[idx%texts.length]; t2.textContent=texts[(idx+1)%texts.length]; morph=0; hold=holdTime; plain(); }
+    else setMorph(f);
+  }
+  requestAnimationFrame(frame);
+})();
+
+fillFilters();
+render();
+</script>
+</body>
+</html>

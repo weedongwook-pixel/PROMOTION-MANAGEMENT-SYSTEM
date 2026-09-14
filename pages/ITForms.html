@@ -1,0 +1,104 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="p-4" style="background-color:#f4f4f4; min-height:100vh; font-family:'JetBrains Mono',monospace;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1 style="font-family:'Montserrat',sans-serif; font-weight:900; font-size:2.4rem; color:#ffffff; text-shadow:3px 3px 0 #1a1d20; letter-spacing:-1.5px; margin:0 0 6px; text-transform:uppercase;">IT_FORMS</h1>
+      <div style="background:#2e934a; color:#fff; padding:4px 12px; border-left:6px solid #1a1d20; font-size:0.72rem; font-weight:bold; display:inline-block;"><span data-en="Choose the IT form you want to submit" data-th="เลือกฟอร์มที่ต้องการแจ้ง">เลือกฟอร์มที่ต้องการแจ้ง</span></div>
+    </div>
+    <div id="itfView" class="d-flex gap-1" style="background:var(--pc-dark,#1a1d20); padding:4px; border:2px solid #1a1d20; border-radius:0;">
+      <button class="vbtn active" data-v="grid" onclick="itfSetView('grid')" title="การ์ด"><i class="fas fa-table-cells-large"></i></button>
+      <button class="vbtn" data-v="list" onclick="itfSetView('list')" title="รายการ"><i class="fas fa-list"></i></button>
+    </div>
+  </div>
+
+  <div id="itfChooser" class="row g-4">
+    <div class="col-md-6 col-xl-4 itf-card" data-page="CmposForm">
+      <div class="itf-tile" onclick="window.loadPage('CmposForm')">
+        <div class="itf-icon" style="background:#e3f3ea;color:#2e934a;"><i class="fas fa-clipboard-check"></i></div>
+        <div class="itf-title" data-en="CMPOS DELIVERY" data-th="ฟอร์มส่งเครื่อง CMPOS">ฟอร์มส่งเครื่อง CMPOS</div>
+        <div class="itf-desc" data-en="Register installed devices into the asset register" data-th="บันทึกเครื่องที่ติดตั้ง/ส่งมอบ เข้าทะเบียน Asset">บันทึกเครื่องที่ติดตั้ง/ส่งมอบ เข้าทะเบียน Asset</div>
+        <div class="itf-go"><span data-en="Open" data-th="เปิดฟอร์ม">เปิดฟอร์ม</span> <i class="fas fa-arrow-right ms-1"></i></div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-xl-4 itf-card" data-page="Maintenance">
+      <div class="itf-tile" onclick="window.loadPage('Maintenance')">
+        <div class="itf-icon" style="background:#eaf4ee;color:#d9410e;"><i class="fas fa-screwdriver-wrench"></i></div>
+        <div class="itf-title" data-en="MAINTENANCE / AUDIT" data-th="แจ้งซ่อม / Audit">แจ้งซ่อม / Audit</div>
+        <div class="itf-desc" data-en="Repair / replace device or on-site audit" data-th="แจ้งซ่อม/เปลี่ยนอุปกรณ์ หรือแจ้งเข้าหน้างาน">แจ้งซ่อม/เปลี่ยนอุปกรณ์ หรือแจ้งเข้าหน้างาน</div>
+        <div class="itf-go"><span data-en="Open" data-th="เปิดฟอร์ม">เปิดฟอร์ม</span> <i class="fas fa-arrow-right ms-1"></i></div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-4 itf-card" data-page="DeviceSwap">
+      <div class="itf-tile" onclick="window.loadPage('DeviceSwap')">
+        <div class="itf-icon" style="background:#fef9e0;color:#b8860b;"><i class="fas fa-right-left"></i></div>
+        <div class="itf-title" data-en="DEVICE REPLACEMENT" data-th="แจ้งขอเปลี่ยนเครื่อง">แจ้งขอเปลี่ยนเครื่อง</div>
+        <div class="itf-desc" data-en="Report a damaged / lost device and request a replacement" data-th="แจ้งเครื่องชำรุด/สูญหาย เพื่อขอเปลี่ยนเครื่องใหม่">แจ้งเครื่องชำรุด/สูญหาย เพื่อขอเปลี่ยนเครื่องใหม่</div>
+        <div class="itf-go"><span data-en="Open" data-th="เปิดฟอร์ม">เปิดฟอร์ม</span> <i class="fas fa-arrow-right ms-1"></i></div>
+      </div>
+    <div class="col-md-6 col-xl-4 itf-card" data-page="AssetLogistics">
+      <div class="itf-tile" onclick="window.loadPage('AssetLogistics')">
+        <div class="itf-icon" style="background:#e8eefc;color:#1a73e8;"><i class="fas fa-truck-fast"></i></div>
+        <div class="itf-title" data-en="ASSET LOGISTICS" data-th="คลังอุปกรณ์ &amp; จัดส่ง">คลังอุปกรณ์ &amp; จัดส่ง</div>
+        <div class="itf-desc" data-en="Stock in/out, dispatch with shipping labels, fulfill device tickets" data-th="เบิก-รับเครื่องสำรอง · จ่ายพร้อมฉลากส่ง · เคลียร์คิวแจ้งเปลี่ยนเครื่อง">เบิก-รับเครื่องสำรอง · จ่ายพร้อมฉลากส่ง · เคลียร์คิวแจ้งเปลี่ยนเครื่อง</div>
+        <div class="itf-go"><span data-en="Open" data-th="เปิดฟอร์ม">เปิดฟอร์ม</span> <i class="fas fa-arrow-right ms-1"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="itfEmpty" class="text-center text-muted p-5" style="display:none;">
+    <i class="fas fa-lock fa-2x mb-3 d-block"></i>
+    <span data-en="No IT forms available for your role." data-th="บทบาทของคุณยังไม่มีสิทธิ์แจ้งงาน IT">บทบาทของคุณยังไม่มีสิทธิ์แจ้งงาน IT</span>
+  </div>
+</div>
+
+<style>
+  #itfChooser .itf-tile { background:#fff; border:2px solid #000; border-radius:16px; padding:26px 22px; height:100%; cursor:pointer; transition:transform .14s ease, box-shadow .14s ease; box-shadow:5px 5px 0 rgba(0,0,0,.08); display:flex; flex-direction:column; }
+  #itfChooser .itf-tile:hover { transform:translate(-2px,-3px); box-shadow:7px 9px 0 rgba(46,147,74,.18); border-color:#2e934a; }
+  #itfChooser .itf-icon { width:64px; height:64px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin-bottom:16px; }
+  #itfChooser .itf-title { font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.05rem; line-height:1.2; color:#1a1d20; }
+  #itfChooser .itf-desc { font-size:.92rem; color:#6c757d; margin-top:6px; flex-grow:1; }
+  #itfChooser .itf-go { margin-top:18px; font-weight:700; font-size:.9rem; color:#2e934a; text-transform:uppercase; letter-spacing:.5px; }
+  #itfView .vbtn { border:none; background:transparent; color:rgba(255,255,255,.7); padding:5px 13px; border-radius:6px; cursor:pointer; font-size:.95rem; }
+  #itfView .vbtn.active { background:var(--pc-yellow,#2e934a); color:#1a1d20; }
+  #itfChooser.list-mode { gap:10px !important; }
+  #itfChooser.list-mode .itf-card { flex:0 0 100%; max-width:100%; width:100%; }
+  #itfChooser.list-mode .itf-tile { flex-direction:row; align-items:center; gap:18px; padding:14px 22px; box-shadow:3px 3px 0 rgba(0,0,0,.06); }
+  #itfChooser.list-mode .itf-icon { margin-bottom:0; width:46px; height:46px; font-size:1.3rem; flex-shrink:0; }
+  #itfChooser.list-mode .itf-title { font-size:1rem; }
+  #itfChooser.list-mode .itf-desc { margin-top:2px; }
+  #itfChooser.list-mode .itf-go { margin-top:0; margin-left:auto; flex-shrink:0; white-space:nowrap; }
+  @media(max-width:600px){
+    #itfChooser .itf-tile{ padding:18px 16px; }
+    #itfChooser .itf-icon{ width:52px; height:52px; font-size:1.4rem; }
+  }
+</style>
+
+<script>
+  window.itfSetView = function (mode) {
+    var c = document.getElementById('itfChooser'); if (!c) return;
+    c.classList.toggle('list-mode', mode === 'list');
+    try { localStorage.setItem('pc_chooser_view', mode); } catch (e) {}
+    document.querySelectorAll('#itfView .vbtn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-v') === mode); });
+  };
+  window.initITForms = function () {
+    try {
+      var role = localStorage.getItem('pc_role') || 'Admin';
+      var perms = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : null;
+      var allowed = perms ? (perms[role] || perms.Admin || []) : null;
+      var visible = 0;
+      document.querySelectorAll('#itfChooser .itf-card').forEach(function (card) {
+        var pg = card.getAttribute('data-page');
+        var ok = !allowed || allowed.indexOf(pg) !== -1;
+        card.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+      var empty = document.getElementById('itfEmpty');
+      if (empty) empty.style.display = visible ? 'none' : 'block';
+    } catch (e) { console.warn('initITForms', e); }
+    if (typeof window.applyLang === 'function') window.applyLang();
+    var v = 'grid'; try { v = localStorage.getItem('pc_chooser_view') || 'grid'; } catch (e) {}
+    window.itfSetView(v);
+  };
+</script>

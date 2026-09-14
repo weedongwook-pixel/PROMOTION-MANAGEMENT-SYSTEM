@@ -1,0 +1,931 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
+  
+  <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width: 10px; height: 60px; background: var(--pc-yellow,#2e934a); margin-right: 20px; border-radius: 5px;"></div>
+      <div>
+        <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
+           <i class="fa-solid fa-gift text-success me-2"></i>Voucher <span style="color:#2e934a;">/ E-Coupon Proposal</span>
+        </h2>
+        <p class="mb-0" style="font-size: 0.95rem; margin-top: 7px; color:#8a9099;">สร้าง Voucher / E-Coupon สำหรับระบบ POS — เลือกประเภทต่อแคมเปญ (ป้ายหน้าสาขาเปลี่ยนตามที่เลือก)</p>
+      </div>
+    </div>
+    
+    <div class="d-flex align-items-stretch gap-3 flex-wrap justify-content-end">
+      <div style="min-width:190px;background:rgba(255,255,255,.92);border:1.5px solid #d6dbe0;border-radius:10px;padding:9px 13px;">
+        <div class="fw-bold text-uppercase" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-calendar-check me-1"></i>วันที่ทำรายการ</div>
+        <div id="txnDateDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <div class="fw-bold text-uppercase mt-2" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-user-pen me-1"></i>ชื่อผู้ส่งงาน</div>
+        <div id="submitterDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <small class="text-muted d-block mt-1" style="font-size:9px;"><i class="fas fa-lock me-1"></i>บันทึกอัตโนมัติ (แก้ไขไม่ได้)</small>
+        <input type="hidden" id="txnDate"><input type="hidden" id="submittedBy">
+      </div>
+      <div style="min-width: 240px;">
+        <label class="fw-bold text-uppercase d-block mb-1" style="font-size: 12px; color: #6b7280; letter-spacing: 1px;">TARGET MONTH <span class="text-danger">*</span></label>
+        <input type="month" id="globalMonth" class="form-control fw-bold text-dark shadow-none" style="font-size: 1.05rem; border:1.5px solid #d6dbe0; border-radius:9px;" min="2026-06">
+        <small class="text-muted d-block mt-1" style="font-size:10px;"><i class="fas fa-lock me-1"></i>เลือกย้อนหลังไม่ได้</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingStatus" class="text-center p-5">
+    <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    <p class="mt-3 fw-bold" id="statusMessage">LOADING MASTER DATA (ITEMS & BRANCHES)...</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div id="pcCustomerGroup"></div>
+    <div id="campaignList"></div>
+
+    <div class="mb-4 text-center">
+      <button class="btn btn-dark w-100 fw-bold py-3 text-white shadow-sm" onclick="window.addCampaign()" style="font-size: 1.1rem; border-radius: 10px;">
+        <i class="fas fa-plus-circle me-2"></i> ADD NEW VOUCHER CAMPAIGN
+      </button>
+    </div>
+
+    <div class="text-center mb-5">
+      <button class="btn btn-success shadow px-5 py-3 fw-bold border border-dark text-white" onclick="window.submitAllData()" id="mainSubmitBtn" style="min-width: 450px; font-size: 1.3rem; border-radius: 12px;">
+        SEND TO IT DEPARTMENT <i class="fas fa-paper-plane ms-2"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="branchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-dark" style="border-radius: 15px; border: 3px solid #000;">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-store me-2 text-success"></i> SELECT BRANCHES (HIERARCHY)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="fw-bold small">SELECT MODE</label>
+            <select id="mainBranchMode" class="form-select border-dark shadow-none" onchange="window.handleBranchModeChange()">
+              <option value="MASTER">SEARCH BRANCH (ID/NAME)</option>
+              <option value="HIERARCHY">SELECT BY GROUP/TYPE/CLASS</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">FILTER BY</label>
+            <select id="hItemType" class="form-select border-dark shadow-none" onchange="window.handleHItemChange()">
+              <option value="">-- Select --</option>
+              <option value="type">TYPE</option>
+              <option value="group">GROUP</option>
+              <option value="class">CLASS</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">CONTENT</label>
+            <select id="hItemContent" class="form-select border-dark shadow-none" onchange="window.renderBranchTable()">
+              <option value="ALL">-- All Stores --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+            <input type="text" id="branchSearch" class="form-control border-dark shadow-none" placeholder="Search by ID or Name..." oninput="window.renderBranchTable()">
+        </div>
+        <div class="table-responsive border border-dark rounded" style="max-height: 400px; background: #fff;">
+          <table class="table table-hover table-bordered m-0">
+            <thead class="table-dark sticky-top">
+              <tr class="text-center">
+                <th width="50"><input type="checkbox" id="selectAllVisible" onchange="window.toggleAllVisible(this.checked)"></th>
+                <th width="100">ID</th>
+                <th>NAME (EN)</th>
+                <th>NAME (TH)</th>
+              </tr>
+            </thead>
+            <tbody id="branchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-white border-top border-dark d-flex justify-content-between">
+        <div class="fw-bold text-success" id="selectedCountDisplay">Selected: 0</div>
+        <div>
+          <button type="button" class="btn btn-outline-danger fw-bold me-2" onclick="window.clearBranchSelection()">CLEAR ALL</button>
+          <button type="button" class="btn btn-dark fw-bold px-4" onclick="window.confirmBranchSelection()">CONFIRM SELECTION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.masterData = [];
+  window.masterBranches = [];
+  window.categories = [];
+  window.existingVoucherNames = [];
+  window.campaignCount = 0;
+  window.activeCampId = null;
+  window.branchModalObj = null;
+
+  (function init() {
+    const modalEl = document.getElementById('branchModal');
+    if (modalEl) window.branchModalObj = new bootstrap.Modal(modalEl);
+    
+    const globalMonthInput = document.getElementById('globalMonth');
+    if(globalMonthInput) globalMonthInput.value = "";
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
+        window.__pcRawMaster = response.items || [];
+        window.masterBranches = response.branches || [];
+        window.categories = (function(){ var cc={}; window.masterData.forEach(function(it){ if(it.category && it.cateCode && !(it.category in cc)) cc[it.category]=it.cateCode; }); window.catCodeMap=cc; return [...new Set(window.masterData.map(i => i.category))].filter(Boolean).sort(function(a,b){ var na=parseInt(cc[a],10),nb=parseInt(cc[b],10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; if(isNaN(na)&&!isNaN(nb))return 1; if(!isNaN(na)&&isNaN(nb))return -1; return String(a).localeCompare(String(b)); }); })();
+        
+        document.getElementById('loadingStatus').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        if (window.campaignCount === 0) window.addCampaign();
+      })
+      .getMasterDataExtended();
+
+    google.script.run
+      .withSuccessHandler(function(names) {
+        window.existingVoucherNames = names || [];
+      })
+      .getExistingCampaignNames();
+  })();
+
+  /* หมวดนี้เปิดให้เลือกในฟอร์ม Voucher ไหม? (คุมจากหน้า Form Display — pc_cat_forms) */
+  window.pcCatShownInVoucher = function(cat){
+    try{ var m=JSON.parse(localStorage.getItem('pc_cat_forms')||'{}')||{}; var o=m[cat]; if(o && o.voucher!==undefined) return !!o.voucher; }catch(e){}
+    return true;
+  };
+  window.checkDuplicateName = function(input) {
+    const val = input.value.trim().toLowerCase();
+    if (val.length < 3) return;
+    const dbNames = (window.existingVoucherNames || []).map(n => n.toString().toLowerCase());
+    if (dbNames.includes(val)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'พบข้อมูลซ้ำในระบบ!',
+        text: `ชื่อแคมเปญ "${input.value}" มีอยู่แล้วในระบบ`,
+        confirmButtonColor: '#000'
+      });
+      input.value = '';
+    }
+  };
+
+  window.pcApplyModeFilter = function(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} };
+  // สลับ Voucher / E-Coupon → อัปเดตป้ายหัวการ์ด + ทุกป้ายในการ์ด (เนื้องานเหมือนกัน ต่างแค่ป้าย)
+  window.vcKindChange = function(campId){
+    const card = document.getElementById(campId); if(!card) return;
+    const kind = (card.querySelector('.prop-kind:checked')||{}).value || 'voucher';
+    const isE = kind==='ecoupon';
+    const lbl = card.querySelector('.camp-hdr-label');
+    const n = (lbl && (lbl.textContent.match(/#(\d+)/)||[])[1]) || '';
+    if(lbl){
+      lbl.innerHTML = isE
+        ? `<i class="fa-solid fa-ticket text-info me-2"></i> E-COUPON CAMPAIGN #${n}`
+        : `<i class="fa-solid fa-gift text-success me-2"></i> VOUCHER CAMPAIGN #${n}`;
+    }
+    card.querySelectorAll('.vc-term').forEach(function(el){
+      var v=el.getAttribute('data-v'), e=el.getAttribute('data-e');
+      if(v!=null && e!=null) el.textContent = isE ? e : v;
+    });
+    card.querySelectorAll('.vc-ph').forEach(function(el){
+      var v=el.getAttribute('data-vph'), e=el.getAttribute('data-eph');
+      if(v!=null && e!=null) el.setAttribute('placeholder', isE ? e : v);
+    });
+  };
+  window.addCampaign = function() {
+    window.campaignCount++;
+    const campId = 'camp-' + Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    const html = `
+      <div class="card mb-5 border-dark campaign-card shadow" id="${campId}" style="border: 2px solid #000; border-radius: 15px; overflow: hidden;">
+        <div class="card-header bg-dark d-flex justify-content-between align-items-center py-2 border-0">
+          <span class="fw-bold text-white camp-hdr-label"><i class="fa-solid fa-gift text-success me-2"></i> VOUCHER CAMPAIGN #${window.campaignCount}</span>
+          <i class="fas fa-trash-alt text-danger cursor-pointer" onclick="document.getElementById('${campId}').remove()"></i>
+        </div>
+        <div class="card-body bg-white p-4">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 rounded border border-dark" style="background:#fffbe9">
+              <span class="small fw-bold text-uppercase me-1"><i class="fas fa-layer-group me-1"></i>ประเภทข้อเสนอ:</span>
+              <div class="form-check form-check-inline m-0">
+                <input class="form-check-input border-dark prop-kind" type="radio" name="propKind-${campId}" value="voucher" id="pk-v-${campId}" checked onchange="window.vcKindChange('${campId}')">
+                <label class="form-check-label small fw-bold" for="pk-v-${campId}"><i class="fa-solid fa-gift me-1 text-success"></i>Voucher</label>
+              </div>
+              <div class="form-check form-check-inline m-0">
+                <input class="form-check-input border-dark prop-kind" type="radio" name="propKind-${campId}" value="ecoupon" id="pk-e-${campId}" onchange="window.vcKindChange('${campId}')">
+                <label class="form-check-label small fw-bold" for="pk-e-${campId}"><i class="fa-solid fa-ticket me-1 text-primary"></i>E-Coupon</label>
+              </div>
+              <span class="ms-auto small text-muted" style="font-size:11px"><i class="fas fa-circle-info me-1"></i>เลือก E-Coupon → ป้ายหน้าสาขาจะแสดงเป็น <b>"e"</b></span>
+            </div>
+            <div class="bg-light p-3 rounded border border-dark mb-4">
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <label class="small fw-bold text-uppercase"><span class="vc-term" data-v="Voucher Campaign Name" data-e="E-Coupon Campaign Name">Voucher Campaign Name</span> *</label>
+                  <input type="text" class="form-control camp-name border-dark shadow-none mb-3 vc-ph" data-vph="Enter voucher name..." data-eph="Enter e-coupon name..." placeholder="Enter voucher name..." onchange="window.checkDuplicateName(this)">
+                </div>
+                <div class="col-md-2"><label class="small fw-bold text-uppercase">Start *</label><input type="date" class="form-control camp-start border-dark shadow-none" min="${(window.PCLock&&PCLock.minStartISO('voucher'))||today}"></div>
+                <div class="col-md-2"><label class="small fw-bold text-uppercase">End *</label><input type="date" class="form-control camp-end border-dark shadow-none" min="${today}"></div>
+                
+                <div class="col-md-3">
+                  <label class="small fw-bold text-uppercase">Store Selection *</label>
+                  <div class="input-group">
+                    <div class="form-control border-dark d-flex flex-wrap gap-1 p-2 bg-white" id="tag-container-${campId}" style="min-height:38px; height:auto;">
+                      <input type="text" class="border-0 shadow-none flex-grow-1 manual-branch-input" style="outline:none; width:50px;" placeholder="Branch ID..." 
+                             onkeydown="if(event.key==='Enter' && this.value.trim()){window.createBranchTag('${campId}', this.value.toUpperCase().trim(), true); this.value=''}">
+                    </div>
+                    <button class="btn btn-dark" onclick="window.openBranchModal('${campId}')"><i class="fas fa-list text-success"></i></button>
+                  </div>
+                  <input type="hidden" class="camp-store" id="hidden-store-${campId}">
+                </div>
+              </div>
+
+              <div class="row g-3 border-top border-dark pt-3 mt-1">
+                <div class="col-md-12">
+                  <label class="small fw-bold text-uppercase d-block mb-2">SALE MODE * <span class="text-muted" style="font-size:10px;">(ใช้กับทุกปุ่ม <span class="vc-term" data-v="Voucher" data-e="E-Coupon">Voucher</span>)</span></label>
+                  <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                      <input class="form-check-input mode-check-delivery border-dark m-0 me-2" type="checkbox" value="ALL DELIVERY" onchange="window.handleModeSelect(this, '${campId}')"> 
+                      <label class="form-check-label small fw-bold">ALL DELIVERY</label>
+                    </div>
+                    <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                      <input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="ALL CHANNEL" onchange="window.handleModeSelect(this, '${campId}')"> 
+                      <label class="form-check-label small fw-bold">ALL CHANNEL</label>
+                    </div>
+                    <div class="vr mx-1" style="width: 2px; height: 30px; background-color: #000;"></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Take Away" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Take Away</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="GRAB" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">GRAB</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="LINEMAN" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">LINEMAN</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="ShopeeFood" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">ShopeeFood</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Robinhood" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Robinhood</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Gokoo" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Gokoo</label></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="btn-container-${campId}"></div>
+            <button class="btn btn-outline-dark fw-bold w-100 mt-3 mb-4" onclick="window.addButton('${campId}')"><i class="fas fa-plus"></i> <span class="vc-term" data-v="ADD NEW VOUCHER BUTTON" data-e="ADD NEW E-COUPON BUTTON">ADD NEW VOUCHER BUTTON</span></button>
+
+            <div class="mb-2 p-2 border border-dark rounded bg-white d-flex align-items-center flex-wrap gap-3">
+              <span class="small fw-bold text-uppercase"><i class="fas fa-arrow-up-right-dots me-1"></i>เงื่อนไขพิเศษ</span>
+              <div class="form-check m-0"><input class="form-check-input border-dark me-1" type="checkbox" onchange="window.vcTruffle(this)"><label class="form-check-label small fw-bold">เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย</label></div>
+              <div class="form-check m-0"><input class="form-check-input border-dark me-1" type="checkbox" onchange="window.vcFlavorAll(this)"><label class="form-check-label small fw-bold">Discount 100% (เลือกได้ทุกผงรสชาติ · +10/ถ้วย)</label></div>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <div class="bg-dark text-white p-2 fw-bold text-uppercase" style="border-radius: 5px 5px 0 0; font-size: 13px;"><span class="vc-term" data-v="VOUCHER DETAIL" data-e="E-COUPON DETAIL">VOUCHER DETAIL</span> *</div>
+                <textarea class="form-control border-dark shadow-none camp-detail vc-ph" data-vph="ระบุรายละเอียด Voucher..." data-eph="ระบุรายละเอียด E-Coupon..." rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุรายละเอียด Voucher..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <div class="bg-warning text-dark p-2 fw-bold text-uppercase border border-dark" style="border-radius: 5px 5px 0 0; font-size: 13px;"><span class="vc-term" data-v="VOUCHER CONDITION" data-e="E-COUPON CONDITION">VOUCHER CONDITION</span> *</div>
+                <textarea class="form-control border-dark shadow-none camp-condition" rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุเงื่อนไขการใช้งาน..."></textarea>
+              </div>
+            </div>
+        </div>
+      </div>`;
+    document.getElementById('campaignList').insertAdjacentHTML('beforeend', html);
+    try{ window.pcApplyModeFilter(document.getElementById(campId), 'voucher'); }catch(e){}
+    window.addButton(campId);
+};
+
+  window.openBranchModal = function(campId) {
+    window.activeCampId = campId;
+    var hidden = document.getElementById('hidden-store-' + campId);
+    var initial = (hidden && hidden.value) ? hidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+    StoreSelect.pick({
+      getBranches: function(){ return window.masterBranches || []; },
+      initialIds: initial,
+      onApply: function(ids, tokenStr, summary){
+        var container = document.getElementById('tag-container-' + campId);
+        if (container) container.querySelectorAll('.branch-tag').forEach(function(t){ t.remove(); });
+        var isTok = tokenStr==='ALL' || /(^|,\s*)[GCT]:/i.test(tokenStr||'');
+        if (isTok) window.createBranchTag(campId, summary || tokenStr, false, tokenStr);
+        else if (ids.length > 10) window.createBranchTag(campId, 'SELECTED ' + ids.length + ' STORES', false, ids.join(','));
+        else ids.forEach(function(v){ window.createBranchTag(campId, v, false); });
+      }
+    });
+  };
+  window._legacyOpenBranchModal = function(campId) {
+    window.activeCampId = campId;
+    document.getElementById('branchSearch').value = '';
+    document.getElementById('mainBranchMode').value = 'MASTER';
+    if(document.getElementById('selectAllVisible')) document.getElementById('selectAllVisible').checked = false;
+    window.handleBranchModeChange();
+    if (window.branchModalObj) window.branchModalObj.show();
+  };
+
+  window.handleBranchModeChange = function() {
+    const mode = document.getElementById('mainBranchMode').value;
+    const hOptions = document.querySelectorAll('.h-options');
+    hOptions.forEach(el => el.style.display = (mode === 'HIERARCHY' ? 'block' : 'none'));
+    window.renderBranchTable();
+  };
+
+  window.handleHItemChange = function() {
+    const type = document.getElementById('hItemType').value;
+    const contentDrop = document.getElementById('hItemContent');
+    contentDrop.innerHTML = '<option value="ALL">-- All Stores --</option>';
+    if (type) {
+        const uniqueVals = [...new Set(window.masterBranches.map(b => b[type]))].filter(Boolean).sort();
+        uniqueVals.forEach(val => { contentDrop.innerHTML += `<option value="${val}">${val}</option>`; });
+    }
+    window.renderBranchTable();
+  };
+
+  window.renderBranchTable = function() {
+    const search = (document.getElementById('branchSearch').value || "").toLowerCase();
+    const mode = document.getElementById('mainBranchMode').value;
+    const hType = document.getElementById('hItemType').value;
+    const hContent = document.getElementById('hItemContent').value;
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    if (!container) return;
+    const currentTags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+
+    const filtered = window.masterBranches.filter(b => {
+        const matchSearch = String(b.id + b.name + (b.nameTH || '')).toLowerCase().includes(search);
+        let matchHierarchy = true;
+        if (mode === 'HIERARCHY' && hType && hContent !== 'ALL') {
+            matchHierarchy = (String(b[hType] || "") === hContent);
+        }
+        return matchSearch && matchHierarchy;
+    });
+
+    const body = document.getElementById('branchTableBody');
+    body.innerHTML = filtered.map(b => {
+        const isChecked = currentTags.includes(String(b.id)) ? 'checked' : '';
+        return `
+        <tr class="text-center">
+            <td><input type="checkbox" class="branch-item-check" value="${b.id}" ${isChecked} onchange="window.updateSelectedCounter()"></td>
+            <td class="fw-bold">${b.id}</td>
+            <td class="text-start ps-3">${b.name}</td>
+            <td class="text-start ps-3">${b.nameTH || ''}</td>
+        </tr>`;
+    }).join('');
+    
+    if(document.getElementById('selectAllVisible')) document.getElementById('selectAllVisible').checked = false;
+    window.updateSelectedCounter();
+  };
+
+  window.toggleAllVisible = function(isChecked) {
+    const visibleChecks = document.querySelectorAll('#branchTableBody .branch-item-check');
+    visibleChecks.forEach(ck => { ck.checked = isChecked; });
+    window.updateSelectedCounter();
+  };
+
+  window.updateSelectedCounter = function() {
+    const count = document.querySelectorAll('.branch-item-check:checked').length;
+    const display = document.getElementById('selectedCountDisplay');
+    if(display) display.innerText = `Selected: ${count}`;
+  };
+
+  window.confirmBranchSelection = function() {
+    const selected = Array.from(document.querySelectorAll('.branch-item-check:checked')).map(ck => ck.value);
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    container.querySelectorAll('.branch-tag').forEach(t => t.remove());
+    
+    if (selected.length > 10) {
+        window.createBranchTag(window.activeCampId, `SELECTED ${selected.length} STORES`, false, selected.join(','));
+    } else {
+        selected.forEach(val => window.createBranchTag(window.activeCampId, val, false));
+    }
+    window.branchModalObj.hide();
+  };
+
+  window.createBranchTag = function(campId, value, isManual, fullList = null) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const existing = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    if (existing.includes(fullList || value)) return;
+
+    const tag = document.createElement('span');
+    const isAll = value.toUpperCase() === 'ALL';
+    tag.className = `branch-tag badge ${isAll ? 'bg-warning text-dark border border-dark' : 'bg-success'} d-flex align-items-center gap-1`;
+    tag.style.padding = '5px 10px';
+    tag.dataset.val = fullList || value;
+    tag.innerHTML = `${value} <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove(); window.syncStoreHidden('${campId}')"></i>`;
+    
+    const input = container.querySelector('.manual-branch-input');
+    container.insertBefore(tag, input);
+    window.syncStoreHidden(campId);
+  };
+
+  window.syncStoreHidden = function(campId) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const tags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    document.getElementById(`hidden-store-${campId}`).value = tags.join(',');
+  };
+
+  window.addButton = function(campId) {
+    const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const html = `
+      <div class="pos-button-block mb-4 p-3 border border-dark rounded bg-white shadow-sm" id="${btnId}" style="border-left: 10px solid #2e934a !important;">
+        
+        <div class="mb-3 pb-2 border-bottom border-dark">
+            <label class="small fw-bold text-uppercase d-block mb-2 text-primary"><span class="vc-term" data-v="VOUCHER TYPE" data-e="E-COUPON TYPE">VOUCHER TYPE</span> *</label>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input border-dark" type="radio" name="voucherType-${btnId}" id="normal-${btnId}" value="Normal" checked onchange="document.getElementById('upload-sec-${btnId}').style.display='none'">
+                        <label class="form-check-label small fw-bold" for="normal-${btnId}"><span class="vc-term" data-v="Voucher Normal (ลดทันที)" data-e="E-Coupon Normal (ลดทันที)">Voucher Normal (ลดทันที)</span></label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input border-dark" type="radio" name="voucherType-${btnId}" id="online-${btnId}" value="Online" onchange="document.getElementById('upload-sec-${btnId}').style.display='block'">
+                        <label class="form-check-label small fw-bold" for="online-${btnId}"><span class="vc-term" data-v="Voucher Online (Mapping code)" data-e="E-Coupon Online (Mapping code)">Voucher Online (Mapping code)</span></label>
+                    </div>
+                </div>
+                <div id="upload-sec-${btnId}" style="display:none; flex-grow: 1; max-width: 300px;">
+                    <input type="file" class="form-control form-control-sm border-dark shadow-none upload-file">
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-12">
+              <label class="small fw-bold text-uppercase d-block mb-2">Participating Products *</label>
+              <div class="d-flex gap-4 mb-2">
+                <div class="form-check">
+                  <input class="form-check-input border-dark p-mode" type="radio" name="pMode-${btnId}" id="allP-${btnId}" value="All" onchange="window.handleProductMode('${btnId}', 'All')">
+                  <label class="form-check-label small fw-bold" for="allP-${btnId}"> All Products </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input border-dark p-mode" type="radio" name="pMode-${btnId}" id="specP-${btnId}" value="Spec" checked onchange="window.handleProductMode('${btnId}', 'Spec')">
+                  <label class="form-check-label small fw-bold" for="specP-${btnId}">Selected Items</label>
+                </div>
+              </div>
+          </div>
+          <div class="col-md-12 mt-2">
+            <label class="small fw-bold text-uppercase"><span class="vc-term" data-v="SHORT NAME (POS) - VOUCHER NAME" data-e="SHORT NAME (POS) - E-COUPON NAME">SHORT NAME (POS) - VOUCHER NAME</span> *</label>
+            <input type="text" class="form-control btn-sn border-dark fw-bold text-dark shadow-none" maxlength="40" placeholder="Max 40 characters...">
+          </div>
+        </div>
+        <table class="table table-sm table-bordered border-dark align-middle mb-2">
+          <thead class="table-dark small text-center">
+            <tr><th style="width: 20%;">Category</th><th style="width: 45%;">Search Item *</th><th style="width: 10%;">QTY</th><th style="width: 20%;">Price</th><th style="width: 5%;"></th></tr>
+          </thead>
+          <tbody class="item-body"></tbody>
+          <tfoot class="table-light fw-bold small">
+            <tr>
+                <td colspan="3" class="text-end align-middle"><span class="vc-term" data-v="Voucher Value:" data-e="E-Coupon Value:">Voucher Value:</span></td>
+                <td>
+                    <div class="input-group input-group-sm border border-dark rounded bg-white">
+                        <input type="number" step="1" class="form-control text-end border-0 fw-bold btn-disc-val shadow-none" value="0" oninput="window.updateTotals('${btnId}')">
+                        <select class="form-select border-0 fw-bold btn-disc-unit shadow-none bg-light" style="max-width: 65px;" onchange="window.updateTotals('${btnId}')">
+                            <option value="CUR">฿</option>
+                            <option value="PCT">%</option>
+                        </select>
+                    </div>
+                </td>
+                <td></td>
+            </tr>
+            <tr style="background-color: #e8f5e9;" class="min-spend-row-${btnId}">
+                <td colspan="3" class="text-end align-middle border-dark" style="color: #2e934a; line-height: 1.1;">
+                  <span style="font-size: 1.1rem;">Min Amount</span><br>
+                  <small style="font-weight: normal; font-size: 10px; color: #666;">กำหนดขั้นต่ำในการใช้งานหรือไม่?</small>
+                </td>
+                <td class="d-flex align-items-center gap-2 p-2 border-dark">
+                    <input type="checkbox" class="form-check-input border-dark m-0 min-spend-check" onchange="window.toggleMinSpend('${btnId}', this)">
+                    <input type="number" step="1" class="form-control form-control-sm border-dark min-val shadow-none fw-bold" placeholder="Amount" style="display:none;" oninput="window.checkMinSpendDecimal(this)">
+                </td>
+                <td class="border-dark"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-sm btn-outline-dark btn-add-row" onclick="window.addItemRow('${btnId}')">+ Add Required Item</button>
+          <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> <span class="vc-term" data-v="Remove Voucher Button" data-e="Remove E-Coupon Button">Remove Voucher Button</span></small>
+        </div>
+      </div>`;
+    document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.handleProductMode(btnId, 'Spec');
+    try{ window.vcKindChange(campId); }catch(e){}
+  };
+
+  window.addItemRow = function(btnId, isAllMode = false) {
+    const tbody = document.querySelector("#" + btnId + " .item-body");
+    const rowId = 'row-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.className = "item-row";
+    tr.style.backgroundColor = isAllMode ? "#f0f0f0" : "transparent";
+    tr.innerHTML = `
+      <td>
+        <select class="form-select form-select-sm border-0 row-cat shadow-none" ${isAllMode ? 'disabled' : ''} onchange="window.updateDatalist('${rowId}', this.value)" style="${isAllMode ? 'background:#f0f0f0' : ''}">
+          <option value="">-- All --</option>
+          ${(!isAllMode && window.PC_FormSubset)?window.PC_FormSubset.optionHTML('voucher'):''}
+          ${window.categories.filter(window.pcCatShownInVoucher).map(c => `<option value="${c}">${(window.catCodeMap&&window.catCodeMap[c])?window.catCodeMap[c]+' - ':''}${c}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <input type="text" list="list-${rowId}" class="form-control form-control-sm border-0 row-search shadow-none fw-bold" 
+               value="${isAllMode ? 'All Products' : ''}" ${isAllMode ? 'readonly' : ''} 
+               oninput="window.handleFill('${rowId}', this.value, '${btnId}')" placeholder="Search product..." style="${isAllMode ? 'background:#f0f0f0' : ''}">
+        <datalist id="list-${rowId}"></datalist>
+        <input type="hidden" class="row-ic"><input type="hidden" class="row-issubset">
+      </td>
+      <td><input type="number" step="1" class="form-control form-control-sm border-0 text-center row-qty shadow-none" value="${isAllMode ? '' : '1'}" ${isAllMode ? 'readonly' : ''} oninput="window.updateTotals('${btnId}')" style="${isAllMode ? 'background:#f0f0f0' : ''}"></td>
+      <td><input type="number" step="1" class="form-control form-control-sm border-0 text-end row-op shadow-none" value="0" ${isAllMode ? 'readonly' : ''} oninput="window.updateTotals('${btnId}')" style="${isAllMode ? 'background:#f0f0f0' : ''}"></td>
+      <td class="text-center">
+        ${isAllMode ? '' : `<i class="fas fa-times text-danger cursor-pointer" onclick="document.getElementById('${rowId}').remove(); window.updateTotals('${btnId}')"></i>`}
+      </td>`;
+    tbody.appendChild(tr);
+    window.updateDatalist(rowId, "");
+  };
+
+  window.updateDatalist = function(rowId, cat) {
+    const dl = document.getElementById('list-' + rowId);
+    if (!dl) return;
+    const row = document.getElementById(rowId);
+    if (cat === '__SUBSET__') {
+      if (row) { var _is = row.querySelector('.row-issubset'); if (_is) _is.value = '1'; var _si = row.querySelector('.row-search'); if (_si) _si.placeholder = 'ค้นหากลุ่มสินค้า…'; }
+      dl.innerHTML = window.PC_FormSubset ? window.PC_FormSubset.dlOptions('voucher') : '';
+      return;
+    }
+    if (row) { var _is2 = row.querySelector('.row-issubset'); if (_is2) _is2.value = ''; var _op = row.querySelector('.row-op'); if (_op) { _op.readOnly = false; } }
+    const filtered = cat ? window.masterData.filter(i => i.category === cat) : window.masterData;
+    dl.innerHTML = filtered.map(i => `<option value="${i.itemCode} - ${i.itemNameEN}">${i.category||''}</option>`).join('');
+  };
+
+  function vcCardOf(el){
+    var card = (el.closest ? el.closest('.campaign-card') : null);
+    if(!card){ var n=el; while(n && !(n.querySelector && n.querySelector('.camp-condition'))) n=n.parentElement; card=n; }
+    return card;
+  }
+  // เพิ่ม/ลบบรรทัดเงื่อนไขอัตโนมัติในช่อง Condition · ล้างข้อความเก่าที่ระบุใน olds[] ด้วย
+  function vcCondLine(card, on, line, olds){
+    var ta = card ? card.querySelector('.camp-condition') : null;
+    if(!ta) return;
+    var drop = (olds||[]).concat([line]);
+    var lines = ta.value.split('\n').filter(function(x){ var t=x.trim(); return drop.indexOf(t)===-1; });
+    if(on) lines.push(line);
+    ta.value = lines.filter(function(x){ return x.trim(); }).join('\n');
+  }
+  // +10 ต่อถ้วยจะบวกเข้า Voucher Value เมื่อติ๊กอย่างใดอย่างหนึ่ง (ทรัฟเฟิล / ทุกผงรสชาติ 100%) · min ไม่บวก
+  function vcSyncPowder(card){
+    if(!card) return;
+    var on = card.getAttribute('data-truffle10')==='1' || card.getAttribute('data-flavor100')==='1';
+    card.setAttribute('data-powder10', on?'1':'0');
+    card.querySelectorAll('.btn-disc-val').forEach(function(inp){
+      var blk=inp.parentElement; while(blk && !blk.id) blk=blk.parentElement;
+      if(blk && blk.id) window.updateTotals(blk.id);
+    });
+  }
+  window.vcTruffle = function(el){
+    var card = vcCardOf(el);
+    vcCondLine(card, el.checked, '• เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย', ['• ผงทรัฟเฟิล +10 บาท']);
+    if(card) card.setAttribute('data-truffle10', el.checked?'1':'0');
+    vcSyncPowder(card);
+  };
+  // Discount 100% — เลือกได้ทุกผงรสชาติ · ผงบวกเพิ่ม 10 บาท/ถ้วย (ยกเว้น subset) เข้า Voucher Value เท่านั้น (min ไม่บวก)
+  window.vcFlavorAll = function(el){
+    var card = vcCardOf(el);
+    vcCondLine(card, el.checked, '• Discount 100% เลือกได้ทุกผงรสชาติ (ผงบวกเพิ่ม 10 บาท/ถ้วย)');
+    if(card) card.setAttribute('data-flavor100', el.checked?'1':'0');
+    vcSyncPowder(card);
+  };
+  window.handleFill = function(rowId, val, btnId) {
+    const row = document.getElementById(rowId);
+    if (row && row.querySelector('.row-issubset') && row.querySelector('.row-issubset').value === '1') {
+      const s = window.PC_FormSubset ? window.PC_FormSubset.resolve('voucher', val) : null;
+      const op = row.querySelector('.row-op');
+      if (s) {
+        row.querySelector('.row-search').value = s.name || s.ssCode;
+        row.querySelector('.row-ic').value = s.ssCode;
+        if (op) { op.value = window.PC_FormSubset.price(s.ssCode) || 0; op.readOnly = true; }
+      } else {
+        row.querySelector('.row-ic').value = '';
+        if (op) { op.readOnly = false; }
+      }
+      window.updateTotals(btnId);
+      return;
+    }
+    const item = window.masterData.find(i => i.itemNameEN === val || i.itemCode === val || (String(i.itemCode) + ' - ' + i.itemNameEN) === val);
+    if (item && row) {
+      row.querySelector('.row-search').value = item.itemNameEN;
+      row.querySelector('.row-ic').value = item.itemCode;
+      let isDelivery = false;
+      const campCard = row.closest('.campaign-card');
+      const deliveryModes = ["GRAB", "LINEMAN", "ShopeeFood", "Robinhood", "Gokoo"];
+      campCard.querySelectorAll('.mode-check:checked, .mode-check-delivery:checked, .mode-check-all:checked').forEach(cb => {
+        if (deliveryModes.includes(cb.value) || cb.value === "ALL DELIVERY") isDelivery = true;
+      });
+      row.querySelector('.row-op').value = Math.floor(isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0));
+      window.updateTotals(btnId);
+    }
+  };
+
+  window.handleProductMode = function(btnId, mode) {
+    const btnBlock = document.getElementById(btnId);
+    const isAllMode = (mode === 'All');
+    const tbody = btnBlock.querySelector('.item-body');
+    const discInput = btnBlock.querySelector('.btn-disc-val');
+    
+    tbody.innerHTML = '';
+    window.addItemRow(btnId, isAllMode);
+    
+    if (isAllMode) {
+      discInput.readOnly = false;
+      discInput.style.backgroundColor = "#fff";
+      btnBlock.querySelector('.btn-add-row').style.display = 'none';
+    } else {
+      discInput.readOnly = true;
+      discInput.style.backgroundColor = "#e9ecef";
+      btnBlock.querySelector('.btn-add-row').style.display = 'inline-block';
+    }
+    window.updateTotals(btnId);
+  };
+
+  window.updateTotals = function(btnId) {
+    const btnBlock = document.getElementById(btnId);
+    if (!btnBlock) return;
+
+    let grossTotal = 0;
+    const isAllItems = btnBlock.querySelector('input.p-mode[value="All"]').checked;
+    const discInput = btnBlock.querySelector('.btn-disc-val');
+
+    let originalVal = parseFloat(discInput.value) || 0;
+    if (originalVal % 1 !== 0) {
+      Swal.fire('พบเศษสตางค์!', 'ระบบไม่รองรับเศษสตางค์ ระบบจะทำการปัดเศษทิ้งเป็นจำนวนเต็ม', 'warning');
+      discInput.value = Math.floor(originalVal);
+    }
+
+    // +10 ต่อถ้วยต่อสินค้า (ยกเว้น subset) — บวกเข้า Value เมื่อติ๊กเงื่อนไขผง · เก็บ addon กัน min บวกตาม
+    var _card = btnBlock.closest ? btnBlock.closest('.campaign-card') : null;
+    var _powderOn = _card && _card.getAttribute('data-powder10')==='1';
+    var _powderAddon = 0;
+    if (!isAllItems) {
+      btnBlock.querySelectorAll('.item-body tr').forEach(row => {
+        const q = Math.floor(parseFloat(row.querySelector('.row-qty').value) || 0);
+        const p = Math.floor(parseFloat(row.querySelector('.row-op').value) || 0);
+        grossTotal += (q * p);
+        var _isSub = (row.querySelector('.row-issubset')||{}).value==='1';
+        if (_powderOn && !_isSub) _powderAddon += q * 10;   // ผงต่อถ้วยต่อสินค้า · subset ไม่บวก
+      });
+      discInput.value = Math.floor(grossTotal) + _powderAddon;
+    }
+    discInput.dataset.powderAddon = _powderAddon;
+  };
+
+  window.checkMinSpendDecimal = function(input) {
+    let originalVal = parseFloat(input.value) || 0;
+    if (originalVal % 1 !== 0) {
+      Swal.fire('พบเศษสตางค์!', 'ระบบไม่รองรับเศษสตางค์ในช่อง Min Amount ระบบจะปัดเศษทิ้ง', 'warning');
+      input.value = Math.floor(originalVal);
+    }
+  };
+
+  window.handleModeSelect = function(el, campId) {
+    const card = document.getElementById(campId);
+    const deliveryModes = ["GRAB", "LINEMAN", "ShopeeFood", "Robinhood", "Gokoo"];
+    if (el.checked) {
+      if (el.value === "ALL CHANNEL") {
+        card.querySelectorAll('.mode-check, .mode-check-delivery, .mode-check-all').forEach(cb => { if(cb !== el) cb.checked = false; });
+      } else if (el.value === "ALL DELIVERY") {
+        card.querySelector('.mode-check-all').checked = false;
+        card.querySelectorAll('.mode-check').forEach(cb => { if (deliveryModes.includes(cb.value)) cb.checked = false; });
+      } else {
+        card.querySelector('.mode-check-all').checked = false;
+        if (el.value === "Take Away") {
+          card.querySelectorAll('.mode-check-delivery, .mode-check').forEach(cb => { if (cb !== el) cb.checked = false; });
+        } else if (deliveryModes.includes(el.value)) {
+          card.querySelector('.mode-check-delivery').checked = false;
+          card.querySelectorAll('.mode-check').forEach(cb => { if (cb.value === "Take Away") cb.checked = false; });
+        }
+      }
+    }
+    card.querySelectorAll('.pos-button-block').forEach(block => {
+      block.querySelectorAll('.item-body tr').forEach(row => {
+        const itemName = row.querySelector('.row-search').value;
+        if(itemName && itemName !== 'All products') window.handleFill(row.id, itemName, block.id);
+      });
+    });
+  };
+
+  window.toggleMinSpend = function(btnId, cb) {
+    const btnBlock = document.getElementById(btnId);
+    const minValInput = btnBlock.querySelector('.min-val');
+    if (cb.checked) {
+      const _dv = btnBlock.querySelector('.btn-disc-val');
+      const currentVoucherValue = parseFloat(_dv.value) || 0;
+      const _addon = parseFloat(_dv.dataset.powderAddon) || 0;
+      minValInput.value = Math.floor(Math.max(0, currentVoucherValue - _addon));  // min ไม่รวม +10 ผง
+      minValInput.style.display = 'block';
+    } else {
+      minValInput.style.display = 'none';
+      minValInput.value = 0;
+    }
+  };
+
+  window.alertAndFocus = function(element, message) {
+      Swal.fire('ข้อมูลไม่ครบ', message, 'warning').then(() => {
+          element.focus();
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+  };
+
+/* SPA: หน้าแทรกหลัง window.load ยิงไปแล้ว → รันทันทีถ้าโหลดเสร็จอยู่แล้ว */
+(function (fn) { if (document.readyState === 'complete') setTimeout(fn, 0); else window.addEventListener('load', fn); })(function() {
+    const monthEl = document.getElementById('globalMonth');
+    if (monthEl) {
+        const now = new Date();
+        const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        monthEl.setAttribute('min', currentMonth);
+        monthEl.removeAttribute('max');
+        if (!monthEl.value) monthEl.value = currentMonth;
+    }
+    try {
+        var _u = (localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || '').trim() || 'ไม่ระบุผู้ใช้';
+        var _pcNow = new Date();
+        var d1=document.getElementById('txnDateDisplay'); if(d1) d1.textContent=_pcNow.toLocaleString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        var d2=document.getElementById('submitterDisplay'); if(d2) d2.textContent=_u;
+        var h1=document.getElementById('txnDate'); if(h1) h1.value=_pcNow.toISOString();
+        var h2=document.getElementById('submittedBy'); if(h2) h2.value=_u;
+    } catch(e) {}
+});
+
+window.submitAllData = async function() {
+    const monthEl = document.getElementById('globalMonth');
+    if (!monthEl || !monthEl.value) { window.alertAndFocus(monthEl, 'กรุณาระบุ Target Month'); return; }
+    const _txnDate = (document.getElementById('txnDate') || {}).value || new Date().toISOString();
+    const _submittedBy = (document.getElementById('submittedBy') || {}).value || (function(){ try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch(e){ return ''; } })();
+    if(window.PC_CustomerGroup){ const _cg=PC_CustomerGroup.validate(); if(!_cg.ok){ Swal.fire('เลือกกลุ่มลูกค้า', _cg.msg, 'warning'); return; } }
+
+    const campaignCards = document.querySelectorAll('.campaign-card');
+    if (campaignCards.length === 0) return Swal.fire('Warning', 'กรุณาเพิ่มอย่างน้อย 1 แคมเปญ', 'warning');
+
+    let allVoucherData = [];
+    let isValid = true;
+    let allShortNamesInForm = [];
+
+    for (let [idx, card] of campaignCards.entries()) {
+        const campPrefix = `Voucher Campaign #${idx+1}`;
+        const nameEl = card.querySelector('.camp-name');
+        const startEl = card.querySelector('.camp-start');
+        const endEl = card.querySelector('.camp-end');
+        const storeHidden = card.querySelector('.camp-store');
+        const detailEl = card.querySelector('.camp-detail');
+        const conditionEl = card.querySelector('.camp-condition');
+
+        if (!nameEl.value.trim()) { window.alertAndFocus(nameEl, `${campPrefix}: กรุณาระบุชื่อ Voucher`); isValid = false; break; }
+        if (!startEl.value) { window.alertAndFocus(startEl, `${campPrefix}: กรุณาระบุวันที่เริ่ม`); isValid = false; break; }
+        if (!endEl.value) { window.alertAndFocus(endEl, `${campPrefix}: กรุณาระบุวันที่สิ้นสุด`); isValid = false; break; }
+        if (!storeHidden.value) { window.alertAndFocus(card.querySelector('[id^="tag-container-"]'), `${campPrefix}: กรุณาเลือกสาขา`); isValid = false; break; }
+        
+        let modes = Array.from(card.querySelectorAll('.mode-check:checked, .mode-check-delivery:checked, .mode-check-all:checked')).map(m => m.value);
+        if (modes.length === 0) { 
+            Swal.fire('ข้อมูลไม่ครบ', `${campPrefix}: กรุณาเลือก Sale Mode อย่างน้อย 1 รายการ`, 'warning'); 
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            isValid = false; break; 
+        }
+
+        if (!detailEl.value.trim()) { window.alertAndFocus(detailEl, `${campPrefix}: กรุณาระบุรายละเอียด Voucher`); isValid = false; break; }
+        if (!conditionEl.value.trim()) { window.alertAndFocus(conditionEl, `${campPrefix}: กรุณาระบุเงื่อนไขการใช้งาน`); isValid = false; break; }
+
+        const btnBlocks = card.querySelectorAll('.pos-button-block');
+        if (btnBlocks.length === 0) { Swal.fire('Warning', `${campPrefix}: กรุณาเพิ่มอย่างน้อย 1 ปุ่ม Voucher`, 'warning'); isValid = false; break; }
+
+        let firstVoucherType = btnBlocks[0].querySelector('input[name^="voucherType"]:checked').value;
+        for (let btn of btnBlocks) {
+            let currentType = btn.querySelector('input[name^="voucherType"]:checked').value;
+            if (currentType !== firstVoucherType) {
+                Swal.fire('ข้อมูลไม่ถูกต้อง', `${campPrefix}: ปุ่ม Voucher ในแคมเปญนี้ต้องเลือก Voucher Type เป็นประเภทเดียวกันทั้งหมด (${firstVoucherType} เท่านั้น)`, 'warning');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                isValid = false; break;
+            }
+        }
+        if (!isValid) break;
+
+        let buttons = [];
+        for (let [bIdx, btn] of btnBlocks.entries()) {
+            const btnPrefix = `${campPrefix}, Button #${bIdx+1}`;
+            const snEl = btn.querySelector('.btn-sn');
+            const discValEl = btn.querySelector('.btn-disc-val');
+            
+            const voucherType = firstVoucherType;
+            const fileEl = btn.querySelector('.upload-file');
+            let fileData = null;
+
+            if (voucherType === 'Online') {
+                if (!fileEl.files || fileEl.files.length === 0) {
+                    window.alertAndFocus(fileEl, `${btnPrefix}: กรุณาแนบไฟล์ Mapping Code`);
+                    isValid = false; break;
+                }
+                fileData = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({
+                        base64: e.target.result.split(',')[1],
+                        mimeType: fileEl.files[0].type,
+                        fileName: fileEl.files[0].name
+                    });
+                    reader.readAsDataURL(fileEl.files[0]);
+                });
+            }
+
+            const discValue = Math.floor(parseFloat(discValEl.value) || 0);
+            const shortName = snEl.value.trim();
+
+            if (!shortName) { window.alertAndFocus(snEl, `${btnPrefix}: กรุณาระบุชื่อปุ่ม`); isValid = false; break; }
+            if (allShortNamesInForm.includes(shortName.toLowerCase())) {
+                window.alertAndFocus(snEl, `${btnPrefix}: ชื่อปุ่ม "${shortName}" ซ้ำกับปุ่มอื่นในฟอร์มนี้`);
+                isValid = false; break;
+            }
+            allShortNamesInForm.push(shortName.toLowerCase());
+            // ครบวง (option ข): แกะโค้ดในไฟล์ → ลงทะเบียน pc_code_requests → IT ดาวน์โหลด Backoffice + ยืนยัน → สาขาค้นเจอ (Voucher/E-Coupon ProStatus = HS)
+            if (voucherType === 'Online') { try { if (window.PC_CodeConvert) PC_CodeConvert.ingestFromInput(fileEl, { campaign: nameEl.value.trim(), button: shortName, kindShort: 'voucher', proStatus: 'HS', end: endEl.value }); } catch (e) {} }
+
+            if (discValue <= 0) { window.alertAndFocus(discValEl, `${btnPrefix}: มูลค่า Voucher ต้องมากกว่า 0`); isValid = false; break; }
+
+            let items = [];
+            const rows = btn.querySelectorAll('.item-row');
+            for (let row of rows) {
+                const searchInput = row.querySelector('.row-search');
+                const ic = row.querySelector('.row-ic').value;
+                const isAllMode = searchInput.value.trim().toLowerCase() === 'all products';
+                if (!isAllMode && !ic) { window.alertAndFocus(searchInput, `${btnPrefix}: กรุณาเลือกสินค้าให้ถูกต้อง`); isValid = false; break; }
+                items.push({ itemCode: isAllMode ? "ALL" : ic, itemName: searchInput.value, qty: isAllMode ? "" : row.querySelector('.row-qty').value, price: isAllMode ? "" : row.querySelector('.row-op').value, selectionMode: isAllMode ? "ALL" : "ITEM" });
+            }
+            if (!isValid) break;
+
+            // Participating Products → ข้อความหมวด (POS) ที่ IT Settlement (f-cate-remark)
+            //   All Products  → "สินค้าที่ร่วมรายการ"
+            //   Selected Items → "เฉพาะสินค้าที่กำหนดเท่านั้น"
+            const pMode = (btn.querySelector('.p-mode:checked') || {}).value || 'Spec';
+            const cateRemark = (pMode === 'All') ? 'สินค้าที่ร่วมรายการ' : 'เฉพาะสินค้าที่กำหนดเท่านั้น';
+
+            buttons.push({
+                shortName: shortName,
+                voucherType: voucherType,
+                cateRemark: cateRemark,
+                fileData: fileData,
+                items: items,
+                grossTotal: discValue, 
+                discountValue: discValue,
+                discountUnit: btn.querySelector('.btn-disc-unit').value,
+                netDiscount: "0",
+                minSpendAmount: Math.floor(parseFloat(btn.querySelector('.min-val').value) || 0)
+            });
+        }
+        if (!isValid) break;
+
+        allVoucherData.push({
+            txnDate: _txnDate,
+            submittedBy: _submittedBy,
+            month: monthEl.value,
+            name: nameEl.value.trim(),
+            start: startEl.value,
+            end: endEl.value,
+            stores: storeHidden.value,
+            saleModes: modes.join(','),
+            detail: detailEl.value,
+            condition: conditionEl.value,
+            proposalKind: (card.querySelector('.prop-kind:checked')||{}).value || 'voucher',
+            buttons: buttons,
+            ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+        });
+    }
+
+    if (!isValid) return;
+
+    Swal.fire({
+      title: 'ยืนยันการบันทึก?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2e934a',
+      confirmButtonText: 'ตกลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        google.script.run.withSuccessHandler(function(res) {
+            Swal.close();
+            if (res === "Success") {
+                Swal.fire({ title: 'บันทึกสำเร็จ!', text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', icon: 'success', confirmButtonColor: '#2e934a' }).then(() => {
+                    document.getElementById('campaignList').innerHTML = ''; 
+                    window.campaignCount = 0; 
+                    window.addCampaign(); 
+                    document.getElementById('globalMonth').value = '';
+                    var _c = Array.from(new Set((allVoucherData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
+                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
+                });
+            } else { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + res, 'error'); }
+        }).withFailureHandler(function(err) {
+            Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
+        }).processVoucher(allVoucherData);
+      }
+    });
+};
+</script>
+<style>
+  .cursor-pointer { cursor: pointer; }
+  .sticky-top { position: sticky; top: 0; z-index: 1020; }
+  .form-control:focus { border-color: #2e934a !important; box-shadow: none; border-width: 2px; }
+  .form-check-input:checked { background-color: #2e934a !important; border-color: #2e934a !important; }
+  .badge { font-size: 0.85rem; }
+  .branch-tag { border: 1px solid #000; }
+  textarea::placeholder { font-size: 13px; color: #ccc; }
+  .form-check-input { margin-top: 0; cursor: pointer; }
+  .form-check-label { cursor: pointer; user-select: none; padding-left: 2px; }
+  .btn-gross, .manual-gross { font-size: 1.1rem; color: #000 !important; }
+  .pc-promo-io .btn { white-space: nowrap; }
+</style>
+<script>/* import bar ถอดออกทุกฟอร์มแล้ว (จะเปิดใช้เฉพาะหน้า Item Set ผ่านหน้าตั้งค่าในอนาคต) — window.PromoIO && window.PromoIO.mount('voucher'); */</script>

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Database Schema & Data Flow — Potato Corner Promotion System</title>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1d20"/><text x="50" y="44" font-size="30" text-anchor="middle" fill="#ffc107" font-family="sans-serif" font-weight="bold">DB</text><text x="50" y="68" font-size="11" text-anchor="middle" fill="#fff" font-family="sans-serif">SCHEMA</text></svg></template>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Kanit',sans-serif; margin:0; background:#eef1f4; color:#1a1d20; }
+  .wrap { max-width:1120px; margin:0 auto; padding:40px 32px 80px; }
+  h1 { font-family:'Kanit'; font-weight:700; font-size:2rem; margin:0; }
+  .sub { color:#6c757d; margin:4px 0 0; }
+  .hd { background:#1a1d20; color:#fff; border-radius:14px; padding:28px 32px; border-left:10px solid #ffc107; margin-bottom:28px; }
+  h2 { font-size:1.15rem; border-bottom:3px solid #ffc107; padding-bottom:6px; margin:42px 0 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .badge { display:inline-block; background:#00783E; color:#fff; font-size:.7rem; font-weight:600; padding:2px 8px; border-radius:5px; }
+  .badge.new { background:#2563eb; }
+  .badge.warn { background:#d97706; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+  .ent { background:#fff; border:1px solid #e2e6ea; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.04); }
+  .ent.hl { border:2px solid #2563eb; }
+  .ent .t { background:#1a1d20; color:#fff; padding:10px 14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .ent.hl .t { background:#1e3a8a; }
+  .ent .t .pk { font-size:.62rem; background:#ffc107; color:#000; padding:2px 7px; border-radius:4px; font-weight:700; white-space:nowrap; }
+  .ent .rows { font-size:.78rem; color:#888; font-weight:400; }
+  .ent table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .ent td { padding:5px 14px; border-bottom:1px solid #f0f2f4; vertical-align:top; }
+  .ent tr:last-child td { border-bottom:none; }
+  .ent td.f { font-family:'JetBrains Mono',monospace; font-weight:600; color:#00783E; white-space:nowrap; }
+  .ent td.d { color:#6c757d; }
+  .key { color:#d97706; font-weight:700; }
+  .fk { color:#2563eb; font-weight:700; }
+  .flow { background:#fff; border:1px solid #e2e6ea; border-radius:12px; padding:24px; }
+  .flow-row { display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; }
+  .step { flex:1; min-width:150px; border:2px solid #1a1d20; border-radius:10px; padding:12px 14px; background:#fafbfc; position:relative; }
+  .step h4 { margin:0 0 4px; font-size:.95rem; }
+  .step .role { font-size:.65rem; font-weight:700; color:#fff; background:#00783E; padding:1px 7px; border-radius:4px; }
+  .step p { margin:8px 0 0; font-size:.76rem; color:#555; line-height:1.45; }
+  .arrow { align-self:center; font-size:1.4rem; color:#ffc107; font-weight:bold; }
+  .note { background:#fff8e1; border-left:5px solid #ffc107; border-radius:8px; padding:14px 18px; font-size:.85rem; margin:14px 0; line-height:1.6; }
+  .note.blue { background:#eff6ff; border-left-color:#2563eb; }
+  .rel { background:#fff; border:1px solid #e2e6ea; border-radius:12px; padding:6px 0; font-size:.85rem; }
+  .rel div { padding:9px 18px; border-bottom:1px solid #f0f2f4; }
+  .rel div:last-child { border-bottom:none; }
+  .rel code { font-family:'JetBrains Mono',monospace; background:#f1f3f5; padding:1px 6px; border-radius:4px; font-size:.8rem; }
+  .st { display:inline-block; font-size:.68rem; font-weight:700; padding:2px 8px; border-radius:5px; margin:2px; }
+  .pill-warn{background:#fff3cd;color:#856404;} .pill-ok{background:#d4edda;color:#155724;} .pill-info{background:#cce5ff;color:#004085;} .pill-dark{background:#1a1d20;color:#fff;} .pill-red{background:#f8d7da;color:#721c24;}
+  /* working-page mock */
+  .ui { background:#fff; border:1px solid #e2e6ea; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .ui-top { background:#1a1d20; color:#fff; padding:12px 18px; font-weight:600; display:flex; align-items:center; gap:10px; }
+  .ui-top .dot{ width:10px;height:10px;border-radius:50%;background:#ffc107; }
+  .ui-body { padding:18px; display:grid; grid-template-columns:300px 1fr; gap:16px; }
+  .ui-col { border:1px solid #e8ebee; border-radius:10px; overflow:hidden; }
+  .ui-col h5 { margin:0; background:#f5f7f9; padding:8px 12px; font-size:.8rem; border-bottom:1px solid #e8ebee; }
+  .ui-item { padding:8px 12px; border-bottom:1px solid #f1f3f5; font-size:.82rem; display:flex; justify-content:space-between; align-items:center; cursor:default; }
+  .ui-item:last-child{border-bottom:none;}
+  .ui-item.sel { background:#fff8e1; border-left:3px solid #ffc107; }
+  .ui-item small{ color:#9aa3ab; font-family:'JetBrains Mono',monospace; }
+  .chip { display:inline-block; font-size:.72rem; font-weight:600; background:#e8f6ee; color:#0b6b3a; border:1px solid #bfe3cd; border-radius:14px; padding:2px 10px; margin:2px; }
+  .chip.rm { background:#eef4ff; color:#1e40af; border-color:#c3d6ff; }
+  .chip.add { background:#1a1d20; color:#ffc107; border:none; cursor:pointer; }
+  .mini-tbl{ width:100%; border-collapse:collapse; font-size:.78rem; }
+  .mini-tbl th{ background:#2f6dab; color:#fff; padding:5px 8px; text-align:left; font-weight:600; }
+  .mini-tbl td{ padding:5px 8px; border-bottom:1px solid #eef1f4; }
+  @media (max-width:760px){ .ui-body{ grid-template-columns:1fr; } }
+  @media print { body{background:#fff;} .ent,.flow,.rel,.ui{box-shadow:none;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <h1>📊 Database Schema &amp; Data Flow</h1>
+    <p class="sub">Potato Corner — Promotion Management System · โครงสร้างข้อมูลจริง (อ้างอิงไฟล์ <b style="color:#ffc107;">Database.xlsx</b>)</p>
+    <p class="sub" style="font-size:.8rem;margin-top:8px;">ปรับปรุง: ก.ค. 2026 (v7) · เพิ่ม <b style="color:#ffc107;">§0 โครงสร้างที่ระบบสร้าง/เก็บจริง</b> — ฟิลด์จริงของทุก store (<code style="color:#ffc107;">pc_*</code>) ที่วิ่งขึ้น Cloudflare D1 · §1–15 = โมเดลเชิงตรรกะ (logical schema)</p>
+  </div>
+
+  <!-- 0. REAL STORAGE (what the system actually creates) -->
+  <h2 id="real">0. โครงสร้างที่ระบบสร้าง/เก็บจริง <span class="badge new">REAL — ตรงกับโค้ด</span></h2>
+  <div class="note blue">
+    <b>ระบบเก็บข้อมูลจริงเป็น key/value JSON blob</b> — ทุก "ตาราง" คือ 1 key (<code>pc_*</code>) ใน localStorage ของเบราว์เซอร์ แล้ว <b>sync ขึ้น Cloudflare D1</b> (ตารางเดียว <code>promo_store(k, v, updated_at)</code>) ผ่าน Worker · <code>v</code> = JSON ของ store นั้นตรง ๆ (ไม่แปลง/ไม่ตัดทิ้ง)
+    <div style="margin-top:8px">
+      <span class="st pill-dark">D1: promo_store</span> = <span class="chip rm">k (PK)</span><span class="chip rm">v (JSON blob)</span><span class="chip rm">updated_at (epoch ms)</span>
+    </div>
+    <div style="margin-top:8px;font-size:.82rem">
+      งานโปรฯ (<code>pc_mock_store_v28</code>) ยัง <b>แตกเป็น key ราย campaign</b> (<code>promo::c::&lt;ชื่อ&gt;</code> + <code>promo::meta</code>) เพื่อให้ MKT/IT/OP หลายคนแก้คนละแคมเปญพร้อมกันโดยไม่ทับกัน · fields ด้านล่างคือ <b>ชื่อฟิลด์จริงในโค้ด</b> (js/mock-backend.js, js/code-counter.js ฯลฯ)
+    </div>
+  </div>
+
+  <!-- 0A. main store -->
+  <h3 style="margin:20px 0 8px;font-size:1.02rem;">0A · <code>pc_mock_store_v28</code> — งานโปรฯ ทั้งก้อน (store object)</h3>
+  <div class="rel" style="margin-bottom:14px">
+    <div><code>months</code> <b>{ "YYYY-MM": [ promotion_line ] }</b> — แหล่งจริงเดียว (item-grain) · <code>working</code> = view derive จาก months (button-grain, สร้างใหม่ทุก persist)</div>
+    <div><code>npd</code> [ ] · <code>flavor</code> [ ] · <code>npdProducts</code> [ ] (สินค้าที่ IT ปิดงานแล้ว → ต่อท้าย item master) · <code>assets</code> [ ] · <code>plan2026</code> [ ]</div>
+    <div><code>recipeCustom</code> { itemCode: {name, modes:{channel:[{rm,d,q,u}]}} } · <code>users</code> [ ] · <code>userOverrides</code> { } · <code>rejectIssues</code> { } · <code>emails</code> [ ] (mock log)</div>
+    <div>flags seed-once: <code>_npdSeeded / _npdSeedVer</code> · <code>_flvSeeded</code> · <code>_recipeCustomVer</code> · <code>_proJulyVer</code> …</div>
+  </div>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🧾 promotion_line <span class="rows">(store.months[YYYY-MM][])</span></span><span class="pk">grain: 1 แถว = 1 item line</span></div>
+      <table>
+        <tr><td class="f key">month / campaign / shortName</td><td class="d">งวด YYYY-MM · ชื่อแคมเปญ · ชื่อปุ่ม POS</td></tr>
+        <tr><td class="f">start / end / stores / saleMode</td><td class="d">ช่วงวันที่ · สาขา (list branch_id หรือ ALL) · ช่องทาง</td></tr>
+        <tr><td class="f">promoType / typePromotion / typeSel</td><td class="d">Item Set·Item Coupon·Voucher·Bill Discount·Promotion (+Online)</td></tr>
+        <tr><td class="f">codePromotion / codeItemSet / itemPromotion</td><td class="d">โค้ดโปร (P…) · Code Item Set (107…)</td></tr>
+        <tr><td class="f">kitchen / catCode / cateRemark / cate</td><td class="d">ชื่อครัว · 3 หลักแรก item_code · หมวด POS</td></tr>
+        <tr><td class="f">itemCode / itemNameEN / qty</td><td class="d">รหัส/ชื่อสินค้า · จำนวนต่อชุด</td></tr>
+        <tr><td class="f">gross / discount / netPrice / discountText / minAmount</td><td class="d">ราคาปกติ · ส่วนลด (ติดหน่วย ฿/%) · ราคาโปร · ยอดขั้นต่ำ</td></tr>
+        <tr><td class="f">isSubset / chooseMin / chooseMax / addons / addonSubset</td><td class="d">เป็นชุดผงไหม · เลือกได้กี่ผง · Add on</td></tr>
+        <tr><td class="f">itStatus / opStatus / changeStatus</td><td class="d">PENDING·COMPLETE / WAITING·CONFIRMED·REJECTED / EXTENDED·REDUCED·CANCELLED</td></tr>
+        <tr><td class="f">rejectReason / rejectCount / cancelReason / reason</td><td class="d">เหตุตีกลับ/ยกเลิก + จำนวนครั้ง</td></tr>
+        <tr><td class="f">detail / mechanic / attachment / memoUrl / branchNote</td><td class="d">รายละเอียด · กลไก · ไฟล์แนบ · MEMO · หมายเหตุสาขา</td></tr>
+        <tr><td class="f">reporter / updatedBy / timestamp / submittedDate</td><td class="d">ผู้แจ้ง · ผู้แก้ · created</td></tr>
+        <tr><td class="f">itDoneDate / opDoneDate / updatedDate / posReady / wentLive</td><td class="d">วันที่ IT/OP เสร็จ · พร้อมขึ้น POS · ขายจริงแล้ว</td></tr>
+        <tr><td class="f">proposalKind / extendCodeNote</td><td class="d">voucher/ecoupon · หมายเหตุขยายโค้ด</td></tr>
+        <tr><td class="f">customerGroup / crmTarget / crmTargetName</td><td class="d">กลุ่มลูกค้า / เป้า CRM (โปรกลุ่ม)</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>👁️ working <span class="rows">(store.working · derive)</span></span><span class="pk">button-grain · read-only</span></div>
+      <table>
+        <tr><td class="f">group key</td><td class="d">campaign + month + shortName → 1 ปุ่ม</td></tr>
+        <tr><td class="f">gross</td><td class="d">Σ (gross × qty) ของ item lines ในปุ่ม</td></tr>
+        <tr><td class="f">…</td><td class="d">คัด field ระดับปุ่มจากแถวแรก (start/end/stores/saleMode/promoType/code*/kitchen/สถานะ/แนบ/memo …) — สร้างใหม่ทุก persist(), เลิก double-write</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">feed: Campaign Tracking (getAllCampaignData) · Branch View · IT/OP · export</div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🧪 npd <span class="rows">(store.npd[])</span></span><span class="pk">PK: id (NPD-YYYYnnn)</span></div>
+      <table>
+        <tr><td class="f key">id / project / start / end</td><td class="d">เลขที่ · ชื่อชุด · ช่วงเวลา</td></tr>
+        <tr><td class="f">store / rd / remark / submittedDate</td><td class="d">สาขา · ผู้แจ้ง · หมายเหตุ</td></tr>
+        <tr><td class="f">status / itStatus / itDoneDate / confirmedDate</td><td class="d">PENDING·CONFIRMED·REJECTED / COMPLETE · rejectReason · rejectCount</td></tr>
+        <tr><td class="f">subsets[]</td><td class="d">{ssCode, name, name2, powders:[{cmpos, eng, th, code(rm), desc, qty, unit, spoon, price}]}</td></tr>
+        <tr><td class="f">items[]</td><td class="d">{name, th, code, category, saleModes[], priceTakeaway, priceDelivery, prices{channel}, cmpos, ssCode, recipes:[{code, desc, qty, unit, channels[]}], formulas:[{ss, chooseMin, chooseMax}]}</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🧂 flavor <span class="rows">(store.flavor[])</span></span><span class="pk">PK: id (FLV-YYYYnnn)</span></div>
+      <table>
+        <tr><td class="f key">id / project / start / end / rd</td><td class="d">งานผงรสชาติใหม่</td></tr>
+        <tr><td class="f">status / itStatus / itDoneDate / rejectReason</td><td class="d">workflow เดียวกับ NPD</td></tr>
+        <tr><td class="f">groups[]</td><td class="d">{saleModes[], ssCode, powders[…]} → IT ปิดงาน = แตกเป็น npdProducts (itemType Single Item, showInForm Hide)</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🍟 npdProducts <span class="rows">(store.npdProducts[])</span></span><span class="pk">ต่อท้าย item master</span></div>
+      <table>
+        <tr><td class="f key">itemCode / itemName / category / cateCode / postCate</td><td class="d">สินค้าที่ IT ปิดงานแล้ว</td></tr>
+        <tr><td class="f">priceTA / priceDLV / itemType</td><td class="d">Single Item · SET · SUBSET · VOUCHER</td></tr>
+        <tr><td class="f">status / showInForm / sellStores / core / ssCode / posSeq</td><td class="d">Active · Show/Hide · สาขาขาย</td></tr>
+        <tr><td class="f">_fromItemSet / _fromNpd / _fromFlavor</td><td class="d">ที่มา (link กลับแคมเปญ/เอกสาร)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 0B. code + promo-linked stores -->
+  <h3 style="margin:24px 0 8px;font-size:1.02rem;">0B · โค้ด + ตารางที่ผูกกับโปรฯ (แยก key)</h3>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🔢 pc_code_counter_v1 <span class="rows">(ตัวนับกลาง)</span></span><span class="pk">กันโค้ดซ้ำทั้งระบบ</span></div>
+      <table>
+        <tr><td class="f">reservations{ }</td><td class="d">key=type|code → {code, type, num, cat, status(RESERVED/CONFIRMED), where, field, by, at, confirmedAt, releasedAt, campaign, channel, remark}</td></tr>
+        <tr><td class="f">cats{ }</td><td class="d">{cateCode: {cursor, baseline, seeded, freed[]}} — item code ราย category</td></tr>
+        <tr><td class="f">log[ ]</td><td class="d">{t, act(RESERVE/CONFIRM/RELEASE/RETURN/NOTE), type, code, where, by, from}</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">TYPES: itemset(107) · promo(P) · item · cmpos · ss(SS) · bill(BD) · coupon(IC) · voucher(VC)</div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🏷️ pc_product_promo</span><span class="pk">โค้ดโปร ราย itemCode</span></div>
+      <table>
+        <tr><td class="f">{ itemCode: [ … ] }</td><td class="d">map สินค้า→รายการโปร</td></tr>
+        <tr><td class="f">row</td><td class="d">{typePromo (Price Promotion/E-Voucher), prCode, net, desc1, desc2, _fromItemSet}</td></tr>
+      </table>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🎟️ pc_code_requests <span class="rows">(คำขอโค้ด → IT)</span></span><span class="pk">PK: id</span></div>
+      <table>
+        <tr><td class="f key">id / type</td><td class="d">ADD / REMOVE</td></tr>
+        <tr><td class="f">kind / kindShort / proStatus</td><td class="d">Coupon/Bill/Voucher/Member · Normal/HS</td></tr>
+        <tr><td class="f">campaign / button / promoCode</td><td class="d">แคมเปญ · ปุ่ม · โค้ดโปร</td></tr>
+        <tr><td class="f">codes[ ] / count</td><td class="d">โค้ดรายตัว (แกะจากไฟล์แนบ)</td></tr>
+        <tr><td class="f">start / end / proExpire</td><td class="d">ช่วงใช้งาน</td></tr>
+        <tr><td class="f">status / itStatus / reporter / createdAt / fromProposal</td><td class="d">PENDING/DONE</td></tr>
+        <tr><td class="f">memberTypeCode / source / voucherCat / customerGroup</td><td class="d">บัตร/ส่วนลดพนักงาน/หมวด voucher</td></tr>
+        <tr><td class="f">memberRows[ ]</td><td class="d">{code, name, memberNo, idCard, typeCode, expire}</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🎁 pc_vouchers <span class="rows">(Voucher master)</span></span><span class="pk">PK: prefix/typeCode</span></div>
+      <table>
+        <tr><td class="f key">prefix / typeCode / name</td><td class="d">โค้ดขึ้นต้น · code ประเภท · ชื่อ</td></tr>
+        <tr><td class="f">cat</td><td class="d">b2b · b2c · complain · comp · koi</td></tr>
+        <tr><td class="f">active / draft</td><td class="d">สถานะ · ร่าง</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>💳 pc_member_cards · pc_member_coupons</span><span class="pk">บัตรสมาชิก + สิทธิ์</span></div>
+      <table>
+        <tr><td class="f">member_cards[ ]</td><td class="d">{name, button/typeCode, kind, active}</td></tr>
+        <tr><td class="f">member_coupons{ }</td><td class="d">"T:&lt;typeCode&gt;": [{id, codeCoupon, name, kind(coupon/bill/voucher)}]</td></tr>
+      </table>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🤝 pc_co_promotions <span class="rows">(Co-Promo / E-Voucher)</span></span><span class="pk">PK: id</span></div>
+      <table>
+        <tr><td class="f key">id / campaign / type / source</td><td class="d">source="co"</td></tr>
+        <tr><td class="f">codePromotion / codeItemSet / cmposName / buttonName</td><td class="d">โค้ด + ชื่อบน POS</td></tr>
+        <tr><td class="f">brand / billingEntity / detail</td><td class="d">พาร์ทเนอร์ · นิติบุคคลวางบิล</td></tr>
+        <tr><td class="f">periodText / start / end</td><td class="d">ช่วงเวลา</td></tr>
+        <tr><td class="f">paymentType / soNo / quota / priceIncVat / priceExcVat / paymentCondition</td><td class="d">การวางบิล + ราค inc/exc VAT</td></tr>
+        <tr><td class="f">interfaceSetup / salesInterface / status / interfaceBy</td><td class="d">IT interface ERP: INTERFACED …</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>📝 pc_memo_docs · pc_card_links · pc_product_reopen</span><span class="pk">เอกสาร/ผูกบัตร/เปิด-ปิดปุ่ม</span></div>
+      <table>
+        <tr><td class="f">memo_docs</td><td class="d">MEMO แนบให้สาขา (ผูก campaign/button)</td></tr>
+        <tr><td class="f">card_links</td><td class="d">ผูกบัตร VIP → IT ผูก Type Code</td></tr>
+        <tr><td class="f">product_reopen</td><td class="d">RD แจ้งเปิด/ปิดปุ่มสินค้าเดิม → IT ยืนยัน {action(OPEN/CLOSE), code, date, note}</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🧑‍🍳 pc_staff_discounts · pc_staff_conditions</span><span class="pk">ส่วนลดพนักงาน</span></div>
+      <table>
+        <tr><td class="f">staff_discounts[ ]</td><td class="d">คำขอส่วนลดพนักงาน (ผ่าน flow บัตร ST*)</td></tr>
+        <tr><td class="f">staff_conditions</td><td class="d">เงื่อนไขส่วนลด</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 0C. subset / form-display / master lists -->
+  <h3 style="margin:24px 0 8px;font-size:1.02rem;">0C · Subset / Item Set · Form Display · Master lists</h3>
+  <div class="grid">
+    <div class="ent">
+      <div class="t"><span>🧂 subset stores</span><span class="pk">ผง / ชุด / Item Set</span></div>
+      <table>
+        <tr><td class="f">pc_subset_meta / pc_subset_powders</td><td class="d">หัวชุด (SS, ชื่อ, min/max) · ผงในชุด</td></tr>
+        <tr><td class="f">pc_subset_map / pc_subset_items / pc_subset_price</td><td class="d">ผูก subset↔ผง · สมาชิก · ราคา add-on</td></tr>
+        <tr><td class="f">pc_itemset_comp</td><td class="d">{ itemCode: [{code(ss), min, max, _addon}] } — สินค้าใช้ subset ไหน</td></tr>
+        <tr><td class="f">pc_mock_isf</td><td class="d">Item Set Builder (งานทำปุ่ม)</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🔎 Form Display</span><span class="pk">คุมการแสดงในฟอร์ม</span></div>
+      <table>
+        <tr><td class="f">pc_cat_forms</td><td class="d">หมวดไหนเปิดในฟอร์มไหน (coupon/bill/voucher/itemset)</td></tr>
+        <tr><td class="f">pc_subset_forms / pc_mode_forms</td><td class="d">subset / sale mode ต่อฟอร์ม</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>📚 Master lists</span><span class="pk">ข้อมูลตั้งต้น</span></div>
+      <table>
+        <tr><td class="f">pc_master_lists / pc_salemode_master / pc_brand_master</td><td class="d">รายการกลาง · ช่องทางขาย · แบรนด์</td></tr>
+        <tr><td class="f">pc_cat_flags / pc_cat_custom / pc_cat_attrs / pc_cat_stores</td><td class="d">หมวด: เปิด-ปิด · ชื่อ · attr · สาขา</td></tr>
+        <tr><td class="f">pc_dep_flags / pc_dep_custom</td><td class="d">แผนก</td></tr>
+        <tr><td class="f">pc_product_flags / pc_product_coupon / pc_product_deleted / pc_platform_flags / pc_product_edits</td><td class="d">สินค้า: แสดง/ซ่อน · คูปอง · ลบ · แพลตฟอร์ม · ราคาแก้รายสาขา</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 0D. branch ops + settings -->
+  <h3 style="margin:24px 0 8px;font-size:1.02rem;">0D · งานสาขา (Tender/EDC/Bill Diff/Ticket) + ตั้งค่าระบบ</h3>
+  <div class="grid">
+    <div class="ent">
+      <div class="t"><span>💳 Tender / EDC</span><span class="pk">ราย key</span></div>
+      <table>
+        <tr><td class="f">pc_tender_master / pc_tender_requests / pc_tender_workflow</td><td class="d">master ช่องชำระ · คำขอเปิด-ปิด · workflow</td></tr>
+        <tr><td class="f">pc_branch_edc / pc_branch_edc_history / pc_edc_status_log</td><td class="d">EDC รายสาขา + ประวัติ + log</td></tr>
+        <tr><td class="f">pc_op_zones / pc_area_zones / pc_epay</td><td class="d">โซน OP/พื้นที่ · e-payment</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>⚖️ Bill Diff · Ticket</span><span class="pk">แจ้งปัญหาสาขา</span></div>
+      <table>
+        <tr><td class="f">pc_billdiff_reports</td><td class="d">แจ้งปิดบิลไม่ตรง {id, branch, date, saleMode, tenders[{code,pos,actual}], causes[], evidence{}, ai_finding, status}</td></tr>
+        <tr><td class="f">pc_branch_tickets</td><td class="d">ปัญหาสาขาแจ้ง (IT/Team queue)</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🖥️ งาน IT / แผนเครื่อง</span><span class="pk">CMPOS / assets</span></div>
+      <table>
+        <tr><td class="f">pc_plan_actions / pc_plan_cmpos_tasks / pc_plan_added</td><td class="d">แผนงาน + งาน CMPOS</td></tr>
+        <tr><td class="f">pc_cmpos_license_req / pc_asset_disposal</td><td class="d">คำขอ license · ตัดจำหน่ายทรัพย์สิน</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🔔 แจ้งเตือน</span><span class="pk">routing</span></div>
+      <table>
+        <tr><td class="f">pc_notify_settings / pc_notify_templates / pc_notify_log</td><td class="d">ปลายทาง (email/chat/line) · template · log การส่ง</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>⚙️ ตั้งค่าระบบ</span><span class="pk">ทุกคนเห็นตรงกัน</span></div>
+      <table>
+        <tr><td class="f">pc_lock_settings / pc_code_settings / pc_import_enabled</td><td class="d">ล็อกแจ้งล่วงหน้า · โค้ด · เปิด-ปิด import</td></tr>
+        <tr><td class="f">pc_issue_buttons / pc_report_settings</td><td class="d">ปุ่มแจ้งปัญหา · โหมดยืนยันสาขา</td></tr>
+        <tr><td class="f">pc_calendar_settings / pc_branch_hours / pc_login_settings</td><td class="d">ปฏิทิน · เวลาสาขา · หน้า login</td></tr>
+        <tr><td class="f">pc_cashier_users / pc_brands / pc_active_brand / pc_branch_staff_roster</td><td class="d">แคชเชียร์ · แบรนด์ · ทะเบียนพนักงานสาขา</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🔐 สิทธิ์ / ผู้ใช้</span><span class="pk">access</span></div>
+      <table>
+        <tr><td class="f">pc_permissions / pc_permissions_rwd</td><td class="d">สิทธิ์เข้าถึงเมนู + อ่าน/แก้/ลบ ต่อ role</td></tr>
+        <tr><td class="f" style="color:#888">(session รายเครื่อง)</td><td class="d">pc_role · pc_userName · pc_bv_branch — <b>ไม่ sync</b> (ล็อกอินเอง)</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note">
+    <b>สรุป:</b> ตารางจริงทั้งหมด = <b>key/value JSON</b> · ~50 stores ที่ sync (ดู <code>js/cloud-store.js</code> TRACKED) · หัวใจงานโปรฯ อยู่ใน <code>pc_mock_store_v28.months</code> (promotion_line) + <code>pc_code_counter_v1</code> · §1–15 ด้านล่างคือโมเดลเชิงตรรกะ (logical/ERD) ที่อธิบาย <b>ความสัมพันธ์</b> ของข้อมูลเดียวกันนี้
+  </div>
+
+  <!-- 1. MASTER DATA -->
+
+  <div class="note blue">
+    <b>สรุปจากไฟล์จริง (Database.xlsx 5 ชีต):</b>
+    <span class="st pill-info">Item Master ≈ 6,155 รายการ</span>
+    <span class="st pill-info">Recipe (BOM) ≈ 21,734 บรรทัด</span>
+    <span class="st pill-info">Subset 103 ชุด</span>
+    <span class="st pill-info">Item Set (107xxxx) ≈ 881 ปุ่ม</span>
+    <span class="st pill-info">RM Master (วัตถุดิบ+บรรจุภัณฑ์)</span><br>
+    เอกสารนี้ map ทั้ง 5 ชีตเข้าโครงสร้างระบบ + เสนอ 2 จุดที่ขอเพิ่ม: <b>① ปุ่ม Item Set ผูก Recipe</b> และ <b>② หน้าผูก "สูตรผง" (Powder Formula) ให้สินค้า</b>
+  </div>
+
+  <!-- 1. MASTER DATA -->
+  <h2>1. Master Data <span class="badge">ข้อมูลหลัก — มาจาก Database.xlsx</span></h2>
+  <div class="grid">
+    <div class="ent">
+      <div class="t"><span>📦 item_master <span class="rows">(ชีต “Item Master” · ~6,155)</span></span><span class="pk">PK: item_code</span></div>
+      <table>
+        <tr><td class="f key">item_code 🔑</td><td class="d">รหัสสินค้า — รวมทุกชนิด (สินค้าปกติ / ผง 103xxx / Subset SSxxxx / Item Set 107xxxx)</td></tr>
+        <tr><td class="f">description1 / 2</td><td class="d">ชื่อสินค้า (EN) บน POS</td></tr>
+        <tr><td class="f">dep_code / department</td><td class="d">แผนก (100 = Food)</td></tr>
+        <tr><td class="f">cate_code / category</td><td class="d">รหัส/ชื่อหมวด (101 Fries, 104 Chicken Pop…)</td></tr>
+        <tr><td class="f">org_price</td><td class="d">ราคาตั้งต้น</td></tr>
+        <tr><td class="f">sale_mode_code / sale_mode</td><td class="d">ช่องทางขาย (Take Away / GRAB-Delivery…)</td></tr>
+        <tr><td class="f">active_date / status</td><td class="d">วันที่เริ่ม / Active–Inactive</td></tr>
+        <tr><td class="f">selectable <span class="badge new">ใหม่</span></td><td class="d">Y/N — กำหนดให้สินค้านี้ <b>โชว์ในตัวเลือก (dropdown/ค้นหา) ของฟอร์มหรือไม่</b> · ตั้ง <b>N</b> เมื่อปุ่มขายเลิกขาย/หมดแล้ว เพื่อไม่ให้ตัวเลือกขึ้นเยอะเกินจำเป็นตอนกรอกฟอร์ม (ข้อมูลยังอยู่ในระบบ · ต่างจาก status: Inactive=ปิดทั้งสินค้า, selectable=N เพียงซ่อนจากตัวเลือก)</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🧱 rm_master <span class="rows">(ชีต “RM Master”)</span></span><span class="pk">PK: rm_code</span></div>
+      <table>
+        <tr><td class="f key">rm_code 🔑</td><td class="d">รหัสวัตถุดิบ/บรรจุภัณฑ์ (3116, 4001…) · <b style="color:#d97706;">ห้ามซ้ำ (unique)</b></td></tr>
+        <tr><td class="f">description</td><td class="d">ชื่อ RM (เฟรนช์ฟรายส์ Kaida, ถ้วย Large…)</td></tr>
+        <tr><td class="f">active_date / status</td><td class="d">วันที่เริ่ม / สถานะ</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">เป็น dropdown “Code RM” ในฟอร์ม NPD/Subset (autofill Description) · <b style="color:#1e40af;">ถ้ากรอก RM ที่ยังไม่มีในระบบ = เพิ่ม RM ใหม่ → บันทึกเข้า rm_master (ตรวจ rm_code ไม่ซ้ำก่อน)</b></div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🏬 branch</span><span class="pk">PK: branch_id</span></div>
+      <table>
+        <tr><td class="f key">branch_id 🔑</td><td class="d">รหัสสาขา (PC1001) · 165 สาขา</td></tr>
+        <tr><td class="f">name_en / name_th</td><td class="d">ชื่อสาขา EN / TH</td></tr>
+        <tr><td class="f">type</td><td class="d">COCO / DOCO / DODO</td></tr>
+        <tr><td class="f">group / class</td><td class="d">BKK·GBKK·UPC / Central·Indy → ใช้ใน Store Selection</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>👤 users · 🔐 permissions</span><span class="pk">PK: username / role</span></div>
+      <table>
+        <tr><td class="f key">username 🔑</td><td class="d">email (@rocks-foods.com) / OAuth</td></tr>
+        <tr><td class="f">role</td><td class="d">Admin / MKT / IT / OP → <span class="fk">FK permissions.role</span></td></tr>
+        <tr><td class="f">permissions.pages[]</td><td class="d">เมนูที่เข้าถึงได้ต่อ role</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. RECIPE & COMPOSITION -->
+  <h2>2. Recipe &amp; Composition <span class="badge new">หัวใจการผูกสูตร — เพิ่มใหม่/ทำให้ชัด</span></h2>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🍳 recipe (BOM) <span class="rows">(ชีต “Recipe” · ~21,734)</span></span><span class="pk">PK: item_code + sale_mode + rm_code</span></div>
+      <table>
+        <tr><td class="f fk">item_code 🔗</td><td class="d">→ item_master · สินค้า/ผงที่ใช้สูตรนี้ (รวมผง 103xxx)</td></tr>
+        <tr><td class="f">recipe_type</td><td class="d">* (ปกติ) / ตามชนิดสูตร</td></tr>
+        <tr><td class="f">sale_mode</td><td class="d">สูตรแยกตามช่องทาง (Take Away / GRAB-Delivery)</td></tr>
+        <tr><td class="f fk">rm_code 🔗</td><td class="d">→ rm_master · วัตถุดิบ/บรรจุภัณฑ์แต่ละบรรทัด</td></tr>
+        <tr><td class="f">qty / unit</td><td class="d">ปริมาณ + หน่วย (110 G, 1 PCS…)</td></tr>
+        <tr><td class="f">item_price</td><td class="d">ราคาต่อช่องทาง (ไม่ใช้ต้นทุนในระบบนี้)</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">1 สินค้า = หลายบรรทัด RM × หลาย Sale Mode — ตรงกับ “Raw Material ผูกช่องทางขาย” ในฟอร์ม NPD · <b>ผงแต่ละรส (103xxx) ก็เก็บ RM ที่ recipe ตารางนี้เช่นกัน</b> — IT Settlement กดบันทึก (หน้าผง + NPD) → ไหลเข้า recipe</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🧂 subset <span class="rows">(ชีต “Subset” · 103)</span></span><span class="pk">PK: ss_code (SSxxxx)</span></div>
+      <table>
+        <tr><td class="f key">ss_code 🔑</td><td class="d">SS0001… (อยู่ใน item_master, Att=Subset)</td></tr>
+        <tr><td class="f">subset_name</td><td class="d">ชื่อชุดผง (Flavored Fries 1)</td></tr>
+        <tr><td class="f">min / max</td><td class="d">ลูกค้าเลือกผงในชุดได้กี่รส (ขั้นต่ำ–สูงสุด)</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">เป็นแค่หัวชุด — ไม่เก็บ RM เอง · RM ของผงอยู่ใน <code>recipe</code></div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>↳ subset_flavor <span class="rows">(ชีต “Subset+Flavors”)</span></span><span class="pk">PK: ss_code + flavor_item_code</span></div>
+      <table>
+        <tr><td class="f fk">ss_code 🔗</td><td class="d">→ subset · ชุดที่ผงสังกัด</td></tr>
+        <tr><td class="f fk">flavor_item_code 🔗</td><td class="d">→ item_master · ผงรสชาติ (103001 Cheese FF1…)</td></tr>
+        <tr><td class="f">att</td><td class="d">Single Item</td></tr>
+        <tr><td class="f">add_on_price</td><td class="d">ราคาบวกเพิ่ม (เช่น Truffle +10THB)</td></tr>
+      </table>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🔗 product_formula <span class="rows">(ใหม่ — “ผูกสูตรผง”)</span></span><span class="pk">PK: item_code + ss_code</span></div>
+      <table>
+        <tr><td class="f fk">item_code 🔗</td><td class="d">→ item_master · ปุ่มสินค้าที่ให้เลือกผง</td></tr>
+        <tr><td class="f fk">ss_code 🔗</td><td class="d">→ subset · ใช้ผงจากชุดไหน</td></tr>
+        <tr><td class="f">choose_qty</td><td class="d">เลือกได้กี่ผงต่อชุด (เช่น 1)</td></tr>
+        <tr><td class="f">seq</td><td class="d">ลำดับ (ถ้าผูกหลายชุด)</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">ตอบโจทย์ “สินค้าใช้สูตรผงอะไร” — ดูหน้าทำงาน §7B</div>
+    </div>
+  </div>
+
+  <!-- 3. ITEM SET -->
+  <h2>3. Item Set (ปุ่มรวมสินค้า) <span class="badge new">ผูกหลายสินค้าในปุ่มเดียว + Recipe</span></h2>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🎁 item_set <span class="rows">(107xxxx · ~881)</span></span><span class="pk">PK: set_code</span></div>
+      <table>
+        <tr><td class="f key">set_code 🔑</td><td class="d">รหัสปุ่มเซ็ต (107xxxx) — อยู่ใน item_master</td></tr>
+        <tr><td class="f">set_name</td><td class="d">ชื่อปุ่มเซ็ต (POS ≤ 20 ตัว)</td></tr>
+        <tr><td class="f">cate_code / category</td><td class="d">หมวดของปุ่มเซ็ต</td></tr>
+        <tr><td class="f">price_takeaway / delivery</td><td class="d">ราคาขายของเซ็ต</td></tr>
+      </table>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>↳ item_set_line <span class="rows">(สมาชิกในเซ็ต)</span></span><span class="pk">PK: set_code + line_no</span></div>
+      <table>
+        <tr><td class="f fk">set_code 🔗</td><td class="d">→ item_set</td></tr>
+        <tr><td class="f">line_no</td><td class="d">ลำดับสมาชิก</td></tr>
+        <tr><td class="f fk">member_item_code 🔗</td><td class="d">→ item_master · สินค้าที่อยู่ในเซ็ต</td></tr>
+        <tr><td class="f">qty</td><td class="d">จำนวนต่อเซ็ต</td></tr>
+        <tr><td class="f">note</td><td class="d">เช่น “เลือก 1 จาก…”</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">สมาชิกแต่ละตัวมี <b>recipe</b> ของตัวเอง → ปุ่มเซ็ตใช้ recipe รวมของสมาชิกในการตัดสต๊อก/สูตรครัว</div>
+    </div>
+  </div>
+  <div class="note">
+    <b>ปุ่ม Item Set ผูก Recipe อย่างไร:</b> ปุ่มเซ็ต (107xxxx) ไม่เก็บ RM เอง แต่ <b>อ้างถึงสินค้าสมาชิก</b> ผ่าน <code>item_set_line</code> → สินค้าสมาชิกแต่ละตัวมี <code>recipe</code> (BOM) อยู่แล้ว → ระบบรวม Recipe ของสมาชิกทั้งหมดให้อัตโนมัติ (การตัดสต๊อก, สูตรครัว) โดยไม่ต้องกรอก RM ซ้ำ · ระบบนี้ไม่มีการคำนวณต้นทุน
+  </div>
+
+  <!-- 4. PROMOTION TRANSACTION -->
+  <h2>4. Promotion Transaction <span class="badge">ตารางเดียว — filter ด้วย target_month</span></h2>
+  <div class="note" style="margin-bottom:14px;">
+    <b>เปลี่ยนเป็น single-source:</b> เดิมเก็บ 2 ชีท (<code>working</code> button-grain + <code>month_items</code> item-grain) ที่ข้อมูลซ้ำกัน ~20 คอลัมน์ และต้องเขียน 2 ที่ → <b>ยุบเหลือตารางเดียว <code>promotion_line</code></b> (item-grain) ที่มีคอลัมน์ <code>target_month</code> ใช้ filter รายเดือน (เว็บมีฟังก์ชัน filter เดือนอยู่แล้ว) · <code>working</code> และ <code>Promotion YYYY-MM</code> กลายเป็น <b>view ที่ derive ออกมา ไม่ใช่ตารางที่แก้แยก</b>
+  </div>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🧾 promotion_line <span class="rows">(แหล่งจริงเดียว)</span></span><span class="pk">PK: target_month + campaign + short_name + item_code</span></div>
+      <table>
+        <tr><td class="f key">target_month 🔑</td><td class="d">งวด YYYY-MM — <b>คอลัมน์ที่ใช้ filter แทนการแยกชีทรายเดือน</b></td></tr>
+        <tr><td class="f key">campaign + short_name 🔑</td><td class="d">แคมเปญ + ชื่อปุ่ม POS (button) </td></tr>
+        <tr><td class="f fk">item_code 🔗</td><td class="d">→ item_master (หรือ item_set) · 1 แถว = 1 item line</td></tr>
+        <tr><td class="f">start / end</td><td class="d">ช่วงวันที่</td></tr>
+        <tr><td class="f">promo_type / channel</td><td class="d">Item Set/Coupon/Bill/Voucher + ช่องทาง <span class="key">(แยก 2 ช่อง)</span></td></tr>
+        <tr><td class="f fk">stores</td><td class="d">รายการ branch_id (Store Selection) หรือ ALL</td></tr>
+        <tr><td class="f">sale_mode</td><td class="d">Take Away / Grab / Lineman…</td></tr>
+        <tr><td class="f">code_promotion / code_item_set</td><td class="d">รหัสโปร / รหัส Item Set 107xxxx (IT กรอก)</td></tr>
+        <tr><td class="f">kitchen / cate_remark</td><td class="d">ครัว + หมวด POS (<code>catCode</code> = derive จาก item_code)</td></tr>
+        <tr><td class="f">qty / gross</td><td class="d">จำนวน · ราคาปกติ</td></tr>
+        <tr><td class="f">discount_value / discount_unit</td><td class="d">ค่า + หน่วย (฿ / %) <span class="key">(แยก 2 ช่อง)</span></td></tr>
+        <tr><td class="f">net_price / min_amount</td><td class="d">ราคาโปร · ยอดขั้นต่ำ (Bill/Voucher)</td></tr>
+        <tr><td class="f">it_status / op_status / change_status</td><td class="d">สถานะ 3 มิติ (ดู §6)</td></tr>
+        <tr><td class="f">attachment / memo_url / cancel_reason</td><td class="d">ไฟล์แนบ · MEMO · เหตุยกเลิก</td></tr>
+        <tr><td class="f">timestamp / updated_by / updated_date</td><td class="d">created / แก้ไขล่าสุด</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>👁️ VIEWS (generated · read-only)</span><span class="pk">ไม่เก็บข้อมูลซ้ำ</span></div>
+      <table>
+        <tr><td class="f">Promotion YYYY-MM</td><td class="d"><code>WHERE target_month = ?</code> → หน้างาน IT รายเดือน (อ่าน/แก้/ปิด COMPLETE บน promotion_line)</td></tr>
+        <tr><td class="f">working (IT_WORKING_SHEET)</td><td class="d">group by campaign+short_name → button-grain · ใช้: เช็คโค้ดซ้ำทั้งระบบ · feed Branch View · Campaign Tracking · export</td></tr>
+        <tr><td class="f">catCode</td><td class="d">derive = 3 หลักแรกของ item_code</td></tr>
+        <tr><td class="f">channel / type</td><td class="d">เดิม "Coupon Online" แพ็กรวม → แยกเก็บ 2 ช่อง</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">IT แก้ที่ <b>promotion_line ที่เดียว</b> → ทุก view รีเฟรชเอง · เลิก double-write · พฤติกรรมหน้าเดิมเหมือนเดิม (filter เดือน = filter target_month)</div>
+    </div>
+  </div>
+
+  <!-- 5. NPD -->
+  <h2>5. NPD &amp; Flavor <span class="badge warn">สินค้าใหม่ → ปลายทางคือ Master จริง</span></h2>
+  <div class="grid">
+    <div class="ent">
+      <div class="t"><span>🧪 npd <span class="rows">(NPD-YYYYnnn)</span></span><span class="pk">PK: id</span></div>
+      <table>
+        <tr><td class="f key">id 🔑</td><td class="d">เลขที่เอกสาร</td></tr>
+        <tr><td class="f">project / start / end</td><td class="d">ชื่อชุด + ช่วงเวลา</td></tr>
+        <tr><td class="f">category / cate_code</td><td class="d">หมวดกลาง (ใช้ทุกปุ่มใน NPD นี้)</td></tr>
+        <tr><td class="f fk">store</td><td class="d">สาขาที่ร่วม (Store Selection)</td></tr>
+        <tr><td class="f">status / it_status</td><td class="d">PENDING → CONFIRMED · IT COMPLETE</td></tr>
+        <tr><td class="f">subsets[] / items[]</td><td class="d">→ npd_subset · npd_item</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>↳ npd_subset → npd_powder</span><span class="pk">คลัง Subset กลาง</span></div>
+      <table>
+        <tr><td class="f">ss_code <span class="key">(IT)</span> / name</td><td class="d">→ ปลายทาง subset</td></tr>
+        <tr><td class="f">powders[]</td><td class="d">cmpos(IT), eng, code(rm), desc, qty, unit, spoon, price</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>↳ npd_item</span><span class="pk">ปุ่มสินค้า (มีได้หลายปุ่ม)</span></div>
+      <table>
+        <tr><td class="f">code <span class="key">(IT)</span> / name / th</td><td class="d">→ ปลายทาง item_master</td></tr>
+        <tr><td class="f">sale_modes[] / price_takeaway / price_delivery / prices{}</td><td class="d">→ ราคาแยกช่องทาง</td></tr>
+        <tr><td class="f">recipes[]</td><td class="d">code, desc, qty, unit, channels[] → ปลายทาง recipe</td></tr>
+        <tr><td class="f">formulas[]</td><td class="d">ss + choose → ปลายทาง product_formula</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note blue">
+    <b>เมื่อ NPD = CONFIRMED + IT ขึ้นปุ่มเสร็จ → เขียนเข้าตารางจริง:</b>
+    <code>npd_item</code> → <b>item_master</b> + <b>recipe</b> ·
+    <code>npd_subset</code> → <b>subset</b> + <b>subset_flavor</b> ·
+    <b style="color:#1e40af;">RM ใหม่ที่กรอกตอนเพิ่มผง → <code>rm_master</code></b> (ถ้า rm_code ยังไม่มี) ·
+    <code>npd_item.formulas</code> → <b>product_formula</b>.
+    นี่คือจุดที่ทำให้ NPD “ปิด loop” เข้าฐานข้อมูลหลัก (ก่อนหน้านี้ยังไม่กำหนดปลายทาง)
+  </div>
+
+  <!-- 6. RELATIONSHIPS -->
+  <h2>6. ความสัมพันธ์ (Relationships)</h2>
+  <div class="rel">
+    <div><code>recipe.item_code</code> <b>N ─ 1</b> <code>item_master</code> &nbsp;·&nbsp; <code>recipe.rm_code</code> <b>N ─ 1</b> <code>rm_master</code></div>
+    <div><code>item_set</code> <b>1 ─ N</b> <code>item_set_line</code> <b>N ─ 1</b> <code>item_master</code> (member) &nbsp;→&nbsp; member มี <code>recipe</code> ของตัวเอง</div>
+    <div><code>subset</code> <b>1 ─ N</b> <code>subset_flavor</code> <b>N ─ 1</b> <code>item_master</code> (ผง 103xxx)</div>
+    <div><code>product_formula</code> : <code>item_master</code> <b>N ─ N</b> <code>subset</code> (สินค้า ↔ ชุดผง พร้อม choose_qty)</div>
+    <div><code>promotion_line</code> : <code>target_month</code> = filter รายเดือน &nbsp;·&nbsp; group by campaign+short_name = <code>working</code> view &nbsp;·&nbsp; <code>stores</code> <b>N ─ N</b> <code>branch</code></div>
+    <div><code>npd_item</code> → (on confirm) <code>item_master</code>, <code>recipe</code>, <code>product_formula</code> &nbsp;·&nbsp; RM ใหม่ในผง → <code>rm_master</code> (rm_code unique)</div>
+  </div>
+
+  <!-- 7. WORKING PAGES -->
+  <h2>7. หน้าการทำงานจริง <span class="badge">merge แล้ว — pages/ItemSet.html</span></h2>
+  <div class="note">
+    <b>สถานะ:</b> Item Set Builder + Powder-Formula <b>ขึ้นระบบจริงแล้ว</b> ที่เมนู <b>ITEM SET BUILDER</b> (<code>nav-ItemSet</code> → pages/ItemSet.html) · 3 แท็บ:
+    <span class="st pill-info">① POS Button Setup</span><span class="st pill-info">② Recipe (Item Set)</span><span class="st pill-info">③ Admin: Subset Manager</span>
+    (สิทธิ์ Admin/IT) · ยังใช้ mock backend <code>PC_API</code> รอต่อ backend จริง
+  </div>
+
+  <h3 style="margin:18px 0 8px;font-size:1rem;">A. Item Set Builder (แท็บ POS Button Setup) — ผูกหลายสินค้า + รวม Recipe อัตโนมัติ</h3>
+  <div class="ui">
+    <div class="ui-top"><span class="dot"></span>Item Set Builder · <span style="font-weight:400;opacity:.8">set_code 1071366 · “Combo A”</span></div>
+    <div class="ui-body">
+      <div class="ui-col">
+        <h5>🔎 เลือกสินค้าเข้าเซ็ต (item_master)</h5>
+        <div class="ui-item">Mega Fries <small>101003</small></div>
+        <div class="ui-item">Large Chicken Pop <small>104002</small></div>
+        <div class="ui-item">Pepsi 22oz <small>201010</small></div>
+        <div class="ui-item" style="color:#9aa3ab">… ค้นหา/เลือกเพิ่ม</div>
+      </div>
+      <div class="ui-col">
+        <h5>🎁 สมาชิกในเซ็ต (item_set_line) + Recipe รวม</h5>
+        <table class="mini-tbl">
+          <tr><th>Member</th><th>Qty</th><th>Recipe (BOM) ที่ผูกมาด้วย</th></tr>          <tr><td>Mega Fries <small>101003</small></td><td>1</td><td><span class="chip rm">3116 ฟรายส์ 110G</span><span class="chip rm">4001 ถ้วย</span></td></tr>
+          <tr><td>Large Chicken Pop <small>104002</small></td><td>1</td><td><span class="chip rm">3201 ไก่ป๊อป</span><span class="chip rm">4003 ถ้วย</span></td></tr>
+          <tr><td>Pepsi 22oz <small>201010</small></td><td>1</td><td><span class="chip rm">5002 น้ำอัดลม</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="note">เลือกสินค้าสมาชิก → ระบบ <b>ดึง Recipe (BOM) ของแต่ละตัวมาผูกให้เอง</b> ไม่ต้องกรอก RM ใหม่ · ปุ่มเซ็ตใช้ Recipe ของสมาชิกในการตัดสต๊อก/สูตรครัว</div>
+
+  <h3 style="margin:26px 0 8px;font-size:1rem;">B. Powder-Formula / Subset Manager (แท็บ Admin) — สินค้าใช้สูตรผงอะไร</h3>
+  <div class="ui">
+    <div class="ui-top"><span class="dot"></span>Powder-Formula Binding · <span style="font-weight:400;opacity:.8">ผูก item ↔ subset (product_formula)</span></div>
+    <div class="ui-body">
+      <div class="ui-col">
+        <h5>🍟 เลือกปุ่มสินค้า (item_master)</h5>
+        <div class="ui-item sel">Flavored Mega Fries <small>101050</small></div>
+        <div class="ui-item">Flavored Chicken Pop <small>104070</small></div>
+        <div class="ui-item">Flavored Wings <small>108090</small></div>
+      </div>
+      <div class="ui-col">
+        <h5>🧂 ผูกสูตรผง (subset) ให้สินค้าที่เลือก</h5>
+        <table class="mini-tbl">
+          <tr><th>Subset (ชุดผง)</th><th>SS Code</th><th>เลือกได้</th><th>จำนวนผงในชุด</th></tr>
+          <tr><td>Flavored Fries 1</td><td>SS0001</td><td>1 ผง</td><td>10 ผง</td></tr>
+          <tr><td>Flavored Fries 3</td><td>SS0011</td><td>1 ผง</td><td>8 ผง</td></tr>
+        </table>
+        <div style="padding:10px 12px;">
+          <span class="chip">SS0001 · เลือก 1</span><span class="chip">SS0011 · เลือก 1</span><span class="chip add">+ ผูก Subset เพิ่ม</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note">เลือกสินค้า → ผูกว่าใช้ผงจาก <b>Subset ไหน เลือกได้กี่ผง</b> → บันทึกเป็น <code>product_formula</code> · หน้านี้ตอบคำถาม “สินค้าตัวนี้ใช้สูตรผงอะไร” และเป็นปลายทางของ <code>npd_item.formulas</code> เมื่อ NPD ผ่าน</div>
+
+  <!-- 8. WORKFLOW -->
+  <h2>8. Workflow / Data Flow</h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="step"><span class="role">MKT</span><h4>1. เสนอโปรฯ</h4><p>Item Set / Coupon / Bill / Voucher → <b>promotion_line</b></p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">IT</span><h4>2. ตั้งค่า POS</h4><p>กรอก Code / Item Set / Kitchen → <b>it_status: COMPLETE</b></p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">OP</span><h4>3. ตรวจสอบ</h4><p>ถูกต้อง / ตีกลับ → <b>op_status</b></p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">สาขา</span><h4>4. Branch View</h4><p>เห็นเฉพาะ <b>CONFIRMED</b> + Memo</p></div>
+    </div>
+    <div style="margin-top:18px; font-size:.85rem;">
+      <b>สถานะ 3 มิติ (แยกกัน):</b><br>
+      <span class="st pill-warn">it_status: PENDING</span><span class="st pill-ok">COMPLETE</span> |
+      <span class="st pill-warn">op_status: WAITING</span><span class="st pill-ok">CONFIRMED</span><span class="st pill-red">REJECTED→กลับ IT</span> |
+      <span class="st pill-info">change_status: EXTENDED/REDUCED</span><span class="st pill-dark">CANCELLED</span>
+    </div>
+  </div>
+
+  <h2>9. NPD → Master Flow <span class="badge new">ปิด loop เข้าฐานข้อมูลจริง</span></h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="step"><span class="role">MKT/RD</span><h4>กรอก NPD</h4><p>คลัง Subset + ปุ่มสินค้า + Recipe (ผูกช่องทาง) + formulas → <b>npd</b> (PENDING)</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">IT</span><h4>ขึ้นปุ่ม</h4><p>กรอก item_code / SS / CMPOS → <b>it COMPLETE</b></p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">OP</span><h4>ตรวจ</h4><p>CONFIRMED / REJECTED</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#2563eb;"><span class="role" style="background:#2563eb;">ระบบ</span><h4>เขียน Master</h4><p>→ <b>item_master · recipe · subset · product_formula · rm_master</b> (RM ใหม่)</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#00783E;"><span class="role">สาขา</span><h4>Branch View</h4><p>หลัง OP ยืนยันถูกต้อง → ขึ้นที่ <b>แท็บ "สินค้าใหม่"</b> ให้สาขาเห็น</p></div>
+    </div>
+  </div>
+
+  <h2>10. ชุดชีทกรอกข้อมูลเทส <span class="badge new">master_data_v2 / Excel — 11 ชีต</span></h2>
+  <div class="rel">
+    <div><code>1_Branches</code> → <b>branch</b> &nbsp;·&nbsp; <code>2_Categories</code> → หมวด (cate_code) &nbsp;·&nbsp; <code>3_Items</code> → <b>item_master</b> (รวมผง 103xxx)</div>
+    <div><code>4_RM_Master</code> → <b>rm_master</b> &nbsp;·&nbsp; <code>5_Subsets</code> → <b>subset</b> (SS Code, Subset Name, <b>Min/Max</b>) &nbsp;·&nbsp; <code>6_Subset_Flavors</code> → <b>subset_flavor</b> (ผงไหนอยู่ชุดไหน + add-on)</div>
+    <div><code>7_Item_Subset_Map</code> → <b>product_formula</b> (item_code ↔ ss_code) &nbsp;·&nbsp; <code>8_Recipe_BOM</code> → <b>recipe</b> (ทุก item รวมผง 103xxx · แยก Sale Mode)</div>
+    <div><code>9_ItemSet</code> → <b>item_set</b> (107xxxx) &nbsp;·&nbsp; <code>10_ItemSet_Lines</code> → <b>item_set_line</b> (สมาชิกในเซ็ต)</div>
+    <div><code>11_Users</code> → <b>users</b> + role (Admin/MKT/IT/OP)</div>
+  </div>
+  <div class="note">แต่ละไฟล์ = หัวคอลัมน์แถวแรก + แถวตัวอย่าง · <b>Subset เก็บแค่ SS Code/ชื่อ/Min/Max — RM ของผงอยู่ใน Recipe_BOM</b> (ไหลมาตอน IT Settlement กดบันทึกหน้าผง/NPD) · ไฟล์ที่ต้องการของจริงมากสุด: <b>4_RM_Master, 5_Subsets, 6_Subset_Flavors, 7_Item_Subset_Map</b></div>
+
+  <!-- 11. RD STICKER SCHEMA -->
+  <h2>11. ระบบเลขสติ๊กเกอร์สรรพากร (RD Sticker) <span class="badge new">แจ้งเพิ่ม / ยกเลิก / จดใหม่</span></h2>
+  <div class="note blue">
+    <b>ขอบเขต:</b> จัดการเลขสติ๊กเกอร์สรรพากรของเครื่อง POS (Cash RD Number / RD Shop Code) ครบ flow — <b>แจ้งเพิ่มเลขครั้งแรก</b> (RD Sticker Management) และ <b>ยกเลิก/จดใหม่</b> แบบเปิดเคส (RD Cancel &amp; Re-register) · ผูกกับฮาร์ดแวร์เครื่อง POS รายสาขา (165 สาขา) · ปัจจุบันเป็น mock (localStorage <code>pc_rd_*</code>) รอต่อ backend จริง
+  </div>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🏬 branch <span class="rows">(branch-master.js · 165)</span></span><span class="pk">PK: branch_id</span></div>
+      <table>
+        <tr><td class="f key">branch_id 🔑</td><td class="d">รหัสสาขา · name/nameTH · type (COCO/DOCO/DODO/DODO-M…)</td></tr>
+        <tr><td class="f">company</td><td class="d">บริษัทแฟรนไชส์/แม่ที่สาขาสังกัด → ใช้ route หา Admin FRC</td></tr>
+        <tr><td class="f">shop_no / address</td><td class="d">เลขที่สาขา 5 หลัก (zero-pad) · ที่อยู่ (แก้ได้ตอนแจ้งเพิ่ม)</td></tr>
+        <tr><td class="f fk">active_device_id 🔗</td><td class="d">→ pos_device · <b style="color:#1e40af;">ตัวชี้เครื่องที่ใช้งานอยู่ (denormalized เพื่อความสะดวก)</b></td></tr>
+        <tr><td class="f">active / op_status</td><td class="d">Active–Inactive (แสดงในระบบ) · Operating–Closed (สถานะ)</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">แก้ Type/Status ใน Master → สร้าง <code>rd_trigger</code> เข้าคิวยกเลิก/จดใหม่อัตโนมัติ</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🖥️ pos_device <span class="rows">(ใหม่ — เครื่อง POS รายตัว)</span></span><span class="pk">PK: device_id</span></div>
+      <table>
+        <tr><td class="f key">device_id 🔑</td><td class="d">รหัสเครื่อง (1 สาขามีได้หลายเครื่องตามช่วงเวลา)</td></tr>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · เครื่องอยู่สาขาไหน</td></tr>
+        <tr><td class="f key">cash_rd_number</td><td class="d"><b style="color:#d97706;">เลขสติ๊กเกอร์ผูกกับเครื่อง</b> — เปลี่ยนเครื่อง = เลขใหม่</td></tr>
+        <tr><td class="f">rd_shop_code</td><td class="d">RD Shop Code ของเครื่อง</td></tr>
+        <tr><td class="f">brand_model / machine_type / spec_machine</td><td class="d">ยี่ห้อเครื่อง (Toshiba POS)</td></tr>
+        <tr><td class="f">serial_number</td><td class="d"><b style="color:#d97706;">S/N — unique ต่อเครื่อง</b></td></tr>
+        <tr><td class="f">status</td><td class="d">active / retired (ปลดระวางแล้ว)</td></tr>
+        <tr><td class="f">install_date / retire_date</td><td class="d">วันติดตั้ง / ปลดระวาง → ประวัติเครื่องรายสาขา</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">เคสยกเลิก/จดใหม่อัปเดตเครื่อง <b>old_device → new_device</b> — เครื่องเก่า retire, เครื่องใหม่ active + cash_rd ใหม่ (oldMachineAllowed = ใช้เครื่องเดิมต่อ ไม่ออกเลขใหม่)</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🧾 rd_record <span class="rows">(pc_rd_records · แจ้งเพิ่มเลข)</span></span><span class="pk">PK: id</span></div>
+      <table>
+        <tr><td class="f key">id 🔑</td><td class="d">เลขที่คำขอแจ้งเพิ่ม (ขอครั้งแรก)</td></tr>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · 1 record = 1 สาขา</td></tr>
+        <tr><td class="f fk">device_id 🔗</td><td class="d">→ pos_device · เครื่องที่ขอเลข (ขอครั้งแรก)</td></tr>
+        <tr><td class="f">cash / shop / shop_no / address</td><td class="d">เลขที่กรอก (prefill จาก branch ให้ตรวจสอบ)</td></tr>
+        <tr><td class="f">req_doc</td><td class="d"><b>แนบ ภ.พ.06</b> รูป/PDF (บังคับ ห้ามว่าง)</td></tr>
+        <tr><td class="f">status</td><td class="d">SUBMITTED → IN_POS → CONFIRMED / ISSUE</td></tr>
+        <tr><td class="f">visibility</td><td class="d">{mode, ids} · default <code>company</code> (ตั้งค่าหลังบ้าน)</td></tr>
+        <tr><td class="f">submitted_by / role</td><td class="d">HO / FRC (ผ่าน gen-link)</td></tr>
+      </table>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🔁 rd_case <span class="rows">(pc_rd_cases · ยกเลิก/จดใหม่)</span></span><span class="pk">PK: id</span></div>
+      <table>
+        <tr><td class="f key">id 🔑</td><td class="d">เลขที่เคส · <b>fk</b> case_id → rd_workflow</td></tr>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · ดึง type/company/cash_rd</td></tr>
+        <tr><td class="f">cancel / re_register</td><td class="d">การดำเนินการ (ยกเลิก / จดใหม่)</td></tr>
+        <tr><td class="f">old_num / new_cash_rd</td><td class="d">เลขเดิมที่ยกเลิก · เลขใหม่ที่ Admin COCO เพิ่ม</td></tr>
+        <tr><td class="f fk">old_device / new_device 🔗</td><td class="d">→ pos_device · เครื่องเก่า retire → เครื่องใหม่ active · await_machine (รอ CMPOS) · oldMachineAllowed = ใช้เครื่องเดิมไม่แจ้ง</td></tr>
+        <tr><td class="f">forward_to_frc / frc_company / frc_done</td><td class="d"><b style="color:#6b3fa0;">COCO ส่งต่อ FRC (type ≠ COCO)</b> · FRC ยืนยันแล้ว</td></tr>
+        <tr><td class="f">branch_update</td><td class="d">แก้ข้อมูลสาขาในเคส (editBranch) → เขียนกลับ master</td></tr>
+        <tr><td class="f">status / history[]</td><td class="d">OPEN → COORD → NEW_ADDED → DONE · log</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>⚙️ rd_workflow <span class="rows">(pc_rd_workflow · เคสตั้งค่าได้)</span></span><span class="pk">PK: case_id</span></div>
+      <table>
+        <tr><td class="f key">case_id 🔑</td><td class="d">broken·relicense·transfer·renovate·relocate·close</td></tr>
+        <tr><td class="f">routes[]</td><td class="d">{types[], to, actions[]} → resolve เป็น <b>COCO เสมอ</b></td></tr>
+        <tr><td class="f">machine_change / old_machine_allowed</td><td class="d">เปลี่ยนเครื่อง · ใช้เครื่องเก่าได้</td></tr>
+        <tr><td class="f">franchise_guide / edit_branch / trigger</td><td class="d">แนวทางแฟรนไชส์ · แก้สาขา · เงื่อนไขไหลจาก Master</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>📥 rd_trigger <span class="rows">(pc_rd_triggers)</span></span><span class="pk">งานไหลจาก Master</span></div>
+      <table>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch ที่ Type/Status เปลี่ยน</td></tr>
+        <tr><td class="f">kind</td><td class="d">tocoCo (แฟรนไชส์→COCO) · closed (Operating→Closed)</td></tr>
+        <tr><td class="f">cases[]</td><td class="d">เคสที่แนะนำ (TRIGGER_META) → เปิดเคสต่อ</td></tr>
+      </table>
+    </div>
+    <div class="ent">
+      <div class="t"><span>👥 rd_admins · channels · access</span><span class="pk">routing + แจ้งเตือน</span></div>
+      <table>
+        <tr><td class="f">coco_admin</td><td class="d">Admin บริษัทแม่ (จุดรับเรื่องทุกเคส)</td></tr>
+        <tr><td class="f">company_admins{}</td><td class="d">Admin FRC รายบริษัทแฟรนไชส์</td></tr>
+        <tr><td class="f">channels / cancel_tpl</td><td class="d">email/chat/line + เทมเพลต ({forward} = COCO→FRC)</td></tr>
+        <tr><td class="f">access / links / perms</td><td class="d">allow-list login · gen-link FRC (token) · สิทธิ์แก้ workflow</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>12. RD Sticker — Routing &amp; Flow <span class="badge new">ทุกเคส → COCO → (ส่งต่อ) FRC</span></h2>
+  <div class="note" style="background:#f8f4fd;border-left-color:#6b3fa0;">
+    <b style="color:#6b3fa0;">โมเดล routing (v7):</b> ทุกเคส ทุกประเภทสาขา → ส่งเมลแจ้ง <b>Admin COCO (บริษัทแม่)</b> เป็นจุดเดียว · ถ้าเป็นประเภทที่ <b>ไม่ใช่ COCO</b> (แฟรนไชส์) → COCO เป็นผู้ <b>ประสาน/ส่งต่อให้ Admin FRC</b> เอง — IT ไม่ต้องระบุ FRC โดยตรง (ลดความสับสนว่าใครดูแลภายใน COCO/FRC)
+  </div>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="step"><span class="role">IT</span><h4>เปิดเคส</h4><p>เลือกสาขา → เคส (กรองตาม type) → ดึง cash_rd เดิม + เครื่องเก่า → <b>rd_case</b> (OPEN)</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#6b3fa0;"><span class="role" style="background:#6b3fa0;">COCO</span><h4>รับเรื่อง</h4><p>ยกเลิกเลขเดิม → COORD · (จดใหม่) เพิ่ม new_cash_rd → NEW_ADDED</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#9a6700;"><span class="role" style="background:#9a6700;">FRC</span><h4>แฟรนไชส์</h4><p><b>เฉพาะ type ≠ COCO</b> · ทำเอกสาร/แนวทางแฟรนไชส์ → frc_done → แจ้งกลับ COCO</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#00783E;"><span class="role">สาขา</span><h4>ตรวจใบเสร็จ</h4><p>เลขใหม่ขึ้นใบเสร็จถูกต้อง → <b>DONE</b></p></div>
+    </div>
+    <div style="margin-top:18px; font-size:.85rem;">
+      <b>บทบาทติดตามสถานะ:</b><br>
+      <span class="st pill-info">IT — ดูอย่างเดียว (track)</span>
+      <span class="st" style="background:#ede5f7;color:#6b3fa0;">Admin COCO — คิวงาน + ปุ่ม action</span>
+      <span class="st" style="background:#fbf0d9;color:#9a6700;">FRC — เปิดลิงก์ ?role=FRC เห็นเฉพาะเคสที่ COCO ส่งต่อ</span>
+    </div>
+    <div style="margin-top:12px; font-size:.85rem;">
+      <b>เครื่อง POS (เก่า → ใหม่):</b>
+      <span class="st pill-ok">oldMachineAllowed → ใช้เครื่องเดิม (ไม่ต้องแจ้ง)</span>
+      <span class="st pill-warn">เปลี่ยนเครื่อง → IT กรอก/ส่งลิงก์ CMPOS (?machine=caseId)</span>
+    </div>
+  </div>
+  <div class="note">
+    <b>ความสัมพันธ์:</b>
+    <code>rd_case.case_id</code> <b>N ─ 1</b> <code>rd_workflow</code> ·
+    <code>rd_case.branch_id</code> / <code>rd_record.branch_id</code> <b>N ─ 1</b> <code>branch</code> ·
+    <code>rd_case.forward_to_frc</code> = (branch.type ≠ COCO) → ใช้ <code>company_admins[company]</code> ·
+    <code>rd_trigger</code> (จาก Master) <b>1 ─ N</b> <code>rd_case</code> (เปิดเคสต่อ)<br>
+    <code>branch</code> <b>1 ─ N</b> <code>pos_device</code> (เครื่องรายตัวตามช่วงเวลา, active 1 เครื่อง) · <code>cash_rd_number</code> ผูกที่ <code>pos_device</code> — เปลี่ยนเครื่อง = เลขใหม่ · <code>rd_case.old_device/new_device</code> <b>N ─ 1</b> <code>pos_device</code>
+  </div>
+
+  <!-- 13. TENDER / EDC + BILL DIFF SCHEMA -->
+  <h2>13. Tender / EDC &amp; แจ้งปิดบิลไม่ตรง (Diff) <span class="badge new">สาขา→บัญชี/IT · มี AI Audit</span></h2>
+  <div class="note blue">
+    <b>ขอบเขต:</b> 3 งานที่เชื่อมกัน — <b>แจ้งเปิด-ปิด Tender</b> (pages/Tender.html), <b>แจ้งปิดบิลไม่ตรง/Diff</b> (pages/BillDiff.html) และ <b>วิเคราะห์ Audit</b> (pages/DiffAnalysis.html) · อ้างอิงปุ่มโปรจาก <code>promotion_line</code>/working (ผ่าน <code>getBranchPromotions</code>) เพื่อ cross-check · ปัจจุบันเป็น mock (localStorage <code>pc_tender_*</code> / <code>pc_billdiff_reports</code>) รอต่อ backend จริง
+  </div>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>💳 tender_master <span class="rows">(PC_TENDER_MASTER · pc_tender_master)</span></span><span class="pk">PK: code + sale_mode</span></div>
+      <table>
+        <tr><td class="f key">code 🔑</td><td class="d">Tender Code (CSH, T006, 6WCP, 2ALI, 1TRM, SPF, RBH, GOK, GRP…)</td></tr>
+        <tr><td class="f">name</td><td class="d">Tender Name (Cash, PROMPTPAY|KPLUS, WeChat Pay…)</td></tr>
+        <tr><td class="f key">sale_mode</td><td class="d">Take Away / Delivery — <b>ช่องเดียวกันต่าง mode ถือเป็นคนละแถว</b> (SPF มีทั้ง 2)</td></tr>
+        <tr><td class="f">kind</td><td class="d"><code>standard</code> = เปิดบน POS หลักเป็นมาตรฐาน · <code>manual</code> = พิเศษ/สำรอง สาขาขอเปิดเอง (M-EDC, QR PromptPay Manual, EDC Manual)</td></tr>
+        <tr><td class="f">iface</td><td class="d">Y = เครื่อง EDC <b>interface กับ POS</b> (รูดบัตรอัตโนมัติ) — เช่น T006 KPLUS</td></tr>
+        <tr><td class="f">note</td><td class="d">หมายเหตุ</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">ตั้งค่าที่ <b>pages/TenderSettings.html</b> · BillDiff ดึง master นี้มาสร้างแถวกรอกยอดราย tender ตาม sale_mode</div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🏪 branch_edc <span class="rows">(pc_branch_edc)</span></span><span class="pk">PK: branch_id</span></div>
+      <table>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · แต่ละสาขาใช้ EDC อะไร/ไม่ใช้</td></tr>
+        <tr><td class="f">edc_brand / model</td><td class="d">ธนาคาร/รุ่นเครื่อง EDC ของสาขา</td></tr>
+        <tr><td class="f">iface / has_edc</td><td class="d">interface กับ POS ไหม · สาขามีเครื่องหรือไม่</td></tr>
+        <tr><td class="f">note</td><td class="d">หมายเหตุรายสาขา</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">บันทึกว่าสาขาไหนใช้ EDC อะไร / ไม่มีเครื่อง — ช่วยตีความเคส Tender/EDC ไม่ตรง</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🔔 tender_request <span class="rows">(pc_tender_requests)</span></span><span class="pk">PK: id (TND-xxxx)</span></div>
+      <table>
+        <tr><td class="f key">id 🔑</td><td class="d">TND-0001… · คำขอเปิด/ปิด tender</td></tr>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · สาขาที่ขอ</td></tr>
+        <tr><td class="f fk">tender_id 🔗</td><td class="d">→ tender_master · ช่องที่ขอเปิด/ปิด</td></tr>
+        <tr><td class="f">action</td><td class="d">OPEN / CLOSE</td></tr>
+        <tr><td class="f">reason / requester</td><td class="d">เหตุผล · ผู้แจ้ง (สาขา)</td></tr>
+        <tr><td class="f">status</td><td class="d">SUBMITTED → APPROVED → DONE / REJECTED</td></tr>
+        <tr><td class="f">approved_by / opened_by</td><td class="d">บัญชีอนุมัติ · IT เปิดบน POS + timestamp</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">flow: สาขาแจ้ง → บัญชีอนุมัติ → IT เปิด → แจ้งสาขา</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>⚖️ bill_diff_report <span class="rows">(pc_billdiff_reports)</span></span><span class="pk">PK: id (BD-xxxx)</span></div>
+      <table>
+        <tr><td class="f key">id 🔑</td><td class="d">BD-0001… · คำแจ้งปิดบิลไม่ตรง</td></tr>
+        <tr><td class="f fk">branch_id 🔗</td><td class="d">→ branch · สาขาที่แจ้ง</td></tr>
+        <tr><td class="f">date / sale_mode</td><td class="d">วันที่ปิดกะ/บิล · Take Away / Delivery</td></tr>
+        <tr><td class="f">tenders[]</td><td class="d"><b>ยอดแยกราย tender</b>: {code, name, pos, actual} → diff = actual − pos (ระบบชี้ว่า diff อยู่ tender ไหน)</td></tr>
+        <tr><td class="f">causes[] / other_cause</td><td class="d">สาเหตุที่คาด: BTN/PRICE/DISC (ปุ่ม) · TENDER/NOCHARGE (EDC) · HUMAN/OTHER</td></tr>
+        <tr><td class="f fk">campaign_ref / item_ref</td><td class="d">→ promotion_line/working · อ้างโปร/ปุ่มที่มีปัญหา</td></tr>
+        <tr><td class="f">evidence{}</td><td class="d">รูปแนบ (data URL[]): zreport · receipt · pos · edc — <b>บังคับตามสาเหตุที่เลือก</b></td></tr>
+        <tr><td class="f">ai_finding / ai_decision</td><td class="d"><b style="color:#6b3fa0;">AI ตรวจตอนแจ้ง</b>: พบปุ่มในระบบไหม + สาขายืนยัน (accept/reject)</td></tr>
+        <tr><td class="f">status / review / ai_audit</td><td class="d">SUBMITTED → RESOLVED / RETURNED · ผลตรวจบัญชี (cause_confirmed) · AI Audit ฝั่งบัญชี</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">flow: สาขาแจ้ง+แนบหลักฐาน → (AI ช่วยเช็คปุ่มก่อนส่ง) → บัญชีตรวจสอบ (มี AI Audit ช่วย) → ปิดเคส</div>
+    </div>
+  </div>
+  <div class="note" style="background:#f8f4fd;border-left-color:#6b3fa0;">
+    <b style="color:#6b3fa0;">AI / Audit ทำงานอย่างไร:</b> ระบบดึงปุ่มโปรของสาขาจาก <code>getBranchPromotions(branch_id, month)</code> → เทียบกับสิ่งที่สาขาแจ้ง:
+    ถ้าสาขาอ้าง "ปุ่มไม่ขึ้น" แต่ปุ่มนั้น <code>it_status=COMPLETE</code> แล้ว → <b>น่าสงสัย (ควร audit)</b> · ถ้าปุ่มยังไม่ COMPLETE → <b>มีมูลว่าปุ่มไม่ขึ้นจริง</b> · จับคู่ sale_mode/ราคาได้ว่า diff อยู่ mode ไหน · <b>มี fallback คำนวณจากข้อมูลระบบเมื่อ AI ไม่พร้อม</b>
+  </div>
+  <div class="note">
+    <b>ความสัมพันธ์:</b>
+    <code>tender_request.branch_id</code> / <code>bill_diff_report.branch_id</code> <b>N ─ 1</b> <code>branch</code> ·
+    <code>tender_request.tender_id</code> <b>N ─ 1</b> <code>tender_master</code> ·
+    <code>bill_diff_report.tenders[].code</code> <b>N ─ 1</b> <code>tender_master</code> ·
+    <code>bill_diff_report.campaign_ref</code> <b>→</b> <code>promotion_line</code>/working (cross-check) ·
+    <code>branch_edc.branch_id</code> <b>1 ─ 1</b> <code>branch</code>
+  </div>
+
+  <h2>14. Bill Diff — งานสาขา &amp; Audit Flow <span class="badge new">สาขา → AI → บัญชี</span></h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="step"><span class="role">สาขา</span><h4>1. แจ้ง diff</h4><p>กรอกยอด POS vs ยอดจริงราย tender + สาเหตุ + แนบหลักฐาน → <b>bill_diff_report</b></p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#6b3fa0;"><span class="role" style="background:#6b3fa0;">AI</span><h4>2. ช่วยเช็ค</h4><p>"ใช่โปรนี้ไหม?" — เทียบปุ่มใน IT Settlement ลดการแจ้งผิด</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="role">บัญชี</span><h4>3. ตรวจสอบ</h4><p>ดูหลักฐาน + ข้อมูล IT Settlement + AI Audit → ยืนยันสาเหตุ / ตีกลับ</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#2563eb;"><span class="role" style="background:#2563eb;">IT/บัญชี</span><h4>4. Audit</h4><p>หน้า DiffAnalysis — สรุปสาเหตุรวม · สาขาแจ้งบ่อย · เคสน่าสงสัย</p></div>
+    </div>
+    <div style="margin-top:18px; font-size:.85rem;">
+      <b>สถานะ bill_diff_report:</b><br>
+      <span class="st pill-warn">SUBMITTED — รอบัญชีตรวจ</span>
+      <span class="st pill-ok">RESOLVED — ปิดเคส (cause_confirmed)</span>
+      <span class="st pill-red">RETURNED — ตีกลับขอข้อมูลเพิ่ม</span>
+    </div>
+    <div style="margin-top:12px; font-size:.85rem;">
+      <b>สถานะ tender_request:</b>
+      <span class="st pill-warn">SUBMITTED — รอบัญชีอนุมัติ</span>
+      <span class="st pill-info">APPROVED — รอ IT เปิด</span>
+      <span class="st pill-ok">DONE — เปิดบน POS + แจ้งสาขา</span>
+      <span class="st pill-red">REJECTED — ตีกลับ</span>
+    </div>
+  </div>
+
+  <h2>15. โมเดลข้อมูลโปรโมชัน → ตารางไหน + MKT Report <span class="badge new">item_master vs promotion_line vs Transec</span></h2>
+  <div class="note blue">
+    <b>หลักการ:</b> แยก 3 บทบาท — <b>item_master</b> (ของที่ขายได้จริง/ตัวเลือก) · <b>promotion_line</b> (นิยาม/แผนโปร ทุกชนิด แยกด้วย <code>promoType</code>) · <b>Transec</b> (ยอดขายจริงจาก POS) · เชื่อมกันด้วย <b>code</b>
+  </div>
+  <div class="grid">
+    <div class="ent hl">
+      <div class="t"><span>🍟 item_master</span><span class="pk">PK: item_code</span></div>
+      <table>
+        <tr><td class="f key">item_code 🔑</td><td class="d">รหัสสินค้า (CMPOS)</td></tr>
+        <tr><td class="f">item_name / category</td><td class="d">ชื่อ + หมวด</td></tr>
+        <tr><td class="f">price_ta / price_dlv</td><td class="d">ราคา Take Away / Delivery</td></tr>
+        <tr><td class="f">itemType</td><td class="d"><code>SINGLE</code>(NPD) · <code>SET</code>(เซ็ตโปร) · <code>SUBSET</code>(ผงกลาง) · <code>VOUCHER</code>(บัตรขายเป็นปุ่ม)</td></tr>
+        <tr><td class="f">active</td><td class="d">โชว์เป็นตัวเลือก: <b>SINGLE=1</b> · <b>SET/SUBSET=0 (ซ่อน default)</b></td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#1e40af;border-top:1px dashed #c3d6ff;background:#f7faff;">เก็บเฉพาะ "ของขายได้จริง" · Coupon/Bill Discount <b>ไม่เข้า</b> · จัดการที่หน้า "ข้อมูลหลัก — สินค้า" (flag <code>pc_product_flags</code>)</div>
+    </div>
+    <div class="ent hl">
+      <div class="t"><span>🎯 promotion_line <span class="rows">(store.months)</span></span><span class="pk">discriminator: promoType</span></div>
+      <table>
+        <tr><td class="f key">campaign / shortName</td><td class="d">แคมเปญ + ชื่อปุ่ม</td></tr>
+        <tr><td class="f">promoType</td><td class="d"><code>Item Set</code> · <code>Item Coupon</code> · <code>Voucher</code> · <code>Bill Discount</code> · <code>Promotion</code></td></tr>
+        <tr><td class="f">items[]</td><td class="d">ส่วนประกอบ: itemCode · qty · <b>gross · discount · netPrice</b></td></tr>
+        <tr><td class="f">codePromotion / codeItemSet</td><td class="d">โค้ดเชื่อมไป POS + Transec</td></tr>
+        <tr><td class="f">start / end / stores</td><td class="d">ช่วงเวลา + สาขาที่ร่วม</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#6b3fa0;border-top:1px dashed #e0d4f5;background:#faf7ff;"><b>1 ตารางทุกชนิดโปร</b> (ไม่แยกตารางราย type) → <b>MKT report แผนโปร ดึงได้ทันที</b> (ราคา/ส่วนลด/ยอดรวม group by promoType) ไม่ต้องรอขายจริง</div>
+    </div>
+    <div class="ent">
+      <div class="t"><span>🧾 transaction (Transec)</span><span class="pk">PK: bill_line_id</span></div>
+      <table>
+        <tr><td class="f fk">item_code / promo_code 🔗</td><td class="d">→ item_master / promotion_line</td></tr>
+        <tr><td class="f">qty / amount / discount</td><td class="d">ยอดขาย <b>จริง</b> รายบิล</td></tr>
+        <tr><td class="f">branch / datetime / tender</td><td class="d">สาขา · เวลา · ช่องชำระ</td></tr>
+      </table>
+      <div style="padding:8px 14px;font-size:.74rem;color:#888;border-top:1px dashed #e8ebee;">เกิด<b>เฉพาะตอนขายจริงที่ POS</b> · MKT report ผลการขาย join กับ promotion_line ด้วย code (มีตอน go-live)</div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top:14px">
+    <div class="flow-row">
+      <div class="step"><span class="role">NPD / Item Set</span><h4>1. ตั้งโปร</h4><p>กรอกฟอร์ม → <b>promotion_line</b> (items + ราคา/ส่วนลด/ยอดรวม) · itStatus=PENDING</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#9a6700;"><span class="role" style="background:#9a6700;">IT</span><h4>2. ทำปุ่มเสร็จ</h4><p>ใส่ code → COMPLETE · ถ้าเป็น SET/VOUCHER → register เข้า <b>item_master</b> (itemType, active=0)</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#2f6dba;"><span class="role" style="background:#2f6dba;">POS</span><h4>3. ขายจริง</h4><p>ปุ่มอยู่หมวด Promotion Set · ลูกค้าซื้อ → สร้าง <b>transaction</b> อ้าง code</p></div>
+      <div class="arrow">→</div>
+      <div class="step" style="border-color:#00783E;"><span class="role" style="background:#00783E;">MKT</span><h4>4. Report</h4><p><b>แผนโปร</b> จาก promotion_line (ทันที) + <b>ผลขายจริง</b> จาก Transec (หลัง go-live)</p></div>
+    </div>
+  </div>
+
+  <p style="text-align:center; color:#aaa; font-size:.8rem; margin-top:40px;">Potato Corner Promotion System · Database Schema v7 · §0 โครงสร้างจริง (pc_* stores → Cloudflare D1) + §1–15 logical model (Database.xlsx · RD Sticker · Tender/EDC/Bill Diff · Promotion Data Model)</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!-- BRANCH WORK — left-rail + landing grid/list toggle -->
+<style>
+  #bw2-page{ padding:0; }
+  #bw2-page .bw2-head{ background:linear-gradient(100deg,#1a1d20,#2a2f34); color:#fff; border-radius:0 0 16px 16px; padding:18px 24px; display:flex; align-items:center; gap:14px; }
+  #bw2-page .bw2-head .ic{ width:46px; height:46px; border-radius:12px; background:var(--pc-yellow,#2e934a); color:#1a1d20; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex:0 0 auto; }
+  #bw2-page .bw2-head h2{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.95rem; margin:0; text-transform:uppercase; letter-spacing:.3px; }
+  #bw2-page .bw2-crumb{ font-size:1rem; color:#9aa7b4; font-weight:600; }
+  #bw2-page .bw2-crumb b{ color:#ffffff; }
+  #bw2-page .bw2-vtog{ display:flex; gap:3px; background:rgba(255,255,255,.1); border-radius:8px; padding:3px; margin-left:auto; }
+  #bw2-page .bw2-vbtn{ border:none; background:transparent; color:rgba(255,255,255,.55); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:.9rem; transition:all .15s; }
+  #bw2-page .bw2-vbtn.on{ background:rgba(255,255,255,.2); color:#fff; }
+  #bw2-page .pm-layout{ display:flex; gap:18px; align-items:flex-start; margin:18px; }
+  #bw2-page .pm-rail{ width:230px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+  #bw2-page .pm-rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+  #bw2-page .pm-rail-item{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+  #bw2-page .pm-rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+  #bw2-page .pm-rail-item:hover{ background:#f4f6f9; }
+  #bw2-page .pm-rail-item.on{ background:var(--pc-dark,#1a1d20); color:#fff; }
+  #bw2-page .pm-rail-item.on i{ color:#ffffff; }
+  #bw2-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; position:relative; min-height:82vh; }
+  /* landing grid */
+  #bw2-page .bw2-landing{ padding:24px; }
+  @media(max-width:640px){
+    #bw2-page .pm-layout{ flex-direction:column; margin:12px; gap:12px; }
+    #bw2-page .pm-rail{ width:100%; position:static; top:auto; }
+    #bw2-page .pm-main{ min-height:auto; }
+    #bw2-page .bw2-landing{ padding:16px; }
+    #bw2-page .bw2-grid{ grid-template-columns:1fr 1fr; gap:12px; }
+    #bw2-page .bw2-head{ padding:15px 16px; }
+    #bw2-page .bw2-head h2{ font-size:1.12rem; }
+  }
+  @media(max-width:400px){ #bw2-page .bw2-grid{ grid-template-columns:1fr; } }
+  #bw2-page .bw2-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+  #bw2-page .bw2-tile{ background:#fff; border:2px solid #1a1d20; border-radius:14px; padding:20px; cursor:pointer; transition:transform .12s,box-shadow .12s; box-shadow:4px 4px 0 rgba(0,0,0,.07); }
+  #bw2-page .bw2-tile:hover{ transform:translate(-2px,-3px); box-shadow:6px 8px 0 rgba(46,147,74,.15); border-color:#2e934a; }
+  #bw2-page .bw2-tile .bw2-ticon{ width:48px; height:48px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; margin-bottom:12px; }
+  #bw2-page .bw2-tile .bw2-ttitle{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:.95rem; color:#1a1d20; }
+  #bw2-page .bw2-tile .bw2-tdesc{ font-size:.82rem; color:#6c757d; margin-top:5px; line-height:1.45; }
+  #bw2-page .bw2-tile .bw2-tgo{ margin-top:12px; font-weight:700; font-size:.8rem; color:#2e934a; display:flex; align-items:center; gap:6px; }
+  /* landing list */
+  #bw2-page .bw2-list{ border-radius:10px; overflow:hidden; border:1px solid #e7eaee; }
+  #bw2-page .bw2-list-row{ display:flex; align-items:center; gap:16px; padding:14px 18px; border-bottom:1px solid #f1f4f7; cursor:pointer; transition:background .1s; }
+  #bw2-page .bw2-list-row:last-child{ border-bottom:0; }
+  #bw2-page .bw2-list-row:hover{ background:#f8fafb; }
+  #bw2-page .bw2-list-row .bw2-licon{ width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex:0 0 auto; }
+  #bw2-page .bw2-list-row .bw2-lname{ font-weight:700; font-size:.9rem; color:#1a1d20; }
+  #bw2-page .bw2-list-row .bw2-ldesc{ font-size:.8rem; color:#8a9099; margin-top:2px; }
+  #bw2-page .bw2-list-row .bw2-larr{ margin-left:auto; color:#b0b8c1; }
+</style>
+
+<div id="bw2-page">
+  <div class="bw2-head">
+    <div class="ic"><i class="fas fa-store"></i></div>
+    <div style="flex:1">
+      <h2 data-en="ITEMS & PROMOTIONS" data-th="สินค้าและโปรโมชั่น">สินค้าและโปรโมชั่น</h2>
+      <div class="bw2-crumb" id="bw2Crumb">เลือกประเภทงานจากเมนูด้านซ้าย</div>
+    </div>
+    <div class="bw2-vtog" id="bw2VTog">
+      <button class="bw2-vbtn on" id="bw2VGrid" onclick="bw2SetView('grid')" title="มุมมองการ์ด"><i class="fas fa-table-cells-large"></i></button>
+      <button class="bw2-vbtn" id="bw2VList" onclick="bw2SetView('list')" title="มุมมองรายการ"><i class="fas fa-list"></i></button>
+    </div>
+  </div>
+  <div class="pm-layout">
+    <aside class="pm-rail" id="bw2Rail"></aside>
+    <div class="pm-main" id="bw2Main"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ITEMS = [
+    { pg:'Branch_View',    icon:'fa-store',            bg:'#e3f3ea', fg:'#2e934a', en:'Promotions & Code Check', th:'ดูโปรโมชั่น & ตรวจโค้ด',    desc:'ดูปุ่มขาย / โปรของสาขา · ตรวจโค้ดลูกค้า · แจ้งปัญหาที่ POS' },
+    { pg:'ProductLookup',  icon:'fa-magnifying-glass', bg:'#e8f0ff', fg:'#2563eb', en:'Items On Sale',          th:'สินค้าที่ขายอยู่ (สาขา)',           desc:'ค้นหาสินค้า รหัส ราคา ช่องทางขาย' },
+    { pg:'BranchCards',    icon:'fa-id-card',          bg:'#f3eefe', fg:'#6d3bd1', en:'Member Cards',            th:'บัตรสมาชิก (สาขาดู)',          desc:'ดูประเภทบัตร สิทธิ์ เงื่อนไขการใช้บัตร' },
+    { pg:'BranchVoucher',  icon:'fa-gift',             bg:'#fdeef4', fg:'#c0397a', en:'Vouchers',                th:'Voucher (สาขาดู)',             desc:'ดู Voucher ที่ใช้ได้ในสาขา' },
+  ];
+  var BW2_VIEW = 'grid';
+  try { BW2_VIEW = localStorage.getItem('pc_bw2_view') || 'grid'; } catch(e){}
+  var curSub = null;
+
+  function allowed(pg) {
+    var role = localStorage.getItem('pc_role') || 'Admin';
+    var perms = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : null;
+    var a = perms ? (perms[role] || perms.Admin || []) : null;
+    return !a || a.indexOf(pg) !== -1;
+  }
+  function lang() { try { return localStorage.getItem('pc_lang') === 'en' ? 'en' : 'th'; } catch (e) { return 'th'; } }
+
+  window.bw2SetView = function(v) {
+    BW2_VIEW = v;
+    try { localStorage.setItem('pc_bw2_view', v); } catch(e){}
+    document.getElementById('bw2VGrid').classList.toggle('on', v === 'grid');
+    document.getElementById('bw2VList').classList.toggle('on', v === 'list');
+    if (!curSub) renderLanding();
+  };
+
+  function renderLanding() {
+    var L = lang();
+    var visible = ITEMS.filter(function(it){ return allowed(it.pg); });
+    var html = '<div class="bw2-landing">';
+    if (BW2_VIEW === 'grid') {
+      html += '<div class="bw2-grid">' + visible.map(function(it){
+        return '<div class="bw2-tile'+(it.hot?' hot':'')+'" onclick="window.bw2Go(\''+it.pg+'\')">'+
+          '<div class="bw2-ticon" style="background:'+it.bg+';color:'+it.fg+'"><i class="fas '+it.icon+'"></i></div>'+
+          '<div class="bw2-ttitle">'+(L==='en'?it.en:it.th)+'</div>'+
+          '<div class="bw2-tdesc">'+it.desc+'</div>'+
+          '<div class="bw2-tgo"><span>'+(L==='en'?'Open':'เปิด')+'</span><i class="fas fa-arrow-right"></i></div>'+
+          '</div>';
+      }).join('') + '</div>';
+    } else {
+      html += '<div class="bw2-list">' + visible.map(function(it){
+        return '<div class="bw2-list-row'+(it.hot?' hot':'')+'" onclick="window.bw2Go(\''+it.pg+'\')">'+
+          '<div class="bw2-licon" style="background:'+it.bg+';color:'+it.fg+'"><i class="fas '+it.icon+'"></i></div>'+
+          '<div><div class="bw2-lname">'+(L==='en'?it.en:it.th)+'</div><div class="bw2-ldesc">'+it.desc+'</div></div>'+
+          '<div class="bw2-larr"><i class="fas fa-chevron-right"></i></div>'+
+          '</div>';
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+    document.getElementById('bw2Main').innerHTML = html;
+  }
+
+  function renderRail() {
+    var L = lang();
+    document.getElementById('bw2Rail').innerHTML =
+      '<div class="pm-rail-grp">งานสาขา</div>' +
+      ITEMS.filter(function(it){ return allowed(it.pg); }).map(function (it) {
+        return '<div class="pm-rail-item ' + (it.hot?'pm-rail-hot ':'') + (it.pg === curSub ? 'on' : '') + '" onclick="window.bw2Go(\'' + it.pg + '\')">' +
+          '<i class="fas ' + it.icon + '"></i>' +
+          '<span>'+(L === 'en' ? it.en : it.th)+'</span></div>';
+      }).join('');
+    var cur = ITEMS.find(function (x) { return x.pg === curSub; });
+    var cr = document.getElementById('bw2Crumb');
+    if (cr && cur) cr.innerHTML = 'งานสาขา » <b>'+(lang()==='en'?cur.en:cur.th)+'</b>';
+    else if (cr) cr.textContent = 'เลือกประเภทงานจากเมนูด้านซ้าย';
+  }
+
+  window.bw2Go = function (pg) {
+    if (pg === curSub) return;
+    curSub = pg;
+    try { localStorage.setItem('pc_branchwork_sub', pg); } catch (e) {}
+    renderRail();
+    var main = document.getElementById('bw2Main');
+    if (window.pcLoadSub) window.pcLoadSub(main, pg);
+    else main.innerHTML = '<div class="p-4 text-danger">loader missing</div>';
+  };
+
+  window.disposeBranchWork = function () { curSub = null; };
+
+  window.initBranchWork = function () {
+    try { var saved = localStorage.getItem('pc_branchwork_sub'); if (saved && allowed(saved)) curSub = saved; } catch (e) {}
+    if (!curSub && allowed('Branch_View')) curSub = 'Branch_View';
+    document.getElementById('bw2VGrid').classList.toggle('on', BW2_VIEW === 'grid');
+    document.getElementById('bw2VList').classList.toggle('on', BW2_VIEW === 'list');
+    renderRail();
+    if (curSub) {
+      var main = document.getElementById('bw2Main');
+      if (window.pcLoadSub) window.pcLoadSub(main, curSub);
+    } else {
+      renderLanding();
+    }
+    if (typeof window.applyLang === 'function') window.applyLang();
+  };
+})();
+</script>
+<style>
+  .pm-rail-hot{ background:#c9870a !important; color:#fff !important; font-weight:800 !important; }
+  .pm-rail-hot i{ color:#fff !important; }
+  .pm-rail-hot.on{ background:#a06d08 !important; }
+  .bw2-tile.hot{ border:2px solid #c9870a !important; box-shadow:0 6px 18px rgba(201,135,10,.20) !important; }
+  .bw2-tile.hot .bw2-tgo{ color:#c9870a; font-weight:800; }
+  .bw2-list-row.hot{ border-left:4px solid #c9870a; background:#fffdf7; }
+</style>

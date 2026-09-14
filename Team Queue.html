@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คิวปัญหาจากสาขา — IT</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4;
+    --open:#2f5fb3; --prog:#c9870a; --resolved:#2e934a; --closed:#6b7280; --rejected:#c0392b; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:980px; margin:0 auto; padding:22px 18px 60px; }
+
+  .bv-head{ background:#2e934a; color:#fff; border-radius:18px; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+  .bv-head .back{ display:inline-flex; align-items:center; gap:9px; color:#fff; text-decoration:none; background:rgba(255,255,255,.12); border-radius:11px; padding:9px 14px; font-weight:600; font-size:.88rem; }
+  .bv-head .back:hover{ background:rgba(255,255,255,.22); color:#fff; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.35rem; font-weight:700; margin:8px 0 0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); }
+  .bv-head .sub{ opacity:.7; font-size:.9rem; margin-top:3px; }
+
+  /* KPI strip */
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+  .kpi{ background:#fff; border-radius:14px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.05); border:1px solid #e7eaee; border-left:5px solid var(--c); }
+  .kpi .n{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.8rem; line-height:1; color:var(--c); }
+  .kpi .l{ font-size:.8rem; color:#6b7280; font-weight:600; margin-top:5px; }
+
+  .controls{ background:#fff; border-radius:16px; padding:14px 16px; margin-top:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .controls label{ font-size:.66rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin-bottom:4px; display:block; }
+  .controls .form-select,.controls .form-control{ border:1.5px solid #d8dde2; font-weight:500; border-radius:10px; }
+  .controls .form-select{ min-width:210px; }
+  .controls .form-select:focus,.controls .form-control:focus{ border-color:var(--pc-green); box-shadow:none; }
+
+  .statbar{ display:flex; flex-wrap:wrap; gap:9px; margin:18px 0 4px; }
+  .statchip{ border:1.5px solid #d8dde2; background:#fff; border-radius:999px; padding:7px 15px 7px 12px; font-size:.86rem; font-weight:600; color:#5a616b; cursor:pointer; display:flex; align-items:center; gap:8px; transition:.13s; }
+  .statchip .dot{ width:9px; height:9px; border-radius:50%; }
+  .statchip .n{ font-family:'JetBrains Mono',monospace; background:#eef1f4; border-radius:6px; padding:1px 7px; font-size:.78rem; }
+  .statchip:hover{ border-color:#b6bcc4; }
+  .statchip.on{ color:#fff; border-color:transparent; }
+  .statchip.on .n{ background:rgba(255,255,255,.25); color:#fff; }
+  .statchip.on .dot{ background:#fff !important; }
+
+  .countline{ font-size:.84rem; color:#8a9099; font-weight:500; margin:16px 2px 14px; }
+  .countline b{ color:var(--pc-black); }
+
+  #list{ display:flex; flex-direction:column; gap:14px; }
+  .tk{ background:#fff; border-radius:16px; border:1px solid #e7eaee; box-shadow:0 1px 3px rgba(0,0,0,.06); overflow:hidden; }
+  .tk-strip{ padding:9px 16px; display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:700; font-size:.9rem; gap:10px; }
+  .tk-strip .id{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.82rem; background:rgba(255,255,255,.2); border-radius:8px; padding:2px 10px; }
+  .tk-body{ padding:15px 17px 16px; }
+  .tk-camp{ font-size:1.1rem; font-weight:700; line-height:1.25; }
+  .tk-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; align-items:center; }
+  .tk-tag{ font-size:.74rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; }
+  .tk-tag i{ color:#9aa1aa; font-size:.7rem; }
+  .tk-tag.branch{ background:#eef1ff; color:#3a4ba0; } .tk-tag.branch i{ color:#7480c8; }
+  .tk-tag.chat-route{ background:#eef4ff; color:#2f5fb3; } .tk-tag.chat-route i{ color:#2f5fb3; }
+  .tk-tag.mail-route{ background:#eaf4ee; color:#9a6700; } .tk-tag.mail-route i{ color:#c9870a; }
+  .tk-tag.line-route{ background:#eafaef; color:#06934a; } .tk-tag.line-route i{ color:#06c755; }
+  .tk-btn{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); background:#eafaf1; border:1px solid #bfe6cf; border-radius:7px; padding:3px 9px; font-size:.78rem; }
+
+  .tk-issues{ display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+  .tk-iss{ font-size:.8rem; font-weight:600; background:#eaf4ee; border:1px solid #f3d39a; color:#9a6700; border-radius:999px; padding:4px 11px; display:inline-flex; align-items:center; gap:6px; }
+  .tk-iss i{ color:#c9870a; font-size:.62rem; }
+  /* IT fix-focus box: item + problems to fix */
+  .fix{ background:#fbfbfc; border:1px solid #e7eaee; border-radius:13px; padding:13px 15px; margin-top:12px; }
+  .fix-item{ display:flex; flex-direction:column; gap:4px; padding-bottom:11px; border-bottom:1px dashed #e2e6ea; }
+  .fix-lbl{ font-size:.66rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9aa1aa; }
+  .fix-name{ font-size:1.18rem; font-weight:700; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .fix-name i{ color:var(--pc-green); }
+  .fix-name .code{ font-family:'JetBrains Mono',monospace; font-size:.8rem; background:#eafaf1; border:1px solid #bfe6cf; color:#1d7a4d; border-radius:7px; padding:2px 9px; font-weight:700; }
+  .fix-issues{ padding-top:10px; }
+  .fix-iss-row{ display:flex; align-items:center; gap:10px; padding:6px 0; font-weight:600; font-size:.95rem; color:#9a6700; }
+  .fix-iss-row i{ color:#c9870a; width:18px; text-align:center; }
+  .fix-bnote{ font-size:.85rem; color:#5a616b; margin-top:8px; background:#fff; border:1px dashed #e2e6ea; border-radius:8px; padding:7px 10px; }
+  .fix-detail{ margin-top:9px; background:#fff; border:1px solid #e7eaee; border-radius:10px; padding:9px 11px; }
+  .fix-detail.flavors{ border-left:3px solid #c9870a; }
+  .fix-detail.platform{ border-left:3px solid #2f5fb3; }
+  .fd-lbl{ font-size:.78rem; font-weight:700; color:#5a616b; display:flex; align-items:center; gap:6px; }
+  .fd-lbl i{ color:#9aa1aa; }
+  .fd-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+  .fd-chip{ font-size:.82rem; font-weight:600; background:#eaf4ee; color:#9a6700; border:1px solid #f3d39a; border-radius:7px; padding:3px 10px; }
+  .fd-chip.blue{ background:#eef4ff; color:#2f5fb3; border-color:#cfe0fb; }
+  .fd-ss{ display:inline-flex; align-items:center; gap:7px; font-size:.82rem; font-weight:600; color:#1d7a4d; background:#eafaf1; border:1px solid #bfe6cf; border-radius:8px; padding:5px 10px; margin:8px 0 9px; }
+  .fd-ss i{ color:#54b585; } .fd-ss b{ font-family:'JetBrains Mono',monospace; }
+  .fd-missing{ display:flex; flex-direction:column; gap:6px; }
+  .fd-mrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff8ec; border:1px solid #f3d99a; border-radius:9px; padding:7px 11px; }
+  .fd-fl{ font-weight:600; font-size:.92rem; color:#9a6700; display:flex; align-items:center; gap:7px; }
+  .fd-fl i{ color:#c9870a; font-size:.7rem; }
+  .fd-code{ font-family:'JetBrains Mono',monospace; font-size:.8rem; font-weight:700; color:#1d7a4d; background:#eafaf1; border:1px solid #bfe6cf; border-radius:6px; padding:2px 9px; }
+  .fd-price{ margin-top:8px; display:flex; align-items:center; gap:9px; font-weight:700; font-size:.9rem; flex-wrap:wrap; }
+  .fd-price .bad{ color:#c0392b; text-decoration:line-through; }
+  .fd-price .good{ color:#1d7a4d; }
+  .fd-price i{ color:#9aa1aa; }
+  .fix + .fix{ margin-top:10px; }
+  .tk-note{ font-size:.88rem; color:#4a4f56; background:#f6f8fa; border-radius:10px; padding:9px 12px; margin-top:11px; line-height:1.4; }
+  .tk-note b{ color:#8a9099; font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; display:block; margin-bottom:2px; }
+
+  .tl{ margin-top:13px; padding-top:13px; border-top:1px dashed #e7eaee; }
+  .tl-step{ display:flex; gap:11px; align-items:flex-start; padding:4px 0; }
+  .tl-dot{ width:24px; flex:none; display:flex; flex-direction:column; align-items:center; }
+  .tl-dot .c{ width:13px; height:13px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 2px currentColor; }
+  .tl-dot .line{ width:2px; flex:1; background:#e2e6ea; margin:3px 0; min-height:12px; }
+  .tl-txt{ font-size:.84rem; padding-bottom:6px; }
+  .tl-txt .s{ font-weight:700; }
+  .tl-txt .t{ color:#9aa1aa; font-size:.76rem; margin-left:6px; }
+  .tl-txt .n{ color:#6b7280; font-size:.8rem; }
+
+  .tk-act{ display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; padding-top:13px; border-top:1px solid #f0f2f4; }
+  .tk-act .btn{ border-radius:10px; font-weight:600; font-size:.86rem; }
+
+  .empty{ background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:54px 20px; color:#9aa1aa; }
+  .empty i{ font-size:2rem; display:block; margin-bottom:10px; opacity:.5; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:34px; }
+  @media(max-width:720px){ .kpis{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <div>
+      <a class="back" href="Branch Tickets.html"><i class="fas fa-arrow-left"></i>มุมมองสาขา</a>
+      <h1><i class="fas fa-people-group me-2"></i>คิวรับเรื่อง — ตามทีม/แผนก</h1>
+      <div class="sub">แต่ละทีมเห็นเฉพาะเรื่องที่ถูก route มาหาแผนกตัวเอง · อัปเดตสถานะได้เหมือน IT</div>
+    </div>
+    <a class="back" href="IT Ticket Queue.html"><i class="fas fa-screwdriver-wrench"></i>คิว IT</a>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="controls">
+    <div>
+      <label>ทีม / แผนก</label>
+      <select id="fTeam" class="form-select" onchange="render()"></select>
+    </div>
+    <div>
+      <label>สาขา</label>
+      <select id="fBranch" class="form-select" onchange="render()"></select>
+    </div>
+    <div style="flex:1; min-width:180px">
+      <label>ค้นหา</label>
+      <input id="fSearch" class="form-control" placeholder="เลขที่ / แคมเปญ / ปุ่ม..." oninput="render()">
+    </div>
+  </div>
+
+  <div class="statbar" id="statbar"></div>
+  <div class="countline" id="countline"></div>
+  <div id="list"></div>
+
+  <div class="demo-note">— หน้าตัวอย่าง (Mockup) · คิวรับเรื่องรวมทุกทีม · ข้อมูลก้อนเดียวกับหน้า IT/สาขา —</div>
+</div>
+
+<script>
+const TK_KEY='pc_branch_tickets';
+const NOW = new Date(2026,5,19,11,0).getTime();
+const DAY = 86400000;
+function loadTickets(){ try{ return JSON.parse(localStorage.getItem(TK_KEY))||[]; }catch(e){ return []; } }
+function saveTickets(a){ localStorage.setItem(TK_KEY, JSON.stringify(a)); }
+function btnChips(t){
+  const arr = (t.taggedButtons&&t.taggedButtons.length) ? t.taggedButtons : (t.button?[{sn:t.button,code:t.buttonCode}]:[]);
+  return arr.map(b=>`<span class="tk-btn"><i class="fas fa-hand-pointer me-1"></i>${b.sn}${b.code?' · '+b.code:''}</span>`).join('');
+}
+function ticketButtons(t){
+  if(t.buttons && t.buttons.length) return t.buttons;
+  const arr=(t.taggedButtons&&t.taggedButtons.length)?t.taggedButtons:(t.button?[{sn:t.button,code:t.buttonCode}]:[]);
+  return arr.map(b=>({sn:b.sn,code:b.code,issues:t.issues||[],note:t.note||''}));
+}
+
+const ST = {
+  OPEN:     { label:'รอรับเรื่อง',    color:'var(--open)',     icon:'fa-paper-plane' },
+  PROGRESS: { label:'กำลังตรวจสอบ',   color:'var(--prog)',     icon:'fa-magnifying-glass' },
+  RESOLVED: { label:'แก้ไขแล้ว',      color:'var(--resolved)', icon:'fa-circle-check' },
+  CLOSED:   { label:'ปิดเรื่อง',      color:'var(--closed)',   icon:'fa-lock' },
+  REJECTED: { label:'ตีกลับ',        color:'var(--rejected)', icon:'fa-rotate-left' },
+};
+const COLOR = { OPEN:'#2f5fb3', PROGRESS:'#c9870a', RESOLVED:'#2e934a', CLOSED:'#6b7280', REJECTED:'#c0392b' };
+
+if(false){
+  saveTickets([
+  ]);
+}
+const SEED_VER=100;
+function demoTickets(){ return []; }
+function _demoTickets_unused(){ return [
+  { id:'BVT-1002', branchCode:'101', branch:'101 · Central World (เซ็นทรัลเวิลด์)', campaign:'Cheese Avalanche Combo', promoType:'Item Set', reporter:'แคชเชียร์ #07',
+    buttons:[
+      {sn:'CHEESE AVALANCHE', code:'1070231', issues:['ราคาเต็มไม่ถูกต้อง'], note:'หน้าจอ POS ขึ้น ฿189 แต่โปรคือ ฿149'},
+      {sn:'CHEESE AVALANCHE L', code:'1070232', issues:['จำนวนผงไม่ถูกต้อง','ชื่อย่อผงไม่ถูกต้อง'], note:'ไซซ์ L เลือกผงได้ 2 แต่ควรได้ 1'}
+    ], status:'PROGRESS', createdAt:NOW-2*DAY,
+    log:[{status:'OPEN',at:NOW-2*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-1*DAY,by:'IT',note:'กำลังตรวจสอบราคา+สูตรผงในระบบ POS'}] },
+  { id:'BVT-1001', branchCode:'088', branch:'088 · Mega Bangna (เมกาบางนา)', campaign:'Saver Bill 199.-', promoType:'Bill Discount', reporter:'สาขา',
+    buttons:[{sn:'SAVER 199', code:'1052210', issues:['กดแล้วไม่ลดราคา'], note:'กดแล้วเด้ง error ไม่ลดบิลให้'}],
+    status:'RESOLVED', createdAt:NOW-5*DAY,
+    log:[{status:'OPEN',at:NOW-5*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-4*DAY,by:'IT',note:''},{status:'RESOLVED',at:NOW-3*DAY,by:'IT',note:'แก้ไขเงื่อนไขขั้นต่ำในระบบแล้ว ใช้งานได้ปกติ'}] },
+  { id:'BVT-1000', branchCode:'101', branch:'101 · Central World (เซ็นทรัลเวิลด์)', campaign:'Songkran Splash Fries', promoType:'Item Set', reporter:'แคชเชียร์ #03',
+    buttons:[{sn:'SONGKRAN FRIES', code:'1070118', issues:['ขอนำปุ่มออกจาก POS'], note:'โปรหมดแล้วแต่ปุ่มยังโผล่บนจอ'}],
+    status:'CLOSED', createdAt:NOW-8*DAY,
+    log:[{status:'OPEN',at:NOW-8*DAY,by:'สาขา',note:''},{status:'PROGRESS',at:NOW-7*DAY,by:'IT',note:''},{status:'RESOLVED',at:NOW-6*DAY,by:'IT',note:'ปิดปุ่มออกจาก POS แล้ว'},{status:'CLOSED',at:NOW-6*DAY,by:'สาขา',note:'ยืนยันปุ่มหายแล้ว'}] },
+  { id:'BVT-1003', branchCode:'142', branch:'142 · Terminal 21 (เทอร์มินอล 21)', campaign:'Loaded Fries Mania', promoType:'Item Set', reporter:'สมชาย ใจดี (4821) · 142 · Terminal 21',
+    buttons:[
+      {sn:'LOADED FRIES', code:'1070455', issues:['ไม่มีปุ่มผงรสชาติ'], note:'', detail:{subset:{code:'SS-FF01',name:'ผงปรุงรสเฟรนช์ฟรายส์'}, missing:[{name:'ชีสเข้มข้น',code:'103008'},{name:'สาหร่าย',code:'103004'}]}},
+      {sn:'LOADED FRIES L', code:'1070456', issues:['ราคาแอปเดลิเวอรีไม่ตรง'], note:'ลูกค้าทักว่าแอปแพงกว่าหน้าร้าน', detail:{platforms:['Grab','LINE MAN'], appPrice:'199', correctPrice:'159'}}
+    ], status:'OPEN', createdAt:NOW-6*3600000,
+    routes:[{event:'report_general',label:'แจ้งปัญหาปุ่ม POS (ทั่วไป)',channel:'email',team:'Information Technology',group:'PC • IT Support'},{event:'report_price_platform',label:'ราคาแพลตฟอร์มเดลิเวอรีไม่ตรง',channel:'chat',team:'Marketing',group:'PC • Delivery Price'}],
+    log:[{status:'OPEN',at:NOW-6*3600000,by:'สาขา',note:''}] },
+]; }
+(function(){
+  // clean slate: ไม่ seed ticket เดโม + ลบ ticket เดโมเก่า (BVT-1000..1003) ออก เหลือเฉพาะเคสที่สาขาแจ้งจริง
+  const demoIds=new Set(['BVT-1000','BVT-1001','BVT-1002','BVT-1003']);
+  let all=loadTickets();
+  if((+(localStorage.getItem('pc_tickets_seed_ver')||0)) < SEED_VER){
+    all = all.filter(t=>!demoIds.has(t.id));
+    saveTickets(all); localStorage.setItem('pc_tickets_seed_ver',String(SEED_VER));
+  }
+})();
+
+const TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function ago(ts){ const d=NOW-ts; if(d<DAY){ const h=Math.max(1,Math.floor(d/3600000)); return h+' ชม.ที่แล้ว'; } return Math.floor(d/DAY)+' วันที่แล้ว'; }
+function dt(ts){ const d=new Date(ts); return d.getDate()+' '+TH_M[d.getMonth()]+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0'); }
+
+let filterStatus='ALL', GC={};
+const TEAM_KEY='pc_team_queue_team';
+function allTeams(){
+  let names=[];
+  try{ const s=JSON.parse(localStorage.getItem('pc_notify_settings')); if(s&&s.depts) names=Object.values(s.depts).map(d=>d.label); }catch(e){}
+  if(!names.length) names=['Marketing','NPD / R&D','Operation','Accounting','Information Technology'];
+  // include any team that actually appears on tickets
+  loadTickets().forEach(t=>(t.routes||[]).forEach(r=>{ if(r.team && !names.includes(r.team)) names.push(r.team); }));
+  return names;
+}
+function currentTeam(){ const el=document.getElementById('fTeam'); return el?el.value:(localStorage.getItem(TEAM_KEY)||'Marketing'); }
+function ticketTeams(t){ return (t.routes||[]).map(r=>r.team).filter(Boolean); }
+function buildTeamOptions(){
+  const sel=document.getElementById('fTeam'); const saved=localStorage.getItem(TEAM_KEY)||'Marketing';
+  const teams=allTeams();
+  sel.innerHTML=teams.map(tm=>`<option value="${tm}">${tm}</option>`).join('');
+  sel.value = teams.includes(saved)?saved:teams[0];
+}
+function buildBranchOptions(){
+  const all=loadTickets(); const map={}; all.forEach(t=>{ if(t.branchCode) map[t.branchCode]=t.branch; });
+  let html=`<option value="ALL">— ทุกสาขา —</option>`;
+  Object.keys(map).forEach(code=> html+=`<option value="${code}">${map[code]}</option>`);
+  document.getElementById('fBranch').innerHTML=html;
+}
+
+function render(){
+  const team=currentTeam(); localStorage.setItem(TEAM_KEY, team);
+  const code=document.getElementById('fBranch').value;
+  const search=(document.getElementById('fSearch').value||'').toLowerCase();
+  GC={}; loadTickets().forEach(t=>{ if(t.groupId) GC[t.groupId]=(GC[t.groupId]||0)+1; });
+  let base=loadTickets().filter(t=> ticketTeams(t).includes(team));
+  if(code!=='ALL') base=base.filter(t=>t.branchCode===code);
+  if(search) base=base.filter(t=> (t.id+' '+t.campaign+' '+(t.button||'')+' '+(t.branch||'')).toLowerCase().includes(search));
+
+  // KPIs (over full set, ignoring status filter)
+  const cnt={}; base.forEach(t=>cnt[t.status]=(cnt[t.status]||0)+1);
+  document.getElementById('kpis').innerHTML = [
+    ['รอรับเรื่อง', cnt.OPEN||0, '#2f5fb3'],
+    ['กำลังตรวจสอบ', cnt.PROGRESS||0, '#c9870a'],
+    ['แก้ไขแล้ว', cnt.RESOLVED||0, '#2e934a'],
+    ['ปิดเรื่อง', (cnt.CLOSED||0)+(cnt.REJECTED||0), '#6b7280'],
+  ].map(k=>`<div class="kpi" style="--c:${k[2]}"><div class="n">${k[1]}</div><div class="l">${k[0]}</div></div>`).join('');
+
+  const counts={ALL:base.length}; base.forEach(t=>counts[t.status]=(counts[t.status]||0)+1);
+  const order=['ALL','OPEN','PROGRESS','RESOLVED','REJECTED','CLOSED'];
+  const lbl={ALL:'ทั้งหมด'}; Object.keys(ST).forEach(k=>lbl[k]=ST[k].label);
+  const col=k=>k==='ALL'?'#1a1d20':COLOR[k];
+  document.getElementById('statbar').innerHTML = order.filter(k=>k==='ALL'||counts[k]).map(k=>{
+    const on=filterStatus===k;
+    return `<div class="statchip ${on?'on':''}" style="${on?`background:${col(k)}`:''}" onclick="filterStatus='${k}';render()">
+      <span class="dot" style="background:${col(k)}"></span>${lbl[k]} <span class="n">${counts[k]||0}</span></div>`;
+  }).join('');
+
+  let rows = filterStatus==='ALL' ? base : base.filter(t=>t.status===filterStatus);
+  const rank={OPEN:0,PROGRESS:1,RESOLVED:2,REJECTED:3,CLOSED:4};
+  rows.sort((a,b)=> (rank[a.status]-rank[b.status]) || (b.createdAt-a.createdAt));
+
+  document.getElementById('countline').innerHTML=`มี <b>${rows.length}</b> เรื่องในคิว`;
+  const list=document.getElementById('list');
+  if(!rows.length){ list.innerHTML='<div class="empty"><i class="fas fa-mug-hot"></i>ไม่มีเรื่องของทีมนี้ในคิวตามเงื่อนไขนี้</div>'; return; }
+  list.innerHTML=rows.map(tkHTML).join('');
+}
+
+function detailHTML(b){
+  const d=b.detail||{}; let h='';
+  if(d.subset || (d.missing&&d.missing.length)){
+    const ms=d.missing||[];
+    h+=`<div class="fix-detail flavors">
+      <div class="fd-lbl"><i class="fas fa-mortar-pestle"></i>ผง/รสชาติที่ต้องเพิ่มปุ่ม</div>
+      ${d.subset?`<div class="fd-ss"><i class="fas fa-link"></i>Subset <b>${d.subset.code}</b> · ${d.subset.name}</div>`:''}
+      <div class="fd-missing">${ms.map(f=>`<div class="fd-mrow"><span class="fd-fl"><i class="fas fa-plus"></i>${f.name}</span><span class="fd-code">item ${f.code}</span></div>`).join('')}</div>
+    </div>`;
+  } else if(d.flavors){ h+=`<div class="fix-detail flavors"><div class="fd-lbl"><i class="fas fa-mortar-pestle"></i>ผง/รสชาติที่ต้องเพิ่มปุ่ม</div><div class="fd-chips">${String(d.flavors).split(',').map(s=>s.trim()).filter(Boolean).map(f=>`<span class="fd-chip">${f}</span>`).join('')}</div></div>`; }
+  if(d.platformIssues && d.platformIssues.length){ h+=`<div class="fix-detail platform"><div class="fd-lbl"><i class="fas fa-motorcycle"></i>ราคาแพลตฟอร์มไม่ตรง (POS ตรง) · ${d.platformIssues.length} แอป</div><div class="fd-missing">${d.platformIssues.map(pi=>`<div class="fd-mrow" style="background:#eef4ff;border-color:#cfe0fb"><span class="fd-fl" style="color:#2f5fb3"><i class="fas fa-motorcycle"></i>${pi.platform}</span><span class="fd-price" style="margin:0"><span class="bad">แอป ฿${pi.appPrice||'?'}</span><i class="fas fa-arrow-right"></i><span class="good">฿${pi.correctPrice||'?'}</span></span></div>`).join('')}</div></div>`; }
+  else if(d.platforms&&d.platforms.length){ const price=(d.appPrice||d.correctPrice)?`<div class="fd-price"><span class="bad">แอป ฿${d.appPrice||'?'}</span><i class="fas fa-arrow-right"></i><span class="good">ควรเป็น ฿${d.correctPrice||'?'}</span></div>`:''; h+=`<div class="fix-detail platform"><div class="fd-lbl"><i class="fas fa-motorcycle"></i>ราคาแพลตฟอร์มไม่ตรง (POS ตรง)</div><div class="fd-chips">${d.platforms.map(p=>`<span class="fd-chip blue">${p}</span>`).join('')}</div>${price}</div>`; }
+  if(d.fix){ Object.keys(d.fix).forEach(k=>{ const f=d.fix[k]||{}; const w=f.wrong?`<span class="bad">${f.wrong}</span><i class="fas fa-arrow-right"></i>`:''; h+=`<div class="fix-detail" style="border-left:3px solid #1d7a4d"><div class="fd-lbl"><i class="fas fa-pen-to-square"></i>${f.label||'ค่าที่ถูกต้อง'} — ที่ถูกต้อง</div><div class="fd-price">${w}<span class="good">${f.right||'?'}</span></div></div>`; }); }
+  return h;
+}
+function routeBadges(t){ const rs=t.routes||[]; if(!rs.length) return '';
+  return rs.map(r=>{
+    let chans = r.channels || { email:(r.channel==='email'||r.channel==='both'), chat:(r.channel==='chat'||r.channel==='both'), line:false };
+    const out=[];
+    if(chans.email) out.push(`<span class="tk-tag mail-route"><i class="fas fa-envelope"></i>Email · ${r.team||''}</span>`);
+    if(chans.chat)  out.push(`<span class="tk-tag chat-route"><i class="fas fa-comments"></i>Chat · ${r.group||''}</span>`);
+    if(chans.line)  out.push(`<span class="tk-tag line-route"><i class="fab fa-line"></i>LINE · ${r.lineGroup||r.group||''}</span>`);
+    return out.join('');
+  }).join('');
+}
+function tkHTML(t){
+  const s=ST[t.status]||ST.OPEN;
+  const log=(t.log||[]).slice().sort((a,b)=>a.at-b.at);
+  const fixBoxes = ticketButtons(t).map(b=>`
+    <div class="fix">
+      <div class="fix-item">
+        <span class="fix-lbl">ไอเทม/ปุ่มที่ต้องแก้</span>
+        <span class="fix-name"><i class="fas fa-hand-pointer"></i>${b.sn||'-'}${b.code?`<span class="code">${b.code}</span>`:''}</span>
+      </div>
+      <div class="fix-issues">
+        <div class="fix-lbl">ปัญหาที่ต้องแก้ (${(b.issues||[]).length})</div>
+        ${(b.issues||[]).map(x=>`<div class="fix-iss-row"><i class="fas fa-wrench"></i>${x}</div>`).join('')}
+        ${detailHTML(b)}
+        ${b.note?`<div class="fix-bnote"><i class="fas fa-comment me-1"></i>${b.note}</div>`:''}
+      </div>
+    </div>`).join('');
+  const tl=log.map((e,i)=>{
+    const es=ST[e.status]||ST.OPEN; const last=i===log.length-1;
+    return `<div class="tl-step">
+      <div class="tl-dot" style="color:${COLOR[e.status]||'#999'}"><span class="c"></span>${last?'':'<span class="line"></span>'}</div>
+      <div class="tl-txt"><span class="s" style="color:${COLOR[e.status]||'#333'}"><i class="fas ${es.icon} me-1"></i>${es.label}</span><span class="t">${e.by||''} · ${dt(e.at)}</span>${e.note?`<div class="n">${e.note}</div>`:''}</div>
+    </div>`;
+  }).join('');
+
+  let act='';
+  if(t.status==='OPEN') act=`
+    <button class="btn btn-warning btn-sm fw-bold" onclick="toProgress('${t.id}')"><i class="fas fa-hand me-1"></i>รับเรื่อง / เริ่มตรวจสอบ</button>
+    <button class="btn btn-outline-danger btn-sm" onclick="reject('${t.id}')"><i class="fas fa-rotate-left me-1"></i>ตีกลับ</button>`;
+  else if(t.status==='PROGRESS') act=`
+    <button class="btn btn-success btn-sm fw-bold" onclick="resolve('${t.id}')"><i class="fas fa-circle-check me-1"></i>แก้ไขเสร็จแล้ว</button>
+    <button class="btn btn-outline-danger btn-sm" onclick="reject('${t.id}')"><i class="fas fa-rotate-left me-1"></i>ตีกลับ</button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="addNote('${t.id}')"><i class="fas fa-comment-dots me-1"></i>เพิ่มหมายเหตุ</button>`;
+  else if(t.status==='RESOLVED') act=`
+    <button class="btn btn-dark btn-sm" onclick="closeTk('${t.id}')"><i class="fas fa-lock me-1"></i>ปิดเรื่อง</button>`;
+  else if(t.status==='REJECTED') act=`
+    <button class="btn btn-warning btn-sm" onclick="toProgress('${t.id}')"><i class="fas fa-rotate-right me-1"></i>เปิดตรวจสอบใหม่</button>`;
+
+  return `
+  <div class="tk">
+    <div class="tk-strip" style="background:${s.color}">
+      <span><i class="fas ${s.icon} me-2"></i>${s.label}</span>
+      <span class="id">${t.id}</span>
+    </div>
+    <div class="tk-body">
+      <div class="tk-camp">${t.campaign}</div>
+      <div class="tk-row">
+        <span class="tk-tag branch"><i class="fas fa-store"></i>${t.branch||'-'}</span>
+        <span class="tk-tag"><i class="fas fa-tag"></i>${t.promoType||'-'}</span>
+        ${t.reporter?`<span class="tk-tag"><i class="fas fa-user"></i>${t.reporter}</span>`:''}
+        ${routeBadges(t)}
+        <span class="tk-tag" style="margin-left:auto"><i class="far fa-clock"></i>${ago(t.createdAt)}</span>
+      </div>
+      ${fixBoxes}
+      <div class="tl">${tl}</div>
+      ${act?`<div class="tk-act">${act}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function setStatus(id,status,note){
+  const all=loadTickets(); const t=all.find(x=>x.id===id); if(!t) return;
+  t.status=status; t.log=t.log||[]; t.log.push({status,at:NOW,by:currentTeam(),note:note||''});
+  saveTickets(all); render();
+}
+function toProgress(id){ setStatus(id,'PROGRESS','รับเรื่อง กำลังตรวจสอบ'); }
+function closeTk(id){ setStatus(id,'CLOSED','ปิดเรื่อง'); }
+function resolve(id){
+  Swal.fire({ title:'แก้ไขเสร็จแล้ว', input:'textarea', inputPlaceholder:'สรุปวิธีแก้ไข (เช่น แก้ราคาในระบบ POS แล้ว)', inputAttributes:{'aria-label':'note'},
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'บันทึก แก้ไขแล้ว', cancelButtonText:'ยกเลิก' })
+    .then(r=>{ if(r.isConfirmed) setStatus(id,'RESOLVED', (r.value||'').trim()||'แก้ไขเรียบร้อย'); });
+}
+function reject(id){
+  Swal.fire({ icon:'warning', title:'ตีกลับเรื่องนี้', input:'textarea', inputPlaceholder:'เหตุผลที่ตีกลับ (เช่น ข้อมูลไม่พอ / ไม่ใช่ปัญหาระบบ)',
+    showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ตีกลับ', cancelButtonText:'ยกเลิก',
+    inputValidator:v=> (!v||!v.trim()) && 'กรุณาระบุเหตุผล' })
+    .then(r=>{ if(r.isConfirmed) setStatus(id,'REJECTED', r.value.trim()); });
+}
+function addNote(id){
+  Swal.fire({ title:'เพิ่มหมายเหตุ', input:'textarea', inputPlaceholder:'หมายเหตุถึงสาขา / บันทึกภายใน',
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก',
+    inputValidator:v=> (!v||!v.trim()) && 'พิมพ์หมายเหตุก่อน' })
+    .then(r=>{ if(r.isConfirmed){ const all=loadTickets(); const t=all.find(x=>x.id===id); if(t){ t.log=t.log||[]; t.log.push({status:t.status,at:NOW,by:currentTeam(),note:r.value.trim()}); saveTickets(all); render(); } } });
+}
+
+buildTeamOptions();
+buildBranchOptions();
+render();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

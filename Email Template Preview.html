@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email Template — แจ้งขยาย / ลด / ยกเลิกโปรโมชั่น</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root{ --pc-yellow:#2e934a; --pc-green:#2e934a; --pc-dark:#1a1d20; --pc-red:#dc3545; --pc-info:#0dcaf0; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:'Kanit',sans-serif; background:#e9edf1; color:#1a1d20; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:28px 20px 60px; }
+
+  .topbar{ display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; background:#fff; border:1px solid #e2e6ea; border-radius:16px; padding:20px 24px; box-shadow:0 6px 18px rgba(0,0,0,.05); }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.3rem; margin:0; letter-spacing:-.5px; }
+  .topbar p{ margin:2px 0 0; font-size:.85rem; color:#6c757d; }
+
+  .seg{ display:inline-flex; background:#f1f3f5; border-radius:12px; padding:5px; gap:4px; }
+  .seg button{ border:none; background:transparent; font-family:'Kanit'; font-weight:600; font-size:.9rem; padding:9px 18px; border-radius:9px; cursor:pointer; color:#495057; display:flex; align-items:center; gap:7px; transition:.15s; }
+  .seg button.active{ background:#1a1d20; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+  .seg button[data-k="EXTENDED"].active{ background:var(--pc-info); color:#000; }
+  .seg button[data-k="REDUCED"].active{ background:var(--pc-red); color:#fff; }
+  .seg button[data-k="CANCELLED"].active{ background:var(--pc-dark); color:#fff; }
+
+  .layout{ display:grid; grid-template-columns: 300px 1fr; gap:22px; margin-top:22px; align-items:start; }
+  @media(max-width:840px){ .layout{ grid-template-columns:1fr; } }
+
+  .panel{ background:#fff; border:1px solid #e2e6ea; border-radius:16px; padding:20px; box-shadow:0 6px 18px rgba(0,0,0,.05); }
+  .panel h2{ font-size:.75rem; text-transform:uppercase; letter-spacing:1px; color:#6c757d; margin:0 0 14px; font-weight:700; }
+  .fld{ margin-bottom:13px; }
+  .fld label{ display:block; font-size:.72rem; font-weight:600; color:#495057; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+  .fld input, .fld textarea{ width:100%; border:1.5px solid #dee2e6; border-radius:8px; padding:8px 10px; font-family:'Kanit'; font-size:.88rem; outline:none; }
+  .fld input:focus, .fld textarea:focus{ border-color:var(--pc-yellow); }
+  .fld textarea{ resize:vertical; min-height:64px; }
+  .hint{ font-size:.72rem; color:#adb5bd; margin-top:14px; line-height:1.5; }
+
+  .mailcol{ min-width:0; }
+  .mail-meta{ background:#fff; border:1px solid #e2e6ea; border-radius:14px 14px 0 0; padding:14px 20px; border-bottom:none; }
+  .mail-meta .row{ display:flex; gap:8px; font-size:.84rem; padding:3px 0; }
+  .mail-meta .row b{ color:#6c757d; font-weight:600; min-width:62px; }
+  .subject-line{ font-weight:600; }
+
+  /* ===== EMAIL (email-safe-ish) ===== */
+  .email{ background:#f4f6f9; border:1px solid #e2e6ea; border-top:none; border-radius:0 0 14px 14px; padding:26px; }
+  .email-card{ max-width:600px; margin:0 auto; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.08); }
+  .email-head{ padding:26px 30px; text-align:center; color:#fff; }
+  .email-head .logo{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.5rem; line-height:.9; letter-spacing:-1px; }
+  .email-head .logo span{ display:inline-block; background:rgba(255,255,255,.15); padding:2px 8px; border-radius:4px; font-size:.6rem; letter-spacing:1px; vertical-align:middle; margin-left:6px; }
+  .email-badge{ display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:9px 18px; border-radius:30px; font-weight:700; font-size:1rem; background:rgba(255,255,255,.18); }
+  .email-body{ padding:30px; }
+  .greet{ font-size:.95rem; margin:0 0 6px; }
+  .lead{ font-size:.9rem; color:#495057; line-height:1.65; margin:0 0 22px; }
+
+  .camp-box{ border:2px solid #1a1d20; border-radius:12px; overflow:hidden; margin-bottom:22px; }
+  .camp-box .camp-name{ background:#1a1d20; color:#fff; font-weight:700; padding:12px 16px; font-size:1.02rem; display:flex; align-items:center; gap:9px; }
+  .camp-box .camp-name .tag{ margin-left:auto; font-size:.66rem; font-weight:700; padding:3px 9px; border-radius:20px; }
+
+  .date-change{ display:flex; align-items:stretch; }
+  .date-cell{ flex:1; padding:16px; text-align:center; }
+  .date-cell .lbl{ font-size:.66rem; text-transform:uppercase; letter-spacing:.5px; color:#adb5bd; font-weight:600; margin-bottom:5px; }
+  .date-cell .val{ font-weight:700; font-size:1.05rem; font-family:'JetBrains Mono',monospace; }
+  .date-old .val{ color:#adb5bd; text-decoration:line-through; }
+  .arrow-cell{ display:flex; align-items:center; padding:0 4px; color:#1a1d20; font-size:1.1rem; }
+
+  .meta-tbl{ width:100%; border-collapse:collapse; font-size:.84rem; margin-bottom:8px; }
+  .meta-tbl td{ padding:9px 12px; border-bottom:1px solid #eef1f4; }
+  .meta-tbl td:first-child{ color:#6c757d; width:140px; font-weight:600; }
+
+  .reason-box{ background:#fff5f5; border:1px solid #f3c2c2; border-left:5px solid var(--pc-red); border-radius:8px; padding:13px 15px; margin-top:6px; }
+  .reason-box .lbl{ font-size:.7rem; font-weight:700; color:var(--pc-red); text-transform:uppercase; letter-spacing:.5px; }
+  .reason-box .txt{ font-size:.88rem; margin-top:4px; white-space:pre-wrap; }
+
+  .cta{ text-align:center; margin:26px 0 8px; }
+  .cta a{ display:inline-block; background:var(--pc-yellow); color:#000; font-weight:700; text-decoration:none; padding:12px 34px; border-radius:10px; border:2px solid #1a1d20; font-size:.92rem; }
+
+  .email-foot{ background:#f8f9fa; padding:18px 30px; text-align:center; font-size:.74rem; color:#adb5bd; line-height:1.6; border-top:1px solid #eef1f4; }
+  .note-callout{ font-size:.82rem; background:#fffbe6; border:1px solid #ffe48a; border-radius:8px; padding:11px 14px; color:#7a5b00; margin-bottom:20px; display:flex; gap:9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>📧 Email Template — แจ้งเปลี่ยนแปลงโปรโมชั่น</h1>
+      <p>ร่างเทมเพลตอีเมลแจ้งเตือนจากทีม MKT ถึงฝ่าย IT / OP เมื่อมีการ <b>ขยาย / ลด / ยกเลิก</b> โปรโมชั่น (เทสต์ส่งถึง it@rocks-foods.com) — สลับดูได้ด้านล่าง แก้ข้อมูลตัวอย่างได้ทันที</p>
+    </div>
+    <div class="seg" id="seg">
+      <button data-k="EXTENDED" class="active"><i class="fas fa-calendar-plus"></i> ขยายเวลา</button>
+      <button data-k="REDUCED"><i class="fas fa-calendar-minus"></i> ลดเวลา</button>
+      <button data-k="CANCELLED"><i class="fas fa-ban"></i> ยกเลิก</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- editable sample data -->
+    <div class="panel">
+      <h2><i class="fas fa-sliders me-1"></i> ข้อมูลตัวอย่าง</h2>
+      <div class="fld"><label>ชื่อแคมเปญ</label><input id="f_camp" value="Amaze x Potato Corner"></div>
+      <div class="fld"><label>ประเภทโปรโมชั่น</label><input id="f_type" value="Coupon Online"></div>
+      <div class="fld"><label>วันสิ้นสุด (เดิม)</label><input id="f_old" value="30/06/2026"></div>
+      <div class="fld" id="wrap_new"><label>วันสิ้นสุด (ใหม่)</label><input id="f_new" value="15/07/2026"></div>
+      <div class="fld"><label>ผู้ดำเนินการ (IT)</label><input id="f_by" value="IT Support"></div>
+      <div class="fld"><label>วันที่แจ้ง</label><input id="f_when" value="13/06/2026"></div>
+      <div class="fld" id="wrap_reason"><label>เหตุผล (กรณีลด/ยกเลิก)</label><textarea id="f_reason">ปรับแผนการตลาดประจำไตรมาส และยอด Quota ครบตามเป้าหมายก่อนกำหนด</textarea></div>
+      <div class="hint"><i class="fas fa-circle-info"></i> นี่เป็นเพียงตัวอย่างพรีวิว — เมื่อใช้งานจริงระบบจะดึงข้อมูลจากแคมเปญที่กดปุ่มอัตโนมัติ แล้วส่งอีเมลตามเทมเพลตนี้</div>
+    </div>
+
+    <!-- email preview -->
+    <div class="mailcol">
+      <div class="mail-meta">
+        <div class="row"><b>From:</b> <span>MKT Team &lt;mkt@rocks-foods.com&gt;</span></div>
+        <div class="row"><b>To:</b> <span id="m_to">IT &lt;it@rocks-foods.com&gt;, OP</span></div>
+        <div class="row"><b>Subject:</b> <span class="subject-line" id="m_subject"></span></div>
+      </div>
+      <div class="email">
+        <div class="email-card">
+          <div class="email-head" id="m_head">
+            <div class="logo">POTATO CORNER <span>PROMOTION</span></div>
+            <div class="email-badge" id="m_badge"></div>
+          </div>
+          <div class="email-body">
+            <p class="greet" id="m_greet">แจ้งเตือนจากทีม MKT</p>
+            <p class="lead" id="m_lead">ขอแจ้งให้ทราบว่าโปรโมชั่นต่อไปนี้ถูกยกเลิก กรุณานำปุ่มออกจากการขายบนระบบ POS</p>
+
+            <div class="note-callout" id="m_note"></div>
+
+            <div class="camp-box">
+              <div class="camp-name">
+                <i class="fas fa-bullhorn" style="color:var(--pc-yellow)"></i>
+                <span id="m_camp"></span>
+                <span class="tag" id="m_tag"></span>
+              </div>
+              <div id="m_datechange"></div>
+            </div>
+
+            <table class="meta-tbl">
+              <tr><td>ประเภทโปรโมชั่น</td><td id="m_type"></td></tr>
+              <tr><td>ผู้ดำเนินการ</td><td id="m_by"></td></tr>
+              <tr><td>วันที่แจ้ง</td><td id="m_when"></td></tr>
+            </table>
+
+            <div id="m_reasonwrap"></div>
+
+            <div class="cta"><a href="#">เปิดดูในระบบ Promotion</a></div>
+          </div>
+          <div class="email-foot">
+            อีเมลฉบับนี้ส่งอัตโนมัติจากระบบ Promotion Management System · Potato Corner<br>
+            กรุณาอย่าตอบกลับอีเมลนี้ — หากมีข้อสงสัยติดต่อทีม IT / MKT
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CFG = {
+    EXTENDED: {
+      headBg:'#0dcaf0', headText:'#003c47', badgeIcon:'fa-calendar-plus', badgeText:'ขยายระยะเวลาโปรโมชั่น',
+      tagBg:'#0dcaf0', tagText:'#000', tagLabel:'EXTENDED',
+      subject:(c)=>`[แจ้งขยายเวลาโปรโมชั่น] ${c}`,
+      lead:'ขอแจ้งให้ทราบว่าโปรโมชั่นต่อไปนี้ได้รับการ<b>ขยายระยะเวลา</b>การจัดรายการออกไป กรุณาอัปเดตข้อมูลและตรวจสอบการตั้งค่าปุ่มบนระบบ POS ให้สอดคล้องกับวันสิ้นสุดใหม่',
+      note:'⏳ ปุ่มโปรโมชั่นนี้จะถูกส่งกลับให้ IT ตรวจสอบ/ตั้งค่าใหม่ตามวันที่ที่ขยาย แล้วจึงยืนยันสถานะ COMPLETE อีกครั้ง',
+      showNew:true, showReason:false
+    },
+    REDUCED: {
+      headBg:'#dc3545', headText:'#fff', badgeIcon:'fa-calendar-minus', badgeText:'ลดระยะเวลาโปรโมชั่น',
+      tagBg:'#dc3545', tagText:'#fff', tagLabel:'REDUCED',
+      subject:(c)=>`[แจ้งลดเวลาโปรโมชั่น] ${c}`,
+      lead:'ขอแจ้งให้ทราบว่าโปรโมชั่นต่อไปนี้ถูก<b>ลดระยะเวลา</b>การจัดรายการให้สั้นลง กรุณาตรวจสอบและปรับวันสิ้นสุดของปุ่มบนระบบ POS ให้ตรงกับวันสิ้นสุดใหม่',
+      note:'⚠️ โปรดตรวจสอบว่าปุ่มจะถูกปิดการขายตามวันสิ้นสุดใหม่ เพื่อป้องกันการขายเกินกำหนด',
+      showNew:true, showReason:true
+    },
+    CANCELLED: {
+      headBg:'#1a1d20', headText:'#fff', badgeIcon:'fa-ban', badgeText:'ยกเลิกโปรโมชั่น',
+      tagBg:'#1a1d20', tagText:'#fff', tagLabel:'CANCELLED',
+      subject:(c)=>`[แจ้งยกเลิกโปรโมชั่น] ${c}`,
+      lead:'ขอแจ้งให้ทราบว่าโปรโมชั่นต่อไปนี้ถูก<b>ยกเลิก</b> กรุณานำปุ่มออกจากการขายบนระบบ POS และหยุดประชาสัมพันธ์รายการนี้ทันที',
+      note:'🛑 กรุณานำปุ่มออกจากหน้าขาย POS ทันทีหลังได้รับอีเมลนี้ เพื่อป้องกันการใช้งานโปรที่ถูกยกเลิก',
+      showNew:false, showReason:true
+    }
+  };
+
+  let current = 'EXTENDED';
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function render(){
+    const cfg = CFG[current];
+    const camp = document.getElementById('f_camp').value || '-';
+    const type = document.getElementById('f_type').value || '-';
+    const oldD = document.getElementById('f_old').value || '-';
+    const newD = document.getElementById('f_new').value || '-';
+    const by   = document.getElementById('f_by').value || '-';
+    const when = document.getElementById('f_when').value || '-';
+    const reason = document.getElementById('f_reason').value || '-';
+
+    document.getElementById('m_subject').textContent = cfg.subject(camp);
+    const head = document.getElementById('m_head');
+    head.style.background = cfg.headBg; head.style.color = cfg.headText;
+    document.getElementById('m_badge').innerHTML = `<i class="fas ${cfg.badgeIcon}"></i> ${cfg.badgeText}`;
+    document.getElementById('m_lead').innerHTML = cfg.lead;
+
+    const note = document.getElementById('m_note');
+    note.innerHTML = `<i class="fas fa-circle-exclamation" style="margin-top:2px"></i><span>${cfg.note}</span>`;
+
+    document.getElementById('m_camp').textContent = camp;
+    const tag = document.getElementById('m_tag');
+    tag.textContent = cfg.tagLabel; tag.style.background = cfg.tagBg; tag.style.color = cfg.tagText;
+
+    // date change block
+    const dc = document.getElementById('m_datechange');
+    if (cfg.showNew){
+      dc.innerHTML = `<div class="date-change">
+        <div class="date-cell date-old"><div class="lbl">วันสิ้นสุดเดิม</div><div class="val">${esc(oldD)}</div></div>
+        <div class="arrow-cell"><i class="fas fa-arrow-right-long"></i></div>
+        <div class="date-cell" style="background:#f8fdff;"><div class="lbl">วันสิ้นสุดใหม่</div><div class="val" style="color:${cfg.headBg==='#dc3545'?'#dc3545':'#2e934a'}">${esc(newD)}</div></div>
+      </div>`;
+    } else {
+      dc.innerHTML = `<div class="date-change">
+        <div class="date-cell" style="background:#fbeaec;"><div class="lbl">สถานะรายการ</div><div class="val" style="color:#dc3545"><i class="fas fa-ban"></i> ยกเลิกการจัดรายการ</div></div>
+      </div>`;
+    }
+
+    document.getElementById('m_type').textContent = type;
+    document.getElementById('m_by').textContent = by;
+    document.getElementById('m_when').textContent = when;
+
+    document.getElementById('m_reasonwrap').innerHTML = cfg.showReason
+      ? `<div class="reason-box"><div class="lbl"><i class="fas fa-comment-dots"></i> เหตุผล / หมายเหตุ</div><div class="txt">${esc(reason)}</div></div>`
+      : '';
+
+    document.getElementById('wrap_new').style.display = cfg.showNew ? '' : 'none';
+    document.getElementById('wrap_reason').style.display = cfg.showReason ? '' : 'none';
+  }
+
+  document.getElementById('seg').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    current = btn.dataset.k;
+    document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('active', b===btn));
+    render();
+  });
+  document.querySelectorAll('.panel input, .panel textarea').forEach(el=> el.addEventListener('input', render));
+  render();
+</script>
+</body>
+</html>

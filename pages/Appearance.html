@@ -1,0 +1,183 @@
+<!-- ============================================================
+     pages/Appearance.html — ธีมระดับเครื่อง (per-device)
+     entry: initAppearance()  ·  ทุกผู้ใช้เข้าได้ · บันทึกเฉพาะเครื่องนี้
+     ใช้ window.PC_THEMES / PC_setTheme / PC_applyTheme (js/themes.js)
+     ============================================================ -->
+<style>
+  #apprPage{ --sf:'Kanit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-family:var(--sf); padding:8px 4px 40px; }
+  #apprPage .ap-hd{ display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin:6px 4px 4px; }
+  #apprPage .ap-hd .ic{ width:46px; height:46px; border-radius:13px; background:var(--pc-dark,#1a1d20); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex:0 0 auto; }
+  #apprPage .ap-title{ font-size:1.5rem; font-weight:700; color:#1a1d20; letter-spacing:-.01em; }
+  #apprPage .ap-sub{ color:#7a828c; font-size:.92rem; margin-top:2px; }
+  #apprPage .ap-pill{ margin-left:auto; align-self:center; background:#eaf6ef; color:#2e934a; border:1px solid #bfe6cf; border-radius:999px; padding:7px 15px; font-size:.82rem; font-weight:700; display:flex; align-items:center; gap:7px; }
+  #apprPage .ap-pill .dot{ width:9px; height:9px; border-radius:50%; background:#34c759; }
+
+  #apprPage .ap-panel{ background:#fff; border:1px solid #e7eaee; border-radius:18px; padding:20px 18px 8px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-top:16px; }
+  #apprPage .ap-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(208px,1fr)); gap:22px 18px; }
+  #apprPage .opt{ display:flex; flex-direction:column; }
+  #apprPage .thumb{ width:100%; aspect-ratio:16/10.4; border-radius:13px; overflow:hidden; display:flex; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.14), inset 0 0 0 1px rgba(0,0,0,.06); transition:transform .15s, box-shadow .15s; }
+  #apprPage .thumb:hover{ transform:translateY(-3px); }
+  #apprPage .opt.sel .thumb{ box-shadow:0 0 0 3px #0a84ff, 0 6px 16px rgba(0,0,0,.22); }
+  #apprPage .opt.live .thumb{ box-shadow:0 0 0 3px #34c759, 0 6px 16px rgba(0,0,0,.22); }
+  #apprPage .t-sb{ width:25%; padding:7px 0; display:flex; flex-direction:column; align-items:center; gap:5px; }
+  #apprPage .t-logo{ width:64%; height:15px; border-radius:4px; }
+  #apprPage .t-dot{ width:56%; height:4px; border-radius:2px; opacity:.5; }
+  #apprPage .t-dot.on{ opacity:1; width:64%; height:6px; }
+  #apprPage .t-main{ flex:1; padding:7px; display:flex; flex-direction:column; gap:6px; }
+  #apprPage .t-hd{ height:24px; border-radius:6px; display:flex; align-items:center; gap:5px; padding:0 7px; }
+  #apprPage .t-bar{ width:4px; height:13px; border-radius:2px; } #apprPage .t-tt{ width:52%; height:5px; border-radius:2px; opacity:.9; }
+  #apprPage .t-row{ display:flex; gap:5px; } #apprPage .t-card{ flex:1; border-radius:5px; padding:5px; }
+  #apprPage .t-n{ width:62%; height:6px; border-radius:2px; } #apprPage .t-l{ width:82%; height:3.5px; border-radius:2px; margin-top:4px; opacity:.6; }
+  #apprPage .t-tbl{ border-radius:5px; overflow:hidden; flex:1; }
+  #apprPage .t-th{ height:10px; } #apprPage .t-tr{ height:5px; margin:4px 5px 0; border-radius:2px; opacity:.55; }
+  #apprPage .nm{ margin-top:12px; font-size:1.02rem; font-weight:600; color:#1a1d20; display:flex; align-items:center; gap:8px; }
+  #apprPage .nm .livb{ font-size:.6rem; font-weight:800; padding:2px 8px; border-radius:999px; background:#34c759; color:#fff; }
+  #apprPage .desc{ font-size:.76rem; color:#8a9099; margin-top:1px; }
+  #apprPage .applybtn{ margin-top:9px; border:1.6px solid #d4d9df; background:#fff; color:#1a1d20; border-radius:10px; padding:8px 10px; font-family:var(--sf); font-weight:600; font-size:.84rem; cursor:pointer; transition:.15s; }
+  #apprPage .applybtn:hover{ border-color:#0a84ff; color:#0a84ff; }
+  #apprPage .opt.live .applybtn{ background:#34c759; border-color:#34c759; color:#fff; cursor:default; }
+
+  #apprPage .seclbl{ color:#9aa1aa; font-size:.72rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin:26px 6px 0; }
+  #apprPage .pv-wrap{ margin-top:12px; border-radius:16px; overflow:hidden; border:1px solid #e2e6ea; box-shadow:0 10px 30px rgba(0,0,0,.1); }
+  #apprPage .pv-bar{ background:#2c2c2e; display:flex; align-items:center; gap:7px; padding:9px 14px; }
+  #apprPage .pv-bar .d{ width:11px; height:11px; border-radius:50%; } #apprPage .pv-bar .d1{ background:#ff5f57; } #apprPage .pv-bar .d2{ background:#febc2e; } #apprPage .pv-bar .d3{ background:#28c840; }
+  #apprPage .pv-bar .u{ margin-left:10px; font-size:.74rem; color:#9aa1aa; }
+  #apprPage .pv{ display:flex; min-height:380px; background:var(--bg); }
+  #apprPage .pv-sb{ width:172px; flex:0 0 auto; background:var(--sb); color:var(--sbtx); padding:0 0 14px; }
+  #apprPage .pv.glass .pv-sb, #apprPage .pv.glass .pv-hd, #apprPage .pv.glass .card, #apprPage .pv.glass .pv-web{ backdrop-filter:blur(12px) saturate(1.3); -webkit-backdrop-filter:blur(12px) saturate(1.3); }
+  #apprPage .pv-logo{ background:var(--accent); color:var(--logotx); font-family:'Montserrat',sans-serif; font-weight:900; font-size:.82rem; line-height:.95; text-align:center; padding:13px 6px; }
+  #apprPage .pv-nav{ padding:11px 0; }
+  #apprPage .pv-nav .it{ display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:.8rem; font-weight:600; color:var(--sbtx); opacity:.82; }
+  #apprPage .pv-nav .it .ic{ width:15px; height:15px; border-radius:4px; background:currentColor; opacity:.55; }
+  #apprPage .pv-nav .it.on{ background:var(--navon); color:var(--accent); opacity:1; border-left:3px solid var(--accent); }
+  #apprPage .pv-nav .it.on .ic{ background:var(--accent); opacity:1; }
+  #apprPage .pv-main{ flex:1; min-width:0; padding:16px; display:flex; flex-direction:column; gap:14px; }
+  #apprPage .pv-web{ display:flex; align-items:center; gap:18px; background:var(--card); border:1px solid var(--cb); border-radius:13px; padding:11px 18px; }
+  #apprPage .pv-web .wl{ font-weight:800; color:var(--accent); font-size:.92rem; }
+  #apprPage .pv-web .wm{ font-size:.78rem; color:var(--tx); opacity:.8; font-weight:600; }
+  #apprPage .pv-web .wcta{ margin-left:auto; background:var(--accent); color:var(--logotx); font-size:.74rem; font-weight:700; padding:7px 15px; border-radius:9px; }
+  #apprPage .pv-hd{ background:var(--hd); color:var(--hdtx); border-radius:13px; padding:15px 18px; display:flex; align-items:center; gap:12px; }
+  #apprPage .pv-hd .bar{ width:7px; height:34px; border-radius:4px; background:var(--accent); }
+  #apprPage .pv-hd .t1{ font-weight:700; font-size:1rem; } #apprPage .pv-hd .t2{ font-size:.72rem; opacity:.8; margin-top:2px; }
+  #apprPage .pv-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  #apprPage .pv .card{ background:var(--card); border:1px solid var(--cb); border-radius:13px; padding:14px; color:var(--tx); }
+  #apprPage .pv-stats .card .n{ font-size:1.5rem; font-weight:800; color:var(--accent); }
+  #apprPage .pv-stats .card .l{ font-size:.72rem; color:var(--sub); margin-top:2px; }
+  #apprPage .pv-tbl .th{ display:flex; gap:10px; padding:9px 12px; background:var(--thbg); color:var(--thtx); font-size:.72rem; font-weight:700; }
+  #apprPage .pv-tbl .tr{ display:flex; gap:10px; padding:9px 12px; border-top:1px solid var(--cb); font-size:.78rem; color:var(--tx); }
+  #apprPage .pv-tbl .c1{ width:64px; font-weight:700; color:var(--accent); } #apprPage .pv-tbl .c2{ flex:1; } #apprPage .pv-tbl .c3{ width:80px; }
+  #apprPage .pv-chip{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:.66rem; font-weight:700; background:var(--accent); color:var(--logotx); }
+  #apprPage .ap-hint{ color:#9aa1aa; font-size:.82rem; margin-top:14px; text-align:center; }
+  @media (max-width:600px){ #apprPage .ap-grid{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px 12px; } #apprPage .pv-sb{ width:120px; } }
+</style>
+
+<div id="apprPage">
+  <div class="ap-hd">
+    <div class="ic"><i class="fas fa-palette"></i></div>
+    <div>
+      <div class="ap-title" data-en="Theme / Appearance" data-th="ธีม / หน้าตา">ธีม / หน้าตา</div>
+      <div class="ap-sub" data-en="Pick a theme — applies to this device only (not other users)." data-th="เลือกธีมที่ชอบ — มีผลเฉพาะเครื่อง/เบราว์เซอร์นี้ (ผู้ใช้คนอื่นไม่เปลี่ยน)">เลือกธีมที่ชอบ — มีผลเฉพาะเครื่อง/เบราว์เซอร์นี้ (ผู้ใช้คนอื่นไม่เปลี่ยน)</div>
+    </div>
+    <div class="ap-pill"><span class="dot"></span><span id="apprActiveName">Classic</span></div>
+  </div>
+
+  <div class="ap-panel">
+    <div class="ap-grid" id="apprGrid"></div>
+  </div>
+
+  <div class="seclbl" data-en="Live preview" data-th="ตัวอย่างหน้าจอ">ตัวอย่างหน้าจอ</div>
+  <div class="pv-wrap">
+    <div class="pv-bar"><span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="u" id="apprPvName">Potato Corner — Classic</span></div>
+    <div class="pv" id="apprPv">
+      <div class="pv-sb">
+        <div class="pv-logo">POTATO<br>CORNER</div>
+        <div class="pv-nav">
+          <div class="it on"><span class="ic"></span><span data-en="Dashboard" data-th="แดชบอร์ด">แดชบอร์ด</span></div>
+          <div class="it"><span class="ic"></span><span data-en="Products" data-th="ข้อมูลสินค้า">ข้อมูลสินค้า</span></div>
+          <div class="it"><span class="ic"></span><span data-en="Promotions" data-th="แจ้งโปรโมชั่น">แจ้งโปรโมชั่น</span></div>
+          <div class="it"><span class="ic"></span><span data-en="IT Work" data-th="งาน IT">งาน IT</span></div>
+          <div class="it"><span class="ic"></span><span data-en="Tracking" data-th="ติดตามงาน">ติดตามงาน</span></div>
+        </div>
+      </div>
+      <div class="pv-main">
+        <div class="pv-web"><span class="wl">Potato Corner</span><span class="wm" data-en="Home" data-th="หน้าแรก">หน้าแรก</span><span class="wm" data-en="Items" data-th="สินค้า">สินค้า</span><span class="wm" data-en="Promo" data-th="โปรโมชั่น">โปรโมชั่น</span><span class="wcta" data-en="Sign in" data-th="เข้าสู่ระบบ">เข้าสู่ระบบ</span></div>
+        <div class="pv-hd"><div class="bar"></div><div><div class="t1" data-en="Master Data — Products" data-th="ข้อมูลหลัก — สินค้า / หมวด">ข้อมูลหลัก — สินค้า / หมวด</div><div class="t2" data-en="Manage items, categories and channels" data-th="จัดการสินค้า หมวด และช่องทางขาย">จัดการสินค้า หมวด และช่องทางขาย</div></div></div>
+        <div class="pv-stats">
+          <div class="card"><div class="n">5,350</div><div class="l" data-en="Total items" data-th="สินค้าทั้งหมด">สินค้าทั้งหมด</div></div>
+          <div class="card"><div class="n">98</div><div class="l">Subset</div></div>
+          <div class="card"><div class="n">31</div><div class="l" data-en="Categories" data-th="หมวด">หมวด</div></div>
+        </div>
+        <div class="card pv-tbl" style="padding:0;overflow:hidden">
+          <div class="th"><span style="width:64px" data-en="Code" data-th="รหัส">รหัส</span><span style="flex:1" data-en="Item name" data-th="ชื่อสินค้า">ชื่อสินค้า</span><span style="width:80px" data-en="Status" data-th="สถานะ">สถานะ</span></div>
+          <div class="tr"><span class="c1">101000</span><span class="c2">SMALL FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+          <div class="tr"><span class="c1">101001</span><span class="c2">LARGE FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+          <div class="tr"><span class="c1">101003</span><span class="c2">MEGA FRIES</span><span class="c3"><span class="pv-chip">Active</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ap-hint" data-en="The chosen theme is saved on this device only and re-applied automatically next time you sign in." data-th="ธีมที่เลือกถูกบันทึกไว้ที่เครื่องนี้เท่านั้น และจะถูกใช้อัตโนมัติเมื่อเข้าระบบครั้งถัดไป">ธีมที่เลือกถูกบันทึกไว้ที่เครื่องนี้เท่านั้น และจะถูกใช้อัตโนมัติเมื่อเข้าระบบครั้งถัดไป</div>
+</div>
+
+<script>
+function initAppearance() {
+  var THEMES = window.PC_THEMES || [];
+  var live = (window.PC_activeTheme && window.PC_activeTheme()) || 'classic';
+  var sel = live; // currently previewed card
+
+  function pv(id){ return document.querySelector('#apprPage ' + id); }
+
+  function thumb(t){
+    var p = t.pal, g = t.glass ? 'backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);' : '';
+    return '<div class="thumb" style="background:'+p.bg+'" onclick="apprPreview(\''+t.id+'\')">'+
+      '<div class="t-sb" style="background:'+p.sb+';'+g+'"><div class="t-logo" style="background:'+p.accent+'"></div>'+
+        '<div class="t-dot on" style="background:'+p.accent+'"></div>'+[0,0,0].map(function(){return '<div class="t-dot" style="background:'+p.sbtx+'"></div>';}).join('')+'</div>'+
+      '<div class="t-main">'+
+        '<div class="t-hd" style="background:'+p.hd+';'+g+'"><div class="t-bar" style="background:'+p.accent+'"></div><div class="t-tt" style="background:'+p.hdtx+'"></div></div>'+
+        '<div class="t-row">'+[0,1,2].map(function(){return '<div class="t-card" style="background:'+p.card+';'+g+'border:1px solid '+p.cb+'"><div class="t-n" style="background:'+p.accent+'"></div><div class="t-l" style="background:'+p.tx+'"></div></div>';}).join('')+'</div>'+
+        '<div class="t-tbl" style="background:'+p.card+';'+g+'border:1px solid '+p.cb+'"><div class="t-th" style="background:'+p.thbg+'"></div><div class="t-tr" style="background:'+p.tx+'"></div><div class="t-tr" style="background:'+p.tx+'"></div></div>'+
+      '</div></div>';
+  }
+
+  function render(){
+    var grid = pv('#apprGrid'); if(!grid) return;
+    grid.innerHTML = THEMES.map(function(t){
+      var isLive = t.id === live, isSel = t.id === sel;
+      return '<div class="opt'+(isSel?' sel':'')+(isLive?' live':'')+'" data-id="'+t.id+'">'+
+        thumb(t)+
+        '<div class="nm">'+t.nm+(isLive?'<span class="livb" data-en="IN USE" data-th="ใช้อยู่">ใช้อยู่</span>':'')+'</div>'+
+        '<div class="desc">'+t.desc+'</div>'+
+        '<button class="applybtn" onclick="apprUse(\''+t.id+'\')">'+(isLive?'<i class="fas fa-check me-1"></i><span data-en="In use" data-th="กำลังใช้">กำลังใช้</span>':'<span data-en="Use this theme" data-th="ใช้ธีมนี้">ใช้ธีมนี้</span>')+'</button>'+
+      '</div>';
+    }).join('');
+    applyPreview();
+    var nm = THEMES.filter(function(x){return x.id===live;})[0];
+    var an = pv('#apprActiveName'); if(an && nm) an.textContent = nm.nm;
+  }
+
+  function applyPreview(){
+    var t = THEMES.filter(function(x){return x.id===sel;})[0]; if(!t) return;
+    var el = pv('#apprPv'); if(!el) return;
+    Object.keys(t.pal).forEach(function(k){ el.style.setProperty('--'+k, t.pal[k]); });
+    el.classList.toggle('glass', !!t.glass);
+    var pn = pv('#apprPvName'); if(pn) pn.textContent = 'Potato Corner — ' + t.nm;
+  }
+
+  window.apprPreview = function(id){ sel = id;
+    document.querySelectorAll('#apprPage .opt').forEach(function(o){ o.classList.toggle('sel', o.getAttribute('data-id')===id); });
+    applyPreview();
+  };
+
+  window.apprUse = function(id){
+    live = id; sel = id;
+    if (window.PC_setTheme) window.PC_setTheme(id);   // saves to localStorage + applies to whole shell
+    render();
+    var t = THEMES.filter(function(x){return x.id===id;})[0];
+    if (window.Swal) Swal.fire({ toast:true, position:'top-end', timer:1900, showConfirmButton:false, icon:'success',
+      title:(window.PC_LANG==='EN' ? 'Theme applied: ' : 'ใช้ธีมแล้ว: ') + (t?t.nm:id) });
+  };
+
+  render();
+}
+window.initAppearance = initAppearance;
+</script>

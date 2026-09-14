@@ -1,0 +1,265 @@
+<style>
+  .bedc-scope{ padding:22px 24px 46px; font-family:'Kanit',sans-serif; }
+  .bedc-scope .wrap{ max-width:860px; margin:8px auto 0; }
+  .bedc-scope .subtabs{ max-width:860px; margin:14px auto 2px; padding:0 2px; display:flex; gap:8px; flex-wrap:wrap; }
+  .bedc-scope .stab{ border:1px solid #e0e5ea; background:#fff; color:#5a616b; font-family:inherit; font-weight:700; font-size:.92rem; border-radius:11px; padding:10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .bedc-scope .stab.on{ background:#2e934a; color:#fff; border-color:#2e934a; }
+  .bedc-scope .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .bedc-scope .card h2{ font-size:1.06rem; font-weight:700; margin:0 0 14px; display:flex; align-items:center; gap:9px; color:#1a1d20; }
+  .bedc-scope .card h2 i{ color:var(--pc-green,#2e934a); }
+  .bedc-scope .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .bedc-scope .fld{ display:flex; flex-direction:column; gap:5px; margin-bottom:13px; }
+  .bedc-scope .fld label{ font-size:.86rem; font-weight:600; color:#3a4150; }
+  .bedc-scope .fld .req{ color:#c0392b; }
+  .bedc-scope .inp{ border:1.5px solid #d9dee4; border-radius:10px; padding:11px 13px; font-family:inherit; font-size:.94rem; width:100%; background:#fff; color:#1a1d20; }
+  .bedc-scope .inp:focus{ outline:none; border-color:var(--pc-green,#2e934a); }
+  .bedc-scope .inp:disabled{ background:#f4f6f8; color:#5a616b; }
+  .bedc-scope .btn{ border:0; border-radius:11px; padding:12px 18px; font-family:inherit; font-weight:700; font-size:.95rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .bedc-scope .btn-g{ background:var(--pc-green,#2e934a); color:#fff; }
+  .bedc-scope .cur{ display:flex; flex-wrap:wrap; gap:12px 26px; }
+  .bedc-scope .cur .it{ min-width:150px; }
+  .bedc-scope .cur .k{ font-size:.74rem; color:#8a9099; font-weight:600; }
+  .bedc-scope .cur .v{ font-size:.98rem; font-weight:600; color:#1a1d20; }
+  .bedc-scope .badge-edc{ display:inline-block; font-size:.78rem; font-weight:700; border-radius:999px; padding:4px 12px; }
+  .bedc-scope .tl .ev{ position:relative; padding:0 0 16px 18px; border-left:2px solid #e3e7ec; }
+  .bedc-scope .tl .ev:last-child{ border-left-color:transparent; padding-bottom:0; }
+  .bedc-scope .tl .ev::before{ content:''; position:absolute; left:-7px; top:2px; width:12px; height:12px; border-radius:50%; background:var(--pc-green,#2e934a); border:2px solid #fff; box-shadow:0 0 0 2px #d6eade; }
+  .bedc-scope .tl .ev .dt{ font-size:.78rem; color:#8a9099; }
+  .bedc-scope .tl .ev .ln{ font-size:.9rem; color:#1a1d20; margin-top:3px; }
+  .bedc-scope .empty{ text-align:center; color:#9aa1aa; padding:26px 12px; }
+  .bedc-scope .editbtn{ border:0;border-radius:11px;padding:9px 15px;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer;background:#eafaf1;color:#1d7a4d;display:inline-flex;align-items:center;gap:8px; }
+  .bedc-scope .needupd{ background:#fff8ec;border:1px solid #f3e2c0;border-radius:14px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:13px; }
+  .bedc-scope .needupd .ic{ width:42px;height:42px;border-radius:12px;background:#ffe6b8;color:#c9870a;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex:none; }
+  .bedc-scope .btn-c{ background:#f1f4f7;color:#3a4150; }
+  .bedc-modal-ov{ position:fixed;inset:0;z-index:4000;background:rgba(20,24,28,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto; }
+  .bedc-modal{ background:#fff;border-radius:18px;max-width:680px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.32);font-family:'Kanit',sans-serif;margin:auto; }
+  .bedc-modal .mh{ display:flex;align-items:center;justify-content:space-between;gap:10px;padding:17px 22px;border-bottom:1px solid #eef1f4; }
+  .bedc-modal .mh h3{ font-family:'Montserrat',sans-serif;font-weight:800;font-size:1.08rem;margin:0;color:#1a1d20;display:flex;align-items:center;gap:10px; }
+  .bedc-modal .mh h3 i{ color:#2e934a; }
+  .bedc-modal .mx{ border:0;background:#f1f4f7;width:36px;height:36px;border-radius:10px;cursor:pointer;color:#5a616b;font-size:1rem;flex:none; }
+  .bedc-modal .mb{ padding:20px 22px 6px; }
+  .bedc-modal .mf{ display:flex;gap:10px;justify-content:flex-end;padding:15px 22px;border-top:1px solid #eef1f4;position:sticky;bottom:0;background:#fff;border-radius:0 0 18px 18px; }
+  @media(max-width:560px){ .bedc-scope{ padding:14px 12px 40px; } .bedc-scope .grid2{ grid-template-columns:1fr; } }
+</style>
+
+<div class="bedc-scope" data-screen-label="BranchEDC">
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow no-print" style="background:#2e934a;color:#fff;">
+    <div>
+      <h3 class="fw-bold m-0"><i class="fas fa-credit-card me-2 text-warning"></i> ข้อมูล EDC &amp; e-Payment</h3>
+      <p class="m-0" style="opacity:.85;">บันทึก/แก้ไขเครื่องรูดบัตร EDC ที่สาขาใช้ · เก็บประวัติการติดตั้งย้อนหลัง</p>
+    </div>
+    <a id="bedcReport" href="https://buddynotify.com/cmticketuat/Ticket/ROCKS01" target="_blank" rel="noopener" style="background:#fdecea;color:#c0392b;font-weight:700;border:1px solid #f3c9c3;border-radius:11px;padding:10px 16px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;font-size:.9rem;white-space:nowrap"><i class="fas fa-triangle-exclamation"></i> แจ้งปัญหา EDC / e-payment</a>
+  </div>
+  <div class="subtabs">
+    <button class="stab on"><i class="fas fa-credit-card"></i> เครื่อง EDC</button>
+    <button class="stab" onclick="loadPage('BranchIssues')"><i class="fas fa-triangle-exclamation"></i> ภาพรวมปัญหาสาขา</button>
+    <button class="stab" onclick="loadPage('BranchTickets')"><i class="fas fa-flag"></i> ติดตามงานแจ้งปัญหา</button>
+  </div>
+  <div class="wrap" id="bedcView"></div>
+
+  <div id="bedcModalOv" class="bedc-modal-ov">
+    <div class="bedc-modal">
+      <div class="mh"><h3><i class="fas fa-pen"></i> <span id="bedcModalTitle">แก้ไขข้อมูล EDC / e-Payment</span></h3><button class="mx" onclick="window.BEDC.closeEdit()"><i class="fas fa-xmark"></i></button></div>
+      <div class="mb" id="bedcModalBody"></div>
+      <div class="mf"><button class="btn btn-c" onclick="window.BEDC.closeEdit()">ยกเลิก</button><button class="btn btn-g" onclick="window.BEDC.save()"><i class="fas fa-floppy-disk"></i> บันทึกข้อมูล</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var LS='pc_branch_edc', HLS='pc_branch_edc_history';
+  var TYPES=[
+    {k:'KPLUS', label:'KPLUS (รูดบัตร interface กับ POS)', color:'#e7f0ff', fg:'#2c4a82'},
+    {k:'M-EDC', label:'M-EDC (เครื่อง TID · manual)',      color:'#fff4e0', fg:'#c9870a'},
+    {k:'MALL',  label:'EDC ผ่านห้าง',                       color:'#f3eefe', fg:'#6d3bd1'},
+    {k:'NONE',  label:'ไม่ใช้ EDC (เงินสด/QR)',             color:'#f1f4f7', fg:'#5a616b'}
+  ];
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function typeOf(k){ for(var i=0;i<TYPES.length;i++) if(TYPES[i].k===k) return TYPES[i]; return {k:k||'', label:k||'ยังไม่ระบุ', color:'#f1f4f7', fg:'#5a616b'}; }
+  function branches(){ return (window.PC_BRANCH_MASTER||[]).slice(); }
+  function loadAll(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
+  function saveAll(m){ try{ localStorage.setItem(LS, JSON.stringify(m)); }catch(e){} }
+  function loadHist(){ try{ return JSON.parse(localStorage.getItem(HLS))||[]; }catch(e){ return []; } }
+  function saveHist(a){ try{ localStorage.setItem(HLS, JSON.stringify(a)); }catch(e){} }
+  function recOf(id){ return loadAll()[id]||{edc:'',provider:'',tid:'',installDate:'',installer:'',note:''}; }
+  function epayOf(id){ var es={}; try{ es=JSON.parse(localStorage.getItem('pc_epay'))||{}; }catch(e){} var ep=es[id]||(window.PC_EPAY_SEED&&window.PC_EPAY_SEED.records&&window.PC_EPAY_SEED.records[id])||{}; return {p1:ep.p1||{},p2:ep.p2||{},p3:ep.p3||{},p4:ep.p4||{}}; }
+  function isOffice(){ var role=(localStorage.getItem('pc_role')||'').trim(); var un=(localStorage.getItem('pc_userName')||'').trim(); return (['OP','Area','Admin','Admin HQ','MKT','IT','ACC','BD','RD'].indexOf(role)>=0 && !!un); }
+  function empBlock(){ if(isOffice()){ var role=(localStorage.getItem('pc_role')||''); var un=(localStorage.getItem('pc_userName')||''); return '<div style="font-size:.84rem;color:#3a4150;background:#eafaf1;border-radius:10px;padding:10px 12px;margin-bottom:6px"><i class="fas fa-user-check" style="color:#2e934a"></i> บันทึกในนาม <b>'+esc(un)+'</b> ('+esc(role==='OP'?'Area':role)+')</div>'; } return '<div class="fld"><label>รหัสพนักงานผู้แก้ไข <span class="req">*</span></label><input class="inp" id="fEmp" inputmode="numeric" maxlength="5" placeholder="รหัสพนักงาน 5 หลัก"></div><div class="fld"><label>ชื่อผู้แก้ไข <span class="req">*</span></label><input class="inp" id="fBy" placeholder="ชื่อ-นามสกุล"></div>'; }
+  function buildForm(r,_p1,_p2,_p3,_p4){
+    var typeOpts=TYPES.map(function(x){ return '<option value="'+x.k+'"'+(r.edc===x.k?' selected':'')+'>'+esc(x.label)+'</option>'; }).join('');
+    var wcm=(_p4.mid||_p2.mid||''), wcs=(_p4.shopid||_p2.shopid||'');
+    return ''
+      +'<div class="flbl2" style="font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa1aa;margin:2px 0 8px">ข้อมูลเครื่อง EDC</div>'
+      +'<div class="fld"><label>ประเภทเครื่อง EDC <span class="req">*</span></label><select class="inp" id="fEdc"><option value="">— เลือก —</option>'+typeOpts+'</select></div>'
+      +'<div class="grid2">'
+        +'<div class="fld"><label>ธนาคาร / ผู้ให้บริการ</label><input class="inp" id="fProv" value="'+esc(r.provider||'')+'" placeholder="เช่น KBank, SCB, กสิกร"></div>'
+        +'<div class="fld"><label>TID / เลขเครื่อง</label><input class="inp" id="fTid" value="'+esc(r.tid||'')+'" placeholder="เลข TID / serial เครื่อง"></div>'
+        +'<div class="fld"><label>รุ่นเครื่อง EDC (Model)</label><input class="inp" id="fModel" list="edcModels" value="'+esc(r.model||'')+'" placeholder="เช่น A80"><datalist id="edcModels"><option value="A80"></option></datalist></div>'
+        +'<div style="grid-column:1/-1;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa1aa;margin:6px 0 2px">ข้อมูลการติดตั้ง</div>'
+        +'<div class="fld"><label>วันที่ติดตั้ง</label><input class="inp" id="fDate" type="date" value="'+esc(r.installDate||'')+'"></div>'
+        +'<div class="fld"><label>SIM (AIS) ในเครื่อง EDC</label><input class="inp" id="fSim" value="'+esc(r.sim||'')+'" inputmode="tel" placeholder="เบอร์ SIM ในเครื่อง EDC"></div>'
+        +'<div class="fld"><label>ชื่อร้าน (ในระบบธนาคาร)</label><input class="inp" id="fMer" value="'+esc(r.merchant||'')+'" placeholder="Mer_Name"></div>'
+        +'<div style="grid-column:1/-1;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa1aa;margin:6px 0 2px">e-Payment</div>'
+        +'<div class="fld"><label>TrueWallet — MID</label><input class="inp" id="fTwMid" value="'+esc(_p1.mid||'')+'"></div>'
+        +'<div class="fld"><label>TrueWallet — ShopID</label><input class="inp" id="fTwSid" value="'+esc(_p1.shopid||'')+'"></div>'
+        +'<div class="fld"><label>Alipay — MID</label><input class="inp" id="fAwMid" value="'+esc(_p2.mid||'')+'"></div>'
+        +'<div class="fld"><label>Alipay — Operator ID</label><input class="inp" id="fAwSid" value="'+esc(_p2.shopid||'')+'"></div>'
+        +'<div class="fld"><label>WeChat Pay — MID</label><input class="inp" id="fWcMid" value="'+esc(wcm)+'"></div>'
+        +'<div class="fld"><label>WeChat Pay — Operator ID</label><input class="inp" id="fWcSid" value="'+esc(wcs)+'"></div>'
+        +'<div class="fld"><label>ShopeePay — MID</label><input class="inp" id="fSpMid" value="'+esc(_p3.mid||'')+'"></div>'
+        +'<div class="fld"><label>ShopeePay — ShopID</label><input class="inp" id="fSpSid" value="'+esc(_p3.shopid||'')+'"></div>'
+      +'</div>'
+      +'<div class="fld"><label>หมายเหตุ</label><textarea class="inp" id="fNote" rows="2" placeholder="รายละเอียดเพิ่มเติม เช่น เปลี่ยนเครื่องใหม่ / ย้ายธนาคาร">'+esc(r.note||'')+'</textarea></div>'
+      +empBlock()
+      +'<div class="flbl2" style="font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa1aa;margin:6px 0 8px">ช่างผู้ติดตั้ง</div>'
+      +'<div class="fld"><label>ชื่อช่าง / บริษัท / เบอร์โทร</label><input class="inp" id="fInst" value="'+esc(r.installer||'')+'" placeholder="ชื่อช่าง / บริษัท / เบอร์ผู้มาติดตั้ง"></div>';
+  }
+  function fmtD(d){ if(!d) return '-'; try{ var x=new Date(d); if(!isNaN(x)) return x.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){} return d; }
+  function fmtTs(ts){ if(!ts) return '-'; var d=new Date(ts); return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
+
+  var curBranch='';
+  function lockedBranch(){
+    var bv=(localStorage.getItem('pc_bv_branch')||'').trim();
+    if(!bv || bv.toUpperCase()==='ALL') return '';
+    var bs=branches(); var hit=bs.filter(function(b){ return b.id===bv || bv.indexOf(b.id)>-1 || b.name===bv; })[0];
+    return hit?hit.id:'';
+  }
+
+  function render(){
+    var view=document.getElementById('bedcView'); if(!view) return;
+    var locked=lockedBranch();
+    if(locked) curBranch=locked;
+    var bs=branches();
+    var h='';
+    h+='<div class="card"><div class="fld"><label>สาขา <span class="req">*</span></label>';
+    if(locked){ var lb=bs.filter(function(b){return b.id===locked;})[0]||{}; h+='<input class="inp" value="'+esc(locked+' · '+(lb.name||''))+'" disabled>'; }
+    else {
+      var brOpts='<option value="">— เลือกสาขา —</option>'+bs.map(function(b){ return '<option value="'+esc(b.id)+'"'+(b.id===curBranch?' selected':'')+'>'+esc(b.id)+' · '+esc(b.name)+'</option>'; }).join('');
+      h+='<select class="inp" id="bedcBr" onchange="window.BEDC.pick(this.value)">'+brOpts+'</select>';
+    }
+    h+='</div></div>';
+
+    var _rp=document.getElementById('bedcReport'); if(_rp){ var _rr=curBranch?recOf(curBranch):{}; _rp.href='https://buddynotify.com/cmticketuat/Ticket/ROCKS01'+(curBranch?('?shop='+encodeURIComponent(curBranch)+'&tid='+encodeURIComponent(_rr.tid||'')+'&edc='+encodeURIComponent(_rr.edc||'')):''); }
+    if(!curBranch){ h+='<div class="card"><div class="empty"><i class="fas fa-store fa-2x" style="opacity:.35;display:block;margin-bottom:10px"></i>เลือกสาขาเพื่อดู / แก้ข้อมูลเครื่อง EDC</div></div>'; view.innerHTML=h; return; }
+
+    var r=recOf(curBranch); var t=typeOf(r.edc);
+    var hasData=!!(r.edc||r.tid||r.provider||r.merchant);
+    var az; try{ az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; }catch(e){ az={}; }
+    var zn=az[curBranch]||{};
+    if(!hasData){
+      h+='<div class="needupd"><div class="ic"><i class="fas fa-triangle-exclamation"></i></div>'
+        +'<div style="flex:1"><div style="font-weight:700;color:#8a5a00">ยังไม่มีข้อมูลเครื่อง EDC ของสาขานี้</div>'
+        +'<div style="font-size:.84rem;color:#96712a;margin-top:2px">แจ้งช่างให้กรอกรายละเอียดเครื่อง EDC / e-Payment ให้ครบ <b>เมื่อติดตั้ง / จบงาน</b> ที่นี่</div></div>'
+        +'<button class="editbtn" style="background:#2e934a;color:#fff" onclick="window.BEDC.openEdit()"><i class="fas fa-plus"></i> กรอกข้อมูลเครื่อง</button></div>';
+    }
+    h+='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px"><h2 style="margin:0"><i class="fas fa-circle-info"></i> ข้อมูลปัจจุบัน</h2>'
+      +(hasData?'<button class="editbtn" onclick="window.BEDC.openEdit()"><i class="fas fa-pen"></i> แก้ไขข้อมูล</button>':'')+'</div>';
+    h+='<div style="margin-bottom:14px"><span class="badge-edc" style="background:'+t.color+';color:'+t.fg+'">'+esc(t.label)+'</span></div>';
+    h+='<div class="cur">'
+      +'<div class="it"><div class="k">TID / เลขเครื่อง</div><div class="v">'+esc(r.tid||'-')+'</div></div>'
+      +'<div class="it"><div class="k">รุ่นเครื่อง (Model)</div><div class="v">'+esc(r.model||'-')+'</div></div>'
+      +'<div class="it"><div class="k">SIM (AIS)</div><div class="v">'+esc(r.sim||'-')+'</div></div>'
+      +'<div class="it"><div class="k">ชื่อร้าน (ธนาคาร)</div><div class="v">'+esc(r.merchant||'-')+'</div></div>'
+      +'<div class="it"><div class="k">ธนาคาร / ผู้ให้บริการ</div><div class="v">'+esc(r.provider||'-')+'</div></div>'
+      +'<div class="it"><div class="k">วันที่ติดตั้ง</div><div class="v">'+fmtD(r.installDate)+'</div></div>'
+      +'<div class="it"><div class="k">ช่างผู้ติดตั้ง</div><div class="v">'+esc(r.installer||'-')+'</div></div>'
+      +'</div>';
+    if(r.note) h+='<div style="margin-top:12px;font-size:.9rem;color:#5a616b"><b>หมายเหตุ:</b> '+esc(r.note)+'</div>';
+    if(r.updatedAt) h+='<div style="margin-top:10px;font-size:.78rem;color:#9aa1aa">แก้ไขล่าสุด '+fmtTs(r.updatedAt)+(r.updatedBy?' · '+esc(r.updatedBy):'')+'</div>';
+    if(zn.area||zn.zone){ h+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid #eef1f4;font-size:.9rem"><b><i class="fas fa-user-shield" style="color:#2e934a"></i> Area ผู้รับผิดชอบ:</b> '+esc(zn.area||'-')+(zn.zone?' · โซน '+esc(zn.zone):'')+(zn.grade?' · เกรด '+esc(zn.grade):'')+(zn.tel?' · โทร '+esc(zn.tel):'')+'</div>'; }
+    h+='<div style="margin-top:12px;background:#fff8ec;border:1px solid #f3e2c0;border-radius:8px;padding:9px 11px;font-size:.8rem;color:#6b5b2e;line-height:1.5"><i class="fas fa-circle-info" style="color:#c9870a"></i> จ่ายไม่สำเร็จ / เชื่อมต่อธนาคารมีปัญหา → แจ้ง <b>cmpos</b> ตรวจสอบก่อน · ถ้าปัญหาที่ตัวเครื่อง EDC → ดูเลข <b>TID ข้างเครื่อง</b> ว่าตรงกับในระบบไหม · ถ้าไม่ตรง อัพเดทข้อมูล EDC ให้ตรงกับเครื่องจริงก่อน แล้วกดแจ้งปัญหา</div>';
+    h+='</div>';
+
+    try{
+      var _ep=epayOf(curBranch); var _p1=_ep.p1,_p2=_ep.p2,_p3=_ep.p3,_p4=_ep.p4;
+      var _nf='<span style="color:#c0392b;font-weight:600">ไม่พบข้อมูล</span>'; var _epv=function(o,k){ return (o&&o[k])?esc(o[k]):_nf; };
+      var _wc={mid:(_p4.mid||_p2.mid||''),shopid:(_p4.shopid||_p2.shopid||'')};
+      h+='<div class="card"><h2><i class="fas fa-qrcode"></i> e-Payment (MID / Operator ID)</h2><div class="cur">';
+      h+='<div style="flex-basis:100%;padding:10px 0;border-bottom:1px solid #eef1f4"><div style="font-weight:700;color:#f5871f;margin-bottom:3px"><i class="fas fa-wallet"></i> TrueWallet</div><div style="font-size:.86rem;color:#5a616b">MID: '+_epv(_p1,'mid')+' &nbsp;·&nbsp; ShopID: '+_epv(_p1,'shopid')+'</div></div>';
+      h+='<div style="flex-basis:100%;padding:10px 0;border-bottom:1px solid #eef1f4"><div style="font-weight:700;color:#1296db;margin-bottom:3px"><i class="fab fa-alipay"></i> Alipay</div><div style="font-size:.86rem;color:#5a616b">MID: '+_epv(_p2,'mid')+' &nbsp;·&nbsp; Operator ID: '+_epv(_p2,'shopid')+'</div></div>';
+      h+='<div style="flex-basis:100%;padding:10px 0;border-bottom:1px solid #eef1f4"><div style="font-weight:700;color:#09b83e;margin-bottom:3px"><i class="fab fa-weixin"></i> WeChat Pay</div><div style="font-size:.86rem;color:#5a616b">MID: '+_epv(_wc,'mid')+' &nbsp;·&nbsp; Operator ID: '+_epv(_wc,'shopid')+'</div></div>';
+      h+='<div style="flex-basis:100%;padding:10px 0"><div style="font-weight:700;color:#ee4d2d;margin-bottom:3px"><i class="fas fa-bag-shopping"></i> ShopeePay</div><div style="font-size:.86rem;color:#5a616b">MID: '+_epv(_p3,'mid')+' &nbsp;·&nbsp; ShopID: '+_epv(_p3,'shopid')+'</div></div>';
+      h+='<div style="flex-basis:100%;margin-top:10px"><a href="https://buddynotify.com/cmticketuat/Ticket/ROCKS01'+(curBranch?('?shop='+encodeURIComponent(curBranch)+'&type=epayment'):'')+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;background:#fdecea;color:#c0392b;font-weight:700;border-radius:10px;padding:9px 14px;text-decoration:none;font-size:.86rem"><i class="fas fa-triangle-exclamation"></i> จ่ายเงินไม่ได้? แจ้ง Ticket cmpos</a></div>';
+      h+='</div></div>';
+    }catch(e){}
+    var slog=[]; try{ slog=(JSON.parse(localStorage.getItem('pc_edc_status_log'))||[]).filter(function(x){return x.branchId===curBranch;}).sort(function(a,b){return (b.ts||0)-(a.ts||0);}); }catch(e){}
+    h+='<div class="card"><h2><i class="fas fa-clipboard-check"></i> แจ้ง/บันทึกสถานะเครื่อง</h2>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +'<button style="background:#eafaf1;color:#1d7a4d;font-weight:700;border:0;border-radius:11px;padding:11px 16px;cursor:pointer;font-family:inherit" onclick="window.BEDC.logStatus(1)"><i class="fas fa-circle-check"></i> ใช้งานได้ปกติ</button>'
+      +'<button style="background:#fdecea;color:#c0392b;font-weight:700;border:0;border-radius:11px;padding:11px 16px;cursor:pointer;font-family:inherit" onclick="window.BEDC.logStatus(0)"><i class="fas fa-triangle-exclamation"></i> ใช้งานไม่ได้ / มีปัญหา</button>'
+      +'</div>';
+    if(slog.length){ h+='<div class="tl" style="margin-top:14px">'+slog.slice(0,20).map(function(e){ return '<div class="ev"><div class="dt">'+fmtTs(e.ts)+(e.by?' · '+esc(e.by):'')+(e.tid?' · TID '+esc(e.tid):'')+'</div><div class="ln">'+(e.ok?'<span style="color:#1d7a4d;font-weight:600"><i class="fas fa-circle-check"></i> ใช้งานได้ปกติ</span>':'<span style="color:#c0392b;font-weight:600"><i class="fas fa-triangle-exclamation"></i> ใช้งานไม่ได้</span>')+'</div></div>'; }).join('')+'</div>'; }
+    h+='</div>';
+    var hist=loadHist().filter(function(x){return x.branchId===curBranch;}).sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+    h+='<div class="card"><h2><i class="fas fa-clock-rotate-left"></i> ประวัติการติดตั้ง / เปลี่ยนเครื่อง <span style="font-size:.8rem;color:#9aa1aa;font-weight:400">('+hist.length+')</span></h2>';
+    if(!hist.length){ h+='<div class="empty">ยังไม่มีประวัติ — เมื่อบันทึกครั้งแรกจะขึ้นที่นี่</div>'; }
+    else{
+      h+='<div class="tl">'+hist.map(function(e){ var et=typeOf(e.edc);
+        return '<div class="ev"><div class="dt">'+fmtTs(e.ts)+(e.by?' · โดย '+esc(e.by):'')+'</div>'
+          +'<div class="ln"><span class="badge-edc" style="background:'+et.color+';color:'+et.fg+';font-size:.72rem;padding:2px 9px">'+esc(et.label)+'</span> '
+          +(e.provider?' '+esc(e.provider):'')+(e.tid?' · TID '+esc(e.tid):'')+(e.installer?' · ช่าง '+esc(e.installer):'')
+          +(e.note?'<div style="font-size:.82rem;color:#6c757d;margin-top:2px">'+esc(e.note)+'</div>':'')+'</div></div>';
+      }).join('')+'</div>';
+    }
+    h+='</div>';
+
+    view.innerHTML=h;
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  window.BEDC={
+    pick:function(id){ curBranch=id; render(); },
+    openEdit:function(){
+      if(!curBranch){ Swal.fire({icon:'warning',title:'เลือกสาขาก่อน',confirmButtonColor:'#2e934a'}); return; }
+      var r=recOf(curBranch); var ep=epayOf(curBranch);
+      var hasData=!!(r.edc||r.tid||r.provider||r.merchant);
+      var tt=document.getElementById('bedcModalTitle'); if(tt) tt.textContent=(hasData?'แก้ไขข้อมูล EDC / e-Payment':'กรอกข้อมูลเครื่อง EDC / e-Payment')+' — '+curBranch;
+      var body=document.getElementById('bedcModalBody');
+      if(body){ body.innerHTML='<div style="background:#eafaf1;border:1px solid #cdeed9;border-radius:11px;padding:10px 13px;margin-bottom:14px;font-size:.85rem;color:#1d6b3f;line-height:1.5"><i class="fas fa-screwdriver-wrench" style="color:#2e934a"></i> <b>ช่างติดตั้ง/ซ่อม:</b> กรอกรายละเอียดเครื่อง EDC + e-Payment ให้ครบเมื่อจบงาน แล้วกด <b>บันทึกข้อมูล</b></div>'+buildForm(r, ep.p1, ep.p2, ep.p3, ep.p4); }
+      var ov=document.getElementById('bedcModalOv'); if(ov){ ov.style.display='flex'; document.body.style.overflow='hidden'; }
+      if(typeof window.applyLang==='function') window.applyLang();
+    },
+    closeEdit:function(){ var ov=document.getElementById('bedcModalOv'); if(ov) ov.style.display='none'; document.body.style.overflow=''; },
+    logStatus:function(ok){ if(!curBranch){ Swal.fire({icon:'warning',title:'เลือกสาขาก่อน',confirmButtonColor:'#2e934a'}); return; }
+      var by=''; try{ var _r=(localStorage.getItem('pc_role')||''); var _u=(localStorage.getItem('pc_userName')||''); by=_u?(_u+' ('+(_r==='OP'?'Area':_r)+')'):'สาขา'; }catch(e){}
+      var _tid=(recOf(curBranch).tid||''); var lg=[]; try{ lg=JSON.parse(localStorage.getItem('pc_edc_status_log'))||[]; }catch(e){}
+      lg.push({ branchId:curBranch, tid:_tid, ok:ok?1:0, ts:Date.now(), by:by });
+      try{ localStorage.setItem('pc_edc_status_log', JSON.stringify(lg)); }catch(e){}
+      try{ var N=window.PC_notify||(window.top&&window.top.PC_notify); if(N&&!ok) N('edc_problem',{ text:'สาขา '+curBranch+' แจ้งเครื่อง EDC ใช้งานไม่ได้'+(_tid?' · TID '+_tid:'') }); }catch(e){}
+      Swal.fire({icon:'success',title:'บันทึกสถานะแล้ว',timer:1000,showConfirmButton:false}); render();
+    },
+    save:function(){
+      if(!curBranch){ Swal.fire({icon:'warning',title:'เลือกสาขาก่อน',confirmButtonColor:'#2e934a'}); return; }
+      var edc=(document.getElementById('fEdc')||{}).value||'';
+      var by=((document.getElementById('fBy')||{}).value||'').trim(); var _emp=((document.getElementById('fEmp')||{}).value||'').replace(/\D/g,'');
+      if(!edc){ Swal.fire({icon:'warning',title:'เลือกประเภทเครื่อง EDC',confirmButtonColor:'#2e934a'}); return; }
+      var _role=(localStorage.getItem('pc_role')||'').trim(); var _un=(localStorage.getItem('pc_userName')||'').trim();
+      if(['OP','Area','Admin','Admin HQ','MKT','IT','ACC','BD','RD'].indexOf(_role)>=0 && _un){ by=_un+' ('+(_role==='OP'?'Area':_role)+')'; }
+      else { if(!by){ Swal.fire({icon:'warning',title:'กรอกชื่อผู้แก้ไข',confirmButtonColor:'#2e934a'}); return; } if(!/^\d{5}$/.test(_emp)){ Swal.fire({icon:'warning',title:'กรอกรหัสพนักงาน 5 หลัก',confirmButtonColor:'#2e934a'}); return; } by=by+' ('+_emp+')'; }
+      var rec={ edc:edc,
+        provider:((document.getElementById('fProv')||{}).value||'').trim(),
+        tid:((document.getElementById('fTid')||{}).value||'').trim(),
+        model:((document.getElementById('fModel')||{}).value||'').trim(),
+        installDate:((document.getElementById('fDate')||{}).value||'').trim(),
+        installer:((document.getElementById('fInst')||{}).value||'').trim(),
+        note:((document.getElementById('fNote')||{}).value||'').trim(),
+        sim:((document.getElementById('fSim')||{}).value||'').trim(),
+        merchant:((document.getElementById('fMer')||{}).value||'').trim(),
+        mobile:((loadAll()[curBranch]||{}).mobile)||'',
+        updatedAt:Date.now(), updatedBy:by };
+      var all=loadAll(); all[curBranch]=rec; saveAll(all);
+      try{ var _az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; if(!_az[curBranch]) _az[curBranch]={zone:'',area:'',tel:'',alpha:'',grade:'',store:'',mobile:''}; _az[curBranch].mobile=rec.mobile; localStorage.setItem('pc_area_zones', JSON.stringify(_az)); }catch(e){}
+      var hist=loadHist(); hist.push({ branchId:curBranch, ts:Date.now(), by:by, edc:edc, provider:rec.provider, tid:rec.tid, installDate:rec.installDate, installer:rec.installer, note:rec.note }); saveHist(hist);
+      try{ var _ep2=JSON.parse(localStorage.getItem('pc_epay'))||{}; _ep2[curBranch]={ p1:{mid:((document.getElementById('fTwMid')||{}).value||'').trim(), shopid:((document.getElementById('fTwSid')||{}).value||'').trim()}, p2:{mid:((document.getElementById('fAwMid')||{}).value||'').trim(), shopid:((document.getElementById('fAwSid')||{}).value||'').trim()}, p3:{mid:((document.getElementById('fSpMid')||{}).value||'').trim(), shopid:((document.getElementById('fSpSid')||{}).value||'').trim()}, p4:{mid:((document.getElementById('fWcMid')||{}).value||'').trim(), shopid:((document.getElementById('fWcSid')||{}).value||'').trim()}, updatedAt:Date.now(), updatedBy:by }; localStorage.setItem('pc_epay', JSON.stringify(_ep2)); }catch(e){}
+      try{ var N=window.PC_notify||(window.top&&window.top.PC_notify); if(N) N('edc_update',{ text:'สาขา '+esc(curBranch)+' อัปเดตข้อมูลเครื่อง EDC — '+esc(typeOf(edc).label)+(rec.installer?' · ช่าง '+esc(rec.installer):'') }); }catch(e){}
+      window.BEDC.closeEdit();
+      Swal.fire({icon:'success',title:'บันทึกแล้ว',text:'อัปเดตข้อมูล EDC + ลงประวัติเรียบร้อย',timer:1500,showConfirmButton:false});
+      render();
+    }
+  };
+
+  window.initBranchEDC=function(){ curBranch=''; render(); };
+  window.disposeBranchEDC=function(){ curBranch=''; };
+})();
+</script>

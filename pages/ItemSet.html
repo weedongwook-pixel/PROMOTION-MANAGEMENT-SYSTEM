@@ -1,0 +1,1108 @@
+<style>
+
+  :root{ --pc-dark:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .tabbar{ display:flex; gap:6px; padding:14px 26px 0; background:#fff; border-bottom:1px solid #e2e6ea; position:sticky; top:0; z-index:20; }
+  .tabbtn{ border:none; background:transparent; font-family:'Kanit'; font-weight:600; font-size:.92rem; color:#6c757d; padding:10px 18px; border-radius:10px 10px 0 0; cursor:pointer; border-bottom:3px solid transparent; }
+  .tabbtn.active{ color:var(--pc-green); border-bottom-color:var(--pc-green); background:#f4faf6; }
+  .page{ max-width:none; margin:0; padding:24px 0 0; }
+  .hide{ display:none !important; }
+  .card2{ background:#fff; border:1px solid #e2e6ea; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.04); overflow:hidden; }
+  .card2 .hd{ background:var(--pc-dark); color:#fff; padding:12px 18px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .card2 .hd .mut{ font-weight:400; font-size:.78rem; color:#b9bdc2; }
+  .pickwrap{ display:grid; grid-template-columns:340px 1fr; gap:18px; }
+  @media(max-width:820px){ .pickwrap{ grid-template-columns:1fr; } }
+  .pane{ border:1px solid #e8ebee; border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  .pane h5{ margin:0; background:#f5f7f9; padding:9px 13px; font-size:.82rem; border-bottom:1px solid #e8ebee; display:flex; justify-content:space-between; align-items:center; }
+  .pane .scroller{ max-height:430px; overflow:auto; }
+  .row-item{ padding:8px 13px; border-bottom:1px solid #f1f3f5; font-size:.84rem; display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; }
+  .row-item:hover{ background:#fafbfc; }
+  .row-item.sel{ background:#fff8e1; border-left:3px solid var(--pc-yellow); }
+  .row-item small{ color:#9aa3ab; }
+  .row-item .add-i{ color:var(--pc-green); font-size:1rem; }
+  .empty{ padding:28px 14px; text-align:center; color:#aaa; font-size:.85rem; }
+  .tbl{ width:100%; border-collapse:collapse; font-size:.84rem; }
+  .ui-body{ display:grid; gap:16px; align-items:start; padding:18px; }
+  .adm-filter-row th{ background:#eaf3ee !important; padding:5px 8px !important; position:sticky; top:34px; }
+  .adm-filter-row input{ font-size:.78rem; }
+  .tbl th{ background:#2e934a; color:#fff; padding:8px 10px; text-align:left; font-weight:600; font-size:.8rem; position:sticky; top:0; letter-spacing:.2px; }
+  .tbl td{ padding:7px 10px; border-bottom:1px solid #eef1f4; vertical-align:middle; color:#2b2f33; }
+  .tbl tbody tr:nth-child(even){ background:#fafdfb; }
+  .tbl tbody tr:hover{ background:#fff8e1; }
+  .chip{ display:inline-flex; align-items:center; gap:5px; font-size:.74rem; font-weight:600; background:#e8f6ee; color:#0b6b3a; border:1px solid #bfe3cd; border-radius:14px; padding:2px 9px; margin:2px; }
+  .chip i{ cursor:pointer; opacity:.7; }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:14px 0 0; }
+  .btn-pc{ background:var(--pc-green); color:#fff; border:none; font-weight:600; }
+  .btn-pc:hover{ background:#03612f; color:#fff; }
+  .search{ position:relative; }
+  .search input{ padding-left:30px; }
+  .search i{ position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#aaa; }
+  .it-tag{ background:#cfe2ff; color:#084298; font-size:.62rem; font-weight:700; padding:1px 6px; border-radius:4px; }
+  .seg{ display:inline-flex; background:#eef1f4; border-radius:9px; padding:3px; gap:3px; }
+  .seg button{ border:none; background:transparent; font-weight:600; font-size:.78rem; color:#666; padding:5px 12px; border-radius:7px; cursor:pointer; }
+  .seg button.on{ background:#fff; color:var(--pc-dark); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .save-note{ font-size:.78rem; color:#888; }
+  .json-out{ background:#0f1113; color:#7ee787; font-family:'JetBrains Mono',monospace; font-size:.74rem; padding:14px; border-radius:10px; white-space:pre-wrap; max-height:240px; overflow:auto; }
+</style>
+
+<div class="container-fluid p-4" style="background-color:#eef1f4; min-height:100vh;" data-screen-label="ItemSet">
+  <div id="itemset-hd" class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div class="d-flex align-items-center">
+      <div style="width:10px;height:55px;background:var(--pc-yellow,#2e934a);margin-right:15px;border-radius:5px;"></div>
+      <div>
+        <h3 class="fw-bold m-0" style="font-family:'Montserrat',sans-serif; text-transform:uppercase;"><i class="fas fa-vials me-2 text-warning"></i> Item Set Builder &amp; Powder-Formula</h3>
+        <small style="opacity:.8;">ตั้งค่าปุ่ม Item Set (POS) · Recipe · ผูก Subset ให้สินค้า</small>
+      </div>
+    </div>
+    <div class="text-end small" style="opacity:.85;"><div><b>Module:</b> Item Set</div><div><b>Brand:</b> Potato Corner</div></div>
+  </div>
+<div class="tabbar" id="itemset-tabbar">
+    <button class="tabbtn active" id="tb-pos" onclick="App.tab('pos')"><i class="fas fa-cash-register me-1"></i>POS Button Setup</button>
+    <button class="tabbtn" id="tb-recipe" onclick="App.tab('recipe')"><i class="fas fa-utensils me-1"></i>Recipe (Item Set)</button>
+  </div>
+
+  <!-- ============ POS BUTTON SETUP ============ -->
+  <div class="page" id="page-pos">
+    <div class="card2">
+      <div class="hd"><span><i class="fas fa-cash-register me-2 text-warning"></i>POS Button Setup <span class="mut">ตั้งค่าปุ่ม → ส่ง Code Item Set ไปหน้า IT Settlement</span></span></div>
+      <div class="ui-body" style="grid-template-columns:300px 1fr">
+        <div class="ui-col">
+          <h5><span>📂 แคมเปญ / ปุ่ม (Item Set)</span></h5>
+          <div class="scroller pos-tree" id="posTree"></div>
+        </div>
+        <div class="ui-col" style="border:none">
+          <div id="posBody"><div class="empty">เลือกปุ่ม Item Set จากด้านซ้าย</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RECIPE (ITEM SET) ============ -->
+  <div class="page hide" id="page-recipe">
+    <div class="card2">
+      <div class="hd"><span><i class="fas fa-utensils me-2 text-warning"></i>Recipe ผูกกับ Item Set <span class="mut">รูปแบบไฟล์จริง · Item Set × Member × Sale Mode × RM</span></span>
+        <button class="btn btn-sm btn-light fw-bold" onclick="App.recExport()"><i class="fas fa-file-excel text-success me-1"></i>Export Excel</button></div>
+      <div class="ui-body" style="grid-template-columns:300px 1fr">
+        <div class="ui-col">
+          <h5><span>📂 แคมเปญ / ปุ่ม (Item Set)</span></h5>
+          <div class="scroller pos-tree" id="recTree"></div>
+        </div>
+        <div class="ui-col" style="border:none">
+          <div id="recBody"><div class="empty">เลือกปุ่ม Item Set จากด้านซ้าย</div></div>
+        </div>
+      </div>
+    </div>
+    <details class="mt-3"><summary class="small text-muted" style="cursor:pointer">ดูข้อมูล Recipe (JSON)</summary><div class="json-out mt-2" id="posJson">—</div></details>
+  </div>
+
+  <!-- ============ ADMIN SUBSET MANAGER ============ -->
+  <div class="page hide" id="page-admin">
+    <div class="card2">
+      <div class="hd"><span><i class="fas fa-user-shield me-2 text-warning"></i>Admin: Subset Manager <span class="mut">ผูก subset ให้สินค้าเก่าแบบ manual / import จาก Excel</span></span></div>
+      <div class="p-3">
+        <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+          <div class="seg"><button id="admFilterAll" class="on" onclick="App.admFilter('all')">ทั้งหมด</button><button id="admFilterBound" onclick="App.admFilter('bound')">ผูกแล้ว</button><button id="admFilterNone" onclick="App.admFilter('none')">ยังไม่ผูก</button></div>
+          <div class="ms-auto d-flex gap-2"><button class="btn btn-success btn-sm fw-bold" onclick="App.admExport()"><i class="fas fa-file-excel me-1"></i>Export Excel</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="App.admImport()"><i class="fas fa-file-import me-1"></i>Import จาก Excel</button></div>
+        </div>
+        <div class="pane"><div class="scroller" style="max-height:520px">
+          <table class="tbl"><thead>
+          <tr><th style="width:110px">Item Code</th><th style="width:200px">สินค้า</th><th style="width:120px">หมวด</th><th style="width:130px">Subset Code</th><th>Description</th><th style="width:80px" class="text-center">Min</th><th style="width:80px" class="text-center">Max</th><th style="width:90px" class="text-center">จัดการ</th></tr>
+          <tr class="adm-filter-row"><th><input class="form-control form-control-sm" data-col="code" placeholder="กรอง" oninput="App.admColFilter('code',this.value)"></th><th><input class="form-control form-control-sm" data-col="name" placeholder="กรอง" oninput="App.admColFilter('name',this.value)"></th><th><select class="form-select form-select-sm" id="admCatFilter" onchange="App.admColFilter('cat',this.value)"><option value="">ทั้งหมด</option></select></th><th><input class="form-control form-control-sm" data-col="ss" placeholder="กรอง" oninput="App.admColFilter('ss',this.value)"></th><th><input class="form-control form-control-sm" data-col="desc" placeholder="กรอง" oninput="App.admColFilter('desc',this.value)"></th><th></th><th></th><th></th></tr>
+          </thead>
+          <tbody id="admBody"></tbody></table>
+        </div></div>
+        <div class="small text-muted mt-2"><i class="fas fa-circle-info me-1"></i>สินค้าใหม่ (NPD) ผูก subset อัตโนมัติตอนสร้าง — หน้านี้สำหรับ <b>สินค้าเก่า</b> ที่ยังไม่มี mapping หรือ import ครั้งเดียวจากไฟล์</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+var App = (function(){
+  "use strict";
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  // คัดลอกข้อความลง clipboard (มี fallback execCommand) + ติ๊กถูกที่ปุ่มชั่วครู่
+  function copyText(t, btn){
+    t = String(t==null?'':t).trim();
+    function flash(){ if(!btn) return; var o=btn.innerHTML; btn.classList.add('copied'); btn.innerHTML='<i class="fas fa-check"></i>'; setTimeout(function(){ btn.innerHTML=o; btn.classList.remove('copied'); },1000); }
+    function fallback(x){ try{ var ta=document.createElement('textarea'); ta.value=x; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); ta.remove(); }catch(e){} }
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(flash, function(){ fallback(t); flash(); }); }
+    else { fallback(t); flash(); }
+  }
+
+  // ---- data ----
+  var ITEMS = ((window.PC_SEED&&PC_SEED.items)||[]).filter(function(it){ return !/^SS/.test(it.itemCode); });
+  // mock Recipe (BOM) per item — keyed by itemCode (no cost, just RM lines)
+  var RECIPE = {
+    '101001':[{rm:'3116',d:'เฟรนช์ฟรายส์ Kaida',q:'110',u:'G'},{rm:'4001',d:'ถ้วย Large',q:'1',u:'PCS'}],
+    '101003':[{rm:'3116',d:'เฟรนช์ฟรายส์ Kaida',q:'180',u:'G'},{rm:'4003',d:'ถ้วย Mega',q:'1',u:'PCS'}],
+    '104002':[{rm:'3201',d:'ไก่ป๊อป',q:'120',u:'G'},{rm:'4002',d:'ถ้วย Jumbo',q:'1',u:'PCS'}],
+    '104003':[{rm:'3201',d:'ไก่ป๊อป',q:'180',u:'G'},{rm:'4003',d:'ถ้วย Mega',q:'1',u:'PCS'}],
+    '108005':[{rm:'3060',d:'ข้อไก่ทอด',q:'85',u:'G'},{rm:'4001',d:'ถ้วย Large',q:'1',u:'PCS'}],
+    '108026':[{rm:'3070',d:'เนื้อเป็ด',q:'90',u:'G'},{rm:'4003',d:'ถ้วย Mega',q:'1',u:'PCS'}],
+    '110085':[{rm:'4012',d:'พิซซ่าแบ็ก',q:'1',u:'PCS'},{rm:'4003',d:'ถุง Mega',q:'1',u:'PCS'}],
+    '201005':[{rm:'5002',d:'เป๊ปซี่ 22oz',q:'1',u:'PCS'}],
+    '201001':[{rm:'5001',d:'เป๊ปซี่ 16oz',q:'1',u:'PCS'}]
+  };
+  function recipeOf(code, saleMode){
+    // ใช้ Recipe BOM จริง (PC_RECIPE) ตามช่องทาง — Delivery ใช้สูตร Delivery, ที่เหลือใช้ Take Away
+    var key = /grab|line|panda|shopee|robin|gokoo|gookoo|deliver/i.test(String(saleMode||'')) ? 'Delivery' : 'Take Away';
+    var R = window.PC_RECIPE && PC_RECIPE[String(code)];
+    if(R && R.modes){
+      var lines = R.modes[key] || R.modes['Take Away'] || R.modes['Delivery'];
+      if(lines && lines.length) return lines;
+    }
+    // สินค้าใหม่จาก NPD ที่ยังไม่มีใน BOM ไฟล์ — ดึงสูตรที่ RD กรอก (store.recipeCustom · แยกช่องทาง)
+    try{
+      var api = (window.PC_API && PC_API.getRecipeCustom) ? PC_API : (window.top && window.top.PC_API && window.top.PC_API.getRecipeCustom ? window.top.PC_API : null);
+      var rc = api && api.getRecipeCustom()[String(code)];
+      if(rc && rc.modes){
+        var l2 = rc.modes[key] || rc.modes['Take Away'] || rc.modes['Delivery'];
+        if(l2 && l2.length) return l2;
+      }
+    }catch(e){}
+    return RECIPE[code] || [{rm:'—',d:'(ยังไม่มี Recipe สำหรับสินค้านี้)',q:'',u:''}];
+  }
+
+  // Subsets (คลังผง) — ล้างข้อมูล demo ออกแล้ว รอ import จริง
+  var SUBSETS = [];
+  function subById(ss){ return SUBSETS.find(function(s){return s.ss===ss;}); }
+
+  // Sale modes
+  var SALE_MODES = ['Take Away','GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
+  var DLV_MODES = ['GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
+  // Categories from seed
+  var CATS = [...new Set(ITEMS.map(function(it){return it.category;}))].filter(Boolean).sort();
+  var CAT_CODE = {}; ITEMS.forEach(function(it){ if(it.category && it.cateCode) CAT_CODE[it.category]=it.cateCode; });
+
+  // LEGACY product→subset map (สินค้าเก่า — ล้าง demo ออกแล้ว รอ mapping จริงจาก backoffice)
+  var LEGACY_FORMULA = {};
+
+  // ---- state (persisted) ----
+  var LS='pc_mock_isf';
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } }
+  function persist(){ try{ localStorage.setItem(LS, JSON.stringify(store)); }catch(e){} }
+  var store = load();
+  store.set = store.set || { code:'', name:'', priceTA:'', priceDLV:'', cat:'', cateCode:'', saleModes:[], members:[] }; // members:[{code,name,qty,rm:[]}]
+  store.formulas = store.formulas || {}; // { itemCode: [{ss, choose}] }
+  // ล็อกช่องรหัส (Item Set 107 / โค้ด) รับเฉพาะ A-Z 0-9 — พิมพ์ไทยไม่ติด (ครอบทั้ง iframe/main-doc)
+  document.addEventListener('input', function(e){ var el=e.target; if(!el||!el.matches) return; if(el.matches('#posCode,[data-cg="itemset"],[data-cg="promo"],[data-code-only],.f-itemcode')){ var c=(el.value||'').replace(/[^A-Za-z0-9]/g,''); if(c!==el.value){ var p=el.selectionStart; el.value=c; try{el.setSelectionRange(p-1,p-1);}catch(x){} } } }, true);
+  store.savedSets = store.savedSets || []; // [{code,name,members:[...]}]
+  store.recipeDone = store.recipeDone || {}; // { "campaign|shortName": true }
+  store.reuse = store.reuse || {}; // { "campaign||shortName": {code, fromCamp, fromShort} } — ยืม Item Set 107 จากแคมเปญอื่น (โปรคนละตัว ใช้ item ชุดเดียว)
+  function recKey(b){ return (b.campaign||posSel.camp)+'|'+(b.shortName||posSel.sn); }
+  function isReady(b){ return activeTab==='recipe' ? !!store.recipeDone[b.campaign+'|'+b.shortName] : (!!b.posReady || b.itStatus==='COMPLETE'); }
+  // pre-seed legacy formulas into store so auto-detect has data on first load
+  Object.keys(LEGACY_FORMULA).forEach(function(c){ if(!store.formulas[c]) store.formulas[c]=LEGACY_FORMULA[c].slice(); });
+  // version guard: clear demo subset bindings from persisted store (subset ผง removed)
+  if(store._legacyVer!==3){ store.formulas={}; Object.keys(LEGACY_FORMULA).forEach(function(c){ store.formulas[c]=LEGACY_FORMULA[c].slice(); }); store._legacyVer=3; persist(); }
+
+  var sel = { fItem:null };
+
+  // ============ TAB ============
+  function tab(t){
+    ['pos','recipe','admin'].forEach(function(p){
+      var pg=document.getElementById('page-'+p); if(pg) pg.classList.toggle('hide', p!==t);
+      var tb=document.getElementById('tb-'+p); if(tb) tb.classList.toggle('active', p===t);
+    });
+    if(t==='pos'||t==='recipe') activeTab=t;
+    if(t==='pos'){ posBuildTree(); posRender(); }
+    if(t==='recipe'){ posBuildTree(); recRender(); }
+    if(t==='admin'){ admRender(); }
+  }
+  var activeTab='pos';
+
+  // ============ POS BUTTON SETUP ============
+  var posSel = { camp:null, sn:null };
+  var posFilter = { month:'ALL', status:'todo', saleMode:'ALL', q:'', date:'', dateMode:'ACTIVE' };
+  var posEditMode = false;
+  function itemSetButtons(){
+    return (window.PC_API && PC_API.getItemSetButtons ? PC_API.getItemSetButtons() : []) || [];
+  }
+  function posBuildTree(){
+    var all = itemSetButtons();
+    var months = [...new Set(all.map(function(b){return b.month;}))].filter(Boolean).sort();
+    var saleModes = [...new Set(all.reduce(function(a,b){ return a.concat(String(b.saleMode||'').split(/,\s*/)); },[]).map(function(s){return s.trim();}).filter(Boolean))].sort();
+    var base = all.filter(function(b){ return posFilter.month==='ALL' || b.month===posFilter.month; })
+                  .filter(function(b){ var q=(posFilter.q||'').toLowerCase().trim(); return !q || (String(b.campaign||'')+' '+String(b.shortName||'')+' '+String(b.codeItemSet||'')).toLowerCase().indexOf(q)!==-1; })
+                  .filter(function(b){ return posFilter.saleMode==='ALL' || String(b.saleMode||'').split(/,\s*/).map(function(s){return s.trim();}).indexOf(posFilter.saleMode)!==-1; })
+                  .filter(function(b){ if(!posFilter.date) return true; var s=b.start||'', e=b.end||''; /* FX-P54 — โหมดวันที่ */ if(posFilter.dateMode==='START') return String(s).slice(0,10)===posFilter.date; if(posFilter.dateMode==='END') return String(e).slice(0,10)===posFilter.date; if(!s && !e) return true; if(s && posFilter.date < s) return false; if(e && posFilter.date > e) return false; return true; });
+    var btns = base.filter(function(b){ return posFilter.status==='done' ? isReady(b) : !isReady(b); });
+    var monthOpts = '<option value="ALL">ทุกเดือน</option>'+months.map(function(m){return '<option'+(m===posFilter.month?' selected':'')+'>'+esc(m)+'</option>';}).join('');
+    var smOpts = '<option value="ALL">ทุก Sale mode</option>'+saleModes.map(function(m){return '<option'+(m===posFilter.saleMode?' selected':'')+'>'+esc(m)+'</option>';}).join('');
+    var doneCount = base.filter(function(b){return isReady(b);}).length, todoCount = base.length-doneCount;
+    var L = activeTab==='recipe' ? {todo:'ยังไม่เพิ่ม',done:'เพิ่มเสร็จแล้ว',all:'ทำเสร็จทั้งแคมเปญ'} : {todo:'ยังไม่ได้ทำปุ่ม',done:'ทำเสร็จแล้ว',all:'ตั้งค่าทั้งแคมเปญ'};
+    var controls = '<div style="padding:8px;border-bottom:1px solid #e8ebee;background:#fff;position:sticky;top:0;z-index:2">'+
+      '<div class="search" style="position:relative;margin-bottom:8px"><i class="fas fa-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#aaa;font-size:.75rem"></i><input class="form-control form-control-sm pos-search-input" style="padding-left:26px" placeholder="ค้นหาชื่อแคมเปญ..." value="'+esc(posFilter.q||'')+'" oninput="App.posSetSearch(this.value)"></div>'+
+      '<div class="d-flex gap-2 mb-2"><select class="form-select form-select-sm" onchange="App.posSetMonth(this.value)">'+monthOpts+'</select>'+
+      '<select class="form-select form-select-sm" onchange="App.posSetSaleMode(this.value)">'+smOpts+'</select></div>'+
+      '<div class="d-flex gap-2 mb-2 align-items-center"><span class="text-muted fw-bold" style="font-size:.72rem;white-space:nowrap"><i class="far fa-calendar-check me-1"></i>กรองวันที่</span><input type="date" class="form-control form-control-sm" value="'+esc(posFilter.date||'')+'" onchange="App.posSetDate(this.value)" title="เลือกวัน — แล้วเลือกโหมดในช่องถัดไป">'+
+      '<select class="form-select form-select-sm" style="max-width:132px" onchange="App.posSetDateMode(this.value)" title="โหมดของตัวกรองวันที่">'+
+        ['ACTIVE|ใช้งานวันที่เลือก','START|วันที่เริ่ม','END|วันที่สิ้นสุด'].map(function(o){var p=o.split('|');return '<option value="'+p[0]+'"'+(posFilter.dateMode===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+
+      '</select>'+(posFilter.date?'<button class="btn btn-sm btn-outline-secondary" onclick="App.posSetDate(\'\')" title="ล้างวันที่"><i class="fas fa-times"></i></button>':'')+'</div>'+
+      '<div class="seg" style="width:100%;display:flex"><button class="'+(posFilter.status==='todo'?'on':'')+'" style="flex:1" onclick="App.posSetStatus(\'todo\')">'+L.todo+' ('+todoCount+')</button><button class="'+(posFilter.status==='done'?'on':'')+'" style="flex:1" onclick="App.posSetStatus(\'done\')">'+L.done+' ('+doneCount+')</button></div></div>';
+    var byCamp={}; btns.forEach(function(b){ (byCamp[b.campaign]=byCamp[b.campaign]||[]).push(b); });
+    var _q=(posFilter.q||'').toLowerCase();
+    var camps=Object.keys(byCamp).filter(function(c){ return !_q || String(c).toLowerCase().indexOf(_q)!==-1; }).sort(function(a,b){ var da=(byCamp[a][0]&&byCamp[a][0].start)||''; var db=(byCamp[b][0]&&byCamp[b][0].start)||''; return String(db).localeCompare(String(da)); });
+    var listHtml = camps.length ? camps.map(function(c){
+      var arr=byCamp[c]; var start=arr[0].start||'';
+      var cEsc=esc(c).replace(/'/g,"\\'");
+      var setAll = posFilter.status==='todo' ? '<button class="btn btn-success py-0 px-2 ms-auto" style="font-size:.64rem" onclick="event.stopPropagation();App.posSetAll(\''+cEsc+'\')"><i class="fas fa-bolt me-1"></i>'+L.all+'</button>' : '';
+      var head='<div style="padding:7px 12px;background:#f5f7f9;border-bottom:1px solid #e8ebee;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><i class="fas fa-cubes text-warning"></i><span style="font-weight:600;font-size:.8rem">'+esc(c)+'</span>'+(start?'<span class="badge bg-light text-dark border" style="font-size:.64rem"><i class="far fa-calendar me-1"></i>'+esc(start)+'</span>':'')+'<span class="text-muted" style="font-size:.72rem">('+arr.length+')</span>'+setAll+'</div>';
+      var items=arr.map(function(b){
+        var on=posSel.camp===c&&posSel.sn===b.shortName;
+        var snEsc=esc(b.shortName).replace(/'/g,"\\'");
+        var rdy=isReady(b);
+        var badge = rdy ? '<span class="badge bg-success" style="font-size:.6rem"><i class="fas fa-'+(activeTab==='recipe'?'check':'pen')+' me-1"></i>'+(activeTab==='recipe'?'เพิ่มแล้ว':'แก้ไข')+'</span>' : '<span class="badge bg-warning text-dark" style="font-size:.6rem">'+(activeTab==='recipe'?'ยังไม่เพิ่ม':'ยังไม่ทำ')+'</span>';
+        return '<div class="row-item'+(on?' sel':'')+'" style="padding-left:20px;align-items:flex-start" onclick="App.posPick(\''+cEsc+'\',\''+snEsc+'\')">'+
+          '<span style="line-height:1.35"><i class="fas fa-hand-pointer '+(rdy?'text-success':'text-muted')+' me-1"></i>'+esc(b.shortName||'(ไม่มีชื่อ)')+'<br><small class="mono text-muted">'+esc(b.codeItemSet||'— ยังไม่มี Code —')+'</small></span>'+badge+'</div>';
+      }).join('');
+      return '<div>'+head+items+'</div>';
+    }).join('') : '<div class="empty">'+(posFilter.status==='done'?'ยังไม่มีปุ่มที่ทำเสร็จในเดือนนี้':'ไม่มีปุ่มที่ต้องทำในเดือนนี้')+'</div>';
+    document.querySelectorAll('.pos-tree').forEach(function(el){ var _sc=el.scrollTop; el.innerHTML=controls+listHtml; el.scrollTop=_sc; });
+  }
+  function posSetMonth(m){ posFilter.month=m; posBuildTree(); }
+  function posSetSearch(v){ posFilter.q=v||''; posBuildTree();
+    var cont=document.getElementById(activeTab==='recipe'?'recTree':'posTree');
+    var el=cont&&cont.querySelector('.pos-search-input');
+    if(el){ el.focus(); var L=el.value.length; try{ el.setSelectionRange(L,L); }catch(e){} }
+  }
+  function posSetSaleMode(m){ posFilter.saleMode=m; posBuildTree(); }
+  function posSetDate(v){ posFilter.date=v||''; posBuildTree(); }
+  function posSetDateMode(v){ posFilter.dateMode=v||'ACTIVE'; posBuildTree(); }
+  function posSetStatus(s){ posFilter.status=s; posBuildTree(); }
+  function posSetAll(camp){
+    if(activeTab==='recipe'){
+      var ar=itemSetButtons().filter(function(b){return b.campaign===camp && !store.recipeDone[b.campaign+'|'+b.shortName];});
+      if(!ar.length){ Swal.fire('','ทุกปุ่มในแคมเปญนี้เพิ่ม Recipe แล้ว','info'); return; }
+      Swal.fire({title:'เพิ่ม Recipe ทั้งแคมเปญ?', html:'<b>'+esc(camp)+'</b><br>จะเพิ่ม Recipe เข้าระบบ <b>'+ar.length+'</b> ปุ่ม', icon:'question', showCancelButton:true, confirmButtonText:'เพิ่มทั้งหมด', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก'})
+        .then(function(r){ if(!r.isConfirmed) return; ar.forEach(function(b){ store.recipeDone[b.campaign+'|'+b.shortName]=true; }); persist(); posBuildTree(); recRender();
+          Swal.fire({icon:'success',title:'เพิ่ม Recipe แล้ว',html:ar.length+' ปุ่มย้ายไปแท็บ "เพิ่มเสร็จแล้ว"',confirmButtonColor:'#2e934a'}); });
+      return;
+    }
+    var arr=itemSetButtons().filter(function(b){return b.campaign===camp && !b.posReady && b.itStatus!=='COMPLETE';});
+    if(!arr.length){ Swal.fire('','ทุกปุ่มในแคมเปญนี้ตั้งค่าแล้ว','info'); return; }
+    Swal.fire({title:'ตั้งค่าทั้งแคมเปญ?', html:'<b>'+esc(camp)+'</b><br>ระบบจะใช้ <b>รหัสที่ IT จองไว้ที่หน้า IT Settlement</b> เติมให้ปุ่มที่มีเลขจองตรงกัน แล้วส่งกลับไปหน้า IT Settlement<br><span class="small text-muted">ปุ่มที่ยังไม่มีรหัสจอง จะข้ามไว้—ต้องกดรับรหัสทีละปุ่ม</span>', icon:'question', showCancelButton:true, confirmButtonText:'ตั้งค่าทั้งหมด', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก'})
+      .then(function(r){ if(!r.isConfirmed) return;
+        var codeMap={}, skipped=[]; arr.forEach(function(b){ var c=itemsetFindReserved(camp, b.shortName); if(c) codeMap[b.shortName]=c; else skipped.push(b.shortName); });
+        if(!Object.keys(codeMap).length){ Swal.fire({icon:'info',title:'ยังไม่มีรหัสจอง',html:'ปุ่มในแคมเปญนี้ยังไม่มีรหัสจาก IT Settlement — ให้ IT จองรหัสก่อน',confirmButtonColor:'#2e934a'}); return; }
+        PC_API.savePosCampaign(camp, codeMap);
+        posBuildTree(); posRender(); recRender();
+        Swal.fire({icon:'success',title:'ตั้งค่าแล้ว',html:Object.keys(codeMap).length+' ปุ่มถูกส่งไป IT Settlement'+(skipped.length?('<br><span class="small text-muted">ข้าม '+skipped.length+' ปุ่ม (ยังไม่มีรหัสจอง)</span>'):''),confirmButtonColor:'#2e934a'});
+      });
+  }
+  function posPick(camp, sn){ posSel.camp=camp; posSel.sn=sn; posBuildTree(); posRender(); recRender(); }
+  function recAdd(){ if(!posSel.sn) return; store.recipeDone[posSel.camp+'|'+posSel.sn]=true; persist(); posBuildTree(); recRender(); Swal.fire({icon:'success',title:'เพิ่ม Recipe แล้ว',html:'<b>'+esc(posSel.sn)+'</b> ย้ายไปแท็บ "เพิ่มเสร็จแล้ว"',confirmButtonColor:'#2e934a'}); }
+  // aggregate subsets across all member items of a POS button → sum powders per subset
+  // อ่านการผูก subset จริงจาก pc_itemset_comp (ที่ผูกใน Products) + ชื่อจาก PC_SUBSET_MASTER
+  function compStore(){ try{ return JSON.parse(localStorage.getItem('pc_itemset_comp')||'{}'); }catch(e){ return {}; } }
+  function subMasterList(){ return window.PC_SUBSET_MASTER||[]; }
+  function subByCode(ss){ return subMasterList().find(function(s){ return String(s.ssCode)===String(ss); }); }
+  function isSubsetCode(c){ return /^SS/i.test(String(c||'')) || !!subByCode(c); }
+  function itemNm(code){ var it=ITEMS.find(function(x){return String(x.itemCode)===String(code);}); return it?(it.itemNameEN||it.itemNameEn||code):code; }
+  // เดินตามลิงก์: Item Set → สินค้า(component) → subset(SS)  รวบ subset ทั้งหมดที่ปลายทาง
+  // ดึงการผูก subset/ส่วนประกอบของสินค้า — เหมือนตาราง "Subset & Item List" ในหน้า Products
+  // ลำดับ: pc_itemset_comp (manual/seeded ที่มี Min/Max ที่ user ตั้ง) → fallback แหล่งต้นทาง
+  //        (pc_mock_isf.formulas + PC_PRODUCT_FORMULA) เผื่อสินค้าที่ยังไม่เคยถูก seed ในหน้า Products
+  function compFor(code, comp){
+    code=String(code);
+    if(comp[code] && comp[code].length) return comp[code];
+    var rows=[], seen={};
+    function add(ss,mn,mx){ ss=String(ss||'').trim(); if(!ss||seen[ss])return; seen[ss]=1; rows.push({ code:ss, min:parseInt(mn,10)||1, max:parseInt(mx,10)||parseInt(mn,10)||1 }); }
+    try{ var isf=(JSON.parse(localStorage.getItem('pc_mock_isf')||'{}').formulas)||{}; (isf[code]||[]).forEach(function(b){ add(b.ss,b.choose,b.choose); }); }catch(e){}
+    ((window.PC_PRODUCT_FORMULA&&window.PC_PRODUCT_FORMULA[code])||[]).forEach(function(b){ add(b.code,b.min,b.max); });
+    return rows;
+  }
+  function collectSubsets(itemCode, comp, out, seen, qtyMult){
+    seen=seen||{}; qtyMult=qtyMult||1; itemCode=String(itemCode); if(seen[itemCode]) return; seen[itemCode]=1;
+    compFor(itemCode, comp).forEach(function(b){
+      if(isSubsetCode(b.code)){ out.push({ item:itemCode, ss:b.code, min:(parseInt(b.min)||0)*qtyMult, max:(parseInt(b.max)||parseInt(b.min)||0)*qtyMult, perMin:b.min, perMax:b.max }); }
+      else { collectSubsets(b.code, comp, out, seen, qtyMult*(parseInt(b.max)||parseInt(b.min)||1)); }   // เป็นรหัสสินค้า → คูณจำนวนชิ้นในเซต → ไล่ลงไป subset
+    });
+  }
+  function posComposition(camp, sn){
+    var det = (window.PC_API ? PC_API.getPromoDetails(camp) : {items:[]}) || {items:[]};
+    var allMembers = (det.items||[]).filter(function(it){ return (it.shortName||'')===sn; });
+    var comp = compStore();
+    var agg = {};       // ssCode → { ss, name, minTotal, maxTotal, total, parts:[{item, choose}] }
+    var members = [];   // เฉพาะ "สินค้าจริง" — subset member (SS) ไม่ถือเป็นสินค้า → ไปอยู่ในรายการ subset ของปุ่ม
+    allMembers.forEach(function(m){
+      var qty = parseInt(m.qty)||1;                          // จำนวนสินค้าในเซต (Qty)
+      var isSub = (m.isSubset==='Y') || isSubsetCode(m.itemCode);
+      if(isSub){
+        // (1) subset ที่ถูกเลือกตรงในฟอร์ม (member เป็นกลุ่ม SS เช่น SS0035 Drink All) → ผูกที่ปุ่มนี้
+        var ss = String(m.itemCode);
+        var s = subByCode(ss);
+        var mn = parseInt(m.chooseMin)||1, mx = parseInt(m.chooseMax)||mn;
+        if(!agg[ss]) agg[ss] = { ss:ss, name:s?(s.name||s.short||''):(m.itemNameEn||''), minTotal:0, maxTotal:0, total:0, parts:[] };
+        agg[ss].minTotal += mn*qty; agg[ss].maxTotal += mx*qty; agg[ss].total += mx*qty;
+        var perF = (mn===mx? String(mn) : mn+'-'+mx);
+        agg[ss].parts.push({ item:(s?(s.name||s.short):(m.itemNameEn||ss)), code:ss, qty:qty, choose:perF, per:perF, fromForm:true });
+        return;
+      }
+      // (2) สินค้าจริง → recipe มาที่หน้า recipe · subset ที่ผูกกับ item (pc_itemset_comp) → ผูกที่ปุ่มนี้
+      members.push(m);
+      var found=[]; collectSubsets(m.itemCode, comp, found, {}, qty);
+      found.forEach(function(f){
+        var s = subByCode(f.ss);
+        if(!agg[f.ss]) agg[f.ss] = { ss:f.ss, name:s?(s.name||s.short||''):'', minTotal:0, maxTotal:0, total:0, parts:[] };
+        agg[f.ss].minTotal += f.min; agg[f.ss].maxTotal += f.max; agg[f.ss].total += f.max;
+        var per = (f.perMin===f.perMax? String(f.perMin) : f.perMin+'-'+f.perMax);
+        agg[f.ss].parts.push({ item: itemNm(f.item), code:f.item, qty:qty, choose:(f.min===f.max? String(f.min) : f.min+'-'+f.max), per:per });
+      });
+    });
+    var subsets = Object.keys(agg).map(function(k){ return agg[k]; });
+    var grossTotal = allMembers.reduce(function(s,m){ return s + (parseFloat(m.price)||0)*(parseInt(m.qty)||1); }, 0);
+    return { members:members, subsets:subsets, grossTotal:grossTotal, header: members[0]||allMembers[0]||{} };
+  }
+  function posRender(){
+    var body=document.getElementById('posBody');
+    if(!posSel.sn){ body.innerHTML='<div class="empty">เลือกปุ่ม Item Set จากด้านซ้าย</div>'; return; }
+    var btns = itemSetButtons().filter(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; });
+    var btn = btns[0]||{};
+    var comp = posComposition(posSel.camp, posSel.sn);
+    var curCode = btn.itemPromoCode||btn.codeItemSet||'';
+    var locked = !!btn.posReady && !posEditMode;
+    // รหัส Item Set = ต้องกด "รับรหัสจาก IT Settlement" เท่านั้น — หน้านี้ไม่จองเลขเอง และไม่เติมเลขจองให้อัตโนมัติ
+    // (เดิมเติม itemsetFindReserved() ตอน render → ผู้ใช้เห็นเลขทั้งที่ยังไม่ได้กดรับ)
+    var itLocked = (btn.itStatus==='COMPLETE') || (btn.changeStatus==='CANCELLED');
+    var itLockReason = btn.itStatus==='COMPLETE' ? 'งานถูกบันทึกเป็น COMPLETE ที่หน้า IT Settlement แล้ว — แก้ไขไม่ได้ (ต้องเปลี่ยนสถานะก่อน)' : (btn.changeStatus==='CANCELLED' ? 'งานถูกยกเลิก — แก้ไขไม่ได้' : '');
+    // ราคารวมของปุ่ม item set — รวม Net Price ของสมาชิก (ถ้าไม่มี ใช้ Gross)
+    // ราคารวมปุ่ม = ผลรวม "ราคาปกติ (gross)" ของทุกบรรทัดในปุ่ม (รวมสินค้า+subset · ราคา×qty) — ราคาเต็ม
+    var posTotalPrice = comp.grossTotal || 0;
+    var _reuseKey = posSel.camp+'||'+posSel.sn;
+    var borrowed = (store.reuse||{})[_reuseKey];
+    if(borrowed && borrowed.code){ curCode = borrowed.code; }
+    var reuseMatch = (!borrowed && !btn.posReady) ? findReuseMatch(posSel.camp, posSel.sn) : null;
+    // header: Code Item Set (auto from latest 107) + Kitchen + Short Name + save
+    var hdr = '<div class="mb-3" style="font-size:1.05rem"><i class="fas fa-cubes text-warning me-2"></i><span class="fw-bold" style="color:#2e934a">'+esc(posSel.camp)+'</span>'+(btn.start?' <span class="text-muted" style="font-size:.85rem;line-height:4">· <i class="far fa-calendar me-1" style="color:rgba(213,66,12,0.75)"></i>เริ่มโปรฯ '+esc(btn.start)+(btn.end?' – '+esc(btn.end):'')+'</span>':'')+'</div>'+
+      '<div class="row g-2 mb-2 align-items-end">'+
+      '<div class="col-md-3"><label class="small fw-bold text-uppercase text-muted">Code Item Set <span class="it-tag">107</span> <span class="fw-normal text-muted" style="font-size:.68rem">· รับจาก IT Settlement</span></label>'+
+        '<div class="input-group input-group-sm">'+
+        '<input id="posCode" class="form-control mono fw-bold" data-cg="itemset" data-cg-ignore="'+esc(posSel.camp)+'" readonly style="background:#f8f9fa" value="'+esc(curCode)+'" placeholder="ยังไม่มีรหัส">'+
+        '<button class="btn btn-outline-secondary" type="button" title="คัดลอก Code Item Set" onclick="App.copyText(document.getElementById(\'posCode\').value, this)"><i class="fas fa-copy"></i></button>'+
+        '</div>'+
+        (itLocked ? '' : '<button class="btn btn-sm '+(curCode?'btn-outline-secondary':'btn-pc')+' mt-1 w-100 fw-bold" style="font-size:.72rem" onclick="App.posPullCode()"><i class="fas fa-download me-1"></i>'+(curCode?'เปลี่ยนรหัสจาก IT Settlement':'กดรับรหัสจาก IT Settlement')+'</button>')+
+        (itLocked || !curCode ? '' : '<button class="btn btn-sm btn-outline-danger mt-1 w-100 fw-bold" style="font-size:.72rem" onclick="App.posClearCode()"><i class="fas fa-eraser me-1"></i>ล้างรหัสออกจากปุ่ม</button>')+
+        (itLocked ? '' : '<button class="btn btn-sm btn-outline-primary mt-1 w-100 fw-bold" style="font-size:.72rem" onclick="App.posReuseOpen()"><i class="fas fa-recycle me-1"></i>ใช้ Item Set เดิม (ยืมรหัส)</button>')+
+        (borrowed ? '<div class="mt-1"><span class="badge bg-info text-dark" style="font-size:.62rem"><i class="fas fa-link me-1"></i>ยืมจาก: '+esc(borrowed.fromCamp)+'</span></div>' : '')+
+        '</div>'+
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase text-muted">ราคารวมปุ่ม</label><div class="input-group input-group-sm"><div class="form-control form-control-sm fw-bold text-success" style="background:#f8f9fa" title="รวมราคาปกติ (เต็ม) ของสินค้าในปุ่ม">฿'+Number(posTotalPrice||0).toLocaleString()+'</div><button class="btn btn-outline-secondary" type="button" title="คัดลอกราคารวมปุ่ม" data-copy="'+Number(posTotalPrice||0)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase text-muted">Kitchen Name</label>'+
+        '<div class="input-group input-group-sm"><div class="form-control text-truncate" style="background:#f8f9fa" title="'+esc(btn.kitchen||'')+'">'+esc(btn.kitchen||'—')+'</div>'+
+        '<button class="btn btn-outline-secondary" type="button" title="คัดลอก Kitchen Name" data-copy="'+esc(btn.kitchen||'')+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+      '<div class="col-md-2"><label class="small fw-bold text-uppercase text-muted">Short Name (POS)</label>'+
+        '<div class="input-group input-group-sm"><div class="form-control fw-bold text-truncate" style="background:#f8f9fa" title="'+esc(posSel.sn)+'">'+esc(posSel.sn)+'</div>'+
+        '<button class="btn btn-outline-secondary" type="button" title="คัดลอก Short Name" data-copy="'+esc(posSel.sn)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+      '<div class="col-auto">'+(itLocked
+        ? '<button class="btn btn-secondary btn-sm fw-bold" style="width:46px" disabled title="'+itLockReason+'"><i class="fas fa-lock"></i></button>'
+        : '<button class="btn '+(locked?'btn-outline-success':'btn-pc')+' btn-sm fw-bold" style="width:46px" title="'+(locked?'แก้ไขปุ่ม':'บันทึกปุ่ม (เซตเสร็จ)')+'" onclick="App.posSaveOrEdit()"><i class="fas fa-'+(locked?'pen':'floppy-disk')+'"></i></button>')+'</div>'+
+      '</div>'+
+      (itLocked ? '<div class="alert alert-secondary py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-lock me-1"></i>'+itLockReason+'</div>'
+        : btn.posReady ? '<div class="alert alert-success py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-circle-check me-1"></i>ปุ่มถูกเซตแล้ว — Code Item Set ไหลไปหน้า IT Settlement พร้อมให้กดบันทึกปิดงาน</div>'
+        : '<div class="alert alert-warning py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-triangle-exclamation me-1"></i>ยังไม่ได้ตั้งค่าปุ่ม — ต้องกด "ตั้งค่าปุ่ม" ก่อน IT ถึงจะกดบันทึกปิดงานที่หน้า IT Settlement ได้</div>');
+    // SUBSET ที่ต้องผูก (รวมจำนวนผงข้ามสินค้า)
+    var subRows = comp.subsets.map(function(s){
+      var detail = s.parts.map(function(p){ return esc(p.item)+' ×'+esc(p.qty)+' (เลือก '+esc(p.per)+'/ชิ้น)'; }).join(' + ');
+      return '<tr><td class="mono fw-bold"><i class="fas fa-flask text-success me-1"></i>'+esc(s.ss)+'<button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size:.7rem;line-height:1" type="button" title="คัดลอกรหัส Subset" data-copy="'+esc(s.ss)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></td><td>'+esc(s.name)+'</td><td class="small text-muted">'+detail+'</td>'+
+        '<td class="text-center"><input type="number" class="form-control form-control-sm text-center" style="width:80px;margin:auto" value="'+s.minTotal+'.000" readonly></td>'+
+        '<td class="text-center"><input type="number" class="form-control form-control-sm text-center" style="width:80px;margin:auto" value="'+s.maxTotal+'.000" readonly></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="empty">ปุ่มนี้ไม่มี subset ผง (สินค้าไม่มีให้กดผง)</td></tr>';
+    var subTbl = '<h6 class="fw-bold mt-1"><i class="fas fa-layer-group me-1 text-success"></i>Subset ที่ต้องผูกในปุ่มนี้ <span class="small text-muted fw-normal">(ระบบรวมจำนวนผงข้ามสินค้าให้อัตโนมัติ)</span></h6>'+
+      '<div class="pane"><table class="tbl"><thead><tr><th style="width:150px">Subset Code</th><th>Description</th><th>Item Code <span class="fw-normal" style="font-size:.72rem">(มาจากสินค้า)</span></th><th style="width:110px" class="text-center">Min</th><th style="width:110px" class="text-center">Max</th></tr></thead><tbody>'+subRows+'</tbody></table></div>';
+    var matchBanner = reuseMatch ? '<div class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size:.82rem"><span><i class="fas fa-wand-magic-sparkles me-1 text-primary"></i>ปุ่มนี้มี item เหมือนกับ <b>'+esc(reuseMatch.campaign)+'</b> · '+esc(reuseMatch.shortName)+' <span class="mono">('+esc(reuseMatch.codeItemSet)+')</span> — ยืมรหัส 107 มาใช้ได้เลย</span><button class="btn btn-sm btn-primary fw-bold" onclick="App.posReusePick(\''+jsq(reuseMatch.campaign)+'\',\''+jsq(reuseMatch.shortName)+'\')"><i class="fas fa-recycle me-1"></i>ใช้ Item Set เดิม</button></div>' : '';
+    var _bn = (btn.branchNote||'');
+    var noteBlock = '<div class="mb-3" style="border:1px dashed #e0a800;background:#fffdf5;border-radius:10px;padding:10px 12px">'+
+      '<label class="small fw-bold text-uppercase" style="color:#9a6700"><i class="fas fa-bullhorn me-1"></i>ป้ายหมายเหตุเด่น (โชว์บนการ์ดสาขา) <span class="fw-normal text-muted" style="font-size:.7rem">· ไม่บังคับ · เช่น “เฉพาะสาขาโรบินสัน ไลฟ์สไตล์” / “ทุกสาขา ยกเว้น TOGO”</span></label>'+
+      '<input type="text" id="posBranchNote" class="form-control form-control-sm" value="'+esc(_bn)+'" placeholder="พิมพ์ข้อความเน้นให้สาขาเห็นชัดบนการ์ด (เว้นว่าง = ไม่โชว์)" oninput="App.saveBranchNote()" '+(itLocked?'disabled':'')+'>'+
+      '<div class="mt-1" id="posBranchNotePrev">'+(_bn?('<span style="display:inline-block;background:#d5420c;color:#fff;font-weight:800;font-size:.72rem;padding:3px 10px;border-radius:6px"><i class="fas fa-tag me-1"></i>'+esc(_bn)+'</span> <span class="text-muted" style="font-size:.68rem">← หน้าตาบนการ์ดสาขา</span>'):'')+'</div>'+
+      '</div>';
+    body.innerHTML = hdr + noteBlock + matchBanner + subTbl;
+    posSel._btn = btn; posSel._subsets = comp.subsets;
+  }
+  // ===== ใช้ Item Set เดิม (ยืมรหัส 107 ข้ามแคมเปญ) =====
+  function jsq(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+  // ลายเซ็น item ของปุ่ม = รหัส item สมาชิกจริง (sorted) + subset — ใช้เทียบว่าชุดเหมือนกันไหม
+  function btnItemSig(camp, sn){
+    var cache = btnItemSig._c = btnItemSig._c || {};
+    var k = camp+'||'+sn; if(cache[k]!=null) return cache[k];
+    var comp = posComposition(camp, sn);
+    var codes = (comp.members||[]).map(function(m){ return String(m.itemCode||'').trim(); }).filter(Boolean).sort();
+    var subs = (comp.subsets||[]).map(function(s){ return String(s.ss||'').trim(); }).filter(Boolean).sort();
+    var sig = codes.join(',')+'|'+subs.join(',');
+    cache[k]=sig; return sig;
+  }
+  // หาปุ่มอื่นที่ item ตรงกันเป๊ะ + มีรหัส 107 แล้ว (ต้นทางให้ยืม)
+  function findReuseMatch(camp, sn){
+    var mySig = btnItemSig(camp, sn); if(!mySig || mySig==='|') return null;
+    var all = itemSetButtons();
+    for(var i=0;i<all.length;i++){ var b=all[i];
+      if(b.campaign===camp && b.shortName===sn) continue;
+      if(!String(b.codeItemSet||'').trim()) continue;
+      if(btnItemSig(b.campaign,b.shortName)===mySig) return b;
+    }
+    return null;
+  }
+  function posReuseOpen(){
+    if(!posSel.sn) return;
+    var mySig = btnItemSig(posSel.camp, posSel.sn);
+    var renderList = function(q){
+      q=(q||'').toLowerCase();
+      var all = itemSetButtons().filter(function(b){ return !(b.campaign===posSel.camp && b.shortName===posSel.sn) && String(b.codeItemSet||'').trim(); });
+      var list = all.filter(function(b){ return !q || (String(b.campaign)+' '+String(b.shortName)+' '+String(b.codeItemSet)).toLowerCase().indexOf(q)!==-1; });
+      list.sort(function(a,b){ return (btnItemSig(a.campaign,a.shortName)===mySig?0:1) - (btnItemSig(b.campaign,b.shortName)===mySig?0:1); });
+      if(!list.length) return '<div class="empty">ไม่พบ Item Set ที่มีรหัส 107 แล้ว</div>';
+      return list.slice(0,60).map(function(b){
+        var match = btnItemSig(b.campaign,b.shortName)===mySig;
+        var comp = posComposition(b.campaign,b.shortName);
+        var items = (comp.members||[]).map(function(m){ return esc(m.itemNameEn||m.itemNameEN||m.itemCode); }).slice(0,6).join(', ') + ((comp.members||[]).length>6?' …':'');
+        return '<div style="border:1px solid '+(match?'#2e934a':'#e2e6ea')+';border-radius:9px;padding:10px 12px;margin-bottom:8px;background:'+(match?'#f4faf6':'#fff')+'">'+
+          '<div class="d-flex justify-content-between align-items-start gap-2">'+
+          '<div><div class="fw-bold">'+esc(b.campaign)+(match?' <span class="badge bg-success ms-1" style="font-size:.6rem">item ตรงกัน</span>':'')+'</div>'+
+          '<div class="small text-muted">ปุ่ม: '+esc(b.shortName)+' · <span class="mono">107 = '+esc(b.codeItemSet)+'</span></div>'+
+          '<div class="small" style="color:#6c757d">item: '+(items||'—')+'</div></div>'+
+          '<button class="btn btn-sm btn-pc fw-bold" onclick="App.posReusePick(\''+jsq(b.campaign)+'\',\''+jsq(b.shortName)+'\')">เลือก</button>'+
+          '</div></div>';
+      }).join('');
+    };
+    Swal.fire({ title:'ใช้ Item Set เดิม (ยืมรหัส 107)', width:640,
+      html:'<div class="text-start"><div class="small text-muted mb-2">พิมพ์ชื่อแคมเปญต้นทางที่มี item ชุดเดียวกัน แล้วกด "เลือก" — ระบบจะเอารหัส 107 มาใส่ปุ่มนี้ (ไม่ต้องสร้าง item ใหม่) · เลข 107 ที่จองให้ปุ่มนี้ถูกคืนกลับ</div>'+
+        '<input id="reuseSearch" class="form-control form-control-sm mb-2" placeholder="ค้นหาชื่อแคมเปญ / รหัส 107 / ชื่อปุ่ม">'+
+        '<div id="reuseList" style="max-height:380px;overflow:auto">'+renderList('')+'</div></div>',
+      showConfirmButton:false, showCancelButton:true, cancelButtonText:'ปิด',
+      didOpen:function(){ var inp=document.getElementById('reuseSearch'); if(inp){ inp.focus(); inp.addEventListener('input',function(){ document.getElementById('reuseList').innerHTML=renderList(inp.value); }); } }
+    });
+  }
+  function posReusePick(fromCamp, fromSn){
+    var all = itemSetButtons();
+    var src = all.find(function(b){ return b.campaign===fromCamp && b.shortName===fromSn; });
+    if(!src || !String(src.codeItemSet||'').trim()){ Swal.fire('ใช้ไม่ได้','ปุ่มต้นทางยังไม่มีรหัส Item Set (107)','warning'); return; }
+    var aCode = String(src.codeItemSet).trim();
+    var bBtn = all.find(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; }) || {};
+    var bPrev = String(bBtn.codeItemSet||'').trim();
+    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, aCode); }
+    var returnedMsg = '';
+    try{
+      if(bPrev && bPrev!==aCode && /^\d+$/.test(bPrev) && window.PC_COUNTER && PC_COUNTER.returnCode){
+        var othersUsing = all.filter(function(b){ return !(b.campaign===posSel.camp && b.shortName===posSel.sn) && String(b.codeItemSet||'').trim()===bPrev; }).length;
+        if(!othersUsing){ var rr = PC_COUNTER.returnCode(bPrev, 'itemset', 'ยืม Item Set เดิม (คืนเลขกลุ่ม B)'); if(rr) returnedMsg='เลข '+bPrev+' ของปุ่มนี้ถูกคืนกลับ pool'; }
+      }
+    }catch(e){}
+    store.reuse = store.reuse || {};
+    store.reuse[posSel.camp+'||'+posSel.sn] = { code:aCode, fromCamp:fromCamp, fromShort:fromSn };
+    persist();
+    posEditMode=false;
+    if(window.Swal && Swal.close) Swal.close();
+    posBuildTree(); posRender(); recRender();
+    Swal.fire({icon:'success', title:'ยืม Item Set แล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส 107 <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b>'+(returnedMsg?('<br><span class="small text-muted">'+esc(returnedMsg)+'</span>'):'')+'<br><span class="small text-muted">เหลือแค่รอ Code Promotion (ราคาต่าง จองแยกแคมเปญ)</span>', confirmButtonColor:'#2e934a'});
+  }
+  // ---- จองเลข Code Item Set (107) จากตัวนับกลาง PC_COUNTER แล้ว "ล็อกต่อปุ่ม" ----
+  // ปุ่มเดียวกันได้เลขเดิมเสมอ (findReservedFor) · ปุ่มต่างกันได้คนละเลข (reserve เดินตัวนับ)
+  // ใช้แทน getNextPromoCode() ที่เป็นแค่ peek (ไม่จอง) → กันเลข 107 ซ้ำ/เลื่อนตอนสร้างปุ่ม
+  function itemsetCounter(){
+    if(window.PC_COUNTER) return window.PC_COUNTER;
+    try{ if(window.top && window.top.PC_COUNTER) return window.top.PC_COUNTER; }catch(e){}
+    return null;
+  }
+  // แปลง "ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด" (postCate/cateRemark) → โค้ดหมวดที่ใช้จองเลข Code Item Set
+  //  Promotion set → 107 · Combo → 105 · Value set → 106 · E-Voucher → 109
+  function itemsetCateCode(pc){
+    var s = String(pc||'').toLowerCase();
+    if(/combo/.test(s)) return '105';
+    if(/value\s*set/.test(s)) return '106';
+    if(/e[-\s]?voucher/.test(s)) return '109';
+    return '107'; // promotion set / default
+  }
+  // หา postCate (cateRemark) ของปุ่มจากข้อมูลปุ่มในระบบ
+  function itemsetCateFor(camp, sn){
+    var b = itemSetButtons().find(function(x){ return x.campaign===camp && x.shortName===sn; }) || {};
+    return itemsetCateCode(b.cateRemark || b.cate || b.postCate);   /* FX-P78 — อ่าน cate ด้วย */
+  }
+  function itemsetCodeFor(camp, sn){
+    var C = itemsetCounter();
+    var cate = itemsetCateFor(camp, sn);
+    var field = String(camp||'')+'|'+String(sn||'');
+    if(C && C.reserve){
+      try{
+        if(cate === '107'){
+          // Promotion set → ตัวนับ itemset (107) เดิม
+          var ex = C.findReservedFor ? C.findReservedFor('itemset', null, 'ItemSet Builder', field) : null;
+          if(ex && ex.code) return ex.code;
+          var e = C.reserve('itemset', { where:'ItemSet Builder', field:field });
+          if(e && e.code) return e.code;
+        } else {
+          // Combo(105)/Value set(106)/E-Voucher(109) → ตัวนับ item ต่อหมวด (per-cate)
+          var ex2 = C.findReservedFor ? C.findReservedFor('item', cate, 'ItemSet Builder', field) : null;
+          if(ex2 && ex2.code) return ex2.code;
+          var e2 = C.reserveCat ? C.reserveCat(cate, { where:'ItemSet Builder', field:field }) : null;
+          if(e2 && e2.code) return e2.code;
+        }
+      }catch(err){}
+    }
+    return (window.PC_API && PC_API.getNextPromoCode) ? PC_API.getNextPromoCode() : '';
+  }
+  /* อ่านเลขที่จองไว้แล้วเท่านั้น (read-only — ห้ามจองเลขใหม่ที่หน้านี้) */
+  function itemsetFindReserved(camp, sn){
+    var C = window.PC_COUNTER; if(!C || !C.findReservedFor) return '';
+    var field = String(camp||'')+'|'+String(sn||'');
+    var cate = itemsetCateFor(camp, sn);
+    try{
+      var ex = (cate==='107') ? C.findReservedFor('itemset', null, 'ItemSet Builder', field)
+                              : C.findReservedFor('item', cate, 'ItemSet Builder', field);
+      if(ex && ex.code) return ex.code;
+    }catch(e){}
+    return '';
+  }
+  /* เลขที่ IT จองไว้ที่หน้า IT Settlement ของแคมเปญนี้ ที่ยังไม่ถูกปุ่มอื่นหยิบไป */
+  function itemsetAvailableCodes(camp, sn){
+    var C = window.PC_COUNTER; if(!C || !C.list) return [];
+    var used = {};
+    itemSetButtons().forEach(function(b){
+      if(b.campaign===camp && b.shortName===sn) return;
+      var c=String(b.codeItemSet||b.itemPromoCode||'').trim(); if(c) used[c]=(b.campaign+' · '+b.shortName);
+    });
+    var snKey=String(sn||'').replace(/\s+/g,'');
+    var out=[];
+    try{
+      C.list({}).forEach(function(e){
+        var code=String(e.code||'').trim(); if(!/^10[5-9]/.test(code)) return;
+        var st=String(e.status||''); if(st!=='RESERVED' && st!=='CONFIRMED') return;
+        if(used[code]) return;
+        var w=String(e.where||''), f=String(e.field||'').replace(/\s+/g,'');
+        var mine = (w==='ItemSet Builder' && f.endsWith('|'+snKey));
+        var sameCamp = (w===String(camp||''));
+        if(!mine && !sameCamp) return;
+        out.push({ code:code, exact:mine || (snKey && f.indexOf(snKey)!==-1), where:w, field:String(e.field||''), status:st });
+      });
+    }catch(e){}
+    out.sort(function(a,b){ return (b.exact?1:0)-(a.exact?1:0) || String(a.code).localeCompare(String(b.code)); });
+    return out;
+  }
+  function posApplyCode(code){
+    code=String(code||'').trim(); if(!code) return;
+    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, code); }
+    try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk]){ delete store.reuse[_rk]; persist(); } }catch(e){}
+    if(window.Swal && Swal.close) Swal.close();
+    posBuildTree(); posRender(); recRender();
+    Swal.fire({icon:'success', title:'รับรหัสแล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส <b class="mono">'+esc(code)+'</b> ที่ IT จองไว้ที่หน้า IT Settlement', confirmButtonColor:'#2e934a'});
+  }
+  /* กดรับรหัสจาก IT Settlement — มีตัวเดียวที่ตรงปุ่ม = ใส่เลย · หลายตัว = ให้เลือก */
+  function posPullCode(){
+    if(!posSel.sn) return;
+    var list = itemsetAvailableCodes(posSel.camp, posSel.sn);
+    if(!list.length){
+      Swal.fire({icon:'info', title:'ยังไม่มีรหัสจองไว้', html:'หน้านี้ไม่จองรหัสเองแล้ว — ให้ IT กดจองรหัส Code Item Set ที่หน้า <b>IT Settlement</b> ก่อน<br><span class="small text-muted">แล้วกลับมากด “รับรหัส” ที่หน้านี้</span>', confirmButtonColor:'#2e934a'});
+      return;
+    }
+    var exact = list.filter(function(x){ return x.exact; });
+    if(exact.length===1 && list.length===1){ posApplyCode(exact[0].code); return; }
+    var rows = list.slice(0,60).map(function(x){
+      return '<div class="d-flex justify-content-between align-items-center gap-2 border rounded-3 p-2 mb-2">'+
+        '<div class="text-start"><div class="mono fw-bold">'+esc(x.code)+(x.exact?' <span class="badge bg-success ms-1" style="font-size:.6rem">ตรงกับปุ่มนี้</span>':'')+'</div>'+
+        '<div class="small text-muted">'+esc(x.where||'—')+(x.field?(' · '+esc(x.field)):'')+' · '+esc(x.status)+'</div></div>'+
+        '<button class="btn btn-sm btn-pc fw-bold" onclick="App.posApplyCode(\''+String(x.code).replace(/'/g,"\\'")+'\')">รับรหัสนี้</button></div>';
+    }).join('');
+    Swal.fire({ title:'รับรหัสจาก IT Settlement', width:600, showConfirmButton:false, showCancelButton:true, cancelButtonText:'ปิด',
+      html:'<div class="text-start"><div class="small text-muted mb-2">เลขที่ IT จองไว้ของแคมเปญนี้ และยังไม่ถูกปุ่มอื่นหยิบไป</div>'+rows+'</div>' });
+  }
+  function posAutoCode(){ posPullCode(); }
+  /* ล้าง Code Item Set ออกจากปุ่ม — กลับไปสถานะ "ยังไม่ได้กดรับรหัส" (เลขจองที่ IT กลับมาว่างให้กดรับใหม่ได้) */
+  function posClearCode(){
+    if(!posSel.sn) return;
+    Swal.fire({icon:'warning', title:'ล้างรหัสออกจากปุ่มนี้?', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> จะกลับไปเป็น “ยังไม่มีรหัส”<br><span class="small text-muted">เลขจองที่ IT Settlement ยังอยู่ครบ — กด “รับรหัส” ใหม่ได้ตลอด</span>',
+      showCancelButton:true, confirmButtonText:'ล้างรหัส', cancelButtonText:'ยกเลิก', confirmButtonColor:'#c0392b'})
+    .then(function(r){ if(!r.isConfirmed) return;
+      if(window.PC_API && PC_API.clearPosButtonCode){ PC_API.clearPosButtonCode(posSel.camp, posSel.sn); }
+      try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk]){ delete store.reuse[_rk]; persist(); } }catch(e){}
+      posEditMode=false; posBuildTree(); posRender(); recRender();
+      Swal.fire({icon:'success', title:'ล้างรหัสแล้ว', confirmButtonColor:'#2e934a'});
+    });
+  }
+  function posSaveOrEdit(){
+    var btns = itemSetButtons().filter(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; });
+    var btn = btns[0]||{};
+    if(btn.itStatus==='COMPLETE' || btn.changeStatus==='CANCELLED'){ Swal.fire('แก้ไขไม่ได้', btn.itStatus==='COMPLETE'?'งานถูกบันทึก COMPLETE ที่ IT Settlement แล้ว':'งานถูกยกเลิกแล้ว','info'); return; }
+    if(btn.posReady && !posEditMode){ posEditMode=true; posRender(); return; }
+    posSave();
+  }
+  function posSave(){
+    var code = (document.getElementById('posCode').value||'').trim();
+    if(!code){ Swal.fire('ยังไม่มี Code Item Set','กด “รับรหัสจาก IT Settlement” ก่อนจึงจะตั้งค่าปุ่มได้','warning'); return; }
+    if(window.PC_API && PC_API.checkCode){
+      var chk = PC_API.checkCode('itemset', code, posSel.camp);
+      if(chk && chk.status==='dup'){ Swal.fire({icon:'error',title:'โค้ดซ้ำในระบบ',text:chk.message,confirmButtonColor:'#c0392b'}); return; }
+    }
+    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, code); }
+    try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk] && store.reuse[_rk].code!==code){ delete store.reuse[_rk]; persist(); } }catch(e){}
+    posEditMode=false;
+    posBuildTree(); posRender(); recRender();
+    Swal.fire({icon:'success', title:'ตั้งค่าปุ่มแล้ว', html:'Code Item Set <b>'+esc(code)+'</b> ถูกส่งไปหน้า <b>IT Settlement</b><br><span class="small text-muted">IT กดบันทึกปิดงานได้แล้ว</span>', confirmButtonColor:'#2e934a'});
+  }
+  // ---- Recipe tab (separate) ----
+  function recRender(){
+    var body=document.getElementById('recBody'); if(!body) return;
+    if(!posSel.sn){ body.innerHTML='<div class="empty">เลือกปุ่ม Item Set จากด้านซ้าย</div>'; document.getElementById('posJson').textContent='—'; return; }
+    var btns = itemSetButtons().filter(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; });
+    var btn = btns[0]||{};
+    var comp = posComposition(posSel.camp, posSel.sn);
+    var sms = (btn.saleMode? String(btn.saleMode).split(/,\s*/) : ['Take Away']);
+    var flat=[];
+    comp.members.forEach(function(m){ var mq=parseInt(m.qty)||1; sms.forEach(function(sm){
+      recipeOf(m.itemCode, sm).forEach(function(rr){ var q=(rr.q!=='' && !isNaN(parseFloat(rr.q))) ? (parseFloat(rr.q)*mq) : rr.q; flat.push({camp:posSel.camp,start:btn.start||'',end:btn.end||'',saleMode:sm,set:btn.itemPromoCode||btn.codeItemSet||'',shortName:posSel.sn,code:m.itemCode,name:m.itemNameEn||m.itemNameEN||'',rmSaleMode:'GRAB-Delivery',rm:rr.rm,rmName:rr.d,qty:q,unit:rr.u}); });
+    }); });
+    var recRows = flat.map(recRowHtml).join('') || '<tr><td colspan="7" class="empty">ไม่มี Recipe</td></tr>';
+    var _rfSm = recDistinct(flat,'saleMode'), _rfUnit = recDistinct(flat,'unit'), _rfCode = recDistinct(flat,'code'), _rfName = recDistinct(flat,'name'), _rfRm = recDistinct(flat,'rm'), _rfRmName = recDistinct(flat,'rmName'), _rfQty = recDistinct(flat,'qty');
+    var period = (btn.start||'') + (btn.end?(' – '+btn.end):'');
+    var codeIS = btn.itemPromoCode||btn.codeItemSet||'—';
+    var done = !!store.recipeDone[posSel.camp+'|'+posSel.sn];
+    var action = done
+      ? '<div class="alert alert-success py-1 px-2 mb-3" style="font-size:.82rem"><i class="fas fa-circle-check me-1"></i>เพิ่ม Recipe เข้าระบบแล้ว — อยู่ในแท็บ "เพิ่มเสร็จแล้ว"</div>'
+      : '<div class="alert alert-warning py-1 px-2 mb-3 d-flex justify-content-between align-items-center" style="font-size:.82rem"><span><i class="fas fa-triangle-exclamation me-1"></i>ยังไม่ได้เพิ่ม Recipe เข้าระบบ</span><button class="btn btn-pc btn-sm fw-bold" onclick="App.recAdd()"><i class="fas fa-plus me-1"></i>เพิ่ม Recipe</button></div>';
+    body.innerHTML = '<div class="px-3 py-2 mb-2" style="background:var(--pc-dark,#1a1d20);color:#fff;border-radius:8px"><i class="fas fa-cubes text-warning me-2"></i><b>'+esc(posSel.camp)+'</b> <span style="color:#ffffff" class="ms-2"><i class="far fa-calendar me-1"></i>เริ่มโปรฯ '+esc(period||'—')+'</span></div>'+
+      '<div class="row g-2 mb-2">'+
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase text-muted">Code Item Set <span class="it-tag">107</span></label><div class="input-group input-group-sm"><div class="form-control mono fw-bold text-truncate" style="background:#f8f9fa" title="'+esc(codeIS)+'">'+esc(codeIS)+'</div><button class="btn btn-outline-secondary" type="button" title="คัดลอก Code Item Set" data-copy="'+esc(codeIS)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase text-muted">Kitchen Name</label><div class="input-group input-group-sm"><div class="form-control text-truncate" style="background:#f8f9fa" title="'+esc(btn.kitchen||'')+'">'+esc(btn.kitchen||'—')+'</div><button class="btn btn-outline-secondary" type="button" title="คัดลอก Kitchen Name" data-copy="'+esc(btn.kitchen||'')+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+        '<div class="col-md-4"><label class="small fw-bold text-uppercase text-muted">Short Name (POS)</label><div class="input-group input-group-sm"><div class="form-control fw-bold text-truncate" style="background:#f8f9fa" title="'+esc(posSel.sn)+'">'+esc(posSel.sn)+'</div><button class="btn btn-outline-secondary" type="button" title="คัดลอก Short Name" data-copy="'+esc(posSel.sn)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></div></div>'+
+      '</div>'+ action +
+      '<div class="pane"><div class="scroller" style="max-height:480px;overflow:auto"><table class="tbl" style="min-width:700px"><thead>'+
+        '<tr><th>Sale mode</th><th>Item Code</th><th>ItemNameEN</th><th>RM Code</th><th>RM Name</th><th>QTY <button type="button" title="คัดลอก QTY ทั้งคอลัมน์ (ตามที่กรองอยู่)" onclick="App.recCopyQtyAll(this)" style="border:none;background:none;cursor:pointer;color:#cfd6dd;font-size:.72rem;padding:0 2px"><i class="fas fa-copy"></i></button></th><th>Unit</th></tr>'+
+        '<tr class="adm-filter-row"><th>'+recSel('rf-sm',_rfSm)+'</th><th>'+recSel('rf-code',_rfCode)+'</th><th>'+recSel('rf-name',_rfName)+'</th><th>'+recSel('rf-rm',_rfRm)+'</th><th>'+recSel('rf-rmname',_rfRmName)+'</th><th>'+recSel('rf-qty',_rfQty)+'</th><th>'+recSel('rf-unit',_rfUnit)+'</th></tr>'+
+        '</thead><tbody id="recTbody">'+recRows+'</tbody></table></div><div id="recCount" style="text-align:right;font-size:.78rem;color:#6b727b;padding:7px 8px 2px">Showing 1 to '+flat.length+' of '+flat.length+' entries</div></div>';
+    posSel._btn = btn; posSel._recipe = flat;
+    document.getElementById('posJson').textContent = JSON.stringify(flat,null,2);
+  }
+  function saveBranchNote(){
+    var el=document.getElementById('posBranchNote'); if(!el) return;
+    var v=el.value;
+    if(window.PC_API && PC_API.savePosButtonNote){ PC_API.savePosButtonNote(posSel.camp, posSel.sn, v); }
+    var prev=document.getElementById('posBranchNotePrev');
+    if(prev){ prev.innerHTML = v.trim()?('<span style="display:inline-block;background:#d5420c;color:#fff;font-weight:800;font-size:.72rem;padding:3px 10px;border-radius:6px"><i class="fas fa-tag me-1"></i>'+esc(v)+'</span> <span class="text-muted" style="font-size:.68rem">← หน้าตาบนการ์ดสาขา</span>'):''; }
+  }
+  function posFilteredButtons(){
+    var q=(posFilter.q||'').toLowerCase().trim();
+    return itemSetButtons()
+      .filter(function(b){ return posFilter.month==='ALL' || b.month===posFilter.month; })
+      .filter(function(b){ return posFilter.saleMode==='ALL' || String(b.saleMode||'').split(/,\s*/).map(function(s){return s.trim();}).indexOf(posFilter.saleMode)!==-1; })
+      .filter(function(b){ return !q || (String(b.campaign||'')+' '+String(b.shortName||'')+' '+String(b.codeItemSet||'')).toLowerCase().indexOf(q)!==-1; })
+      .filter(function(b){ if(!posFilter.date) return true; var s=b.start||'', e=b.end||''; /* FX-P54 — โหมดวันที่ */ if(posFilter.dateMode==='START') return String(s).slice(0,10)===posFilter.date; if(posFilter.dateMode==='END') return String(e).slice(0,10)===posFilter.date; if(!s && !e) return true; if(s && posFilter.date < s) return false; if(e && posFilter.date > e) return false; return true; });
+  }
+  function recExport(){
+    var btns = itemSetButtons();
+    if(!btns.length){ Swal.fire('ไม่มีข้อมูล','ยังไม่มีปุ่ม Item Set','info'); return; }
+    var rows = [];
+    rows.push(['Campaign Name','Start date','End date','Sale mode','item(Promotion)','ItemNameEN','Short Name 1(POS display)','Item Code','ItemNameEN','Sale Mode.1','RM Code','RM Name','QTY','Unit Name']);
+    btns.forEach(function(b){
+      var comp = posComposition(b.campaign, b.shortName);
+      var sms = (b.saleMode?String(b.saleMode).split(/,\s*/):['Take Away']);
+      comp.members.forEach(function(m){
+        sms.forEach(function(sm){
+          recipeOf(m.itemCode).forEach(function(rr){
+            rows.push([b.campaign, b.start||'', b.end||'', sm, b.codeItemSet||'', b.kitchen||'', b.shortName, m.itemCode, m.itemNameEn||m.itemNameEN||'', 'GRAB-Delivery', rr.rm, rr.d, rr.q, rr.u]);
+          });
+        });
+      });
+    });
+    var csv = rows.map(function(r){ return r.map(function(c){ var v=String(c==null?'':c); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }).join(','); }).join('\n');
+    var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+    var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download = 'Recipe_ItemSet_'+(posFilter.month==='ALL'?'all':posFilter.month)+'.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function posExport(){
+    var btns = posFilteredButtons();
+    if(!btns.length){ Swal.fire('ไม่มีข้อมูล','ไม่มีปุ่ม Item Set ตามตัวกรองปัจจุบัน','info'); return; }
+    var rows = [];
+    rows.push(['แคมเปญ','Code Item Set','Short Name (POS)','Kitchen','สถานะ','Start','End','Sale mode','Item Code','ItemNameEN','RM Code','RM Name','QTY','Unit','Subset Code','Subset Description','ผง Min','ผง Max']);
+    btns.forEach(function(b){
+      var comp = posComposition(b.campaign, b.shortName);
+      var sms=(b.saleMode?String(b.saleMode).split(/,\s*/):['Take Away']);
+      // subset lookup per member (for the subset columns on each recipe row)
+      comp.members.forEach(function(m){
+        var subs=(store.formulas[m.itemCode]||[]);
+        sms.forEach(function(sm){
+          recipeOf(m.itemCode).forEach(function(rr){
+            var ssCode = subs.map(function(x){return x.ss;}).join(' / ');
+            var ssName = subs.map(function(x){var s=subById(x.ss);return s?s.name:'';}).filter(Boolean).join(' / ');
+            var ssMin = subs.map(function(x){return x.choose;}).join(' / ');
+            rows.push([b.campaign, b.codeItemSet||'', b.shortName, b.kitchen||'', b.posReady?'ตั้งค่าแล้ว':'ยังไม่ตั้งค่า', b.start||'', b.end||'', sm, m.itemCode, m.itemNameEn||m.itemNameEN||'', rr.rm, rr.d, rr.q, rr.u, ssCode, ssName, ssMin, ssMin]);
+          });
+        });
+      });
+    });
+    var csv = rows.map(function(r){ return r.map(function(c){ var v=String(c==null?'':c); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }).join(','); }).join('\n');
+    var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+    var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download = 'POS_BUTTON_SETUP_'+(posFilter.month==='ALL'?'all':posFilter.month)+'.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // ============ ADMIN SUBSET MANAGER ============
+  var admFilterState='all';
+  var admCols={code:'',name:'',cat:'',ss:'',desc:''};
+  function admColFilter(col,v){ admCols[col]=(v||'').toLowerCase(); admRender(); }
+  function admFilter(f){ admFilterState=f; ['all','bound','none'].forEach(function(x){ document.getElementById('admFilter'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('on',x===f); }); admRender(); }
+  function admRowsData(){
+    var out=[];
+    ITEMS.forEach(function(it){
+      var binds=store.formulas[it.itemCode]||[];
+      if(admFilterState==='bound'&&!binds.length) return;
+      if(admFilterState==='none'&&binds.length) return;
+      if(admCols.code && it.itemCode.toLowerCase().indexOf(admCols.code)===-1) return;
+      if(admCols.name && (it.itemNameEN||'').toLowerCase().indexOf(admCols.name)===-1) return;
+      if(admCols.cat && (it.category||'').toLowerCase().indexOf(admCols.cat)===-1) return;
+      if(binds.length){
+        var fb=binds.filter(function(b){ var s=subById(b.ss); return (!admCols.ss || (b.ss||'').toLowerCase().indexOf(admCols.ss)!==-1) && (!admCols.desc || (s&&s.name||'').toLowerCase().indexOf(admCols.desc)!==-1); });
+        if(!fb.length && (admCols.ss||admCols.desc)) return;
+        out.push({it:it, binds: (admCols.ss||admCols.desc)?fb:binds});
+      } else {
+        if(admCols.ss||admCols.desc) return;
+        out.push({it:it, binds:[]});
+      }
+    });
+    return out;
+  }
+  function admRender(){
+    var catSel=document.getElementById('admCatFilter');
+    if(catSel && catSel.options.length<=1){ catSel.innerHTML='<option value="">ทั้งหมด</option>'+CATS.map(function(c){return '<option value="'+esc(c.toLowerCase())+'">'+esc(c)+'</option>';}).join(''); }
+    var addBtnOf=function(c){ return '<button class="chip" style="background:var(--pc-dark,#1a1d20);color:#ffffff;border:none;cursor:pointer" onclick="App.admBind(\''+c+'\')"><i class="fas fa-plus me-1"></i>ผูก</button>'; };
+    var data = admRowsData();
+    document.getElementById('admBody').innerHTML = data.slice(0,400).map(function(row){
+      var it=row.it, c=it.itemCode, binds=row.binds;
+      if(!binds.length){
+        return '<tr><td class="mono fw-bold text-primary">'+esc(c)+'</td><td>'+esc(it.itemNameEN)+'</td><td class="small text-muted">'+esc(it.category)+'</td>'+
+          '<td colspan="4" class="text-muted small">— ยังไม่ผูก —</td><td class="text-center">'+addBtnOf(c)+'</td></tr>';
+      }
+      return binds.map(function(b){ var bi=(store.formulas[c]||[]).indexOf(b); var s=subById(b.ss); var first=binds[0]===b;
+        return '<tr>'+
+          '<td class="mono fw-bold text-primary">'+(first?esc(c):'')+'</td>'+
+          '<td>'+(first?esc(it.itemNameEN):'')+'</td>'+
+          '<td class="small text-muted">'+(first?esc(it.category):'')+'</td>'+
+          '<td class="mono fw-bold text-success"><i class="fas fa-flask me-1"></i>'+esc(b.ss)+'</td>'+
+          '<td>'+esc(s?s.name:'')+'</td>'+
+          '<td class="text-center"><input type="number" min="1" class="form-control form-control-sm text-center" style="width:62px;margin:auto" value="'+esc(b.choose)+'" onchange="App.admSetChoose(\''+c+'\','+bi+',this.value)"></td>'+
+          '<td class="text-center"><input type="number" min="1" class="form-control form-control-sm text-center" style="width:62px;margin:auto" value="'+esc(b.choose)+'" onchange="App.admSetChoose(\''+c+'\','+bi+',this.value)"></td>'+
+          '<td class="text-center"><i class="fas fa-trash-alt text-danger me-2" style="cursor:pointer" onclick="App.admUnbind(\''+c+'\','+bi+')"></i>'+(first?addBtnOf(c):'')+'</td></tr>';
+      }).join('');
+    }).join('') || '<tr><td colspan="8" class="empty">ไม่พบข้อมูล</td></tr>';
+  }
+  function admExport(){
+    var data=admRowsData(); var rows=[['Item Code','สินค้า','หมวด','Subset Code','Description','Min','Max']];
+    data.forEach(function(row){ var it=row.it; if(!row.binds.length){ rows.push([it.itemCode,it.itemNameEN,it.category,'','','','']); } else { row.binds.forEach(function(b){ var s=subById(b.ss); rows.push([it.itemCode,it.itemNameEN,it.category,b.ss,s?s.name:'',b.choose,b.choose]); }); } });
+    var csv=rows.map(function(r){return r.map(function(x){var v=String(x==null?'':x);return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v;}).join(',');}).join('\n');
+    var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Subset_Mapping.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function admRender_disabled_old(){
+    var q=(document.getElementById('admSearch').value||'').toLowerCase();
+    var list=ITEMS.filter(function(it){
+      var bound=(store.formulas[it.itemCode]||[]).length>0;
+      if(admFilterState==='bound'&&!bound) return false;
+      if(admFilterState==='none'&&bound) return false;
+      if(q && (it.itemCode+' '+it.itemNameEN+' '+it.category).toLowerCase().indexOf(q)===-1) return false;
+      return true;
+    });
+    document.getElementById('admBody').innerHTML = list.slice(0,300).map(function(it){
+      var c=it.itemCode;
+      var binds=store.formulas[c]||[];
+      var addBtn='<button class="chip" style="background:var(--pc-dark,#1a1d20);color:#ffffff;border:none;cursor:pointer" onclick="App.admBind(\''+c+'\')"><i class="fas fa-plus me-1"></i>ผูก</button>';
+      if(!binds.length){
+        return '<tr><td class="mono fw-bold text-primary">'+esc(c)+'</td><td>'+esc(it.itemNameEN)+'</td><td class="small text-muted">'+esc(it.category)+'</td>'+
+          '<td colspan="4" class="text-muted small">— ยังไม่ผูก —</td><td class="text-center">'+addBtn+'</td></tr>';
+      }
+      return binds.map(function(b,bi){ var s=subById(b.ss);
+        var first = bi===0;
+        return '<tr>'+
+          '<td class="mono fw-bold text-primary">'+(first?esc(c):'')+'</td>'+
+          '<td>'+(first?esc(it.itemNameEN):'')+'</td>'+
+          '<td class="small text-muted">'+(first?esc(it.category):'')+'</td>'+
+          '<td class="mono fw-bold text-success"><i class="fas fa-flask me-1"></i>'+esc(b.ss)+'</td>'+
+          '<td>'+esc(s?s.name:'')+'</td>'+
+          '<td class="text-center"><input type="number" min="1" class="form-control form-control-sm text-center" style="width:62px;margin:auto" value="'+esc(b.choose)+'" onchange="App.admSetChoose(\''+c+'\','+bi+',this.value)"></td>'+
+          '<td class="text-center"><input type="number" min="1" class="form-control form-control-sm text-center" style="width:62px;margin:auto" value="'+esc(b.choose)+'" onchange="App.admSetChoose(\''+c+'\','+bi+',this.value)"></td>'+
+          '<td class="text-center"><i class="fas fa-trash-alt text-danger me-2" style="cursor:pointer" onclick="App.admUnbind(\''+c+'\','+bi+')"></i>'+(first?addBtn:'')+'</td></tr>';
+      }).join('');
+    }).join('') || '<tr><td colspan="8" class="empty">ไม่พบข้อมูล</td></tr>';
+  }
+  function admSetChoose(code,bi,v){ var b=(store.formulas[code]||[])[bi]; if(b){ b.choose=Math.max(1,parseInt(v)||1); persist(); admRender(); } }
+  function admAddNew(){
+    var itemOpts = ITEMS.map(function(it){return '<option value="'+it.itemCode+'">'+esc(it.itemCode)+' · '+esc(it.itemNameEN)+'</option>';}).join('');
+    Swal.fire({ title:'Add New — ผูก Subset ให้สินค้า', width:560,
+      html:'<div class="text-start"><label class="small fw-bold">สินค้า (Item Code)</label><select id="admNewItem" class="form-select form-select-sm mb-2">'+itemOpts+'</select>'+
+        '<label class="small fw-bold">Subset</label><select id="admSS" class="form-select form-select-sm mb-2">'+SUBSETS.map(function(s){return '<option value="'+s.ss+'">'+esc(s.ss)+' · '+esc(s.name)+'</option>';}).join('')+'</select>'+
+        '<label class="small fw-bold">จำนวนผง (Min/Max)</label><input id="admChoose" type="number" min="1" value="1" class="form-control form-control-sm"></div>',
+      showCancelButton:true, confirmButtonText:'เพิ่ม', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ return { code:document.getElementById('admNewItem').value, ss:document.getElementById('admSS').value, choose:Math.max(1,parseInt(document.getElementById('admChoose').value)||1) }; }
+    }).then(function(r){ if(r.isConfirmed){ var v=r.value; store.formulas[v.code]=store.formulas[v.code]||[]; if(!store.formulas[v.code].some(function(b){return b.ss===v.ss;})) store.formulas[v.code].push({ss:v.ss,choose:v.choose}); persist(); admRender(); } });
+  }
+  function admBind(code){
+    Swal.fire({ title:'ผูก Subset · '+esc(code), html:'<select id="admSS" class="form-select mb-2">'+SUBSETS.map(function(s){return '<option value="'+s.ss+'">'+esc(s.ss)+' · '+esc(s.name)+'</option>';}).join('')+'</select><input id="admChoose" type="number" min="1" value="1" class="form-control" placeholder="เลือกได้กี่ผง">',
+      showCancelButton:true, confirmButtonText:'ผูก', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก',
+      preConfirm:function(){ return { ss:document.getElementById('admSS').value, choose:Math.max(1,parseInt(document.getElementById('admChoose').value)||1) }; }
+    }).then(function(r){ if(r.isConfirmed){ (store.formulas[code]=store.formulas[code]||[]).push(r.value); persist(); admRender(); } });
+  }
+  function admUnbind(code,bi){ store.formulas[code].splice(bi,1); if(!store.formulas[code].length) delete store.formulas[code]; persist(); admRender(); }
+  function admImport(){
+    Swal.fire({ title:'Import mapping (item_code → subset)', width:620,
+      html:'<div class="text-start"><div class="small text-muted mb-2">วางข้อมูลจาก Excel — คอลัมน์: <b>Item Code, SS Code, จำนวนผง</b> (คั่นด้วย Tab หรือ , — หนึ่งบรรทัดต่อหนึ่งรายการ)</div>'+
+        '<textarea id="admPaste" class="form-control mono" rows="8" placeholder="101001\tSS0001\t1&#10;104001\tSS0024\t1"></textarea></div>',
+      showCancelButton:true, confirmButtonText:'Import', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก'
+    }).then(function(r){ if(!r.isConfirmed) return;
+      var txt=document.getElementById('admPaste').value||''; var n=0, bad=0;
+      txt.split(/\n/).forEach(function(line){ line=line.trim(); if(!line) return;
+        var p=line.split(/[\t,]+/).map(function(x){return x.trim();});
+        var code=p[0], ss=p[1], choose=parseInt(p[2])||1;
+        if(!code||!ss){ bad++; return; }
+        if(!ITEMS.some(function(it){return it.itemCode===code;})){ bad++; return; }
+        store.formulas[code]=store.formulas[code]||[];
+        if(!store.formulas[code].some(function(b){return b.ss===ss;})){ store.formulas[code].push({ss:ss,choose:choose}); n++; }
+      });
+      persist(); admRender();
+      Swal.fire({icon:n?'success':'warning', title:'Import เสร็จ', html:'เพิ่ม '+n+' รายการ'+(bad?(' · ข้าม '+bad+' บรรทัด (โค้ดไม่ถูกต้อง)'):''), confirmButtonColor:'#2e934a'});
+    });
+  }
+
+  // ============ ITEM SET ============
+  function setHdr(){
+    store.set.code = document.getElementById('setCode').value;
+    store.set.name = document.getElementById('setName').value;
+    document.getElementById('setCodeLbl').innerHTML = 'set_code: '+(esc(store.set.code)||'107____')+' <span class="it-tag">IT</span>';
+  }
+  function setCatPick(v){
+    store.set.cat = v;
+    var code = CAT_CODE[v] || '';
+    store.set.cateCode = code;
+    document.getElementById('setCateCode').value = code;
+    persist();
+  }
+  function renderSaleModes(){
+    var sm = store.set.saleModes||[];
+    var allCh = SALE_MODES.every(function(c){return sm.indexOf(c)!==-1;});
+    var allDlv = DLV_MODES.every(function(c){return sm.indexOf(c)!==-1;}) && !allCh;
+    var pill = function(label,on,cb,extra){ return '<label class="form-check d-inline-flex align-items-center gap-1 px-2 py-1 rounded border" style="cursor:pointer;'+(on?'background:#e8f6ee;border-color:#198754!important;':'')+extra+'"><input type="checkbox" class="form-check-input m-0" '+(on?'checked':'')+' onchange="'+cb+'"><span class="small fw-bold">'+label+'</span></label>'; };
+    var html = pill('ALL DELIVERY',allDlv,"App.saleAll('delivery',this.checked)",'') + pill('ALL CHANNEL',allCh,"App.saleAll('all',this.checked)",'') + '<span class="vr" style="width:2px;height:26px;background:#000"></span>';
+    html += SALE_MODES.map(function(c){ var on=sm.indexOf(c)!==-1; var dlv=DLV_MODES.indexOf(c)!==-1; return pill(c+(dlv?' <span class="text-muted" style="font-size:.66rem">DLV</span>':''),on,"App.saleToggle('"+c+"')",''); }).join('');
+    document.getElementById('setSaleModes').innerHTML = html;
+  }
+  function saleToggle(c){ var sm=store.set.saleModes=store.set.saleModes||[]; var i=sm.indexOf(c); if(i===-1) sm.push(c); else sm.splice(i,1); persist(); renderSaleModes(); }
+  function saleAll(kind,on){ var sm=store.set.saleModes=store.set.saleModes||[]; var aff=kind==='all'?SALE_MODES:DLV_MODES; aff.forEach(function(c){ var i=sm.indexOf(c); if(on&&i===-1) sm.push(c); if(!on&&i!==-1) sm.splice(i,1); }); persist(); renderSaleModes(); }
+  function renderSetSource(){
+    var q = (document.getElementById('setSearch').value||'').toLowerCase();
+    var memCodes = store.set.members.map(function(m){return m.code;});
+    var list = ITEMS.filter(function(it){
+      if(memCodes.indexOf(it.itemCode)!==-1) return false;
+      if(!q) return true;
+      return (it.itemCode+' '+it.itemNameEN+' '+it.category).toLowerCase().indexOf(q)!==-1;
+    });
+    document.getElementById('setSrcCount').textContent = list.length+' รายการ';
+    document.getElementById('setSource').innerHTML = list.slice(0,200).map(function(it){
+      return '<div class="row-item" onclick="App.addMember(\''+it.itemCode+'\')"><span>'+esc(it.itemNameEN)+' <small>'+esc(it.itemCode)+'</small><br><small style="color:#bbb">'+esc(it.category)+'</small></span><i class="fas fa-plus-circle add-i"></i></div>';
+    }).join('') || '<div class="empty">ไม่พบสินค้า</div>';
+  }
+  function addMember(code){
+    var it = ITEMS.find(function(x){return x.itemCode===code;}); if(!it) return;
+    store.set.members.push({code:code, name:it.itemNameEN, qty:1, rm:null}); persist();
+    renderSetSource(); renderMembers();
+  }
+  function renderMembers(){
+    var tb = document.getElementById('setMembers');
+    document.getElementById('setMemCount').textContent = store.set.members.length+' รายการ';
+    if(!store.set.members.length){ tb.innerHTML='<tr><td colspan="5"><div class="empty">ยังไม่มีสมาชิก — เลือกสินค้าจากด้านซ้าย</div></td></tr>'; renderSetJson(); return; }
+    tb.innerHTML = store.set.members.map(function(m,i){
+      var rmLines = (m.rm && m.rm.length) ? m.rm : recipeOf(m.code);
+      var custom = !!(m.rm && m.rm.length);
+      var rc = rmLines.map(function(r){ return '<span class="chip">'+esc(r.rm)+' '+esc(r.d)+(r.q?' · '+esc(r.q)+esc(r.u):'')+'</span>'; }).join('');
+      return '<tr><td>'+esc(m.name)+'<br><small class="mono text-muted">'+esc(m.code)+'</small></td>'+
+        '<td><input type="number" min="1" class="form-control form-control-sm text-center" style="width:50px" value="'+esc(m.qty)+'" onchange="App.memQty('+i+',this.value)"></td>'+
+        '<td>'+rc+(custom?' <span class="badge bg-success" style="font-size:.6rem">แก้ RM แล้ว</span>':'')+'</td>'+
+        '<td class="text-center"><button class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:.72rem" onclick="App.openRm('+i+')">ผูก RM</button></td>'+
+        '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="App.delMember('+i+')"></i></td></tr>';
+    }).join('');
+    renderSetJson();
+  }
+  // ---- RM binding per member (หน้าทำงานแยก — IT บันทึก) ----
+  function openRm(i){
+    var m = store.set.members[i];
+    var lines = (m.rm && m.rm.length) ? m.rm.slice() : recipeOf(m.code).map(function(r){return Object.assign({},r);});
+    var rowsHtml = function(){ return lines.map(function(r,ri){
+      return '<tr><td><input class="form-control form-control-sm mono" value="'+esc(r.rm)+'" data-k="rm" data-i="'+ri+'"></td>'+
+        '<td><input class="form-control form-control-sm" value="'+esc(r.d)+'" data-k="d" data-i="'+ri+'"></td>'+
+        '<td><input class="form-control form-control-sm text-center" style="width:60px" value="'+esc(r.q)+'" data-k="q" data-i="'+ri+'"></td>'+
+        '<td><input class="form-control form-control-sm text-center" style="width:64px" value="'+esc(r.u)+'" data-k="u" data-i="'+ri+'"></td></tr>'; }).join(''); };
+    Swal.fire({
+      title:'ผูก RM · '+esc(m.name), width:680,
+      html:'<div class="text-start"><div class="small text-muted mb-2">ข้อมูล Recipe ของสินค้านี้ — แก้/เพิ่ม RM ได้ (ไหลเข้าตอน IT บันทึก)</div>'+
+        '<table class="table table-sm table-bordered" style="font-size:.82rem"><thead class="table-light"><tr><th>RM Code</th><th>Description</th><th>Qty</th><th>Unit</th></tr></thead><tbody id="rmEditBody">'+rowsHtml()+'</tbody></table>'+
+        '<button class="btn btn-dark btn-sm" id="rmAddBtn"><i class="fas fa-plus me-1"></i>เพิ่มแถว RM</button></div>',
+      showCancelButton:true, confirmButtonText:'บันทึก RM', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก',
+      didOpen:function(){
+        var pull=function(){ var b=document.getElementById('rmEditBody'); var map={}; b.querySelectorAll('input').forEach(function(inp){ var ri=+inp.dataset.i,k=inp.dataset.k; (map[ri]=map[ri]||{rm:'',d:'',q:'',u:''})[k]=inp.value; }); lines=Object.keys(map).map(function(k){return map[k];}); };
+        document.getElementById('rmAddBtn').addEventListener('click',function(){ pull(); lines.push({rm:'',d:'',q:'',u:''}); document.getElementById('rmEditBody').innerHTML=rowsHtml(); });
+        Swal.getConfirmButton().addEventListener('click',pull);
+      }
+    }).then(function(r){ if(r.isConfirmed){ store.set.members[i].rm = lines.filter(function(x){return x.rm||x.d;}); persist(); renderMembers(); } });
+  }
+  function delMember(i){ store.set.members.splice(i,1); persist(); renderSetSource(); renderMembers(); }
+  function memQty(i,v){ store.set.members[i].qty = Math.max(1, parseInt(v)||1); persist(); renderSetJson(); }
+  function renderSetJson(){
+    var s = store.set;
+    var obj = { item_set:{ set_code:s.code||'(IT)', set_name:s.name, category:s.cat||'', cate_code:s.cateCode||'(IT)', sale_modes:s.saleModes||[], price_takeaway:s.priceTA, price_delivery:s.priceDLV },
+      item_set_line: s.members.map(function(m,i){ return { line_no:i+1, member_item_code:m.code, qty:m.qty, recipe:(m.rm&&m.rm.length)?m.rm:recipeOf(m.code) }; }) };
+    document.getElementById('setJson').textContent = JSON.stringify(obj,null,2);
+  }
+  function saveSet(){
+    store.set.priceTA = document.getElementById('setPriceTA').value;
+    store.set.priceDLV = document.getElementById('setPriceDLV').value;
+    if(!store.set.members.length){ Swal.fire('ยังไม่มีสมาชิก','เลือกสินค้าเข้าเซ็ตอย่างน้อย 1 รายการ','warning'); return; }
+    persist();
+    var lines = store.set.members.map(function(m){ return '• '+esc(m.name)+' ×'+m.qty+' <small class="text-muted">('+recipeOf(m.code).length+' RM)</small>'; }).join('<br>');
+    Swal.fire({icon:'success', title:'บันทึก Item Set (mock)', html:'<div class="text-start" style="font-size:.9rem">'+
+      '<b>'+(esc(store.set.name)||'(ไม่มีชื่อ)')+'</b> · '+store.set.members.length+' สมาชิก<br><div class="mt-2">'+lines+'</div>'+
+      '<div class="mt-2 text-muted" style="font-size:.8rem">Recipe ของสมาชิกถูกผูกอัตโนมัติ</div></div>', confirmButtonColor:'#2e934a'});
+    document.getElementById('setSaveNote').textContent = '✓ บันทึกแล้ว (mock · localStorage)';
+    // save snapshot for auto-detect
+    var snap = { code:store.set.code||('SET'+(store.savedSets.length+1)), name:store.set.name||'(ไม่มีชื่อ)', members:store.set.members.map(function(m){return {code:m.code,name:m.name,qty:m.qty};}) };
+    var ix = store.savedSets.findIndex(function(x){return x.code===snap.code;});
+    if(ix===-1) store.savedSets.push(snap); else store.savedSets[ix]=snap;
+    persist(); fillAutoSets();
+  }
+  function resetSet(){
+    store.set = { code:'', name:'', priceTA:'', priceDLV:'', cat:'', cateCode:'', saleModes:[], members:[] }; persist();
+    ['setCode','setName','setPriceTA','setPriceDLV','setSearch','setCat','setCateCode'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    setHdr(); renderSaleModes(); renderSetSource(); renderMembers(); document.getElementById('setSaveNote').textContent='';
+  }
+
+  // ============ POWDER FORMULA ============
+  function renderFItems(){
+    var q = (document.getElementById('fSearch').value||'').toLowerCase();
+    var list = ITEMS.filter(function(it){ if(!q) return true; return (it.itemCode+' '+it.itemNameEN+' '+it.category).toLowerCase().indexOf(q)!==-1; });
+    document.getElementById('fItemCount').textContent = list.length+' รายการ';
+    document.getElementById('fItems').innerHTML = list.slice(0,200).map(function(it){
+      var n = (store.formulas[it.itemCode]||[]).length;
+      var on = sel.fItem===it.itemCode;
+      return '<div class="row-item'+(on?' sel':'')+'" onclick="App.pickFItem(\''+it.itemCode+'\')"><span>'+esc(it.itemNameEN)+' <small>'+esc(it.itemCode)+'</small></span>'+
+        (n?'<span class="badge bg-success">'+n+' สูตร</span>':'<i class="fas fa-chevron-right text-muted"></i>')+'</div>';
+    }).join('') || '<div class="empty">ไม่พบสินค้า</div>';
+  }
+  function pickFItem(code){ sel.fItem=code; renderFItems(); renderBind(); }
+  function ssOpts(selVal){
+    return '<option value="">— เลือก Subset —</option>'+SUBSETS.map(function(s){ return '<option value="'+s.ss+'"'+(s.ss===selVal?' selected':'')+'>'+esc(s.ss)+' · '+esc(s.name)+'</option>'; }).join('');
+  }
+  function renderBind(){
+    var code = sel.fItem;
+    var it = ITEMS.find(function(x){return x.itemCode===code;});
+    document.getElementById('fRightHead').innerHTML = '<span>🧂 ผูกสูตรผงให้: <b>'+esc(it?it.itemNameEN:'')+'</b> <small class="mono text-muted">'+esc(code)+'</small></span>';
+    var binds = store.formulas[code] || [];
+    var rows = binds.map(function(b,i){
+      var s = subById(b.ss); var max = s? s.powders.length : 99;
+      return '<div class="d-flex gap-2 align-items-center mb-2 flex-wrap">'+
+        '<span class="badge bg-dark">#'+(i+1)+'</span>'+
+        '<select class="form-select form-select-sm" style="max-width:260px" onchange="App.bindSet('+i+',\'ss\',this.value)">'+ssOpts(b.ss)+'</select>'+
+        '<span class="small">เลือกได้</span>'+
+        '<input type="number" min="1" max="'+max+'" class="form-control form-control-sm text-center" style="width:64px" value="'+esc(b.choose)+'" onchange="App.bindSet('+i+',\'choose\',this.value)">'+
+        '<span class="small">ผง <span class="text-muted">(จาก '+(s?s.powders.length:'-')+' ผง)</span></span>'+
+        '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" onclick="App.delBind('+i+')"></i>'+
+        (s? '<div class="w-100">'+s.powders.map(function(p){return '<span class="chip" style="background:#e8f6ee;color:#0b6b3a;border-color:#bfe3cd">'+esc(p)+'</span>';}).join('')+'</div>':'')+
+        '</div>';
+    }).join('') || '<div class="empty">ยังไม่ได้ผูกสูตรผง — เครื่องดื่ม/topping ที่ไม่มีผงข้ามได้</div>';
+    document.getElementById('fBindArea').innerHTML =
+      '<div style="background:#eef7f1;border:1px solid #bfe3cd;border-radius:10px;padding:12px">'+rows+
+      '<button class="btn btn-pc btn-sm mt-1" onclick="App.addBind()"><i class="fas fa-plus me-1"></i>ผูก Subset เพิ่ม</button></div>'+
+      '<div class="mt-2 small text-muted">ผูกแล้วบันทึกอัตโนมัติ (mock · localStorage) → เป็น product_formula</div>';
+    renderFJson();
+  }
+  function addBind(){ var c=sel.fItem; (store.formulas[c]=store.formulas[c]||[]).push({ss:'',choose:1}); persist(); renderBind(); renderFItems(); }
+  function delBind(i){ store.formulas[sel.fItem].splice(i,1); if(!store.formulas[sel.fItem].length) delete store.formulas[sel.fItem]; persist(); renderBind(); renderFItems(); }
+  function bindSet(i,k,v){ var arr=store.formulas[sel.fItem]; if(k==='choose') v=Math.max(1,parseInt(v)||1); arr[i][k]=v; persist(); if(k==='ss') renderBind(); else renderFJson(); }
+  function renderFJson(){
+    var out=[];
+    Object.keys(store.formulas).forEach(function(code){ (store.formulas[code]||[]).forEach(function(b){ if(b.ss) out.push({item_code:code, ss_code:b.ss, choose_qty:b.choose}); }); });
+    document.getElementById('fJson').textContent = out.length? JSON.stringify(out,null,2) : '— ยังไม่มีการผูกสูตร —';
+  }
+
+  // ============ AUTO-DETECT subset from Item Set ============
+  function fillAutoSets(){
+    var sel = document.getElementById('autoSet'); if(!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">— เลือก Item Set —</option>'+store.savedSets.map(function(s,i){ return '<option value="'+i+'">'+esc(s.code)+' · '+esc(s.name)+'</option>'; }).join('');
+    if(cur) sel.value=cur;
+  }
+  function autoDetect(){
+    var idx = document.getElementById('autoSet').value;
+    var box = document.getElementById('autoResult');
+    if(idx===''){ box.innerHTML='เลือก Item Set เพื่อให้ระบบสแกนสินค้าสมาชิก → แสดง Subset ที่ปุ่มนี้ใช้'; return; }
+    var set = store.savedSets[+idx]; if(!set) return;
+    var found = [], missing = [];
+    set.members.forEach(function(m){
+      var f = store.formulas[m.code] || [];
+      if(f.length){ f.forEach(function(b){ if(b.ss) found.push({code:m.code,name:m.name,ss:b.ss,choose:b.choose}); }); }
+      else { missing.push(m); }
+    });
+    // unique subsets
+    var uniq = {}; found.forEach(function(f){ uniq[f.ss]=(uniq[f.ss]||0)+1; });
+    var ssChips = Object.keys(uniq).map(function(ss){ var s=subById(ss); return '<span class="chip" style="background:#e8f6ee;color:#0b6b3a;border-color:#bfe3cd"><i class="fas fa-flask"></i> '+esc(ss)+' · '+esc(s?s.name:'')+'</span>'; }).join('') || '<span class="text-muted">— ไม่พบสินค้าที่ผูก subset —</span>';
+    var detail = set.members.map(function(m){
+      var f = store.formulas[m.code]||[];
+      var txt = f.length ? f.map(function(b){var s=subById(b.ss);return esc(b.ss)+' ('+esc(s?s.name:'')+') ×'+b.choose;}).join(', ') : '<span class="text-danger">— ไม่พบ (สินค้าไม่มีผง หรือยังไม่ได้ผูก)</span>';
+      return '<tr><td>'+esc(m.name)+' <small class="mono text-muted">'+esc(m.code)+'</small></td><td>'+txt+'</td></tr>';
+    }).join('');
+    box.innerHTML =
+      '<div class="mb-2"><b>Subset ที่ปุ่มนี้ใช้ (สำหรับเซ็ตที่ backoffice CMPOS):</b><br>'+ssChips+'</div>'+
+      '<table class="tbl" style="font-size:.8rem"><thead><tr><th>สินค้าสมาชิก</th><th>Subset ที่ระบบจับได้ (product_formula)</th></tr></thead><tbody>'+detail+'</tbody></table>'+
+      (missing.length? '<div class="mt-2 small" style="color:#b45309"><i class="fas fa-triangle-exclamation me-1"></i>มี '+missing.length+' สินค้าที่ยังไม่มี mapping subset — ถ้าเป็นสินค้าเก่า ต้องผูกครั้งแรกที่หน้า Powder-Formula ด้านล่าง</div>':'<div class="mt-2 small text-success"><i class="fas fa-circle-check me-1"></i>ทุกสินค้ามี mapping subset ครบ</div>');
+  }
+
+  function init(){
+    tab('pos');
+  }
+
+  function recRowHtml(x){ return '<tr><td>'+esc(x.saleMode)+'</td><td class="mono">'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td class="mono">'+esc(x.rm)+(x.rm?' <button type="button" title="คัดลอก RM Code" onclick="App.copyText(\''+esc(x.rm)+'\',this)" style="border:none;background:none;cursor:pointer;color:#9aa1aa;font-size:.72rem;padding:0 2px"><i class="fas fa-copy"></i></button>':'')+'</td><td>'+esc(x.rmName)+'</td><td class="text-center"><span class="rec-qty">'+esc(x.qty)+'</span>'+((x.qty===''||x.qty==null)?'':' <button type="button" title="คัดลอก QTY" onclick="App.copyText(\''+esc(String(x.qty))+'\',this)" style="border:none;background:none;cursor:pointer;color:#9aa1aa;font-size:.72rem;padding:0 2px"><i class="fas fa-copy"></i></button>')+'</td><td>'+esc(x.unit)+'</td></tr>'; }
+  /* คัดลอก QTY ทุกแถวที่กำลังโชว์ (เรียงตามตาราง → วางลง Excel ได้ตรงคอลัมน์) */
+  function recCopyQtyAll(btn){
+    var vals = [].slice.call(document.querySelectorAll('#recTbody tr')).map(function(tr){
+      var el = tr.querySelector('.rec-qty'); return el ? String(el.textContent || '').trim() : '';
+    }).filter(function(v, i, arr){ return arr.length > 0; });
+    if(!vals.length){ return; }
+    copyText(vals.join('\n'), btn);
+  }
+  function recDistinct(list, key){ var seen={}, out=[]; (list||[]).forEach(function(x){ var v=(x[key]==null?'':String(x[key])); if(v!=='' && !seen[v]){ seen[v]=1; out.push(v); } }); out.sort(function(a,b){ return String(a).localeCompare(String(b),'th'); }); return out; }
+  function recInp(id){ return '<input id="'+id+'" class="form-control form-control-sm" oninput="App.recFilter()" placeholder="กรอง">'; }
+  function recSel(id, opts){ return '<select id="'+id+'" class="form-select form-select-sm" onchange="App.recFilter()"><option value="">ทั้งหมด</option>'+(opts||[]).map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join('')+'</select>'; }
+  function recFilter(){
+    var box=document.getElementById('recTbody'); if(!box) return;
+    var flat=(posSel._recipe||[]);
+    function gv(id){ var el=document.getElementById(id); return el?String(el.value||'').toLowerCase().trim():''; }
+    var fSm=gv('rf-sm'), fCode=gv('rf-code'), fName=gv('rf-name'), fRm=gv('rf-rm'), fRmName=gv('rf-rmname'), fQty=gv('rf-qty'), fUnit=gv('rf-unit');
+    var rows=flat.filter(function(x){
+      return (!fSm || String(x.saleMode||'').toLowerCase().indexOf(fSm)!==-1)
+        && (!fCode || String(x.code||'').toLowerCase().indexOf(fCode)!==-1)
+        && (!fName || String(x.name||'').toLowerCase().indexOf(fName)!==-1)
+        && (!fRm || String(x.rm||'').toLowerCase().indexOf(fRm)!==-1)
+        && (!fRmName || String(x.rmName||'').toLowerCase().indexOf(fRmName)!==-1)
+        && (!fQty || String(x.qty==null?'':x.qty).toLowerCase().indexOf(fQty)!==-1)
+        && (!fUnit || String(x.unit||'').toLowerCase().indexOf(fUnit)!==-1);
+    });
+    box.innerHTML = rows.map(recRowHtml).join('') || '<tr><td colspan="7" class="empty">ไม่ตรงตัวกรอง</td></tr>';
+    var _rc=document.getElementById('recCount'); if(_rc){ var _tot=((posSel._recipe)||[]).length; _rc.textContent='Showing 1 to '+rows.length+' of '+_tot+' entries'; }
+  }
+  return { tab, copyText, posSetSearch, posReuseOpen, posReusePick, setHdr, setCatPick, saleToggle, saleAll, renderSetSource, addMember, delMember, memQty, openRm, saveSet, resetSet,
+    renderFItems, pickFItem, addBind, delBind, bindSet, autoDetect,
+    posPick, posRender, posExport, recExport, posAutoCode, posPullCode, posApplyCode, posClearCode, posSave, posSaveOrEdit, posSetMonth, posSetSaleMode, posSetDate, posSetDateMode, posSetStatus, posSetAll, recRender, recCopyQtyAll, recFilter, recAdd, saveBranchNote, admRender, admFilter, admColFilter, admExport, admBind, admUnbind, admImport, admSetChoose, admAddNew };
+})();
+
+  window.App = App;
+  window.initItemSet = function(){
+    try {
+      var adminOnly = !!window.__pcItemSetAdminOnly;
+      window.__pcItemSetAdminOnly = false;
+      if (adminOnly) {
+        var hd = document.getElementById('itemset-hd'); if (hd) hd.style.display = 'none';
+        var tb = document.getElementById('itemset-tabbar'); if (tb) tb.style.display = 'none';
+        App.tab('admin');
+      } else {
+        App.tab('pos');
+      }
+    } catch (e) { console.error('[ItemSet] init', e); }
+  };
+</script>

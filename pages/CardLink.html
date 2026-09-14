@@ -1,0 +1,13 @@
+<!-- ============================================================
+     pages/CardLink.html — ผูก Type (บัตร · ส่วนลดพนักงาน · อื่นๆ)
+     entry: initCardLink()  (นิยามใน js/card-link.js ที่โหลดใน shell)
+     ตารางแยก pc_card_links · logic ทั้งหมดอยู่ใน window.PC_CardLink
+     ============================================================ -->
+<div id="pc-cardlink-root"></div>
+<script>
+  window.initCardLink = function () {
+    if (window.PC_CardLink) { window.PC_CardLink.seed(); window.PC_CardLink.mountFull(document.getElementById('pc-cardlink-root')); }
+    else { document.getElementById('pc-cardlink-root').innerHTML = '<div style="padding:40px;text-align:center;color:#c0392b;font-family:Kanit">โหลด js/card-link.js ไม่สำเร็จ</div>'; }
+  };
+  if (document.getElementById('pc-cardlink-root') && window.PC_CardLink && !window.__clMounted) { window.__clMounted = true; try { window.initCardLink(); } catch (e) {} }
+</script>

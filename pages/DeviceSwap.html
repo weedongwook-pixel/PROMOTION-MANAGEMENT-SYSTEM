@@ -1,0 +1,232 @@
+<!-- Device Replacement Request — runs in shell. Entry: initDeviceSwap -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  #devswap{ --pc-green:#1D8348; --pc-yellow:#F4D03F; --pc-dark:#1A1A1A; --pc-soft:#f8fafc;
+    font-family:'Kanit',sans-serif; background:#f0f2f5; min-height:100vh; padding:18px; display:flex; justify-content:center; }
+  #devswap *{ box-sizing:border-box; }
+  #devswap .ds-back{ position:absolute; left:20px; top:14px; background:#fff; border:1.5px solid #e2e8f0; color:#475569; border-radius:10px; padding:8px 14px; font-family:'Kanit'; font-weight:600; font-size:.85rem; cursor:pointer; display:flex; align-items:center; gap:7px; z-index:2; }
+  #devswap .ds-back:hover{ border-color:var(--pc-green); color:var(--pc-green); }
+  #devswap .container{ width:100%; max-width:560px; background:#fff; border-radius:26px; box-shadow:0 15px 45px rgba(0,0,0,.1); overflow:hidden; align-self:flex-start; }
+  #devswap .header{ background:var(--pc-yellow); padding:34px 20px 28px; text-align:center; border-bottom:5px solid var(--pc-green); position:relative; }
+  #devswap .header img{ height:48px; width:auto; margin-bottom:13px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.12)); }
+  #devswap .header h1{ margin:0; font-size:1.35rem; color:var(--pc-dark); font-weight:600; line-height:1.4; }
+  #devswap .header .en{ font-size:.95rem; color:#5a4a00; font-weight:500; }
+  #devswap .form-content{ padding:8px 28px 36px; }
+  #devswap .section-title{ font-size:.95rem; font-weight:600; margin:28px 0 14px; display:flex; align-items:center; color:var(--pc-green); }
+  #devswap .section-title::after{ content:""; flex:1; height:1px; background:#e2e8f0; margin-left:10px; }
+  #devswap .input-group{ margin-bottom:16px; }
+  #devswap .input-group label{ display:block; font-size:.84rem; margin-bottom:6px; color:#64748b; font-weight:500; }
+  #devswap input, #devswap select, #devswap textarea{ width:100%; padding:13px 15px; border:1.5px solid #e2e8f0; border-radius:12px; font-family:'Kanit'; font-size:.95rem; background:var(--pc-soft); transition:.2s; color:#1a1a1a; }
+  #devswap input:focus, #devswap select:focus, #devswap textarea:focus{ outline:none; border-color:var(--pc-green); background:#fff; box-shadow:0 0 0 4px rgba(29,131,72,.1); }
+  #devswap .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #devswap .grid-id{ display:grid; grid-template-columns:1fr 1.5fr; gap:12px; }
+  #devswap .reason-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
+  #devswap .reason-card{ border:2px solid #e2e8f0; border-radius:16px; padding:16px; text-align:center; cursor:pointer; transition:.2s; background:#fff; font-size:.92rem; font-weight:500; }
+  #devswap .reason-card:hover{ border-color:#cbd5e1; }
+  #devswap .reason-card.active{ border-color:var(--pc-green); background:#f0fff4; color:var(--pc-green); font-weight:600; transform:translateY(-2px); box-shadow:0 4px 12px rgba(29,131,72,.12); }
+  #devswap .sub-box{ display:none; padding:18px; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:15px; background:#fafafa; }
+  #devswap .file-upload{ position:relative; border:2px dashed #cbd5e1; border-radius:16px; padding:24px; text-align:center; cursor:pointer; transition:.2s; background:#fcfcfc; }
+  #devswap .file-upload:hover{ border-color:var(--pc-green); background:#f8fafc; }
+  #devswap .file-upload.has-file{ border-color:var(--pc-green); background:#f0fff4; border-style:solid; }
+  #devswap .file-upload input[type=file]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  #devswap .file-upload .big{ font-size:1.9rem; color:var(--pc-green); }
+  #devswap .file-upload .hint{ font-size:.82rem; color:#64748b; margin-top:6px; }
+  #devswap .file-upload .fname{ font-size:.8rem; color:var(--pc-green); margin-top:8px; font-weight:600; display:none; }
+  #devswap .file-thumb{ max-height:120px; border-radius:10px; margin-top:10px; display:none; }
+  #devswap .btn-submit{ width:100%; padding:18px; background:var(--pc-green); color:#fff; border:none; border-radius:18px; font-size:1.1rem; font-weight:600; cursor:pointer; margin-top:14px; box-shadow:0 6px 20px rgba(29,131,72,.25); transition:.15s; font-family:'Kanit'; }
+  #devswap .btn-submit:hover{ background:#176b3a; }
+  #devswap .btn-submit:active{ transform:scale(.985); }
+  #devswap .btn-submit:disabled{ opacity:.6; cursor:not-allowed; }
+  /* success overlay */
+  #dsSuccess{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:9999; justify-content:center; align-items:center; text-align:center; padding:20px; }
+  #dsSuccess.show{ display:flex; }
+  #dsSuccess .success-card{ background:#fff; color:#1a1a1a; padding:38px 34px; border-radius:22px; border-bottom:8px solid var(--pc-yellow); max-width:440px; width:100%; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  #dsSuccess .success-icon{ font-size:3.4rem; color:var(--pc-green); margin-bottom:16px; }
+  #dsSuccess h2{ margin:0 0 6px; font-size:1.35rem; font-weight:600; }
+  #dsSuccess p{ color:#64748b; margin:0; font-size:.92rem; }
+  #dsSuccess .ticket-box{ background:#f8f9fa; border:2px dashed #ccc; padding:14px; margin:20px 0; font-size:1.4rem; font-weight:700; color:#d35400; border-radius:12px; letter-spacing:1px; }
+  #dsSuccess .btn-done{ background:var(--pc-green); color:#fff; border:none; border-radius:14px; padding:13px 30px; font-family:'Kanit'; font-weight:600; font-size:1rem; cursor:pointer; }
+  /* responsive */
+  @media(max-width:600px){
+    #devswap{ flex-direction:column; align-items:stretch; padding:10px; }
+    #devswap .ds-back{ position:static; align-self:flex-start; margin-bottom:10px; }
+    #devswap .container{ max-width:100%; border-radius:18px; }
+    #devswap .header{ padding:26px 16px 22px; }
+    #devswap .header h1{ font-size:1.15rem; }
+    #devswap .header img{ height:40px; }
+    #devswap .form-content{ padding:6px 16px 28px; }
+    #devswap .grid-id, #devswap .grid2, #devswap .reason-grid{ grid-template-columns:1fr; }
+  }
+</style>
+
+<div id="devswap">
+  <button class="ds-back" onclick="window.loadPage('ITForms')"><i class="fas fa-arrow-left"></i> <span data-en="IT Forms" data-th="ฟอร์ม IT">ฟอร์ม IT</span></button>
+  <div class="container">
+    <div class="header">
+      <img src="assets/brand/potato-corner.png" alt="Potato Corner">
+      <h1>ระบบแจ้งขอเปลี่ยนเครื่อง<br><span class="en">IT Asset Management</span></h1>
+    </div>
+
+    <div class="form-content">
+      <form id="dsForm" onsubmit="return dsSubmit(event)">
+
+        <div class="section-title">1. ข้อมูลผู้แจ้ง</div>
+        <div class="grid-id">
+          <div class="input-group"><label>รหัสพนักงาน</label><input type="text" id="ds_empId" placeholder="PCxxxx" required></div>
+          <div class="input-group"><label>ชื่อ-นามสกุล</label><input type="text" id="ds_requester" required></div>
+        </div>
+        <div class="input-group"><label>อีเมลติดต่อ (สำหรับรับผลการอนุมัติ)</label><input type="email" id="ds_email" placeholder="example@potatocorner.com" required></div>
+        <div class="input-group">
+          <label>สาขาที่แจ้ง</label>
+          <select id="ds_branch" onchange="dsAutoEmail()" required><option value="">-- เลือกสาขา --</option></select>
+          <input type="hidden" id="ds_branchEmail">
+          <div id="ds_branchInfo" style="font-size:.78rem;color:#94a3b8;margin-top:6px;"></div>
+        </div>
+
+        <div class="section-title">2. สาเหตุและหลักฐาน</div>
+        <div class="reason-grid">
+          <div class="reason-card" id="ds-card-damage" onclick="dsReason('เครื่องชำรุด')"><i class="fas fa-screwdriver-wrench" style="margin-right:6px"></i> เครื่องชำรุด</div>
+          <div class="reason-card" id="ds-card-lost" onclick="dsReason('เครื่องสูญหาย')"><i class="fas fa-triangle-exclamation" style="margin-right:6px"></i> เครื่องสูญหาย</div>
+        </div>
+        <input type="hidden" id="ds_reason">
+
+        <div id="ds_damageBox" class="sub-box">
+          <div class="input-group" style="margin-bottom:0"><label>ระบุอาการชำรุด</label>
+            <textarea id="ds_damageDetail" rows="2" placeholder="เช่น หน้าจอเปิดไม่ติด, แบตเตอรี่บวม..."></textarea></div>
+        </div>
+        <div id="ds_lostBox" class="sub-box" style="background:#fffef3">
+          <div class="input-group"><label>วันที่เครื่องหาย</label><input type="date" id="ds_lostDate"></div>
+          <div class="input-group" style="margin-bottom:0"><label>รายละเอียดเพิ่มเติม</label><textarea id="ds_lostDetail" rows="2"></textarea></div>
+        </div>
+
+        <div class="input-group">
+          <label><i class="fas fa-camera" style="margin-right:5px"></i> อัปโหลดรูปภาพหลักฐาน</label>
+          <div class="file-upload" id="ds_uploadArea">
+            <div class="big"><i class="fas fa-folder-open"></i></div>
+            <div class="hint" id="ds_uploadText">เลือกรูปภาพ หรือ ถ่ายรูป</div>
+            <div class="fname" id="ds_fname"></div>
+            <img class="file-thumb" id="ds_thumb" alt="preview">
+            <input type="file" id="ds_file" accept="image/*" onchange="dsFileChange(this)">
+          </div>
+        </div>
+
+        <div class="section-title">3. ข้อมูลผู้รับเครื่องใหม่</div>
+        <div class="grid2">
+          <div class="input-group"><label>ชื่อผู้รับ</label><input type="text" id="ds_receiverName" required></div>
+          <div class="input-group"><label>เบอร์ติดต่อผู้รับ</label><input type="tel" id="ds_receiverPhone" placeholder="08x-xxx-xxxx" required></div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="ds_submit">ยืนยันการส่งคำขอ</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="dsSuccess">
+    <div class="success-card">
+      <div class="success-icon"><i class="fas fa-circle-check"></i></div>
+      <h2>บันทึกคำขอสำเร็จ!</h2>
+      <p>ทีม IT จะตรวจสอบและแจ้งผลทางอีเมลที่ระบุ</p>
+      <div class="ticket-box" id="ds_ticket">—</div>
+      <button class="btn-done" onclick="dsReset()">แจ้งรายการใหม่</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  var REQK='pc_device_swap_requests';
+  var _fileData=null, _fileName='', _mime='';
+
+  function branches(){
+    var base=(window.PC_BRANCH_MASTER||[]);
+    try{ var ml=JSON.parse(localStorage.getItem('pc_master_lists')); if(ml&&Array.isArray(ml.branches)&&!base.length) base=ml.branches; }catch(e){}
+    return base;
+  }
+  function fillBranches(){
+    var sel=document.getElementById('ds_branch'); if(!sel) return;
+    sel.innerHTML='<option value="">-- เลือกสาขา --</option>'+branches().map(function(b){
+      return '<option value="'+esc(b.id)+'">'+esc(b.id)+' · '+esc(b.name||b.nameTH||'')+'</option>';
+    }).join('');
+  }
+
+  window.dsAutoEmail=function(){
+    var id=document.getElementById('ds_branch').value;
+    var b=branches().filter(function(x){return String(x.id)===String(id);})[0];
+    document.getElementById('ds_branchEmail').value=(b&&b.email)||'';
+    var info=document.getElementById('ds_branchInfo');
+    info.textContent=b?('อีเมลสาขา: '+(b.email||'—')+(b.company?(' · '+b.company):'')):'';
+  };
+
+  window.dsReason=function(val){
+    document.getElementById('ds_reason').value=val;
+    document.getElementById('ds-card-damage').classList.toggle('active', val==='เครื่องชำรุด');
+    document.getElementById('ds-card-lost').classList.toggle('active', val==='เครื่องสูญหาย');
+    document.getElementById('ds_damageBox').style.display=(val==='เครื่องชำรุด')?'block':'none';
+    document.getElementById('ds_lostBox').style.display=(val==='เครื่องสูญหาย')?'block':'none';
+  };
+
+  window.dsFileChange=function(input){
+    var area=document.getElementById('ds_uploadArea'), text=document.getElementById('ds_uploadText'),
+        fn=document.getElementById('ds_fname'), th=document.getElementById('ds_thumb');
+    if(input.files&&input.files[0]){
+      var f=input.files[0];
+      area.classList.add('has-file'); text.textContent='เลือกไฟล์ใหม่';
+      fn.textContent='✓ '+f.name; fn.style.display='block';
+      _fileName=f.name; _mime=f.type;
+      var reader=new FileReader();
+      reader.onload=function(e){ _fileData=e.target.result; th.src=_fileData; th.style.display='block'; };
+      reader.readAsDataURL(f);
+    }
+  };
+
+  window.dsSubmit=function(e){
+    e.preventDefault();
+    if(!document.getElementById('ds_reason').value){
+      if(window.Swal) Swal.fire({icon:'warning',title:'กรุณาเลือกสาเหตุการแจ้ง',confirmButtonColor:'#1D8348'});
+      else alert('กรุณาเลือกสาเหตุการแจ้ง');
+      return false;
+    }
+    var btn=document.getElementById('ds_submit'); btn.disabled=true;
+    var g=function(id){ var el=document.getElementById(id); return el?el.value:''; };
+    var ticket='DSW-'+Date.now().toString().slice(-7);
+    var rec={
+      ticket:ticket, ts:Date.now(),
+      empId:g('ds_empId'), requester:g('ds_requester'), email:g('ds_email'),
+      branch:g('ds_branch'), branchEmail:g('ds_branchEmail'),
+      reason:g('ds_reason'), damageDetail:g('ds_damageDetail'),
+      lostDate:g('ds_lostDate'), lostDetail:g('ds_lostDetail'),
+      receiverName:g('ds_receiverName'), receiverPhone:g('ds_receiverPhone'),
+      fileName:_fileName, fileData:_fileData, mimeType:_mime,
+      status:'SUBMITTED'
+    };
+    try{ var arr=JSON.parse(localStorage.getItem(REQK))||[]; arr.unshift(rec); localStorage.setItem(REQK,JSON.stringify(arr)); }catch(err){}
+    document.getElementById('ds_ticket').textContent=ticket;
+    document.getElementById('dsSuccess').classList.add('show');
+    btn.disabled=false;
+    return false;
+  };
+
+  window.dsReset=function(){
+    document.getElementById('dsSuccess').classList.remove('show');
+    var f=document.getElementById('dsForm'); if(f) f.reset();
+    document.getElementById('ds_reason').value='';
+    document.getElementById('ds-card-damage').classList.remove('active');
+    document.getElementById('ds-card-lost').classList.remove('active');
+    document.getElementById('ds_damageBox').style.display='none';
+    document.getElementById('ds_lostBox').style.display='none';
+    var area=document.getElementById('ds_uploadArea'); area.classList.remove('has-file');
+    document.getElementById('ds_uploadText').textContent='เลือกรูปภาพ หรือ ถ่ายรูป';
+    document.getElementById('ds_fname').style.display='none';
+    document.getElementById('ds_thumb').style.display='none';
+    document.getElementById('ds_branchInfo').textContent='';
+    _fileData=null; _fileName=''; _mime='';
+  };
+
+  window.initDeviceSwap=function(){
+    fillBranches(); window.dsReset();
+    if(typeof window.applyLang==='function') window.applyLang();
+  };
+  window.disposeDeviceSwap=function(){};
+})();
+</script>

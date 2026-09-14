@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าหน้า Login — Potato Corner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:#2e934a; color:#fff; padding:15px 20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:20; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.4px; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:9px; }
+  .top-actions{ margin-left:auto; display:flex; gap:9px; }
+  .tb-btn{ border:0; font-family:inherit; font-weight:600; font-size:.84rem; border-radius:10px; padding:9px 15px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .tb-btn.ghost{ background:rgba(255,255,255,.12); color:#fff; }
+  .tb-btn.ghost:hover{ background:rgba(255,255,255,.22); }
+  .tb-btn.save{ background:var(--pc-yellow); color:#1a1d20; }
+  .tb-btn.save:hover{ filter:brightness(.96); }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:22px 18px 70px; }
+  .intro{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 18px; font-size:.9rem; color:#5a616b; line-height:1.55; margin-bottom:18px; display:flex; gap:12px; align-items:flex-start; }
+  .intro i{ color:var(--blue); font-size:1.1rem; margin-top:2px; }
+  .intro b{ color:var(--pc-black); }
+
+  .grid{ display:grid; grid-template-columns:1fr 460px; gap:20px; align-items:start; }
+  @media(max-width:900px){ .grid{ grid-template-columns:1fr; } }
+
+  /* ---- settings cards ---- */
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; margin-bottom:16px; }
+  .card-hd{ display:flex; align-items:center; gap:11px; margin:0 0 16px; }
+  .card-hd .ic{ width:34px; height:34px; border-radius:10px; background:#f1f4f7; color:var(--pc-green); display:flex; align-items:center; justify-content:center; font-size:.95rem; flex:none; }
+  .card-hd .t{ font-weight:700; font-size:1rem; }
+  .card-hd .s{ font-size:.76rem; color:#9aa1aa; margin-top:1px; }
+
+  .fld{ margin-bottom:16px; }
+  .fld:last-child{ margin-bottom:0; }
+  .fld label{ display:block; font-size:.76rem; font-weight:700; color:#5a616b; margin-bottom:7px; letter-spacing:.2px; }
+  .inp{ width:100%; border:1.6px solid #dde2e7; border-radius:11px; padding:10px 13px; font-family:inherit; font-size:.95rem; }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:520px){ .row2{ grid-template-columns:1fr; } }
+
+  /* segmented control */
+  .seg{ display:flex; gap:6px; background:#f1f4f7; border-radius:11px; padding:4px; }
+  .seg button{ flex:1; border:0; background:transparent; font-family:inherit; font-weight:600; font-size:.84rem; color:#5a616b; border-radius:8px; padding:9px 6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .seg button.on{ background:#fff; color:var(--pc-black); box-shadow:0 1px 3px rgba(0,0,0,.13); }
+  .seg button i{ font-size:.82rem; }
+
+  /* swatches */
+  .swatches{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+  .swatch{ width:34px; height:34px; border-radius:10px; cursor:pointer; border:3px solid #fff; box-shadow:0 0 0 1.6px #dde2e7; }
+  .swatch.on{ box-shadow:0 0 0 2.5px var(--pc-black); }
+  .swatch.custom{ display:flex; align-items:center; justify-content:center; color:#8a9099; position:relative; overflow:hidden; }
+  .swatch.custom input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+  /* toggle */
+  .togrow{ display:flex; align-items:center; gap:13px; padding:11px 0; border-top:1px solid #f1f4f7; }
+  .togrow:first-of-type{ border-top:0; }
+  .togrow .tl{ flex:1; font-weight:600; font-size:.9rem; }
+  .togrow .tl .d{ font-weight:400; font-size:.76rem; color:#9aa1aa; margin-top:1px; }
+  .sw{ position:relative; width:44px; height:26px; flex:none; cursor:pointer; }
+  .sw input{ position:absolute; opacity:0; width:0; height:0; }
+  .sw .tr{ position:absolute; inset:0; background:#cfd5db; border-radius:999px; transition:.15s; }
+  .sw .kn{ position:absolute; top:3px; left:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .sw input:checked ~ .tr{ background:var(--pc-green); }
+  .sw input:checked ~ .kn{ transform:translateX(18px); }
+
+  .mini{ border:1.4px solid #dde2e7; background:#fff; font-family:inherit; font-weight:600; font-size:.8rem; border-radius:9px; padding:8px 13px; cursor:pointer; color:#3a4150; display:inline-flex; align-items:center; gap:7px; }
+  .mini:hover{ border-color:#b6bcc4; }
+  .mini.rm{ color:#c0392b; border-color:#f1c6bf; }
+  .mini.rm:hover{ background:#fdf2f0; }
+  .hint{ font-size:.76rem; color:#9aa1aa; margin-top:7px; line-height:1.45; }
+
+  .slider{ width:100%; accent-color:var(--pc-green); }
+  .sliderval{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.82rem; color:var(--pc-green); }
+
+  /* ---- live preview ---- */
+  .preview-col{ position:sticky; top:88px; }
+  .pv-label{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin:0 2px 10px; display:flex; align-items:center; justify-content:space-between; }
+  .pv-frame{ border:1px solid #d8dde2; border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.13); background:#000; }
+  .pv-chrome{ background:#23262a; display:flex; align-items:center; gap:7px; padding:9px 13px; }
+  .pv-dot{ width:11px; height:11px; border-radius:50%; }
+  .pv-url{ margin-left:10px; font-family:'JetBrains Mono',monospace; font-size:.68rem; color:#8b929a; background:#15171a; border-radius:6px; padding:3px 11px; }
+
+  /* the login screen itself (mirrors the real shell) */
+  .pv-screen{ height:520px; display:flex; padding:26px; transition:.18s; overflow:hidden; position:relative; }
+  .pv-screen.v-top{ align-items:flex-start; }
+  .pv-screen.v-center{ align-items:center; }
+  .pv-screen.h-left{ justify-content:flex-start; }
+  .pv-screen.h-center{ justify-content:center; }
+  .pv-screen.h-right{ justify-content:flex-end; }
+  .pv-stack{ width:280px; max-width:100%; text-align:center; }
+  .pv-logo{ margin-bottom:16px; }
+  .pv-brandtext{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:2.5rem; line-height:.82; color:#000; letter-spacing:-1.5px; text-transform:uppercase; text-shadow:-2px -2px 0 #fff,2px -2px 0 #fff,-2px 2px 0 #fff,2px 2px 0 #fff; }
+  .pv-logoimg{ max-width:100%; object-fit:contain; }
+  .pv-sub{ background:var(--pc-green); color:#fff; display:inline-block; padding:4px 13px; font-weight:700; font-size:.66rem; margin-top:10px; border:2.5px solid #000; font-family:'Montserrat',sans-serif; letter-spacing:.3px; }
+  .pv-card{ background:#fff; padding:24px 22px; text-align:left; }
+  .pv-card.hard{ border:4px solid #000; box-shadow:11px 11px 0 rgba(0,0,0,.2); }
+  .pv-card.soft{ border:1px solid #e7eaee; border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.18); }
+  .pv-card .ch{ font-weight:700; text-align:center; font-size:1rem; margin:0 0 16px; letter-spacing:.3px; }
+  .pv-il{ font-size:.62rem; font-weight:700; color:#5a616b; margin-bottom:5px; letter-spacing:.4px; }
+  .pv-input{ display:flex; align-items:center; border:2px solid #000; margin-bottom:13px; }
+  .pv-card.soft .pv-input{ border:1.6px solid #dde2e7; border-radius:9px; overflow:hidden; }
+  .pv-input .ig{ width:34px; height:34px; display:flex; align-items:center; justify-content:center; color:#5a616b; font-size:.78rem; border-right:2px solid #000; }
+  .pv-card.soft .pv-input .ig{ border-right:1.6px solid #dde2e7; }
+  .pv-input .ph{ flex:1; font-size:.78rem; color:#aab0b8; padding:0 10px; }
+  .pv-btn{ background:#1a1d20; color:#fff; text-align:center; font-weight:700; font-size:.84rem; padding:11px; letter-spacing:.4px; border:2px solid #000; }
+  .pv-card.soft .pv-btn{ border-radius:10px; border:0; }
+  .pv-demo{ margin-top:14px; padding-top:12px; border-top:1px solid #e7eaee; }
+  .pv-demo .dh{ font-size:.62rem; font-weight:700; color:#8a9099; margin-bottom:6px; }
+  .pv-demo .dchips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .pv-demo code{ font-family:'JetBrains Mono',monospace; font-size:.6rem; background:#f4f6f9; border:1px solid #e2e6ea; border-radius:5px; padding:2px 6px; color:#5a616b; }
+  .pv-lang{ position:absolute; top:14px; right:16px; display:inline-flex; border:2px solid #000; border-radius:7px; overflow:hidden; }
+  .pv-lang span{ font-weight:700; font-size:.6rem; padding:3px 10px; background:#fff; color:#000; }
+  .pv-lang span.on{ background:var(--pc-green); color:#fff; }
+
+  .footer-note{ font-size:.74rem; color:#aab0b8; text-align:center; margin-top:24px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><i class="fas fa-right-to-bracket"></i>ตั้งค่าหน้า LOGIN</h1>
+    <div class="top-actions">
+      <button class="tb-btn ghost" onclick="resetAll()"><i class="fas fa-rotate-left"></i> คืนค่าเริ่มต้น</button>
+      <button class="tb-btn save" onclick="saveAll()"><i class="fas fa-floppy-disk"></i> บันทึก</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="intro"><i class="fas fa-circle-info"></i><div>ปรับ<b>โลโก้ · พื้นหลัง · ตำแหน่งการวาง · ข้อความ</b>ของหน้าเข้าสู่ระบบ — ตัวอย่างทางขวาอัปเดตทันทีตามที่ตั้งค่า · กด <b>บันทึก</b> เพื่อใช้กับหน้า Login จริง (เก็บที่ <span class="mono">pc_login_settings</span>)</div></div>
+
+    <div class="grid">
+      <!-- ===== LEFT: controls ===== -->
+      <div id="controls"></div>
+
+      <!-- ===== RIGHT: live preview ===== -->
+      <div class="preview-col">
+        <div class="pv-label"><span>ตัวอย่างหน้าจอจริง</span><span class="mono" style="color:#c2c8cf;text-transform:none;letter-spacing:0">live</span></div>
+        <div class="pv-frame">
+          <div class="pv-chrome">
+            <span class="pv-dot" style="background:#ff5f57"></span>
+            <span class="pv-dot" style="background:#febc2e"></span>
+            <span class="pv-dot" style="background:#28c840"></span>
+            <span class="pv-url">potato-corner / login</span>
+          </div>
+          <div id="pvScreen"></div>
+        </div>
+        <div class="footer-note">— หน้าตัวอย่าง (Mockup) · บันทึกในเครื่องนี้ —</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const LS_KEY='pc_login_settings';
+const DEFAULTS={
+  bgColor:'#2e934a', bgStyle:'solid',
+  logoType:'text', logoImage:'', logoSize:90,
+  titleLine1:'POTATO', titleLine2:'CORNER',
+  showSubtitle:true, subtitleText:'PROMOTION MANAGEMENT SYSTEM',
+  logoPos:'above', hAlign:'center', vAlign:'center',
+  cardStyle:'hard', cardHeading:'PLEASE LOGIN', buttonLabel:'ENTER SYSTEM',
+  showDemo:true, showLang:false
+};
+const PALETTE=['#2e934a','#1a1d20','#e4002b','#0a7d3c','#2f5fb3','#9b51e0','#e8830c','#f5f5f5'];
+
+function load(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s&&typeof s==='object') return Object.assign({}, DEFAULTS, s); }catch(e){} return Object.assign({}, DEFAULTS); }
+let S=load();
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function textOn(hex){ const c=String(hex).replace('#',''); if(c.length<6) return '#1a1d20'; const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16); return (r*299+g*587+b*114)/1000>150?'#1a1d20':'#fff'; }
+function set(k,v){ S[k]=v; render(); }
+
+/* ---------- controls ---------- */
+function segBtn(field, val, label, icon){
+  return `<button class="${S[field]===val?'on':''}" onclick="set('${field}','${val}')">${icon?`<i class="fas ${icon}"></i>`:''}${label}</button>`;
+}
+function toggle(field, title, desc){
+  return `<div class="togrow"><div class="tl">${title}${desc?`<div class="d">${desc}</div>`:''}</div>
+    <label class="sw"><input type="checkbox" ${S[field]?'checked':''} onchange="set('${field}',this.checked)"><span class="tr"></span><span class="kn"></span></label></div>`;
+}
+function renderControls(){
+  const sw=PALETTE.map(c=>`<div class="swatch ${c.toLowerCase()===String(S.bgColor).toLowerCase()?'on':''}" style="background:${c}" onclick="set('bgColor','${c}')" title="${c}"></div>`).join('')
+    + `<label class="swatch custom" title="เลือกสีเอง"><i class="fas fa-eye-dropper"></i><input type="color" value="${esc(S.bgColor)}" oninput="set('bgColor',this.value)"></label>`;
+
+  const logoBlock = S.logoType==='image'
+    ? `<div class="fld"><label>ภาพโลโก้</label>
+        <div style="display:flex;gap:13px;align-items:flex-start">
+          <div style="width:64px;height:64px;border-radius:12px;flex:none;overflow:hidden;box-shadow:0 0 0 1.5px #dde2e7;background:#f6f8fa;display:flex;align-items:center;justify-content:center">${S.logoImage?`<img src="${S.logoImage}" style="width:100%;height:100%;object-fit:contain">`:`<i class="fas fa-image" style="color:#c2c8cf;font-size:1.3rem"></i>`}</div>
+          <div style="flex:1">
+            <input type="file" id="logoInp" accept="image/*" style="display:none" onchange="handleLogo(this.files[0])">
+            <button class="mini" onclick="document.getElementById('logoInp').click()"><i class="fas fa-upload"></i> อัปโหลดภาพโลโก้</button>
+            ${S.logoImage?`<button class="mini rm" style="margin-left:7px" onclick="set('logoImage','')"><i class="fas fa-xmark"></i> ลบ</button>`:''}
+            <div class="hint">PNG พื้นโปร่งใส แนะนำสุด</div>
+          </div>
+        </div></div>
+      <div class="fld"><label>ขนาดโลโก้ <span class="sliderval">${S.logoSize}px</span></label>
+        <input class="slider" type="range" min="40" max="180" step="2" value="${S.logoSize}" oninput="set('logoSize',+this.value)"></div>`
+    : `<div class="row2">
+        <div class="fld"><label>ข้อความโลโก้ บรรทัด 1</label><input class="inp" value="${esc(S.titleLine1)}" oninput="set('titleLine1',this.value)"></div>
+        <div class="fld"><label>บรรทัด 2 (เว้นว่างได้)</label><input class="inp" value="${esc(S.titleLine2)}" oninput="set('titleLine2',this.value)"></div>
+      </div>`;
+
+  document.getElementById('controls').innerHTML=`
+    <!-- LOGO -->
+    <div class="card">
+      <div class="card-hd"><span class="ic"><i class="fas fa-crown"></i></span><div><div class="t">โลโก้</div><div class="s">ข้อความหรือรูปภาพ</div></div></div>
+      <div class="fld"><label>รูปแบบโลโก้</label>
+        <div class="seg">${segBtn('logoType','text','ข้อความ','fa-font')}${segBtn('logoType','image','รูปภาพ','fa-image')}</div></div>
+      ${logoBlock}
+      ${toggle('showSubtitle','แสดงป้ายชื่อระบบ','แถบเขียวใต้โลโก้')}
+      ${S.showSubtitle?`<div class="fld" style="margin-top:12px"><label>ข้อความป้าย</label><input class="inp" value="${esc(S.subtitleText)}" oninput="set('subtitleText',this.value)"></div>`:''}
+    </div>
+
+    <!-- LAYOUT / POSITION -->
+    <div class="card">
+      <div class="card-hd"><span class="ic"><i class="fas fa-table-cells-large"></i></span><div><div class="t">ตำแหน่งการวาง</div><div class="s">จัดวางกล่อง Login บนหน้าจอ</div></div></div>
+      <div class="fld"><label>ตำแหน่งโลโก้</label>
+        <div class="seg">${segBtn('logoPos','above','เหนือกล่อง','fa-arrow-up')}${segBtn('logoPos','inside','ในกล่อง','fa-down-left-and-up-right-to-center')}</div></div>
+      <div class="fld"><label>แนวนอน</label>
+        <div class="seg">${segBtn('hAlign','left','ซ้าย','fa-align-left')}${segBtn('hAlign','center','กลาง','fa-align-center')}${segBtn('hAlign','right','ขวา','fa-align-right')}</div></div>
+      <div class="fld"><label>แนวตั้ง</label>
+        <div class="seg">${segBtn('vAlign','top','บน','fa-arrow-up-long')}${segBtn('vAlign','center','กึ่งกลาง','fa-arrows-up-down')}</div></div>
+    </div>
+
+    <!-- BACKGROUND -->
+    <div class="card">
+      <div class="card-hd"><span class="ic"><i class="fas fa-fill-drip"></i></span><div><div class="t">พื้นหลัง</div><div class="s">สีและสไตล์ฉากหลัง</div></div></div>
+      <div class="fld"><label>สีพื้นหลัง</label><div class="swatches">${sw}</div></div>
+      <div class="fld"><label>สไตล์</label>
+        <div class="seg">${segBtn('bgStyle','solid','สีเรียบ','fa-square')}${segBtn('bgStyle','gradient','ไล่เฉด','fa-grip-lines')}</div></div>
+    </div>
+
+    <!-- CARD / TEXT -->
+    <div class="card">
+      <div class="card-hd"><span class="ic"><i class="fas fa-window-maximize"></i></span><div><div class="t">กล่องและข้อความ</div><div class="s">หัวข้อ ปุ่ม และสไตล์การ์ด</div></div></div>
+      <div class="fld"><label>สไตล์กล่อง</label>
+        <div class="seg">${segBtn('cardStyle','hard','ขอบหนา (แบรนด์)','fa-border-all')}${segBtn('cardStyle','soft','ขอบมน','fa-circle-notch')}</div></div>
+      <div class="row2">
+        <div class="fld"><label>หัวข้อในกล่อง</label><input class="inp" value="${esc(S.cardHeading)}" oninput="set('cardHeading',this.value)"></div>
+        <div class="fld"><label>ข้อความบนปุ่ม</label><input class="inp" value="${esc(S.buttonLabel)}" oninput="set('buttonLabel',this.value)"></div>
+      </div>
+    </div>
+
+    <!-- EXTRAS -->
+    <div class="card">
+      <div class="card-hd"><span class="ic"><i class="fas fa-sliders"></i></span><div><div class="t">เพิ่มเติม</div><div class="s">องค์ประกอบเสริม</div></div></div>
+      ${toggle('showDemo','แสดงบัญชีทดลอง (Demo Logins)','โชว์ user/pass ตัวอย่างใต้กล่อง')}
+      ${toggle('showLang','แสดงปุ่มสลับภาษา','EN / TH มุมขวาบน')}
+    </div>`;
+}
+function handleLogo(file){ if(!file) return; const rd=new FileReader(); rd.onload=e=>set('logoImage', e.target.result); rd.readAsDataURL(file); }
+
+/* ---------- live preview ---------- */
+function logoHTML(scale){
+  if(S.logoType==='image' && S.logoImage){
+    const sz=Math.round(S.logoSize*(scale||1));
+    return `<img class="pv-logoimg" src="${S.logoImage}" style="height:${sz}px">`;
+  }
+  const l1=esc(S.titleLine1)||'&nbsp;'; const l2=esc(S.titleLine2);
+  return `<div class="pv-brandtext">${l1}${l2?`<br>${l2}`:''}</div>`;
+}
+function subHTML(){ return S.showSubtitle?`<div class="pv-sub">${esc(S.subtitleText)}</div>`:''; }
+function renderPreview(){
+  const bg = S.bgStyle==='gradient'
+    ? `linear-gradient(150deg, ${S.bgColor}, ${shade(S.bgColor,-22)})`
+    : S.bgColor;
+  const logoAbove = S.logoPos==='above'
+    ? `<div class="pv-logo">${logoHTML()}${subHTML()}</div>` : '';
+  const logoInside = S.logoPos==='inside'
+    ? `<div style="text-align:center;margin-bottom:14px">${logoHTML(.62)}${subHTML()}</div>` : '';
+  const demo = S.showDemo?`<div class="pv-demo"><div class="dh"><i class="fas fa-circle-info"></i> DEMO LOGINS</div>
+      <div class="dchips"><code>One / Theone</code><code>mkt / mkt</code><code>it / it</code><code>op / op</code></div></div>`:'';
+  const lang = S.showLang?`<div class="pv-lang"><span>EN</span><span class="on">TH</span></div>`:'';
+
+  document.getElementById('pvScreen').outerHTML=`
+    <div id="pvScreen" class="pv-screen v-${S.vAlign} h-${S.hAlign}" style="background:${bg}">
+      ${lang}
+      <div class="pv-stack">
+        ${logoAbove}
+        <div class="pv-card ${S.cardStyle}">
+          ${logoInside}
+          <div class="ch">${esc(S.cardHeading)}</div>
+          <div class="pv-il">USERNAME</div>
+          <div class="pv-input"><span class="ig"><i class="fas fa-user"></i></span><span class="ph">Username</span></div>
+          <div class="pv-il">PASSWORD</div>
+          <div class="pv-input"><span class="ig"><i class="fas fa-lock"></i></span><span class="ph">••••••</span></div>
+          <div class="pv-btn">${esc(S.buttonLabel)}</div>
+          ${demo}
+        </div>
+      </div>
+    </div>`;
+}
+function shade(hex,amt){ const c=String(hex).replace('#',''); if(c.length<6) return hex; let r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16); const f=x=>Math.max(0,Math.min(255,x+Math.round(255*amt/100))); return '#'+[f(r),f(g),f(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+
+function render(){ renderControls(); renderPreview(); }
+
+/* ---------- actions ---------- */
+function saveAll(){ localStorage.setItem(LS_KEY, JSON.stringify(S));
+  Swal.fire({icon:'success', title:'บันทึกแล้ว', html:'หน้า Login จริงจะใช้ค่านี้เมื่อโหลดครั้งถัดไป', timer:1600, showConfirmButton:false}); }
+function resetAll(){ Swal.fire({icon:'warning', title:'คืนค่าเริ่มต้น?', text:'ตั้งค่าทั้งหมดจะกลับเป็นค่าโรงงาน', showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'คืนค่า', cancelButtonText:'ยกเลิก'})
+  .then(r=>{ if(!r.isConfirmed) return; S=Object.assign({}, DEFAULTS); localStorage.removeItem(LS_KEY); render();
+    Swal.fire({icon:'success', title:'คืนค่าแล้ว', timer:1100, showConfirmButton:false}); }); }
+
+render();
+</script>
+</body>
+</html>

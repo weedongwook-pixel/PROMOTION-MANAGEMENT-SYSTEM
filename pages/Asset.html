@@ -1,0 +1,196 @@
+<!-- ทะเบียนเครื่อง Asset / MA Reconciliation — runs inside the shell loader (initAsset) -->
+<style>
+  #asset-page { --pc-green:#2e934a; --pc-yellow:#2e934a; --pc-red:#dc3545; --dark:#1a1d20;
+    font-family:'JetBrains Mono', monospace; display:flex; flex-direction:column;
+    height:calc(100vh - 56px); padding:18px 22px; gap:0; }
+  #asset-page .header-area { margin-bottom:10px; flex-shrink:0; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  #asset-page .header-title { font-family:'Montserrat', sans-serif; font-weight:900; font-size:2.4rem; color:var(--pc-yellow); text-shadow:3px 3px 0px var(--dark); margin:0 0 5px; letter-spacing:-1.5px; }
+  #asset-page .badge-it { background:var(--pc-green); color:#fff; padding:4px 12px; border-left:6px solid var(--dark); font-size:0.72rem; font-weight:bold; display:inline-block; }
+  #asset-page .top-summary-box { background:#fff; border:3px solid var(--dark); padding:8px 15px; box-shadow:5px 5px 0px var(--pc-yellow); min-width:420px; }
+  #asset-page .ma-style-tag { background:var(--dark); color:var(--pc-yellow); padding:2px 8px; font-weight:900; font-size:0.72rem; border:1px solid var(--pc-yellow); margin-left:5px; }
+  #asset-page .tools-bar { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; gap:10px; flex-shrink:0; flex-wrap:wrap; }
+  #asset-page .table-frame { border:4px solid var(--dark); background:#fff; box-shadow:8px 8px 0px rgba(0,0,0,0.1); flex-grow:1; overflow:auto; position:relative; min-height:0; }
+  #asset-page table.asset-table { table-layout:fixed; width:100%; margin-bottom:0; border-collapse:collapse; min-width:1480px; }
+  #asset-page .asset-table thead th { background:var(--dark); color:#fff; border-bottom:4px solid var(--pc-green); text-align:center; vertical-align:middle; font-size:0.65rem; padding:8px 5px; position:sticky; top:0; z-index:10; }
+  #asset-page .asset-table tbody td { padding:8px 10px; border-bottom:1px solid #e3e3e3; vertical-align:middle; font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #asset-page .asset-table tbody tr:hover { background:#fffbe9; }
+  #asset-page .sort-icon { font-size:0.55rem; margin-left:4px; opacity:0.7; cursor:pointer; }
+  #asset-page .header-label { white-space:nowrap; cursor:pointer; display:inline-block; }
+  #asset-page .filter-input { width:100%; border:1px solid #555; font-size:0.6rem; margin-top:5px; text-align:center; background:#2b2b2b; color:var(--pc-yellow); padding:2px; }
+  #asset-page .search-box { border:3px solid var(--dark); border-radius:0; font-weight:bold; font-size:0.85rem; height:38px; }
+  #asset-page .compact-select { width:90px; height:32px; font-size:0.7rem; border:2px solid var(--dark); border-radius:0; }
+  #asset-page .ma-circle { width:10px; height:10px; border-radius:50%; display:inline-block; border:1px solid var(--dark); margin-right:5px; }
+  #asset-page .circle-yes { background:var(--pc-green); }
+  #asset-page .circle-no { background:var(--pc-red); }
+  #asset-page .war-badge { font-weight:900; font-size:0.62rem; padding:1px 6px; border:2px solid var(--dark); line-height:1; display:inline-block; width:82px; text-align:center; }
+  #asset-page .status-badge { width:100%; border-radius:0; font-weight:bold; font-size:0.6rem; border:1px solid var(--dark); }
+  #asset-page .pagination-bar { background:var(--dark); color:#fff; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  #asset-page .page-btn { background:var(--pc-yellow); border:2px solid var(--dark); color:var(--dark); font-weight:900; padding:2px 10px; cursor:pointer; font-size:0.75rem; }
+  #asset-page .btn-square { border:2px solid var(--dark); border-radius:0; font-weight:900; }
+
+  /* Drift auto-detect */
+  #asset-page .drift-badge { border:2px solid var(--pc-red); background:var(--pc-red); color:#fff; font-weight:900; font-size:0.72rem; padding:5px 12px; cursor:pointer; letter-spacing:0.5px; animation:driftPulse 1.6s ease-in-out infinite; }
+  @keyframes driftPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(220,53,69,0.5);} 50%{ box-shadow:0 0 0 6px rgba(220,53,69,0);} }
+  #asset-page .drift-panel { border:4px solid var(--dark); background:#fffdf3; box-shadow:6px 6px 0 var(--pc-yellow); margin-bottom:14px; flex-shrink:0; max-height:38vh; display:flex; flex-direction:column; }
+  #asset-page .drift-head { background:var(--dark); color:#fff; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; font-weight:900; font-size:0.8rem; flex-wrap:wrap; }
+  #asset-page .drift-list { overflow:auto; padding:6px 10px; }
+  #asset-page .drift-row { display:flex; align-items:center; gap:12px; padding:8px 6px; border-bottom:1px dashed #ddd; font-size:0.76rem; }
+  #asset-page .drift-row:last-child { border-bottom:0; }
+  #asset-page .drift-kind { font-weight:900; font-size:0.6rem; padding:2px 7px; border:2px solid var(--dark); min-width:74px; text-align:center; flex-shrink:0; }
+  #asset-page .k-NEW { background:var(--pc-green); color:#fff; }
+  #asset-page .k-SWAP { background:#d9410e; color:#fff; }
+  #asset-page .k-CASE { background:#6b3fa0; color:#fff; }
+  #asset-page .k-ORPHAN { background:var(--pc-red); color:#fff; }
+  #asset-page .drift-info { flex-grow:1; min-width:0; }
+  #asset-page .drift-info b { color:var(--pc-green); }
+  #asset-page .drift-suggest { color:#666; font-size:0.68rem; }
+  #asset-page .drift-apply { border:2px solid var(--dark); background:var(--pc-yellow); color:var(--dark); font-weight:900; font-size:0.66rem; padding:3px 12px; cursor:pointer; flex-shrink:0; }
+  #asset-page .drift-tabs { display:flex; gap:0; background:#000; padding:0 6px; flex-shrink:0; }
+  #asset-page .drift-tab { background:transparent; border:0; border-bottom:3px solid transparent; color:#bbb; font-weight:900; font-size:0.72rem; padding:8px 14px; cursor:pointer; display:flex; align-items:center; }
+  #asset-page .drift-tab.active { color:var(--pc-yellow); border-bottom-color:var(--pc-yellow); }
+  #asset-page .drift-tcount { background:var(--pc-red); color:#fff; border-radius:9px; font-size:0.6rem; padding:0 6px; margin-left:6px; min-width:18px; text-align:center; }
+  #asset-page .drift-tab.active .drift-tcount { background:var(--pc-yellow); color:#000; }
+  #asset-page .drift-actionbar { display:flex; align-items:center; gap:12px; padding:8px 6px; border-bottom:2px solid var(--dark); background:#fff8e1; flex-wrap:wrap; font-size:0.74rem; }
+  #asset-page .drift-actionbar .drift-apply { margin-left:auto; }
+  #asset-page .plan-status { font-weight:900; font-size:0.6rem; color:#fff; padding:2px 8px; border-radius:9px; flex-shrink:0; }
+  #asset-page .k-INSTALL { background:#2e934a; color:#fff; }
+  #asset-page .k-SWAP { background:#d9410e; color:#fff; }
+  #asset-page .k-ADD { background:#2c4a82; color:#fff; }
+  #asset-page .k-KEEP { background:#888; color:#fff; }
+
+  /* Print styles (unscoped — copied into the print popup which has no #asset-page wrapper) */
+  .print-report-container { font-family:'Tahoma', sans-serif; padding:20px; color:#000; background:#fff; }
+  .print-table { width:100%; border-collapse:collapse; font-size:8pt; margin-bottom:15px; }
+  .print-table th, .print-table td { border:1px solid #000; padding:4px; }
+  .summary-table { width:100%; border-collapse:collapse; font-size:9pt; margin-top:15px; }
+  .summary-table th, .summary-table td { border:1px solid #000; padding:6px; }
+  .note-box { border:1px solid #000; padding:10px; margin-top:15px; font-size:7.5pt; background:#fff; line-height:1.4; }
+  .note-title { font-weight:bold; border-bottom:1px solid #000; margin-bottom:5px; text-transform:uppercase; }
+  .sig-container { margin-top:25px; width:100%; display:flex; justify-content:space-around; }
+  .sig-box { width:40%; text-align:center; font-size:9pt; }
+  .sig-line { border-bottom:1px solid #000; margin-bottom:8px; height:40px; }
+  .recon-header { background:#eee; font-weight:bold; }
+</style>
+
+<div id="asset-page">
+  <div class="header-area">
+    <div>
+      <h1 class="header-title">ASSET_INVENTORY</h1>
+      <div class="badge-it">OPERATOR: <span id="assetOperator">—</span> // MA_RECONCILE 2026</div>
+      <button id="driftBadge" class="drift-badge ms-2" onclick="toggleDrift()" style="display:none;"><i class="fa-solid fa-robot me-1"></i> AUTO-DETECT: <span id="driftCount">0</span></button>
+    </div>
+    <div id="maTotalDisplay" class="top-summary-box">
+      <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-1">
+        <div class="small fw-bold text-muted"><i class="fa-solid fa-calculator me-1"></i> MA_COUNT:</div>
+        <div id="maItemCounts"><span class="ma-style-tag">POS: 0</span><span class="ma-style-tag">PRINT: 0</span></div>
+      </div>
+      <div class="d-flex justify-content-between gap-3">
+        <div><small>EXCL_VAT:</small><br><span id="maSumAmount" class="fw-bold text-dark">0.00</span></div>
+        <div><small>VAT 7%:</small><br><span id="maSumVat" class="fw-bold text-dark">0.00</span></div>
+        <div class="border-start ps-3 text-end"><small>GRAND_TOTAL:</small><br><span id="maSumGrand" class="fw-bold text-danger" style="font-size:1.2rem;">0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tools-bar">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-bold small">PAGE_SIZE:</span>
+      <select id="rowSize" class="form-select compact-select" onchange="changeRowSize()">
+        <option value="25">25</option><option value="50">50</option><option value="9999" selected>ALL</option>
+      </select>
+      <button class="btn btn-dark btn-sm btn-square border-warning" onclick="loadAssetData()"><i class="fa-solid fa-rotate"></i></button>
+    </div>
+    <div class="d-flex gap-2 ms-auto flex-wrap">
+      <button class="btn btn-warning px-3 btn-square" onclick="triggerUpdateMA()"><i class="fa-solid fa-calendar-check me-1"></i> UPDATE MA DATE</button>
+      <div class="input-group" style="width:280px;">
+        <span class="input-group-text bg-dark text-white rounded-0 border-dark"><i class="fa-solid fa-terminal"></i></span>
+        <input type="text" id="assetSearch" class="form-control search-box" placeholder="GLOBAL_SEARCH..." onkeyup="filterAssets()">
+      </div>
+      <button class="btn btn-outline-dark px-3 btn-square" onclick="printAssetReport()"><i class="fa-solid fa-print me-1"></i> Report MA</button>
+      <button class="btn btn-outline-dark px-3 btn-square" onclick="exportToExcel()"><i class="fa-solid fa-file-excel me-1"></i> EXPORT</button>
+    </div>
+  </div>
+
+  <div id="driftPanel" class="drift-panel" style="display:none;">
+    <div class="drift-head">
+      <span><i class="fa-solid fa-robot me-1"></i> ตรวจพบความเปลี่ยนฟลีต — สาขาใหม่ / เปลี่ยนเครื่อง / ไม่มีสาขาแม่</span>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-warning btn-square" onclick="applyAllDrift()">APPLY ALL (สาขาใหม่+เปลี่ยนเครื่อง)</button>
+        <button class="btn btn-sm btn-light btn-square" onclick="toggleDrift()">ปิด</button>
+      </div>
+    </div>
+    <div id="driftTabs" class="drift-tabs"></div>
+    <div id="driftList" class="drift-list"></div>
+  </div>
+
+  <div class="table-frame">
+    <table id="assetTable" class="asset-table">
+      <thead>
+        <tr>
+          <th style="width:100px;"><span class="header-label" onclick="sortTable('shopCode')">Shop Code <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="shopCode" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+          <th style="width:200px;"><span class="header-label" onclick="sortTable('shopName')">SHOP_NAME <i class="fa-solid fa-sort sort-icon"></i></span><br><input type="text" data-key="shopName" class="col-filter filter-input" onkeyup="filterAssets()" placeholder="NAME..."></th>
+          <th style="width:95px;"><span class="header-label" onclick="sortTable('typeBrand')">TYPE <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="typeBrand" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+          <th style="width:110px;"><span class="header-label" onclick="sortTable('type')">BRAND <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="type" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+          <th style="width:130px;"><span class="header-label" onclick="sortTable('model')">MODEL <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="model" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+          <th style="width:150px;"><span class="header-label" onclick="sortTable('sn')">SERIAL_NUMBER <i class="fa-solid fa-sort sort-icon"></i></span><br><input type="text" data-key="sn" class="col-filter filter-input" onkeyup="filterAssets()" placeholder="S/N..."></th>
+          <th style="width:80px;"><span class="header-label" onclick="sortTable('yearsInService')">AGE <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="yearsInService" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+          <th style="width:120px;"><span class="header-label" onclick="sortTable('waEnd')">WARRANTY <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="waEnd" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option><option value="AVAILABLE">AVAILABLE</option><option value="EXPIRED">EXPIRED</option></select></th>
+          <th style="width:130px;"><span class="header-label" onclick="sortTable('maEnd')">MA_STATUS / PERIOD <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="maBadge" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option><option value="YES">YES</option><option value="NO">NO</option></select></th>
+          <th style="width:105px;"><span class="header-label" onclick="sortTable('statusUse')">STATUS_USE <i class="fa-solid fa-sort sort-icon"></i></span><br><select data-key="statusUse" class="col-filter filter-input" onchange="filterAssets()"><option value="">ALL</option></select></th>
+        </tr>
+      </thead>
+      <tbody id="asset-list"></tbody>
+    </table>
+  </div>
+
+  <div class="pagination-bar">
+    <div id="pageStats" class="fw-bold small" style="font-size:0.7rem;">NODES: 0</div>
+    <div class="d-flex gap-2">
+      <button class="page-btn" onclick="prevPage()">PREV</button>
+      <div id="pageLabel" class="align-self-center fw-bold px-2" style="font-size:0.7rem; color:var(--pc-yellow);">PAGE 1 / 1</div>
+      <button class="page-btn" onclick="nextPage()">NEXT</button>
+    </div>
+  </div>
+</div>
+
+<div id="assetPrintTemplate" style="display:none;">
+  <div class="print-report-container">
+    <div style="text-align:center; border-bottom:4px double #000; padding-bottom:10px; margin-bottom:15px;">
+      <h2 style="margin:0;">MA RECONCILIATION &amp; INVENTORY VERIFICATION 2026</h2>
+      <p style="margin:5px 0; font-weight:bold;">POTATO CORNER IT ASSET MANAGEMENT</p>
+      <div style="font-size:9pt;">DATE: <span id="tpl-printDate"></span> | OPERATOR: <span id="tpl-operator"></span></div>
+    </div>
+    <h3 style="font-size:10pt; border-left:5px solid #000; padding-left:10px; margin-top:10px;">PART 1: RECONCILIATION SUMMARY (VS VENDOR)</h3>
+    <table class="summary-table" style="margin-bottom:20px;">
+      <thead><tr class="recon-header"><th style="width:40%;">DESCRIPTION</th><th style="text-align:center;">VENDOR (CMPOS)</th><th style="text-align:center;">INTERNAL IT (ACTUAL)</th><th style="text-align:center;">VARIANCE / REMARK</th></tr></thead>
+      <tbody>
+        <tr><td>Total Asset Count (Unit)</td><td style="text-align:center;">....................</td><td id="tpl-reconUnit" style="text-align:center; font-weight:bold;"></td><td style="text-align:center;">....................</td></tr>
+        <tr><td>Total Amount (Excl. VAT)</td><td style="text-align:center;">....................</td><td id="tpl-reconAmount" style="text-align:center; font-weight:bold;"></td><td style="text-align:center;">....................</td></tr>
+      </tbody>
+    </table>
+    <h3 style="font-size:10pt; border-left:5px solid #000; padding-left:10px;">PART 2: DETAILED INVENTORY LIST</h3>
+    <table class="print-table">
+      <thead><tr><th>SHOP_CODE</th><th>SHOP_NAME</th><th>TYPE / BRAND / MODEL</th><th>S/N</th><th style="text-align:center;">WA_END</th><th style="text-align:center;">MA_START</th><th style="text-align:center;">MA_END</th><th style="text-align:right;">MA_COST</th></tr></thead>
+      <tbody id="tpl-printContent"></tbody>
+      <tfoot><tr style="background:#eee; font-weight:bold;"><td colspan="7" style="text-align:right;">SUB-TOTAL (EXCL. VAT):</td><td id="tpl-sumExcl" style="text-align:right;"></td></tr></tfoot>
+    </table>
+    <h3 style="font-size:10pt; border-left:5px solid #000; padding-left:10px; margin-top:15px;">PART 3: BUDGET SUMMARY BY CATEGORY</h3>
+    <table class="summary-table">
+      <thead><tr style="background:#f2f2f2;"><th>DESCRIPTION</th><th style="text-align:center;">UNITS</th><th style="text-align:right;">EXCL. VAT</th><th style="text-align:right;">VAT 7%</th><th style="text-align:right;">TOTAL (INCL. VAT)</th></tr></thead>
+      <tbody id="tpl-summaryByGroup"></tbody>
+      <tfoot><tr style="background:#eee; font-weight:bold;"><td colspan="2" style="text-align:right;">GRAND TOTAL ALL ITEMS:</td><td id="tpl-sumExclFinal" style="text-align:right;"></td><td id="tpl-sumVat" style="text-align:right;"></td><td id="tpl-sumGrand" style="text-align:right; color:#d9534f;"></td></tr></tfoot>
+    </table>
+    <div class="note-box">
+      <div class="note-title">เงื่อนไขและการตรวจสอบ (Terms &amp; Verification)</div>
+      1. รายงานฉบับนี้ใช้เพื่อการตรวจสอบความถูกต้องของจำนวนทรัพย์สิน (Reconcile) ระหว่างระบบภายในและรายการนำเสนอจากผู้รับจ้าง (Vendor)<br>
+      2. <b>Calculation:</b> ค่าบริการคำนวณตามจริง (Pro-rata) นับจากวันสิ้นสุดประกันเดิมจนถึง 31 ธ.ค. 2569 เท่านั้น<br>
+      3. <b>Signature:</b> ลายเซ็นด้านล่างถือเป็นการยืนยันความถูกต้องของข้อมูลเพื่อใช้ประกอบการตั้งงบประมาณและการเบิกจ่าย
+    </div>
+    <div class="sig-container">
+      <div class="sig-box"><div class="sig-line"></div><div>(......................................................)</div><div class="fw-bold mt-1">ผู้ขออนุมัติ / ฝ่ายไอที (IT Dept.)</div><div class="small text-muted">IT System Management</div></div>
+      <div class="sig-box"><div class="sig-line"></div><div>(......................................................)</div><div class="fw-bold mt-1">ผู้รับทราบและดำเนินการ / ฝ่ายบัญชี (Accounting)</div><div class="small text-muted">Fixed Asset &amp; Finance Section</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/asset-page.js"></script>

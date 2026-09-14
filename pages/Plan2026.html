@@ -1,0 +1,126 @@
+<!-- แผน IT Device 2026 — IT worklist page. Logic in js/plan-page.js (external). Entry: initPlan2026 -->
+<style>
+  #plan-page { --pc-green:#2e934a; --pc-yellow:#2e934a; --pc-red:#dc3545; --dark:#1a1d20;
+    font-family:'Kanit', sans-serif; display:flex; flex-direction:column; height:calc(100vh - 56px); padding:18px 22px; }
+  #plan-page .ph { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:12px; flex-shrink:0; }
+  #plan-page .ptitle { font-family:'Montserrat', sans-serif; font-weight:900; font-size:2.1rem; color:var(--pc-yellow); text-shadow:3px 3px 0 var(--dark); margin:0 0 4px; letter-spacing:-1px; }
+  #plan-page .pbadge { background:var(--pc-green); color:#fff; padding:3px 11px; border-left:6px solid var(--dark); font-size:0.7rem; font-weight:bold; display:inline-block; }
+  #plan-page #planSummary { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  #plan-page .psum { background:#fff; border:2px solid var(--dark); padding:4px 10px; font-size:0.72rem; font-weight:700; }
+  #plan-page .psum b { font-size:0.95rem; }
+  #plan-page .psum.pi { box-shadow:3px 3px 0 var(--pc-green); } #plan-page .psum.ps { box-shadow:3px 3px 0 #d9410e; }
+  #plan-page .psum.pa { box-shadow:3px 3px 0 #2c4a82; } #plan-page .psum.pk { box-shadow:3px 3px 0 #888; } #plan-page .psum.pd { box-shadow:3px 3px 0 var(--pc-yellow); }
+  #plan-page .ptools { display:flex; gap:8px; margin-bottom:12px; flex-shrink:0; flex-wrap:wrap; }
+  #plan-page .tbtn { border:2px solid var(--dark); border-radius:0; font-weight:900; font-size:0.78rem; padding:7px 14px; cursor:pointer; background:#fff; color:var(--dark); }
+  #plan-page .tbtn-y { background:var(--pc-yellow); } #plan-page .tbtn-g { background:var(--pc-green); color:#fff; }
+  #plan-page .pframe { border:4px solid var(--dark); background:#f7f7f5; box-shadow:8px 8px 0 rgba(0,0,0,0.1); flex-grow:1; overflow:auto; min-height:0; padding:6px 10px 14px; }
+  /* filters */
+  #plan-page .pfilters { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-shrink:0; flex-wrap:wrap; }
+  #plan-page .pfilters select { border:2px solid var(--dark); border-radius:0; padding:5px 8px; font-family:'Kanit',sans-serif; font-size:0.82rem; font-weight:500; background:#fff; }
+  #plan-page .pfilters .flbl { font-size:0.66rem; font-weight:900; text-transform:uppercase; color:#666; }
+  /* month sections */
+  #plan-page .month-sec { margin-bottom:14px; }
+  #plan-page .month-head { display:flex; align-items:center; gap:10px; background:var(--dark); color:var(--pc-yellow); font-family:'Montserrat',sans-serif; font-weight:900; font-size:0.92rem; padding:6px 14px; position:sticky; top:0; z-index:3; }
+  #plan-page .month-head .mn { color:#fff; font-size:0.68rem; font-weight:700; opacity:0.8; }
+  /* card */
+  #plan-page .pcard { display:flex; align-items:center; gap:14px; background:#fff; border:2px solid #e0e0e0; border-left:6px solid #888; padding:10px 14px; margin-top:8px; }
+  #plan-page .pcard:hover { border-color:var(--dark); }
+  #plan-page .pc-date { text-align:center; min-width:46px; flex-shrink:0; line-height:1; }
+  #plan-page .pc-date b { font-size:1.35rem; font-family:'Montserrat',sans-serif; display:block; }
+  #plan-page .pc-date span { font-size:0.62rem; color:#888; font-weight:700; }
+  #plan-page .pc-main { flex-grow:1; min-width:0; }
+  #plan-page .pc-acttag { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; min-width:130px; padding:8px 8px; color:#fff; font-weight:900; text-align:center; flex-shrink:0; }
+  #plan-page .pc-acttag i { font-size:1.15rem; }
+  #plan-page .pc-acttag .al { font-size:0.72rem; line-height:1.1; }
+  #plan-page .pc-shop { font-size:0.92rem; font-weight:700; }
+  #plan-page .pc-shop b { color:var(--pc-green); margin-right:5px; }
+  #plan-page .pc-type { font-size:0.62rem; background:#eee; padding:1px 6px; margin-left:5px; font-weight:700; color:#555; }
+  #plan-page .pc-meta { margin-top:5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:#666; }
+  #plan-page .pc-act { font-weight:900; color:var(--dark); }
+  #plan-page .pc-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  #plan-page .need { font-weight:900; font-size:0.62rem; color:#fff; padding:3px 9px; }
+  #plan-page .k-INSTALL { background:#2e934a; } #plan-page .k-SWAP { background:#d9410e; } #plan-page .k-ADD { background:#2c4a82; } #plan-page .k-KEEP { background:#888; }
+  #plan-page .pstatus { font-weight:900; font-size:0.6rem; color:#fff; padding:3px 9px; border-radius:9px; white-space:nowrap; }
+  #plan-page .conf { font-size:0.6rem; font-weight:900; padding:2px 7px; border-radius:8px; white-space:nowrap; }
+  #plan-page .c-ok { background:#e3f3ea; color:#2e934a; } #plan-page .c-tbc { background:#fdeaea; color:#c0392b; }
+  #plan-page .pbtn { border:2px solid var(--dark); border-radius:0; font-weight:900; font-size:0.66rem; padding:5px 11px; cursor:pointer; background:#fff; white-space:nowrap; }
+  #plan-page .pbtn-y { background:var(--pc-yellow); } #plan-page .pbtn-b { background:#dde6f5; } #plan-page .pbtn-d { background:#fff; padding:5px 8px; } #plan-page .pbtn-x { background:#fdeaea; color:#c0392b; padding:5px 8px; }
+  /* editor overlay */
+  #plan-page #planEditor { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1200; align-items:center; justify-content:center; }
+  #plan-page .pe-card { background:#fff; border:4px solid var(--dark); box-shadow:10px 10px 0 var(--pc-yellow); width:520px; max-width:94vw; max-height:90vh; overflow:auto; }
+  #plan-page .pe-head { background:var(--dark); color:var(--pc-yellow); font-family:'Montserrat',sans-serif; font-weight:900; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; }
+  #plan-page .pe-body { padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #plan-page .pe-body .full { grid-column:1/3; }
+  #plan-page .pe-body label { font-size:0.66rem; font-weight:900; text-transform:uppercase; color:#555; display:block; margin-bottom:3px; }
+  #plan-page .pe-body input, #plan-page .pe-body select { width:100%; border:2px solid var(--dark); border-radius:0; padding:6px 8px; font-family:'Kanit',sans-serif; font-size:0.9rem; }
+  #plan-page #pe_hint { font-size:0.72rem; color:#2e934a; font-weight:700; min-height:1em; }
+  #plan-page .pe-foot { padding:0 18px 18px; display:flex; gap:10px; justify-content:flex-end; }
+</style>
+
+<div id="plan-page">
+  <div class="ph">
+    <div>
+      <h1 class="ptitle">PLAN 2026</h1>
+      <div class="pbadge">IT DEVICE WORKLIST · <span id="planOperator">—</span></div>
+    </div>
+    <div id="planSummary"></div>
+  </div>
+
+  <div class="ptools">
+    <button class="tbtn tbtn-y" onclick="planAdd()"><i class="fa-solid fa-plus me-1"></i> เพิ่มแถว</button>
+    <button class="tbtn" onclick="loadPlan()"><i class="fa-solid fa-rotate"></i></button>
+    <span class="ms-auto align-self-center text-muted" style="font-size:0.72rem;">สีป้าย = ประเภทงาน · สาขาที่ต้องอัพเดท/ติดตั้งเครื่อง → ส่งให้ CMPOS</span>
+  </div>
+
+  <div class="pfilters">
+    <span class="flbl"><i class="fa-solid fa-filter"></i> กรอง</span>
+    <select id="pf_month" onchange="renderPlan()"><option value="">ทุกเดือน</option></select>
+    <select id="pf_status" onchange="renderPlan()">
+      <option value="">ทุกสถานะ</option>
+      <option value="pending">รอดำเนินการ</option>
+      <option value="in-case">อยู่ในคิว RD</option>
+      <option value="done">เสร็จแล้ว</option>
+      <option value="ok">ใช้เครื่องเดิม</option>
+    </select>
+    <select id="pf_action" onchange="renderPlan()"><option value="">ทุกประเภทงาน</option></select>
+  </div>
+
+  <div id="plan-list" class="pframe"></div>
+
+  <div id="planEditor">
+    <div class="pe-card">
+      <div class="pe-head"><span id="pe_title">เพิ่มแผนใหม่</span><i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="planCloseEditor()"></i></div>
+      <div class="pe-body">
+        <div><label>Shop Code</label><input id="pe_shop" list="pe_shoplist" onchange="planShopChanged()" placeholder="PC1104"><datalist id="pe_shoplist"></datalist></div>
+        <div><label>Store Type</label><input id="pe_type" placeholder="COCO"></div>
+        <div class="full"><label>ชื่อสาขา</label><input id="pe_name" placeholder="ชื่อสาขา"></div>
+        <div><label>Action</label><select id="pe_action"></select></div>
+        <div><label>ยืนยัน</label><select id="pe_confirm"><option>Confirmed</option><option>Tentative</option></select></div>
+        <div class="full"><label>วันเปิด / Test Run</label><input id="pe_open" placeholder="23/02/2026 หรือ Mar 26 TBC"></div>
+        <div><label>POS</label><select id="pe_pos"></select></div>
+        <div style="display:flex;align-items:flex-end;"><button class="tbtn tbtn-y" style="width:100%;" onclick="planSuggest()"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> เดาเครื่อง</button></div>
+        <div><label>Printer แคชเชียร์</label><select id="pe_cashier"></select></div>
+        <div><label>Printer ครัว</label><select id="pe_kitchen"></select></div>
+        <div class="full" id="pe_hint"></div>
+      </div>
+      <div class="pe-foot">
+        <button class="tbtn" onclick="planCloseEditor()">ยกเลิก</button>
+        <button class="tbtn tbtn-g" onclick="planSave()"><i class="fa-solid fa-floppy-disk me-1"></i> บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    // populate selects + datalist from globals (safe even before plan-page.js loads)
+    try {
+      var dl = document.getElementById('pe_shoplist');
+      if (dl && window.PC_BRANCH_MASTER) dl.innerHTML = window.PC_BRANCH_MASTER.map(function (b) { return '<option value="' + b.id + '">' + (b.name || '') + '</option>'; }).join('');
+      var act = document.getElementById('pe_action');
+      if (act) act.innerHTML = ['FULL', 'Renovate', 'Relocate', 'Transfer', 'Close'].map(function (a) { return '<option>' + a + '</option>'; }).join('');
+      ['pe_pos', 'pe_cashier', 'pe_kitchen'].forEach(function (id) { var s = document.getElementById(id); if (s) s.innerHTML = ['', 'Opening', 'Replace', 'Add Dev', 'Old', '-'].map(function (o) { return '<option value="' + o + '">' + (o || '—') + '</option>'; }).join(''); });
+    } catch (e) {}
+  })();
+</script>
+<script src="js/plan-page.js"></script>

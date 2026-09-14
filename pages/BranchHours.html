@@ -1,0 +1,158 @@
+<div class="bh-scope" style="background:#eef1f4; min-height:100vh; padding:0 0 70px; font-family:'Kanit',sans-serif; color:#1a1d20;">
+<style>
+  .bh-scope .bh-head{ background:#2e934a; color:#fff; border-left:10px solid #2e934a; border-radius:0 0 16px 16px; padding:18px 24px; }
+  .bh-scope .bh-head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.3rem; margin:0; display:flex; align-items:center; gap:12px; text-transform:uppercase; }
+  .bh-scope .bh-head h1 i{ color:#ffffff; }
+  .bh-scope .bh-head .sub{ color:#6c757d; font-size:.92rem; margin-top:5px; }
+  .bh-scope .wrap{ max-width:620px; margin:0 auto; padding:20px 16px 0; }
+  .bh-scope .card2{ background:#fff; border:1px solid #e7eaee; border-radius:18px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:16px; }
+  .bh-scope .pick label{ font-size:.82rem; font-weight:700; color:#5a616b; display:block; margin-bottom:6px; }
+  .bh-scope .pick select{ width:100%; border:1.5px solid #dde2e7; border-radius:12px; padding:13px 14px; font-family:inherit; font-size:1rem; background:#fff; }
+  .bh-scope .shopname{ display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+  .bh-scope .shopname .ic{ width:48px; height:48px; border-radius:14px; background:#fff5d6; color:#9a6700; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex:none; }
+  .bh-scope .shopname .nm{ font-weight:700; font-size:1.15rem; } .bh-scope .shopname .cd{ font-family:'JetBrains Mono',monospace; color:#8a9099; font-size:.84rem; }
+  .bh-scope .row{ border:1.5px solid #eef1f4; border-radius:14px; padding:14px 16px; margin-bottom:12px; transition:.15s; }
+  .bh-scope .row.closed{ background:#fbf3f3; border-color:#f1d9d6; }
+  .bh-scope .row .rh{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; }
+  .bh-scope .row .rh .t{ font-weight:700; font-size:1rem; display:flex; align-items:center; gap:9px; }
+  .bh-scope .row .rh .t i{ color:#2e934a; width:20px; text-align:center; }
+  .bh-scope .times{ display:flex; align-items:center; gap:10px; }
+  .bh-scope .times .tw{ flex:1; }
+  .bh-scope .times .tw label{ font-size:.72rem; color:#9aa1aa; font-weight:600; display:block; margin-bottom:3px; }
+  .bh-scope .times input[type=time]{ width:100%; border:1.5px solid #dde2e7; border-radius:11px; padding:13px; font-family:inherit; font-size:1.15rem; font-weight:600; text-align:center; background:#fff; color:#1a1d20; }
+  .bh-scope .times .dash{ color:#b6bcc4; font-weight:700; margin-top:18px; }
+  .bh-scope .row.closed .times{ opacity:.4; pointer-events:none; }
+  .bh-scope .sw{ display:inline-flex; align-items:center; gap:8px; font-size:.82rem; font-weight:600; color:#8a9099; cursor:pointer; user-select:none; }
+  .bh-scope .sw input{ width:0; height:0; opacity:0; position:absolute; }
+  .bh-scope .sw .track{ width:42px; height:24px; border-radius:999px; background:#cdd3da; position:relative; transition:.15s; }
+  .bh-scope .sw .track::after{ content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.15s; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+  .bh-scope .sw input:checked + .track{ background:#c0392b; } .bh-scope .sw input:checked + .track::after{ left:21px; }
+  .bh-scope .presets{ display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 4px; }
+  .bh-scope .preset{ border:1.5px solid #dde2e7; background:#fff; border-radius:999px; padding:7px 13px; font-family:inherit; font-size:.82rem; font-weight:600; color:#3a4150; cursor:pointer; }
+  .bh-scope .preset:hover{ border-color:#2e934a; color:#15623c; background:#f3fbf6; }
+  .bh-scope .save{ width:100%; border:0; border-radius:14px; background:#2e934a; color:#fff; font-family:inherit; font-weight:700; font-size:1.05rem; padding:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 6px 16px rgba(46,147,74,.25); }
+  .bh-scope .save:hover{ background:#00632f; }
+  .bh-scope .meta{ text-align:center; font-size:.8rem; color:#9aa1aa; margin-top:12px; }
+  .bh-scope .flbl{ font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#9aa1aa; margin:0 0 9px 2px; }
+</style>
+
+  <div class="bh-head p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div>
+      <h3 class="fw-bold m-0"><i class="fas fa-clock me-2 text-warning"></i> เวลาทำการร้าน</h3>
+      <p class="sub m-0" style="opacity:.85;">สาขาปรับเวลาเปิด-ปิดของร้านตัวเองได้เลย · เปลี่ยนแล้วกดบันทึก</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card2 pick">
+      <label><i class="fas fa-store me-1"></i> เลือกสาขาของคุณ</label>
+      <select id="bhBranch" onchange="window.bhPick(this.value)"></select>
+    </div>
+
+    <div id="bhForm" style="display:none">
+      <div class="card2">
+        <div class="shopname"><div class="ic"><i class="fas fa-store"></i></div><div><div class="nm" id="bhNm">—</div><div class="cd" id="bhCd"></div></div></div>
+      </div>
+
+      <div class="card2">
+        <div class="flbl"><i class="fas fa-mobile-screen-button"></i> เบอร์มือถือสาขา</div>
+        <input id="bhMobile" inputmode="tel" placeholder="ใส่ / แก้เบอร์มือถือของสาขา" style="width:100%;border:1.5px solid #dde2e7;border-radius:12px;padding:13px 14px;font-family:inherit;font-size:1rem;background:#fff;color:#1a1d20">
+        <div id="bhArea" style="margin-top:12px;font-size:.9rem;color:#3a4150"></div>
+      </div>
+
+      <div class="card2">
+        <div class="flbl"><i class="fas fa-bag-shopping"></i> เวลาเปิด-ปิด · หน้าร้าน (Take Away)</div>
+        <div class="presets">
+          <button class="preset" onclick="window.bhPreset('ta','10:00','22:00')">10:00–22:00</button>
+          <button class="preset" onclick="window.bhPreset('ta','11:00','21:00')">11:00–21:00</button>
+          <button class="preset" onclick="window.bhPreset('ta','10:00','21:00')">10:00–21:00</button>
+          <button class="preset" onclick="window.bhCopyWd()">↧ ใช้ จ–ศ กับ ส–อา</button>
+        </div>
+        <div class="row" id="row-tawd">
+          <div class="rh"><span class="t"><i class="fas fa-calendar-week"></i> จันทร์ – ศุกร์</span>
+            <label class="sw"><input type="checkbox" id="cl-tawd" onchange="window.bhClosed('tawd',this.checked)"><span class="track"></span> ปิดทำการ</label></div>
+          <div class="times"><div class="tw"><label>เปิด</label><input type="time" id="taWdOpen"></div><span class="dash">–</span><div class="tw"><label>ปิด</label><input type="time" id="taWdClose"></div></div>
+        </div>
+        <div class="row" id="row-tawe">
+          <div class="rh"><span class="t"><i class="fas fa-calendar-day"></i> เสาร์ – อาทิตย์</span>
+            <label class="sw"><input type="checkbox" id="cl-tawe" onchange="window.bhClosed('tawe',this.checked)"><span class="track"></span> ปิดทำการ</label></div>
+          <div class="times"><div class="tw"><label>เปิด</label><input type="time" id="taWeOpen"></div><span class="dash">–</span><div class="tw"><label>ปิด</label><input type="time" id="taWeClose"></div></div>
+        </div>
+      </div>
+
+      <div class="card2">
+        <div class="flbl"><i class="fas fa-motorcycle"></i> เวลาเปิด-ปิด · เดลิเวอรี (Delivery)</div>
+        <div class="presets">
+          <button class="preset" onclick="window.bhPreset('dlv','10:00','21:00')">10:00–21:00</button>
+          <button class="preset" onclick="window.bhPreset('dlv','10:00','22:00')">10:00–22:00</button>
+          <button class="preset" onclick="window.bhSameAsTa()">เท่ากับหน้าร้าน จ–ศ</button>
+        </div>
+        <div class="row" id="row-dlv">
+          <div class="rh"><span class="t"><i class="fas fa-motorcycle"></i> ทุกวัน</span>
+            <label class="sw"><input type="checkbox" id="cl-dlv" onchange="window.bhClosed('dlv',this.checked)"><span class="track"></span> ปิดเดลิเวอรี</label></div>
+          <div class="times"><div class="tw"><label>เปิด</label><input type="time" id="dlvOpen"></div><span class="dash">–</span><div class="tw"><label>ปิด</label><input type="time" id="dlvClose"></div></div>
+        </div>
+      </div>
+
+      <button class="save" onclick="window.bhSave()"><i class="fas fa-circle-check"></i> บันทึกเวลาทำการ</button>
+      <div class="meta" id="bhMeta"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='pc_branch_hours';
+  var DEF={ taWdOpen:'10:00', taWdClose:'22:00', taWeOpen:'10:00', taWeClose:'22:00', dlvOpen:'10:00', dlvClose:'21:00', taWdClosed:false, taWeClosed:false, dlvClosed:false };
+  var cur=null;
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
+  function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+  function branches(){ return window.PC_BRANCH_MASTER || window.masterBranches || []; }
+  function gv(id){ return document.getElementById(id); }
+
+  function fmtDT(t){ if(!t) return '—'; var d=new Date(t),p=function(n){return String(n).padStart(2,'0');}; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+(d.getFullYear()+543)+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+
+  window.bhPick=function(code){
+    cur=code; try{ localStorage.setItem('pc_branch_hours_me', code); }catch(e){}
+    if(!code){ gv('bhForm').style.display='none'; return; }
+    var b=branches().find(function(x){ return String(x.id||x.code)===String(code); })||{};
+    gv('bhNm').textContent=b.nameTH||b.name||code; gv('bhCd').textContent=String(b.id||code)+(b.name?(' · '+b.name):'');
+    try{ var _az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; var _zn=_az[code]||{}; var _mi=gv('bhMobile'); if(_mi) _mi.value=_zn.mobile||''; var _ai=gv('bhArea'); if(_ai) _ai.innerHTML=(_zn.area||_zn.zone)?('<b><i class="fas fa-user-shield" style="color:#2e934a"></i> Area ผู้รับผิดชอบ:</b> '+(_zn.area||'-')+(_zn.zone?' · โซน '+_zn.zone:'')+(_zn.tel?' · โทร '+_zn.tel:'')):''; }catch(e){}
+    var h=Object.assign({}, DEF, load()[code]||{});
+    gv('taWdOpen').value=h.taWdOpen; gv('taWdClose').value=h.taWdClose;
+    gv('taWeOpen').value=h.taWeOpen; gv('taWeClose').value=h.taWeClose;
+    gv('dlvOpen').value=h.dlvOpen; gv('dlvClose').value=h.dlvClose;
+    gv('cl-tawd').checked=!!h.taWdClosed; window.bhClosed('tawd',!!h.taWdClosed);
+    gv('cl-tawe').checked=!!h.taWeClosed; window.bhClosed('tawe',!!h.taWeClosed);
+    gv('cl-dlv').checked=!!h.dlvClosed; window.bhClosed('dlv',!!h.dlvClosed);
+    gv('bhMeta').textContent = h.updatedAt ? ('อัปเดตล่าสุด '+fmtDT(h.updatedAt)+(h.updatedBy?(' · โดย '+h.updatedBy):'')) : 'ยังไม่เคยตั้งเวลา — ใช้ค่าเริ่มต้นไว้ก่อน';
+    gv('bhForm').style.display='block';
+  };
+  window.bhClosed=function(k,on){ var r=gv('row-'+k); if(r) r.classList.toggle('closed', !!on); };
+  window.bhPreset=function(grp,o,c){ if(grp==='ta'){ gv('taWdOpen').value=o; gv('taWdClose').value=c; gv('taWeOpen').value=o; gv('taWeClose').value=c; } else { gv('dlvOpen').value=o; gv('dlvClose').value=c; } };
+  window.bhCopyWd=function(){ gv('taWeOpen').value=gv('taWdOpen').value; gv('taWeClose').value=gv('taWdClose').value; gv('cl-tawe').checked=gv('cl-tawd').checked; window.bhClosed('tawe',gv('cl-tawd').checked); };
+  window.bhSameAsTa=function(){ gv('dlvOpen').value=gv('taWdOpen').value; gv('dlvClose').value=gv('taWdClose').value; };
+  window.bhSave=function(){
+    if(!cur) return;
+    var all=load();
+    var who=''; try{ who=localStorage.getItem('pc_userName')||''; }catch(e){}
+    all[cur]={ taWdOpen:gv('taWdOpen').value, taWdClose:gv('taWdClose').value, taWeOpen:gv('taWeOpen').value, taWeClose:gv('taWeClose').value,
+      dlvOpen:gv('dlvOpen').value, dlvClose:gv('dlvClose').value,
+      taWdClosed:gv('cl-tawd').checked, taWeClosed:gv('cl-tawe').checked, dlvClosed:gv('cl-dlv').checked,
+      updatedBy: who || ('สาขา '+cur), updatedAt: Date.now() };
+    save(all);
+    try{ var _mo=(gv('bhMobile')||{}).value||''; var _az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; if(!_az[cur]) _az[cur]={zone:'',area:'',tel:'',alpha:'',grade:'',store:'',mobile:''}; _az[cur].mobile=_mo; localStorage.setItem('pc_area_zones', JSON.stringify(_az)); var _be=JSON.parse(localStorage.getItem('pc_branch_edc'))||{}; if(_be[cur]){ _be[cur].mobile=_mo; localStorage.setItem('pc_branch_edc', JSON.stringify(_be)); } }catch(e){}
+    var nm=gv('bhNm').textContent;
+    if(window.Swal){ Swal.fire({icon:'success', title:'บันทึกเวลาทำการแล้ว', html:'<span style="font-size:13px;color:#6b7280">'+nm+' · ระบบอัปเดตให้ทุกหน้าทันที</span>', confirmButtonColor:'#2e934a', timer:2200, timerProgressBar:true}); }
+    window.bhPick(cur);
+  };
+
+  window.initBranchHours=function(){
+    var sel=gv('bhBranch'); if(!sel) return;
+    var list=branches();
+    sel.innerHTML='<option value="">— เลือกสาขา —</option>'+list.map(function(b){ var id=b.id||b.code; return '<option value="'+id+'">'+id+' · '+(b.nameTH||b.name||'')+'</option>'; }).join('');
+    var me=''; try{ me=localStorage.getItem('pc_branch_hours_me')||''; }catch(e){}
+    if(me && list.some(function(b){return String(b.id||b.code)===String(me);})){ sel.value=me; window.bhPick(me); }
+  };
+})();
+</script>

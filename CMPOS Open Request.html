@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMPOS — แจ้งเปิดสาขา / Renovate</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="data/it-asset-catalog.js"></script>
+<style>
+  :root{ --dark:#1a1d20; --yellow:#2e934a; --green:#2e934a; --soft:#f6f8fa; --mut:#6b7280; --line:#e6e9ee; --redT:#c0392b; --greenT:#1d7a4d; --brown:#a45a4a; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:#eef1f5; color:#1a1d20; margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:880px; margin:0 auto; padding:22px 18px 70px; }
+  a.back{ display:inline-flex; align-items:center; gap:7px; color:var(--green); font-weight:600; text-decoration:none; font-size:.85rem; margin-bottom:8px; }
+  .card{ background:#fff; border-radius:16px; box-shadow:0 12px 36px rgba(0,0,0,.09); overflow:hidden; }
+  .hd{ background:var(--brown); color:#fff; padding:26px 22px; text-align:center; }
+  .hd h1{ margin:0; font-size:1.5rem; font-weight:800; letter-spacing:.5px; }
+  .hd p{ margin:7px 0 0; opacity:.9; font-size:.9rem; }
+  .body{ padding:24px; }
+  .sec{ background:#000; color:#fff; padding:10px 16px; border-radius:9px; font-weight:700; font-size:.95rem; margin:22px 0 14px; display:flex; align-items:center; gap:8px; }
+  .sec:first-child{ margin-top:0; }
+  .fbox{ border:1px solid var(--line); border-radius:11px; padding:16px; }
+  label.lbl{ font-weight:700; font-size:.85rem; display:block; margin-bottom:5px; }
+  .req{ color:var(--redT); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  input.in, select.in{ width:100%; font-family:'Kanit',sans-serif; font-size:.9rem; border:1.5px solid var(--line); border-left:4px solid var(--green); border-radius:8px; padding:9px 11px; outline:none; }
+  input.in:focus, select.in:focus{ border-color:var(--green); }
+  .seg{ display:flex; gap:10px; }
+  .segb{ flex:1; border:2px solid #000; border-radius:9px; background:#eee; padding:11px; font-weight:700; cursor:pointer; text-align:center; font-size:.9rem; }
+  .segb.on{ background:var(--green); color:#fff; }
+  .agrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:640px){ .agrid,.grid2{ grid-template-columns:1fr; } }
+  .acard{ border:1.5px solid #eee; border-radius:10px; padding:11px; display:flex; gap:10px; cursor:pointer; background:#fff; }
+  .acard.on{ border-color:var(--brown); background:#fffaf9; border-width:2px; }
+  .acard.dis{ opacity:.55; cursor:not-allowed; background:#f7f7f7; }
+  .acard input{ margin-top:3px; width:17px; height:17px; accent-color:var(--brown); flex:none; }
+  .an{ font-weight:700; font-size:.82rem; line-height:1.35; } .as{ font-size:.72rem; color:var(--mut); }
+  .am{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
+  .ap{ color:var(--brown); font-weight:800; font-size:.82rem; } .aw{ font-size:.68rem; color:var(--greenT); font-weight:700; }
+  .free{ background:var(--greenT); color:#fff; padding:1px 7px; border-radius:4px; font-size:.7rem; font-weight:700; }
+  .rmk{ font-size:.66rem; color:var(--redT); font-weight:700; margin-top:3px; }
+  .travel{ background:#eef2f7; border:1px solid #d1d9e6; border-radius:9px; padding:12px; margin-top:12px; font-size:.85rem; }
+  .sum{ background:#1a1a1a; color:#fff; border:2px solid var(--yellow); border-radius:12px; padding:20px; margin-top:22px; }
+  .sl{ display:flex; justify-content:space-between; margin-bottom:9px; font-size:.9rem; }
+  .stot{ border-top:1px solid #444; padding-top:13px; margin-top:7px; font-size:1.15rem; font-weight:800; color:var(--yellow); }
+  .submit{ background:#000; color:#fff; border:none; border-radius:10px; padding:16px; font-weight:800; width:100%; font-size:1.1rem; margin-top:18px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="IT Work Queue.html"><i class="fas fa-arrow-left"></i> กลับคิวงาน IT</a>
+  <div class="card">
+    <div class="hd"><h1>POTATO CORNER</h1><p>IT OPENING STORES &amp; RENOVATION REQUEST</p></div>
+    <div class="body">
+      <div class="sec"><i class="fas fa-briefcase"></i> ประเภทงาน</div>
+      <div class="fbox">
+        <div class="seg">
+          <div class="segb on" id="jt_add" onclick="CR.jobType('add')">Add License Shop<div style="font-size:.7rem;font-weight:400">เปิดสาขาใหม่</div></div>
+          <div class="segb" id="jt_reno" onclick="CR.jobType('reno')">Renovate Shop<div style="font-size:.7rem;font-weight:400">ปรับปรุง/เปลี่ยนเครื่อง</div></div>
+        </div>
+      </div>
+
+      <div class="sec"><i class="fas fa-location-dot"></i> สถานที่ติดตั้ง</div>
+      <div class="fbox"><div class="grid2">
+        <div><label class="lbl">รหัส/ชื่อสาขา <span class="req">*</span></label><input class="in" id="branch" list="brList" placeholder="เลือก/พิมพ์สาขา" oninput="CR.onBranch()"><datalist id="brList"></datalist></div>
+        <div><label class="lbl">ที่ตั้ง (พื้นที่/จังหวัด)</label><input class="in" id="area" placeholder="เช่น กรุงเทพฯ / เชียงใหม่ / เกาะสมุย" oninput="CR.calc()"></div>
+        <div><label class="lbl">วันที่ Test Run</label><input class="in" id="testrun" type="date"></div>
+        <div><label class="lbl">ผู้ติดต่อหน้างาน</label><input class="in" id="contact" placeholder="ชื่อ + เบอร์"></div>
+      </div></div>
+
+      <div id="licBox">
+        <div class="sec"><i class="fas fa-file-arrow-up"></i> ข้อมูลเปิด License</div>
+        <div class="fbox"><label class="lbl">แนบไฟล์ License (ภ.พ.06 / Excel / PDF) <span class="req">*</span></label><input class="in" id="licFile" type="file" accept=".pdf,.xlsx,image/*"></div>
+      </div>
+
+      <div class="sec"><i class="fas fa-list-check"></i> รายการอุปกรณ์ — ติ๊กที่สั่ง <span id="assetHint" style="font-weight:400;font-size:.78rem;opacity:.85"></span></div>
+      <div class="fbox">
+        <div style="margin-bottom:12px"><button type="button" class="segb" style="flex:none;display:inline-block;padding:7px 14px" onclick="CR.selectStd()">+ ชุดมาตรฐานเปิดสาขา</button>
+          <button type="button" class="segb" style="flex:none;display:inline-block;padding:7px 14px;background:#f4f4f4;color:#666;margin-left:6px" onclick="CR.clearAll()">ล้าง</button></div>
+        <div class="agrid" id="assets"></div>
+      </div>
+
+      <div class="sec"><i class="fas fa-screwdriver-wrench"></i> งานบริการ &amp; ติดตั้ง</div>
+      <div class="fbox">
+        <label style="display:flex;align-items:center;gap:9px;font-weight:600;font-size:.88rem"><input type="checkbox" id="maint" style="width:17px;height:17px" onchange="CR.calc()"> รับอุปกรณ์ชุดเก่าบำรุงรักษา (รับที่ HO ติดตั้งหน้างาน)</label>
+        <div class="travel">
+          <div style="display:flex;justify-content:space-between;align-items:center"><b>ค่าเดินทาง/ที่พัก</b><span id="travelTxt" style="color:var(--brown);font-weight:800">ฟรี (กรุงเทพฯ/ปริมณฑล)</span></div>
+          <div style="font-size:.72rem;color:var(--mut);margin-top:6px">&lt;300km 3,500 · &gt;300km 5,500 · หมู่เกาะ 8,500 บาท</div>
+        </div>
+      </div>
+
+      <div class="sum">
+        <div style="font-weight:800;color:var(--yellow);font-size:1.05rem;margin-bottom:12px">สรุปค่าใช้จ่าย (PO) <span id="poNote" style="font-size:.72rem;font-weight:400;color:#bbb"></span></div>
+        <div class="sl"><span>รวมสินค้า+บริการ (Subtotal)</span><span id="sSub">0.00</span></div>
+        <div class="sl"><span>VAT 7%</span><span id="sVat">0.00</span></div>
+        <div class="sl stot"><span>ยอดสุทธิ (Grand Total)</span><span id="sTot">0.00</span></div>
+      </div>
+
+      <button class="submit" onclick="CR.submit()"><i class="fas fa-paper-plane"></i> ยืนยันส่งงาน CMPOS</button>
+    </div>
+  </div>
+</div>
+<script>
+window.initCmposOpen = function(){ CR.boot(); };
+var CR = (function(){
+  var JOB='add';
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function cat(){ return window.PC_IT_ASSET_CATALOG||{standard:[],optional:[]}; }
+  function items(){ var c=cat(); return (c.standard||[]).concat(c.optional||[]); }
+  function branches(){ var ml=lsGet('pc_master_lists',null); if(ml&&Array.isArray(ml.branches)&&ml.branches.length) return ml.branches; return window.PC_BRANCH_MASTER||[]; }
+
+  function jobType(j){ JOB=j; document.getElementById('jt_add').classList.toggle('on',j==='add'); document.getElementById('jt_reno').classList.toggle('on',j==='reno');
+    document.getElementById('licBox').style.display=j==='add'?'block':'none';
+    document.getElementById('assetHint').textContent=j==='add'?'(สำหรับจัดซื้อทราบว่าต้องสั่งอะไร — ไม่คิดเงิน)':'(สั่งทดแทนของเดิม — คิดราคา PO)';
+    document.getElementById('poNote').textContent=j==='add'?'· Add License = ฟรีค่าติดตั้ง':''; calc(); }
+
+  function renderAssets(){
+    document.getElementById('assets').innerHTML=items().map(function(it){
+      if(it.disabled) return '<label class="acard dis"><input type="checkbox" disabled><div><div class="an">'+it.no+'. '+esc(it.name)+'</div><div class="as">'+esc(it.spec)+'</div><div class="rmk">'+esc(it.remark||'')+'</div></div></label>';
+      return '<label class="acard" id="ac_'+it.id+'"><input type="checkbox" data-id="'+it.id+'" onchange="CR.sync()"><div style="flex:1"><div class="an">'+it.no+'. '+esc(it.name)+'</div><div class="as">'+esc(it.spec)+'</div><div class="am"><span class="ap" id="ap_'+it.id+'">'+(it.price!=null?Number(it.price).toLocaleString(undefined,{minimumFractionDigits:2}):'-')+'</span>'+(it.warranty?'<span class="aw">🛡️ '+esc(it.warranty)+'</span>':'')+'</div></div></label>';
+    }).join('');
+  }
+  function checkedIds(){ return Array.prototype.slice.call(document.querySelectorAll('#assets input[data-id]:checked')).map(function(e){return e.getAttribute('data-id');}); }
+  function sync(){
+    document.querySelectorAll('#assets input[data-id]').forEach(function(e){ e.parentElement.classList.toggle('on', e.checked); });
+    // free logic: freeWith deps
+    var ck={}; checkedIds().forEach(function(id){ ck[id]=1; });
+    items().forEach(function(it){ if(!it.freeWith) return; var free=it.freeWith.some(function(d){return ck[d];}); var ap=document.getElementById('ap_'+it.id); var box=document.querySelector('#assets input[data-id="'+it.id+'"]');
+      if(free){ if(box&&!box.checked){ box.checked=true; box.parentElement.classList.add('on'); } if(ap){ ap.innerHTML='<span class="free">FREE</span>'; } }
+      else if(ap){ ap.textContent=(it.price!=null?Number(it.price).toLocaleString(undefined,{minimumFractionDigits:2}):'-'); } });
+    calc();
+  }
+  function detectTravel(){ var s=((document.getElementById('area').value||'')+' '+(document.getElementById('branch').value||'')).toLowerCase(); var cost=0,txt='ฟรี (กรุงเทพฯ/ปริมณฑล)';
+    if(/เกาะ|koh|samui|island/.test(s)){cost=8500;txt='หมู่เกาะ 8,500';}
+    else if(/เชียง|ภูเก็ต|หาดใหญ่|chiang|phuket|krabi|surat|udon|songkhla|นราธิวาส|ยะลา/.test(s)){cost=5500;txt='ต่างจังหวัด >300km 5,500';}
+    else if(/ชลบุรี|ระยอง|พัทยา|บุรี|chon|rayong|pattaya|korat|khon/.test(s)){cost=3500;txt='ต่างจังหวัด <300km 3,500';}
+    document.getElementById('travelTxt').textContent=txt; return cost; }
+  function calc(){
+    var travel=detectTravel(); var ck={}; checkedIds().forEach(function(id){ck[id]=1;});
+    var sub=0;
+    if(JOB==='reno'){ items().forEach(function(it){ if(!ck[it.id]||it.price==null) return; var free=it.freeWith&&it.freeWith.some(function(d){return ck[d];}); if(!free) sub+=Number(it.price)||0; });
+      var hasNewCore=ck['pos']||ck['printer']; var maint=document.getElementById('maint').checked; if(!hasNewCore && maint) sub+=3500; }
+    sub+=travel;
+    var vat=sub*0.07, tot=sub+vat;
+    document.getElementById('sSub').textContent=sub.toLocaleString(undefined,{minimumFractionDigits:2});
+    document.getElementById('sVat').textContent=vat.toLocaleString(undefined,{minimumFractionDigits:2});
+    document.getElementById('sTot').textContent=tot.toLocaleString(undefined,{minimumFractionDigits:2});
+  }
+  function selectStd(){ document.querySelectorAll('#assets input[data-id]').forEach(function(e){ var it=items().find(function(x){return x.id===e.getAttribute('data-id');}); if(it&&it.std) e.checked=true; }); sync(); }
+  function clearAll(){ document.querySelectorAll('#assets input[data-id]').forEach(function(e){ e.checked=false; }); sync(); }
+  function onBranch(){ calc(); }
+
+  function submit(){
+    var br=(document.getElementById('branch').value||'').trim(); if(!br){ Swal.fire('กรอกสาขา','เลือก/พิมพ์รหัสสาขา','warning'); return; }
+    if(JOB==='add'){ var f=document.getElementById('licFile'); if(!f||!f.files||!f.files.length){ Swal.fire('แนบ License','สาขาใหม่ต้องแนบไฟล์ License','warning'); return; } }
+    var rec={ id:'CMR-'+Date.now().toString(36).toUpperCase(), jobType:JOB, branch:br, area:(document.getElementById('area').value||''), testrun:(document.getElementById('testrun').value||''), contact:(document.getElementById('contact').value||''),
+      equip:checkedIds(), license:(JOB==='add'&&document.getElementById('licFile').files[0])?document.getElementById('licFile').files[0].name:'', total:document.getElementById('sTot').textContent, status:'PENDING', at:Date.now() };
+    var q=lsGet('pc_cmpos_open_requests',[]); q.unshift(rec); lsSet('pc_cmpos_open_requests',q);
+    Swal.fire({icon:'success',title:'ส่งงาน CMPOS แล้ว',html:'<div style="font-size:13px;text-align:left"><b>'+esc(br)+'</b> · '+(JOB==='add'?'Add License':'Renovate')+'<br>อุปกรณ์ '+rec.equip.length+' รายการ'+(rec.license?' · 📎'+esc(rec.license):'')+'<br>ยอด PO: '+esc(rec.total)+' บาท<br><span style="color:#1d6b43">→ เข้าคิวงาน IT แล้ว</span></div>',confirmButtonColor:'#2e934a'});
+  }
+  function boot(){
+    renderAssets(); jobType('add');
+    var bl=document.getElementById('brList'); if(bl) bl.innerHTML=branches().map(function(b){ return '<option value="'+esc(b.id)+' · '+esc(b.name||b.nameTH||'')+'">'; }).join('');
+    var qs=new URLSearchParams(location.search); if(qs.get('shop')){ document.getElementById('branch').value=qs.get('shop'); } if(qs.get('job')==='reno') jobType('reno');
+    sync();
+  }
+  return { boot:boot, jobType:jobType, sync:sync, calc:calc, selectStd:selectStd, clearAll:clearAll, onBranch:onBranch, submit:submit };
+})();
+if(!window.__crShell){ document.addEventListener('DOMContentLoaded', CR.boot); if(document.readyState!=='loading') CR.boot(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<div class="tf-scope" style="background:#eef1f4; min-height:100vh; padding:0 0 60px; font-family:'Kanit',sans-serif; color:#1a1d20;">
+<style>
+  .tf-scope .tf-head{ background:#2e934a; color:#fff; border-left:10px solid #2e934a; border-radius:0 0 16px 16px; padding:18px 24px; }
+  .tf-scope .tf-head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.3rem; margin:0; display:flex; align-items:center; gap:12px; text-transform:uppercase; }
+  .tf-scope .tf-head h1 i{ color:#ffffff; }
+  .tf-scope .tf-head .sub{ color:#d8efe2; font-size:.86rem; margin-top:5px; }
+  .tf-scope .wrap{ max-width:1000px; margin:0 auto; padding:18px 16px 0; }
+  .tf-scope .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:16px; }
+  .tf-scope .stat{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; }
+  .tf-scope .stat .n{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.6rem; line-height:1; }
+  .tf-scope .stat .n.amber{ color:#c9870a; } .tf-scope .stat .n.green{ color:#1d7a4d; } .tf-scope .stat .n.red{ color:#c0392b; }
+  .tf-scope .stat .l{ font-size:.74rem; color:#8a9099; margin-top:6px; font-weight:600; }
+  .tf-scope .bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .tf-scope .chip{ border:1.5px solid #dde2e7; background:#fff; color:#5a616b; border-radius:999px; padding:8px 15px; font-family:inherit; font-weight:600; font-size:.86rem; cursor:pointer; }
+  .tf-scope .chip.on{ background:#1a1d20; color:#fff; border-color:transparent; }
+  .tf-scope .case{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:16px 18px; margin-bottom:13px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .tf-scope .case .top{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .tf-scope .flow{ display:flex; align-items:center; gap:12px; flex:1; min-width:280px; }
+  .tf-scope .node{ flex:1; min-width:0; }
+  .tf-scope .node .cd{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.02rem; }
+  .tf-scope .node .nm{ font-size:.82rem; color:#5a616b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tf-scope .node .co{ font-size:.74rem; color:#9aa1aa; }
+  .tf-scope .node.old .cd{ color:#c0392b; } .tf-scope .node.new .cd{ color:#1d7a4d; }
+  .tf-scope .arrow{ color:#b6bcc4; font-size:1.1rem; flex:none; }
+  .tf-scope .ty{ font-size:.7rem; font-weight:700; border-radius:6px; padding:2px 8px; white-space:nowrap; }
+  .tf-scope .ty.coco{ background:#eef4ff; color:#2c4a82; } .tf-scope .ty.dodo{ background:#fff0f4; color:#a8326a; } .tf-scope .ty.doco{ background:#f3eefe; color:#6d3bd1; } .tf-scope .ty.se{ background:#fff7e6; color:#9a6700; } .tf-scope .ty.expr{ background:#eafaf1; color:#1d7a4d; } .tf-scope .ty.other{ background:#f1f4f7; color:#5a616b; }
+  .tf-scope .meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:11px; }
+  .tf-scope .badge{ font-size:.74rem; font-weight:700; border-radius:8px; padding:4px 11px; }
+  .tf-scope .badge.cochg{ background:#fdecea; color:#c0392b; } .tf-scope .badge.tychg{ background:#eef6ff; color:#2c4a82; }
+  .tf-scope .pill{ font-size:.74rem; font-weight:700; border-radius:999px; padding:4px 11px; }
+  .tf-scope .pill.new{ background:#fff7e6; color:#9a6700; } .tf-scope .pill.done{ background:#eafaf1; color:#1d7a4d; } .tf-scope .pill.wait{ background:#f1f4f7; color:#8a9099; }
+  .tf-scope .acts{ display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; }
+  .tf-scope .btn{ border:0; border-radius:10px; font-family:inherit; font-weight:700; font-size:.82rem; padding:9px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .tf-scope .btn-g{ background:#2e934a; color:#fff; } .tf-scope .btn-o{ background:#fff; border:1.5px solid #dde2e7; color:#3a4150; }
+  .tf-scope .btn-d{ background:#eef1f4; color:#9aa1aa; cursor:not-allowed; }
+  .tf-scope .case.unmatched{ border:1.5px dashed #e6c45e; background:#fffdf5; }
+  .tf-scope .pairin{ border:1.5px solid #dde2e7; border-radius:9px; padding:8px 11px; font-family:'JetBrains Mono',monospace; font-size:.86rem; width:130px; }
+  .tf-scope .note{ background:#eef6ff; border:1px solid #cfe0f5; border-left:4px solid #2f6dab; border-radius:11px; padding:11px 15px; font-size:.84rem; color:#2c4a82; line-height:1.5; margin-bottom:16px; }
+</style>
+
+  <div class="tf-head">
+    <h1><i class="fas fa-right-left"></i> การโอนรหัสสาขา (Shop Transfer)</h1>
+    <div class="sub">รวมเคสโอน/ย้ายสาขาทั้งหมด — จับคู่รหัสเก่า → รหัสใหม่ · ยืนยันการจับคู่</div>
+  </div>
+
+  <div class="wrap">
+    <div class="note"><i class="fas fa-circle-info"></i> ระบบจับคู่ <b>โค้ดเก่า (Transfer Code) → โค้ดใหม่ (Operating)</b> จากชื่อสาขาที่ตรงกันให้อัตโนมัติ · ตรวจ/ยืนยันการจับคู่ที่นี่ · กด <b>“เปิดเคสสติ๊กเกอร์”</b> → ไหลเข้างานสติ๊กเกอร์ (ยกเลิก+จดใหม่) รอ Admin ดำเนินการ</div>
+
+    <div class="stats" id="tfStats"></div>
+    <div class="bar" id="tfBar"></div>
+    <div id="tfList"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='pc_shop_transfers';
+  // เคสโอนทั้งหมด (จับคู่จากชื่อ) — old → new
+  var CASES=[
+    ['PC1026','Central Plaza Chiang Rai','COCO','ร็อคส์ พีซี','PC6001','DODO-M','วี.เค.จี'],
+    ['PC1030','Big C Hang Dong 1','COCO','ร็อคส์ พีซี','PC6031','DODO','เฟื่องฟู5429'],
+    ['PC1031','Big C Chiang Rai 2','COCO','ร็อคส์ พีซี','PC6002','DODO-M','วี.เค.จี'],
+    ['PC2001','Central Chaengwattana','DOCO','ปอม เด แตร์','PC1079','COCO','ร็อคส์ พีซี'],
+    ['PC2006','Big C Nakhon Pathom','DOCO','ฟู้ด กลอเรียส','PC1094','COCO','ร็อคส์ พีซี'],
+    ['PC2007','Big C Bangyai','DOCO','โมโนนา','PC1065','COCO','ร็อคส์ พีซี'],
+    ['PC2008','Central Rayong','DOCO','มอนสเตอร์ ริช','PC2031','DOCO','มอนสเตอร์ ลัค'],
+    ['PC2013','Central Udonthani','DOCO','นีเอีย ฟู้ดส์','PC1097','COCO','ร็อคส์ พีซี'],
+    ['PC2017','Robinson Trang','DOCO','นีเอีย ฟู้ดส์','PC1104','COCO','ร็อคส์ พีซี'],
+    ['PC2021','Big C Rama 2','DOCO','โมโนนา','PC1066','COCO','ร็อคส์ พีซี'],
+    ['PC3002','Central Chanthaburi','DODO','กำไรเหลือล้น','PC6006','DODO-M','กำไรเหลือล้น'],
+    ['PC3003','Robinson Chanthaburi','DODO','กำไรเหลือล้น','PC6007','DODO-M','กำไรเหลือล้น'],
+    ['PC3004','Central Nakhon Si Thammarat','DODO','หาดทิพย์','PC1067','COCO','ร็อคส์ พีซี'],
+    ['PC5001','Seacon Bangkae','EXPR','ร็อคส์ พีซี','PC1063','COCO','ร็อคส์ พีซี'],
+    ['PC5003','Major Ratchayothin','EXPR','ร็อคส์ พีซี','PC1072','COCO','ร็อคส์ พีซี'],
+    ['PC1100','Dusit Central Park','COCO','ร็อคส์ พีซี','PCOT02','COCO','ร็อคส์ พีซี'],
+    ['PCSE06','Lotus Bangkruai - Sai Noi','SE','ร็อคส์ พีซี','PC1062','COCO','ร็อคส์ พีซี'],
+    ['PC1041','Robinson Chantaburi','COCO','ร็อคส์ พีซี','','',''],
+    ['PCSE05','Lotus Prachacheun','SE','ร็อคส์ พีซี','','',''],
+  ];
+  var FILTER='all';
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
+  function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function tyCls(t){ t=String(t||'').toUpperCase(); if(t==='COCO')return'coco'; if(t==='DODO')return'dodo'; if(t.indexOf('DODO')===0)return'dodo'; if(t==='DOCO')return'doco'; if(t==='SE')return'se'; if(t==='EXPR')return'expr'; return'other'; }
+  function caseState(c){ var st=load()[c[0]]||{}; var newCode=st.newCode!=null?st.newCode:c[4]; var coChg = newCode && c[3]!==st.newCo && c[6]!==undefined ? (c[3]!==(st.newCo||c[6])) : (c[3]!==c[6]); return { newCode:newCode, status:st.status||(newCode?'CONFIRMED':'WAIT'), coChg: newCode? (c[3]!==(c[6]||'')) : false, caseOpened: !!st.caseOpened }; }
+
+  window.tfFilter=function(k){ FILTER=k; render(); };
+  window.tfConfirm=function(old){ var o=load(); o[old]=o[old]||{}; o[old].status='CONFIRMED'; save(o); render(); };
+  window.tfUndo=function(old){ var o=load(); if(o[old]){ o[old].status='NEW'; save(o); } render(); };
+  window.tfPair=function(old){ var inp=document.getElementById('pair-'+old); if(!inp) return; var v=(inp.value||'').trim().toUpperCase(); if(!v){ if(window.Swal)Swal.fire({icon:'info',title:'ใส่รหัสใหม่ก่อน'}); return; } var o=load(); o[old]=o[old]||{}; o[old].newCode=v; o[old].status='NEW'; save(o); render(); };
+  window.tfOpenCase=function(old){ var c=CASES.find(function(x){return x[0]===old;}); if(!c) return; var s=caseState(c); if(!s.newCode) return;
+    if(!(window.RD&&window.RD.addTrigger)){ if(window.Swal)Swal.fire({icon:'error',title:'RD module ไม่พร้อม',text:'เปิดจากในแอป (shell) เพื่อใช้งานสติ๊กเกอร์'}); return; }
+    var t=window.RD.addTrigger({branchId:old, oldType:c[2], newType:c[5]||c[2], kind:'tocoCo'});
+    var o=load(); o[old]=o[old]||{}; o[old].caseOpened=true; o[old].caseAt=Date.now(); save(o); render();
+    if(window.Swal)Swal.fire({icon:'success',title: t?'เปิดเคสสติ๊กเกอร์แล้ว':'มีเคสรออยู่แล้ว',html:'<span style="font-size:13px;color:#6b7280">'+old+' → '+s.newCode+' · รอ Admin ดำเนินการที่งานสติ๊กเกอร์ (แจ้งยกเลิก/จดใหม่)</span>',confirmButtonColor:'#2e934a'}); };
+  window.tfOpenAll=function(){ if(!(window.RD&&window.RD.addTrigger)){ if(window.Swal)Swal.fire({icon:'error',title:'RD module ไม่พร้อม'}); return; }
+    var o=load(), n=0; CASES.forEach(function(c){ var s=caseState(c); if(s.newCode && s.status==='CONFIRMED' && !(o[c[0]]&&o[c[0]].caseOpened)){ window.RD.addTrigger({branchId:c[0],oldType:c[2],newType:c[5]||c[2],kind:'tocoCo'}); o[c[0]]=o[c[0]]||{}; o[c[0]].caseOpened=true; o[c[0]].caseAt=Date.now(); n++; } });
+    save(o); render(); if(window.Swal)Swal.fire({icon:'success',title:'เปิดเคสสติ๊กเกอร์ '+n+' เคส',html:'<span style="font-size:13px;color:#6b7280">ไหลเข้างานสติ๊กเกอร์ — รอ Admin กดดำเนินการ</span>',confirmButtonColor:'#2e934a'}); };
+
+  function render(){
+    var data=load();
+    var rows=CASES.map(function(c){ var s=caseState(c); return {c:c, s:s}; });
+    var nMatched=rows.filter(function(r){return r.s.newCode;}).length;
+    var nWait=rows.length-nMatched;
+    var nDone=rows.filter(function(r){return r.s.status==='CONFIRMED';}).length;
+    var nCoChg=rows.filter(function(r){return r.s.newCode && r.c[3]!==r.c[6] && r.c[6];}).length;
+    document.getElementById('tfStats').innerHTML=
+      '<div class="stat"><div class="n">'+rows.length+'</div><div class="l">เคสโอนทั้งหมด</div></div>'+
+      '<div class="stat"><div class="n green">'+nDone+'</div><div class="l">ยืนยันจับคู่แล้ว</div></div>'+
+      '<div class="stat"><div class="n amber">'+(nMatched-nDone)+'</div><div class="l">รอยืนยัน</div></div>'+
+      '<div class="stat"><div class="n red">'+nWait+'</div><div class="l">ยังไม่พบโค้ดใหม่</div></div>'+
+      '<div class="stat"><div class="n">'+nCoChg+'</div><div class="l">เปลี่ยนบริษัท</div></div>';
+    var defs=[['all','ทั้งหมด'],['cochg','เปลี่ยนบริษัท'],['tychg','บริษัทเดิม'],['wait','รอจับคู่'],['done','ยืนยันแล้ว']];
+    document.getElementById('tfBar').innerHTML=defs.map(function(d){ return '<button class="chip '+(FILTER===d[0]?'on':'')+'" onclick="tfFilter(\''+d[0]+'\')">'+d[1]+'</button>'; }).join('')+'<button class="chip" style="background:#6b3fa0;color:#fff;border-color:transparent;margin-left:auto" onclick="tfOpenAll()"><i class="fas fa-receipt"></i> เปิดเคสสติ๊กเกอร์ทั้งหมด</button>';
+    var show=rows.filter(function(r){ var coChg=r.s.newCode && r.c[6] && r.c[3]!==r.c[6];
+      if(FILTER==='cochg') return coChg; if(FILTER==='tychg') return r.s.newCode && !coChg; if(FILTER==='wait') return !r.s.newCode; if(FILTER==='done') return r.s.status==='CONFIRMED'; return true; });
+    document.getElementById('tfList').innerHTML = show.map(function(r){
+      var c=r.c, s=r.s, coChg = s.newCode && c[6] && c[3]!==c[6];
+      var statusPill = !s.newCode ? '<span class="pill wait">ยังไม่พบโค้ดใหม่</span>' : (s.status==='CONFIRMED' ? '<span class="pill done"><i class="fas fa-check"></i> ยืนยันแล้ว</span>' : '<span class="pill new">รอยืนยัน</span>');
+      var dirBadge = !s.newCode ? '' : (coChg ? '<span class="badge cochg"><i class="fas fa-building"></i> เปลี่ยนบริษัท · ต้องยกเลิก+จดใหม่</span>' : '<span class="badge tychg"><i class="fas fa-tag"></i> บริษัทเดิม · เปลี่ยน type</span>');
+      var newNode = s.newCode
+        ? '<div class="node new"><div class="cd">'+esc(s.newCode)+'</div><div class="co">'+(c[5]?('<span class="ty '+tyCls(c[5])+'">'+esc(c[5])+'</span> '):'')+esc(c[6]||'')+'</div></div>'
+        : '<div class="node new" style="flex:none"><input id="pair-'+c[0]+'" class="pairin" placeholder="รหัสใหม่…"><button class="btn btn-o" style="margin-left:6px" onclick="tfPair(\''+c[0]+'\')">จับคู่</button></div>';
+      var acts = !s.newCode ? '' : (s.status==='CONFIRMED'
+        ? '<button class="btn btn-o" onclick="tfUndo(\''+c[0]+'\')">ยกเลิกยืนยัน</button>'+(s.caseOpened?'<button class="btn btn-o" disabled style="color:#1d7a4d;border-color:#cfe0d6"><i class="fas fa-check"></i> เปิดเคสแล้ว</button>':'<button class="btn btn-g" style="background:#6b3fa0" onclick="tfOpenCase(\''+c[0]+'\')"><i class="fas fa-receipt"></i> เปิดเคสสติ๊กเกอร์</button>')
+        : '<button class="btn btn-g" onclick="tfConfirm(\''+c[0]+'\')"><i class="fas fa-check"></i> ยืนยันจับคู่</button>');
+      return '<div class="case'+(!s.newCode?' unmatched':'')+'">'+
+        '<div class="top"><div class="flow">'+
+          '<div class="node old"><div class="cd">'+esc(c[0])+'</div><div class="nm">'+esc(c[1])+'</div><div class="co"><span class="ty '+tyCls(c[2])+'">'+esc(c[2])+'</span> '+esc(c[3])+'</div></div>'+
+          '<i class="fas fa-arrow-right arrow"></i>'+ newNode +
+        '</div>'+ statusPill +'</div>'+
+        '<div class="meta">'+dirBadge+'<div class="acts">'+acts+'</div></div>'+
+      '</div>';
+    }).join('') || '<div style="text-align:center;color:#9aa1aa;padding:30px">ไม่มีเคสในตัวกรองนี้</div>';
+  }
+  window.initShopTransfer=function(){ render(); };
+})();
+</script>

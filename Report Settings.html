@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าระบบแจ้งปัญหาสาขา</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:760px; margin:0 auto; padding:22px 18px 120px; }
+
+  .bv-head{ background:#2e934a; color:#fff; border-radius:18px; padding:20px 24px; }
+  .bv-head .back{ display:inline-flex; align-items:center; gap:9px; color:#fff; text-decoration:none; background:rgba(255,255,255,.12); border-radius:11px; padding:9px 14px; font-weight:600; font-size:.88rem; }
+  .bv-head .back:hover{ background:rgba(255,255,255,.22); color:#fff; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.35rem; font-weight:700; margin:10px 0 0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); }
+  .bv-head .sub{ opacity:.7; font-size:.9rem; margin-top:3px; }
+
+  .sec-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8a9099; margin:24px 2px 12px; }
+
+  .opt{ background:#fff; border:2px solid #e2e6ea; border-radius:16px; padding:18px 20px; margin-bottom:14px; cursor:pointer; display:flex; gap:16px; align-items:flex-start; transition:.12s; }
+  .opt:hover{ border-color:#b6bcc4; }
+  .opt .ico{ width:50px; height:50px; border-radius:13px; background:#f1f4f7; color:#6b7280; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex:none; }
+  .opt .body{ flex:1; }
+  .opt .ttl{ font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:10px; }
+  .opt .desc{ color:#6b7280; font-size:.9rem; margin-top:4px; line-height:1.45; }
+  .opt .lvl{ font-size:.72rem; font-weight:700; border-radius:7px; padding:2px 9px; }
+  .opt .radio{ width:26px; height:26px; border-radius:50%; border:2px solid #cfd5db; flex:none; display:flex; align-items:center; justify-content:center; color:#fff; font-size:.8rem; margin-top:3px; }
+  .opt.on{ border-color:var(--pc-green); background:#f3fbf6; }
+  .opt.on .ico{ background:var(--pc-green); color:#fff; }
+  .opt.on .radio{ background:var(--pc-green); border-color:var(--pc-green); }
+
+  .preview{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:15px 18px; margin-top:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .preview .p-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin-bottom:7px; }
+  .preview .p-flow{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:.92rem; }
+  .preview .step{ background:#f1f4f7; border-radius:9px; padding:6px 12px; font-weight:600; }
+  .preview .step.tap{ background:#eafaf1; color:#1d7a4d; }
+  .preview .step.auth{ background:#eaf4ee; color:#9a6700; }
+  .preview i.arr{ color:#cfd5db; }
+
+  .savebar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:14px 18px; box-shadow:0 -4px 20px rgba(0,0,0,.06); }
+  .savebar .inner{ max-width:760px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .savebar .cur{ font-size:.86rem; color:#6b7280; }
+  .savebar .cur b{ color:var(--pc-black); }
+  .btn-save{ background:var(--pc-green); color:#fff; border:0; border-radius:13px; padding:13px 26px; font-weight:700; font-size:1.02rem; cursor:pointer; }
+  .btn-save:hover{ background:#00632f; }
+  /* savebar: strip removed — float just the button */
+  .savebar{ background:transparent!important; border-top:none!important; box-shadow:none!important; padding:0!important; pointer-events:none!important; backdrop-filter:none!important; }
+  .savebar .inner{ justify-content:flex-end!important; pointer-events:none!important; }
+  .savebar .inner > div{ display:none!important; }
+  .savebar .btn-save{ pointer-events:auto!important; margin:14px 18px!important; box-shadow:0 6px 20px rgba(0,0,0,.22)!important; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+
+  /* simulate branch view */
+  .btn-sim{ width:100%; margin-top:14px; background:#fff; border:2px dashed #cfd5db; border-radius:14px; padding:14px; font-family:inherit; font-weight:700; font-size:1rem; color:#3a4150; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .btn-sim:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+  .btn-usermgmt{ width:100%; margin-top:10px; background:#eef1ff; border:2px solid #d6ddf7; border-radius:14px; padding:13px; font-family:inherit; font-weight:700; font-size:.96rem; color:#3a4ba0; cursor:pointer; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+  .btn-usermgmt:hover{ background:#e3e9fd; color:#2c3a86; }
+  .btn-notify{ width:100%; margin-top:10px; background:#fff; border:2px solid #e2e6ea; border-radius:14px; padding:13px; font-family:inherit; font-weight:700; font-size:.96rem; color:#3a4150; cursor:pointer; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+  .btn-notify:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+  .sim-ov{ position:fixed; inset:0; background:rgba(20,22,25,.62); display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  .sim-ov.show{ display:flex; }
+  .phone{ width:362px; max-width:100%; height:684px; max-height:94vh; background:#fff; border-radius:36px; box-shadow:0 30px 80px rgba(0,0,0,.45); overflow:hidden; display:flex; flex-direction:column; border:9px solid #1a1d20; }
+  .phone .pt{ background:var(--pc-black); color:#fff; padding:15px 18px; display:flex; align-items:center; gap:10px; flex:none; }
+  .phone .pt h3{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1rem; margin:0; flex:1; }
+  .phone .pt h3 i{ color:var(--pc-yellow); margin-right:7px; }
+  .phone .pt .x{ width:34px; height:34px; border:0; border-radius:10px; background:rgba(255,255,255,.14); color:#fff; cursor:pointer; flex:none; }
+  .phone .pt .x:hover{ background:rgba(255,255,255,.26); }
+  .phone .pbody{ flex:1; overflow:auto; padding:18px 16px; background:var(--bg); }
+  .phone .pfoot{ flex:none; padding:14px 16px; border-top:1px solid #e2e6ea; background:#fff; }
+  .sim-modepill{ font-size:.72rem; font-weight:700; background:rgba(255,255,255,.16); padding:3px 10px; border-radius:20px; }
+  .sim-ctx{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .sim-ctx .cc-nm{ font-size:1.12rem; font-weight:700; line-height:1.2; }
+  .sim-ctx .cc-meta{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+  .cc-tag{ font-size:.78rem; font-weight:600; background:#f1f4f7; color:#5a616b; border-radius:8px; padding:4px 9px; }
+  .cc-tag.red{ background:#fdecec; color:#b23b3b; }
+  .sim-hint{ font-size:.86rem; color:#6b7280; margin-top:14px; line-height:1.5; background:#fff; border:1px dashed #d7dce1; border-radius:12px; padding:11px 13px; }
+  .sim-hint i{ color:#9aa1aa; margin-right:5px; }
+  .sim-step{ font-size:1.08rem; font-weight:700; margin-bottom:14px; }
+  .sim-fld{ margin-bottom:14px; }
+  .sim-fld label{ display:block; font-weight:600; font-size:.9rem; margin-bottom:6px; }
+  .sim-fld .req{ color:#c0392b; }
+  .sim-input{ width:100%; border:2px solid #dde2e7; border-radius:12px; padding:12px 14px; font-family:inherit; font-size:1rem; background:#fff; }
+  .sim-input:focus{ outline:none; border-color:var(--pc-green); }
+  .sim-err{ color:#c0392b; font-size:.86rem; font-weight:600; min-height:20px; }
+  .sim-send{ width:100%; background:var(--pc-green); color:#fff; border:0; border-radius:14px; padding:15px; font-weight:700; font-size:1.05rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; }
+  .sim-send:hover{ background:#00632f; }
+  .sim-send.alt{ background:#eef1f4; color:#3a4150; }
+  .sim-send.alt:hover{ background:#e2e6ea; }
+  .sim-done{ text-align:center; padding:18px 6px; }
+  .sim-done .sd-ic{ font-size:3.4rem; color:var(--pc-green); }
+  .sim-done .sd-t{ font-size:1.3rem; font-weight:700; margin-top:8px; }
+  .sim-done .sd-sub{ color:#6b7280; font-size:.92rem; margin-top:3px; }
+  .sd-rec{ background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; margin-top:20px; text-align:left; }
+  .sd-rec .rec-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; }
+  .sd-rec .rec-val{ font-size:1.08rem; font-weight:700; margin-top:5px; }
+  .sd-rec .rec-val i{ color:var(--pc-green); margin-right:7px; }
+  .sd-warn{ margin-top:16px; background:#fdf4e3; color:#9a6700; border-radius:12px; padding:11px 13px; font-size:.86rem; font-weight:600; text-align:left; }
+  .sd-warn i{ margin-right:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <a class="back" href="Branch Tickets.html"><i class="fas fa-arrow-left"></i>กลับ</a>
+    <h1><i class="fas fa-sliders me-2"></i>ตั้งค่าระบบแจ้งปัญหาสาขา</h1>
+    <div class="sub">กำหนดว่าตอนสาขากด “แจ้งปัญหา” ต้องยืนยันตัวตนแบบไหน</div>
+  </div>
+
+  <div class="sec-lbl">วิธียืนยันตัวตนตอนแจ้งปัญหา</div>
+  <div id="opts"></div>
+
+  <div class="sec-lbl">ตัวอย่างขั้นตอนของสาขา</div>
+  <div class="preview" id="preview"></div>
+
+  <button class="btn-sim" onclick="openSim()"><i class="fas fa-mobile-screen-button me-2"></i>ทดลองมุมมองสาขา — จำลองตอนกดแจ้งจริง</button>
+  <a class="btn-usermgmt" id="userMgmtLink" href="User Management.html" style="display:none"><i class="fas fa-users-gear me-2"></i>จัดการตารางผู้ใช้ (User Code · รหัสผ่าน · ตำแหน่ง · สังกัดสาขา)</a>
+  <a class="btn-notify" href="Notification Settings.html"><i class="fas fa-bell me-2"></i>ตั้งค่าการแจ้งเตือน — อีเมล / Team Chat (ทั้งระบบ)</a>
+
+  <div class="sec-lbl">การแนบหลักฐานรูป (หน้าแจ้งปัญหาโค้ดโปรโมชัน)</div>
+  <div style="background:#fff;border:1px solid #e7eaee;border-radius:14px;padding:17px 19px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="fw-bold small d-block mb-1">ขนาดไฟล์ภาพสูงสุด (MB)</label>
+        <input type="number" min="1" max="50" id="cfgMax" class="form-control border-dark" onchange="evSet('maxImgMB', this.value)">
+        <div class="text-muted" style="font-size:.76rem;margin-top:3px">ไฟล์ใหญ่กว่านี้ระบบจะปฏิเสธ + ขอให้แนบใหม่</div>
+      </div>
+      <div class="col-md-6">
+        <label class="fw-bold small d-block mb-1">แนบได้หลายรูปต่อช่อง</label>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="cfgMulti" onchange="evSet('multiImage', this.checked)"><label class="form-check-label small" for="cfgMulti">เปิดให้แนบมากกว่า 1 รูป/ช่อง</label></div>
+      </div>
+      <div class="col-md-6">
+        <label class="fw-bold small d-block mb-1">ตรวจความชัดของภาพอัตโนมัติ</label>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="cfgBlur" onchange="evSet('blurCheck', this.checked)"><label class="form-check-label small" for="cfgBlur">บล็อกภาพเบลอ ให้สาขาแนบใหม่</label></div>
+      </div>
+      <div class="col-md-6">
+        <label class="fw-bold small d-block mb-1">เกณฑ์ความคมขั้นต่ำ <span class="text-muted">(ยิ่งสูงยิ่งเข้ม)</span></label>
+        <input type="number" min="0" max="500" id="cfgThresh" class="form-control border-dark" onchange="evSet('blurThreshold', this.value)">
+        <div class="text-muted" style="font-size:.76rem;margin-top:3px">แนะนำ 60–90 · ภาพคมมีค่าสูงกว่าเกณฑ์</div>
+      </div>
+      <div class="col-12">
+        <label class="fw-bold small d-block mb-1">ข้อความแจ้งเตือนเคส “โค้ดถูกใช้แล้ว”</label>
+        <textarea id="cfgWarn" class="form-control border-dark" style="min-height:82px" oninput="evSet('usedWarnMsg', this.value)" placeholder="ข้อความที่โชว์เมื่อสาขาเลือกหัวข้อ ‘โค้ดถูกใช้ไปแล้ว’"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-note">— การตั้งค่านี้มีผลจริงกับหน้าแจ้งปัญหาสาขา (โหมดยืนยันตัวตน · ขนาด/ความชัดของรูป · ข้อความเตือนโค้ดถูกใช้) · บันทึกในระบบ + ซิงค์ทุกเครื่อง —</div>
+</div>
+
+<div class="sim-ov" id="simOv">
+  <div class="phone">
+    <div class="pt">
+      <i class="fas fa-flag"></i>
+      <h3>แจ้งปัญหา <span class="sim-modepill" id="simModePill">—</span></h3>
+      <button class="x" onclick="closeSim()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="pbody" id="simBody"></div>
+    <div class="pfoot" id="simFoot"></div>
+  </div>
+</div>
+
+<div class="savebar">
+  <div class="inner">
+    <div class="cur">โหมดปัจจุบัน: <b id="curLbl">—</b></div>
+    <button class="btn-save" onclick="save()"><i class="fas fa-check me-1"></i>บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<script>
+const SET_KEY='pc_report_settings';
+const MODES=[
+  { k:'none',    icon:'fa-bolt',       ttl:'ไม่ต้องใส่อะไรเลย',      lvl:['เร็วสุด','#eafaf1','#1d7a4d'],
+    desc:'กดแจ้งได้ทันที ไม่ต้องระบุตัวตน — เหมาะกับช่วงเร่งด่วน แต่ตรวจสอบย้อนกลับไม่ได้ว่าใครแจ้ง' },
+  { k:'branch',  icon:'fa-envelope',   ttl:'Login อีเมลสาขา (Outlook)', lvl:['แนะนำ','#fff8e0','#9a6700'],
+    desc:'ก่อนแจ้ง ให้สาขา login ด้วยอีเมล Outlook ของสาขา (…@potatocornerth.com) — ระบบรู้ทันทีว่าสาขาไหนแจ้งจากบัญชีอีเมล' },
+  { k:'cashier', icon:'fa-id-badge',   ttl:'ใส่รหัสแคชเชียร์ + รหัสผ่าน', lvl:['ปลอดภัยสุด','#eef1ff','#3a4ba0'],
+    desc:'กดแจ้งแล้วต้องกรอกรหัสแคชเชียร์ + รหัสผ่าน ตรวจกับ “ตารางผู้ใช้” (User Code · ชื่อ · ตำแหน่ง · สังกัดสาขา) — ตรวจสอบย้อนได้ว่าใครเป็นผู้แจ้ง' },
+];
+function getMode(){ try{ return (JSON.parse(localStorage.getItem(SET_KEY))||{}).authMode || 'branch'; }catch(e){ return 'branch'; } }
+let sel=getMode();
+
+function lblOf(k){ const m=MODES.find(x=>x.k===k); return m?m.ttl:'—'; }
+function renderOpts(){
+  document.getElementById('opts').innerHTML = MODES.map(m=>`
+    <div class="opt ${sel===m.k?'on':''}" onclick="pick('${m.k}')">
+      <span class="ico"><i class="fas ${m.icon}"></i></span>
+      <div class="body">
+        <div class="ttl">${m.ttl}<span class="lvl" style="background:${m.lvl[1]};color:${m.lvl[2]}">${m.lvl[0]}</span></div>
+        <div class="desc">${m.desc}</div>
+      </div>
+      <span class="radio"><i class="fas fa-check"></i></span>
+    </div>`).join('');
+  document.getElementById('curLbl').textContent = lblOf(sel);
+  const uml=document.getElementById('userMgmtLink'); if(uml) uml.style.display = sel==='cashier' ? 'flex' : 'none';
+  renderPreview();
+}
+function renderPreview(){
+  const tap = `<span class="step tap"><i class="fas fa-flag me-1"></i>กดแจ้งปัญหา</span><i class="fas fa-arrow-right arr"></i><span class="step">เลือกปุ่ม + ปัญหา</span>`;
+  const auth = sel==='cashier'
+    ? `<i class="fas fa-arrow-right arr"></i><span class="step auth"><i class="fas fa-id-badge me-1"></i>กรอกรหัสแคชเชียร์</span>`
+    : (sel==='branch' ? `<i class="fas fa-arrow-right arr"></i><span class="step auth"><i class="fas fa-envelope me-1"></i>login อีเมลสาขา</span>` : '');
+  const send = `<i class="fas fa-arrow-right arr"></i><span class="step tap"><i class="fas fa-paper-plane me-1"></i>ส่งเข้า IT</span>`;
+  document.getElementById('preview').innerHTML = `<div class="p-lbl">เมื่อเลือก “${lblOf(sel)}”</div><div class="p-flow">${tap}${auth}${send}</div>`;
+}
+function pick(k){ sel=k; renderOpts(); }
+function getAll(){ try{ return JSON.parse(localStorage.getItem(SET_KEY))||{}; }catch(e){ return {}; } }
+let ev=(function(){ const s=getAll(); return { maxImgMB:Number(s.maxImgMB)||5, multiImage:s.multiImage!==false, blurCheck:s.blurCheck!==false, blurThreshold:Number(s.blurThreshold)||80, usedWarnMsg:s.usedWarnMsg||'' }; })();
+function evSet(k,v){ if(k==='maxImgMB'||k==='blurThreshold') v=Number(v)||0; ev[k]=v; }
+function renderEvCfg(){ const g=id=>document.getElementById(id); if(!g('cfgMax')) return;
+  g('cfgMax').value=ev.maxImgMB; g('cfgMulti').checked=ev.multiImage; g('cfgBlur').checked=ev.blurCheck; g('cfgThresh').value=ev.blurThreshold; g('cfgWarn').value=ev.usedWarnMsg; }
+function save(){
+  const cur=getAll();
+  localStorage.setItem(SET_KEY, JSON.stringify(Object.assign({}, cur, { authMode:sel, maxImgMB:Number(ev.maxImgMB)||5, multiImage:!!ev.multiImage, blurCheck:!!ev.blurCheck, blurThreshold:Number(ev.blurThreshold)||80, usedWarnMsg:(ev.usedWarnMsg||'').trim() })));
+  Swal.fire({ icon:'success', title:'บันทึกแล้ว', html:`โหมดแจ้งปัญหา: <b>${lblOf(sel)}</b><br>ขนาดไฟล์ ≤ <b>${Number(ev.maxImgMB)||5} MB</b> · ตรวจภาพเบลอ: <b>${ev.blurCheck?'เปิด':'ปิด'}</b>`, confirmButtonColor:'#2e934a', confirmButtonText:'ตกลง' });
+}
+
+/* ── จำลองมุมมองสาขา ───────────────────────────── */
+const SIM_BRANCHES=[
+  ['101','Central World','เซ็นทรัล เวิลด์'],
+  ['088','Mega Bangna','เมกา บางนา'],
+  ['142','Terminal 21','เทอร์มินอล 21'],
+  ['203','Siam Paragon','สยาม พารากอน'],
+  ['311','CentralPlaza Ladprao','เซ็นทรัลลาดพร้าว'],
+];
+let simScreen='review', simReporter='';
+function openSim(){ simScreen='review'; document.getElementById('simOv').classList.add('show'); document.getElementById('simModePill').textContent=lblOf(sel); renderSim(); }
+function closeSim(){ document.getElementById('simOv').classList.remove('show'); }
+function simCtxCard(){
+  return `<div class="sim-ctx">
+    <div class="cc-nm">Cheese Avalanche Combo</div>
+    <div class="cc-meta">
+      <span class="cc-tag"><i class="fas fa-hand-pointer me-1"></i>CHEESE AVALANCHE</span>
+      <span class="cc-tag red"><i class="fas fa-tag me-1"></i>ราคาเต็มไม่ถูกต้อง</span>
+    </div>
+  </div>`;
+}
+function renderSim(){
+  const body=document.getElementById('simBody'), foot=document.getElementById('simFoot');
+  if(simScreen==='review'){
+    body.innerHTML = simCtxCard() + `<div class="sim-hint"><i class="fas fa-circle-info"></i>สมมติว่าสาขาเลือกปุ่ม + ปัญหาเรียบร้อยแล้ว — ขั้นต่อไปคือ <b>ยืนยันก่อนส่ง</b> ตามโหมดที่ตั้งไว้</div>`;
+    foot.innerHTML = `<button class="sim-send" onclick="simNext()"><i class="fas fa-paper-plane"></i>ส่งแจ้งปัญหา</button>`;
+  } else if(simScreen==='auth'){
+    renderSimAuth();
+  } else {
+    body.innerHTML = simDone();
+    foot.innerHTML = `<button class="sim-send alt" onclick="openSim()"><i class="fas fa-rotate-left"></i>เริ่มจำลองใหม่</button>`;
+  }
+}
+function simNext(){
+  if(sel==='none'){ simReporter='— ไม่ระบุผู้แจ้ง —'; simScreen='done'; renderSim(); return; }
+  simScreen='auth'; renderSim();
+}
+function renderSimAuth(){
+  const body=document.getElementById('simBody'), foot=document.getElementById('simFoot');
+  if(sel==='branch'){
+    body.innerHTML = `
+      <div class="sim-step">Login อีเมลสาขา</div>
+      <div class="sim-fld">
+        <label>อีเมล Outlook ของสาขา <span class="req">*</span></label>
+        <input id="simEmail" class="sim-input" type="email" placeholder="central.world@potatocornerth.com">
+      </div>
+      <div class="sim-fld">
+        <label>รหัสผ่าน <span class="req">*</span></label>
+        <input id="simPw" class="sim-input" type="password" placeholder="••••••">
+      </div>
+      <div class="sim-err" id="simErr"></div>`;
+    foot.innerHTML = `<button class="sim-send" onclick="simSubmitBranch()"><i class="fas fa-right-to-bracket"></i>Login + ส่ง</button>`;
+  } else {
+    body.innerHTML = `
+      <div class="sim-step">ยืนยันแคชเชียร์</div>
+      <div class="sim-fld"><label>รหัสแคชเชียร์ <span class="req">*</span></label><input id="simCode" class="sim-input" inputmode="numeric" placeholder="เช่น 4821"></div>
+      <div class="sim-fld"><label>รหัสผ่าน <span class="req">*</span></label><input id="simPw" type="password" class="sim-input" placeholder="••••••"></div>
+      <div class="sim-err" id="simErr"></div>`;
+    foot.innerHTML = `<button class="sim-send" onclick="simSubmitCashier()"><i class="fas fa-paper-plane"></i>ยืนยัน + ส่ง</button>`;
+  }
+}
+function simSubmitBranch(){
+  const e=(document.getElementById('simEmail').value||'').trim().toLowerCase(), p=(document.getElementById('simPw').value||'').trim();
+  if(!e||!p){ document.getElementById('simErr').textContent='กรอกอีเมลและรหัสผ่าน'; return; }
+  if(!e.endsWith('@potatocornerth.com')){ document.getElementById('simErr').textContent='ต้องเป็นอีเมล @potatocornerth.com เท่านั้น'; return; }
+  simReporter=e; simScreen='done'; renderSim();
+}
+function simSubmitCashier(){
+  const c=(document.getElementById('simCode').value||'').trim(), p=(document.getElementById('simPw').value||'').trim();
+  if(!c||!p){ document.getElementById('simErr').textContent='กรอกรหัสแคชเชียร์และรหัสผ่าน'; return; }
+  simReporter='แคชเชียร์ #'+c; simScreen='done'; renderSim();
+}
+function simDone(){
+  return `<div class="sim-done">
+    <div class="sd-ic"><i class="fas fa-circle-check"></i></div>
+    <div class="sd-t">ส่งแจ้งปัญหาแล้ว</div>
+    <div class="sd-sub">เลขที่ <b>BVT-1003</b> · 1 ปุ่ม → ส่งเข้า IT</div>
+    <div class="sd-rec">
+      <div class="rec-lbl">บันทึกผู้แจ้งเป็น</div>
+      <div class="rec-val"><i class="fas ${sel==='none'?'fa-user-slash':'fa-user-check'}" style="${sel==='none'?'color:#c0392b':''}"></i>${simReporter}</div>
+    </div>
+    ${sel==='none'?`<div class="sd-warn"><i class="fas fa-triangle-exclamation"></i>โหมดนี้ IT จะไม่รู้ว่าใคร/สาขาไหนเป็นผู้แจ้ง — ตรวจสอบย้อนกลับไม่ได้</div>`:''}
+  </div>`;
+}
+
+renderOpts();
+renderEvCfg();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

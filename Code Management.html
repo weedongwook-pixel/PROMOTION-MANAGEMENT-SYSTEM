@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="build" content="p2-20260731e">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แจ้งเพิ่มโค้ดโปรโมชั่น / บัตร — MKT / IT / สาขา</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --blue:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:40px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .topbar{ background:transparent; color:#1a1d20; padding:14px 18px 12px; display:flex; align-items:center; gap:14px; z-index:20; border-bottom:none; }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.9rem; margin:0; line-height:1.15; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:8px; }
+  .roles{ margin-left:auto; display:flex; gap:7px; }
+  .role{ border:0; background:#eafaf1; color:#2e934a; font-family:inherit; font-weight:600; font-size:.86rem; border-radius:10px; padding:9px 15px; cursor:pointer; display:flex; align-items:center; gap:7px; }
+  .role.on{ background:var(--pc-yellow); color:#1a1d20; }
+  .role:hover:not(.on){ background:rgba(255,255,255,.22); }
+  .gear{ width:40px; height:40px; border:0; border-radius:10px; background:#eafaf1; color:#2e934a; cursor:pointer; font-size:1rem; }
+  .gear:hover{ background:rgba(255,255,255,.22); }
+
+  .wrap{ max-width:none; margin:0; padding:20px 26px 0; }
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:18px; }
+  .card h2{ font-size:1.06rem; font-weight:700; margin:0 0 3px; display:flex; align-items:center; gap:9px; }
+  .card h2 i{ color:var(--pc-green); }
+  .card .sub{ color:#8a9099; font-size:.86rem; margin:0 0 15px; line-height:1.45; }
+
+  .seg{ display:flex; gap:8px; background:#f1f4f7; border-radius:12px; padding:5px; margin-bottom:18px; }
+  .seg button{ flex:1; border:0; background:transparent; font-family:inherit; font-weight:600; font-size:.94rem; color:#5a616b; border-radius:9px; padding:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .seg button.on{ background:#fff; color:var(--pc-black); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on.rm{ color:#c0392b; }
+  .seg-n{ font-family:'JetBrains Mono',monospace; font-size:.78rem; font-weight:700; background:#e3e8ee; color:#5a616b; border-radius:7px; padding:1px 8px; min-width:22px; text-align:center; }
+  .seg button.on .seg-n{ background:var(--pc-green); color:#fff; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .fld{ margin-bottom:14px; }
+  .fld label{ display:block; font-size:.82rem; font-weight:600; color:#5a616b; margin-bottom:6px; }
+  .fld label .req{ color:#c0392b; }
+  .inp, select.inp{ width:100%; border:1.6px solid #dde2e7; border-radius:11px; padding:11px 13px; font-family:inherit; font-size:.96rem; background:#fff; color:var(--pc-black); }
+  .inp:focus{ outline:none; border-color:var(--pc-green); }
+  .inp[readonly]{ background:#f4f6f9; color:#5a616b; }
+  .hint{ font-size:.76rem; color:#8a9099; margin-top:5px; line-height:1.4; }
+  .lead-lock{ display:flex; align-items:center; gap:8px; font-size:.82rem; font-weight:600; color:#9a6700; background:#fff8ec; border:1px solid #f3d99a; border-radius:10px; padding:9px 12px; margin-top:6px; }
+  .lead-lock i{ color:#c9870a; }
+  .it-tag{ font-size:.66rem; font-weight:700; background:#e7f0ff; color:var(--blue); border:1px solid #cfe0fb; border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+
+  .drop{ border:2px dashed #cfd5db; border-radius:14px; padding:26px 18px; text-align:center; cursor:pointer; transition:.12s; background:#fafbfc; }
+  .drop:hover, .drop.over{ border-color:var(--pc-green); background:#f3fbf6; }
+  .drop i{ font-size:1.9rem; color:#9aa1aa; display:block; margin-bottom:9px; }
+  .drop .big{ font-weight:600; font-size:.98rem; }
+  .drop .sm{ font-size:.8rem; color:#8a9099; margin-top:4px; }
+  .filechip{ display:inline-flex; align-items:center; gap:9px; background:#eef4ff; border:1px solid #cfe0fb; color:#2c4a82; border-radius:10px; padding:8px 13px; font-size:.88rem; font-weight:600; margin-top:12px; }
+  .filechip b{ font-weight:700; } .filechip .x{ cursor:pointer; color:#8a9099; } .filechip .x:hover{ color:#c0392b; }
+
+  .stats{ display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
+  .stat{ flex:1; min-width:96px; border:1px solid #e7eaee; border-radius:12px; padding:11px 13px; text-align:center; background:#fafbfc; }
+  .stat .n{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.5rem; line-height:1; }
+  .stat .l{ font-size:.74rem; color:#8a9099; margin-top:5px; font-weight:600; }
+  .stat.ok .n{ color:var(--pc-green); } .stat.bad .n{ color:#c0392b; } .stat.warn .n{ color:#c9870a; } .stat.blue .n{ color:var(--blue); }
+
+  .ctbl{ width:100%; border-collapse:collapse; font-size:.86rem; }
+  .ctbl th{ text-align:left; font-size:.72rem; color:#8a9099; font-weight:700; padding:7px 10px; border-bottom:2px solid #eef1f4; text-transform:uppercase; letter-spacing:.4px; }
+  .ctbl td{ padding:8px 10px; border-bottom:1px solid #f1f4f7; }
+  .ctbl tr.bad td{ background:#fdf2f0; }
+  .ctbl .code{ font-family:'JetBrains Mono',monospace; font-weight:700; }
+  .tblwrap{ max-height:300px; overflow:auto; border:1px solid #eef1f4; border-radius:12px; margin-top:6px; }
+  .badge{ font-size:.72rem; font-weight:700; border-radius:6px; padding:2px 8px; display:inline-flex; align-items:center; gap:4px; }
+  .b-ok{ background:#eafaf1; color:#1d7a4d; } .b-bad{ background:#fdecea; color:#c0392b; } .b-warn{ background:#eaf4ee; color:#9a6700; } .b-blue{ background:#eef4ff; color:#2c4a82; }
+
+  .actbar{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+  .btn{ border:0; border-radius:12px; font-family:inherit; font-weight:700; font-size:1rem; padding:14px 22px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; }
+  .btn-g{ background:var(--pc-green); color:#fff; } .btn-g:disabled{ background:#cfd5db; cursor:not-allowed; }
+  .btn-d{ background:var(--pc-black); color:#fff; } .btn-r{ background:#c0392b; color:#fff; }
+  .btn-o{ background:#fff; border:1.6px solid #dde2e7; color:#3a4150; } .btn-o:hover{ border-color:#b6bcc4; }
+  .btn-sm{ padding:9px 15px; font-size:.86rem; border-radius:10px; }
+
+  .route{ background:#fff; border:1px solid #e7eaee; border-left:4px solid var(--lc,#2e934a); border-radius:11px; padding:11px 14px; margin-top:12px; }
+  .route .rh{ font-size:.7rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; margin-bottom:5px; }
+  .route .rl{ font-size:.9rem; font-weight:600; }
+  .route .ch{ font-size:.74rem; font-weight:700; border-radius:6px; padding:2px 8px; margin-right:5px; }
+  .ch.mail{ background:#fdf3e0; color:#9a6700; } .ch.chat{ background:#eef4ff; color:#2c4a82; }
+
+  .reqcard{ border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; margin-bottom:12px; background:#fff; }
+  .reqcard.locked{ border-left:4px solid var(--pc-green); }
+  .reqcard .rtop{ display:flex; align-items:flex-start; gap:10px; }
+  .reqcard .rnm{ font-weight:700; font-size:1.02rem; }
+  .reqcard .rmeta{ display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+  .mtag{ font-size:.76rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px; }
+  .mtag i{ color:#9aa1aa; }
+  .pill{ font-size:.72rem; font-weight:700; border-radius:999px; padding:3px 11px; }
+  .pill.pending{ background:#eaf4ee; color:#9a6700; } .pill.done{ background:#eafaf1; color:#1d7a4d; }
+  .pill.add{ background:#eafaf1; color:#1d7a4d; } .pill.rm{ background:#fdecea; color:#c0392b; }
+  .racts{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .steps{ display:flex; align-items:flex-start; margin-top:16px; }
+  .stp{ flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; position:relative; }
+  .stp .dot{ width:32px; height:32px; border-radius:50%; background:#e7eaee; color:#aab0b8; display:flex; align-items:center; justify-content:center; font-size:.82rem; z-index:1; }
+  .stp .slbl{ font-size:.74rem; font-weight:600; color:#9aa1aa; text-align:center; line-height:1.25; }
+  .stp::before{ content:''; position:absolute; top:15px; left:-50%; width:100%; height:3px; background:#e7eaee; z-index:0; }
+  .stp:first-child::before{ display:none; }
+  .stp.done .dot{ background:var(--pc-green); color:#fff; }
+  .stp.done .slbl{ color:#1d7a4d; }
+  .stp.done::before{ background:var(--pc-green); }
+  .stp.active .dot{ background:var(--pc-yellow); color:#1a1d20; box-shadow:0 0 0 4px #fdf0c8; }
+  .stp.active .slbl{ color:#9a6700; }
+  .stp.active::before{ background:var(--pc-green); }
+
+  .empty{ text-align:center; color:#9aa1aa; padding:40px 18px; font-size:.94rem; }
+  .empty i{ font-size:2rem; display:block; margin-bottom:11px; opacity:.5; }
+  .found{ border-radius:14px; padding:18px 20px; margin-top:16px; }
+  .found.yes{ background:#f3fbf6; border:1.6px solid #bfe6cf; }
+  .found.no{ background:#fdf2f0; border:1.6px solid #f1c6bf; }
+  .found .ftitle{ font-weight:700; font-size:1.1rem; display:flex; align-items:center; gap:10px; }
+  .found.yes .ftitle{ color:#1d7a4d; } .found.no .ftitle{ color:#c0392b; }
+  .filterbar{ display:flex; gap:9px; flex-wrap:wrap; margin-bottom:14px; }
+  .filterbar select.inp{ width:auto; padding:8px 12px; font-size:.88rem; }
+
+  /* IT — CMPOS search fields + copyable code list */
+  .cmpos-strip{ display:flex; gap:10px; flex-wrap:wrap; margin:13px 0 0; }
+  .cmpos-fld{ flex:1; min-width:130px; background:#f6f8fa; border:1px solid #e7eaee; border-radius:10px; padding:9px 13px; }
+  .cmpos-fld .k{ font-size:.66rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#8a9099; }
+  .cmpos-fld .v{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.98rem; margin-top:3px; color:var(--pc-black); }
+  .codebox{ border:1px solid #e7eaee; border-radius:12px; margin:12px 0 4px; overflow:hidden; }
+  .codebox-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--pc-black); color:#fff; padding:9px 13px; font-size:.82rem; font-weight:600; }
+  .codebox-head .ttl i{ color:var(--pc-yellow); margin-right:7px; }
+  .copy-all{ border:0; background:rgba(255,255,255,.16); color:#fff; font-family:inherit; font-weight:600; font-size:.78rem; border-radius:8px; padding:6px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .copy-all:hover{ background:rgba(255,255,255,.3); }
+  .codegrid{ display:flex; flex-wrap:wrap; gap:8px; padding:13px; background:#fafbfc; max-height:188px; overflow:auto; }
+  .codechip{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.86rem; border:1.4px solid #dde2e7; background:#fff; color:var(--pc-black); border-radius:9px; padding:7px 11px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:.12s; }
+  .codechip:hover{ border-color:var(--pc-green); background:#f3fbf6; }
+  .codechip i{ color:#aab0b8; font-size:.78rem; }
+  .codechip.copied{ border-color:var(--pc-green); background:#eafaf1; color:#1d7a4d; }
+  .codechip.copied i{ color:var(--pc-green); }
+  .cmpos-fld.promo{ background:#fffaf0; border-color:#f3d99a; }
+  .cmpos-fld.promo .k{ color:#9a6700; }
+  .cmpos-fld.promo .k i{ color:#c9870a; }
+  .cmpos-fld.promo .v.copy{ cursor:pointer; display:inline-flex; align-items:center; gap:10px; font-size:1.12rem; }
+  .cmpos-fld.promo .v.copy i{ color:#c9870a; font-size:.8rem; }
+  .cmpos-fld.promo .v.copy:hover{ color:#9a6700; }
+  .cmpos-fld.promo .v.copy.copied{ color:#1d7a4d; }
+  .cmpos-fld.promo .v.copy.copied i{ color:#1d7a4d; }
+  .cmpos-fld .v.copy{ cursor:pointer; display:inline-flex; align-items:center; gap:9px; }
+  .cmpos-fld .v.copy i{ color:#aab0b8; font-size:.76rem; }
+  .cmpos-fld .v.copy:hover{ color:#1a1d20; }
+  .cmpos-fld .v.copy:hover i{ color:#5a616b; }
+  .cmpos-fld .v.copy.copied{ color:#1d7a4d; }
+  .cmpos-fld .v.copy.copied i{ color:#1d7a4d; }
+  .seg.seg-top{ background:#e3e8ee; }
+  .reqid{ font-size:.74rem; font-weight:700; color:#5a616b; background:#eef1f4; border:1px solid #e0e5ea; border-radius:6px; padding:2px 8px; }
+  .tblbox{ border:1px solid #eef1f4; border-radius:12px; margin-top:6px; overflow:hidden; }
+  .tblhead{ display:flex; align-items:center; justify-content:space-between; padding:10px 13px; background:#f6f8fa; cursor:pointer; font-size:.85rem; font-weight:600; color:#5a616b; user-select:none; }
+  .tblhead:hover{ background:#eef1f4; }
+  .tblhead .fa-table-list{ margin-right:7px; color:#9aa1aa; }
+  .tblhead .chev{ color:#9aa1aa; }
+  .tchip{ border:1.5px solid #e0e5ea; background:#fff; color:#5a616b; border-radius:999px; padding:5px 13px; font-family:inherit; font-weight:600; font-size:.8rem; cursor:pointer; }
+  .tchip:hover{ border-color:#b6bcc4; }
+  .tchip.on{ background:#1a1d20; color:#fff; border-color:#1a1d20; }
+  .tchip.add.on{ background:#1d7a4d; border-color:#1d7a4d; }
+  .tchip.rm.on{ background:#c0392b; border-color:#c0392b; }
+  .typefilter{ display:flex; gap:7px; margin:-4px 0 15px; flex-wrap:wrap; align-items:center; }
+  .rtpls{ display:flex; flex-wrap:wrap; gap:7px; }
+  .rtpl{ border:1.5px solid #dde2e7; background:#fff; color:#3a4150; border-radius:9px; padding:7px 11px; font-family:inherit; font-size:.84rem; font-weight:500; cursor:pointer; text-align:left; line-height:1.3; }
+  .rtpl:hover{ border-color:var(--pc-green); background:#f3fbf6; }
+  .rtpl.add{ color:#2e934a; border-style:dashed; border-color:#bcdcc9; font-weight:600; }
+
+  /* work-type category bar */
+  .catbar{ background:#fff; border-bottom:1px solid #e7eaee; padding:13px 26px; }
+  .cats{ display:flex; gap:11px; }
+  .cat{ flex:1; max-width:360px; display:flex; align-items:center; gap:13px; border:1.6px solid #e0e5ea; background:#fafbfc; border-radius:13px; padding:11px 16px; cursor:pointer; font-family:inherit; text-align:left; transition:.13s; }
+  .cat:hover{ background:#f3f5f8; border-color:#c5ccd3; }
+  .cat.on{ background:#fff; border-color:#1a1d20; box-shadow:0 2px 10px rgba(0,0,0,.09); }
+  .cat.member.on{ border-color:var(--pc-green); }
+  .cat.voucher.on{ border-color:#8e44ad; }
+  .cat>i{ font-size:1.32rem; color:#9aa1aa; width:30px; text-align:center; }
+  .cat.on>i{ color:var(--pc-black); }
+  .cat.member.on>i{ color:var(--pc-green); }
+  .cat.voucher.on>i{ color:#8e44ad; }
+  .cat .ct{ display:flex; flex-direction:column; line-height:1.25; }
+  .cat .ct b{ font-size:.96rem; color:var(--pc-black); }
+  .cat .ct span{ font-size:.72rem; color:#8a9099; }
+  .cat .cn{ margin-left:auto; background:#eef1f4; color:#5a616b; font-size:.72rem; font-weight:700; border-radius:999px; padding:3px 10px; }
+  .cat.on .cn{ background:#1a1d20; color:#fff; }
+  .cat.member.on .cn{ background:var(--pc-green); }
+  .cat.voucher.on .cn{ background:#8e44ad; }
+  /* nav section labels + role cards */
+  .navlbl{ font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#9aa1aa; margin:0 0 7px 2px; }
+  .cats + .navlbl{ margin-top:16px; }
+  .catbar .cats.roles{ margin-top:0; }
+  .cat.role-card{ max-width:260px; }
+  .cat.role-card.act{ background:#fff; border-color:var(--pc-yellow); box-shadow:0 2px 10px rgba(46,147,74,.28); }
+  .cat.role-card.act>i{ color:var(--pc-black); }
+  .cat.role-card.act .ct b{ color:var(--pc-black); }
+
+  /* IT — member coupon binding (อ้างอิง Backoffice) */
+  .cpbox{ border:1px solid #e7eaee; border-radius:12px; margin-top:12px; overflow:hidden; }
+  .cphead{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:#f1f7f3; padding:9px 13px; font-size:.82rem; font-weight:700; }
+  .cphead .ttl{ color:#1f5b3d; } .cphead .ttl i{ color:var(--pc-green); margin-right:6px; }
+  .cpadd{ border:1.4px solid #bcdcc9; background:#fff; color:#2e934a; font-family:inherit; font-weight:600; font-size:.76rem; border-radius:8px; padding:5px 11px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .cpadd:hover{ background:#f3fbf6; }
+  .cplist{ padding:5px 13px 10px; }
+  .cprow{ display:flex; align-items:center; gap:12px; padding:7px 0; border-bottom:1px solid #f4f6f8; }
+  .cprow:last-child{ border-bottom:0; }
+  .cpcode{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-black); cursor:pointer; display:inline-flex; align-items:center; gap:7px; min-width:118px; }
+  .cpcode i{ color:#aab0b8; font-size:.74rem; }
+  .cpcode.copied{ color:#1d7a4d; } .cpcode.copied i{ color:#1d7a4d; }
+  .cpname{ flex:1; font-size:.88rem; color:#3a4047; }
+  .cpacts{ display:flex; gap:4px; }
+  .cpacts button{ border:0; background:transparent; color:#8a9099; cursor:pointer; font-size:.82rem; padding:3px 6px; border-radius:6px; }
+  .cpacts button:hover{ color:#1a1d20; background:#eef1f4; }
+  .cpempty{ font-size:.8rem; color:#9aa1aa; padding:7px 2px; }
+  /* ---- custom promo picker ---- */
+  .pp-wrap{ position:relative; }
+  .pp-wrap .inp{ padding-right:36px; }
+  .pp-chevron{ position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#999;pointer-events:none;font-size:.8rem; }
+  .pp-drop{ position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d6dbe0;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,.13);z-index:9999;max-height:300px;overflow-y:auto;display:none; }
+  .pp-drop.open{ display:block; }
+  .pp-opt{ display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f2f4f6;transition:background .1s; }
+  .pp-opt:last-child{ border-bottom:0; }
+  .pp-opt:hover,.pp-opt.pp-active{ background:#f0f7ff; }
+  .pp-opt .pp-code{ font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.88rem;color:#1a1d20;background:#f1f3f5;padding:3px 9px;border-radius:5px;white-space:nowrap; }
+  .pp-opt .pp-name{ font-size:.82rem;color:#555;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .pp-more{ padding:8px 14px;color:#aaa;font-size:.76rem;text-align:center; }
+  .pp-empty{ padding:14px;text-align:center;color:#aaa;font-size:.84rem; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><i class="fas fa-barcode"></i>แจ้งเพิ่มโค้ดโปรโมชั่น / บัตร</h1>
+  </div>
+  <div class="catbar">
+    <div class="navlbl">ประเภทงาน</div>
+    <div class="cats" id="cats"></div>
+    <div class="navlbl">การทำงาน</div>
+    <div class="cats roles" id="roles"></div>
+  </div>
+  <div class="wrap" id="view"></div>
+
+<script>
+/* ===== Custom Promo Picker ===== */
+window.__ppOpts = [];
+var __ppActive = -1;
+function ppShow(inp) {
+  var val = (inp.value || '').toLowerCase();
+  var drop = inp.parentNode.querySelector('.pp-drop');
+  if (!drop) return;
+  var opts = window.__ppOpts.filter(function(o){
+    return !val || o.code.toLowerCase().includes(val) || o.name.toLowerCase().includes(val) || (o.codePro||'').toLowerCase().includes(val);
+  });
+  __ppActive = -1;
+  var MAX = 80;
+  drop.innerHTML = opts.length === 0
+    ? '<div class="pp-empty"><i class="fas fa-magnifying-glass"></i> ไม่พบโค้ดที่ตรงกัน</div>'
+    : opts.slice(0, MAX).map(function(o, i){
+        return '<div class="pp-opt" data-code="'+o.code.replace(/"/g,'&quot;')+'" data-idx="'+i+'" onmousedown="ppSelect(this)">'+'<span class="pp-code">'+o.code+'</span>'+'<span class="pp-name">'+o.name+'</span>'+'</div>';
+      }).join('') + (opts.length > MAX ? '<div class="pp-more">แสดง '+MAX+' จาก '+opts.length+' รายการ — พิมพ์เพื่อกรอง</div>' : '');
+  drop.classList.add('open');
+}
+function ppHide(inp) {
+  setTimeout(function(){
+    var drop = inp.parentNode.querySelector('.pp-drop');
+    if (drop) drop.classList.remove('open');
+  }, 180);
+}
+function ppSelect(el) {
+  var code = el.getAttribute('data-code');
+  var inp = el.closest('.pp-wrap').querySelector('input');
+  if (inp) inp.value = code;
+  var drop = el.closest('.pp-drop');
+  if (drop) drop.classList.remove('open');
+  if (typeof mkBtnCommit === 'function') mkBtnCommit(code);
+}
+function ppKey(inp, e) {
+  var drop = inp.parentNode.querySelector('.pp-drop');
+  if (!drop || !drop.classList.contains('open')) return;
+  var opts = drop.querySelectorAll('.pp-opt');
+  if (!opts.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); __ppActive = Math.min(__ppActive+1, opts.length-1); opts.forEach(function(o,i){ o.classList.toggle('pp-active',i===__ppActive); }); if(opts[__ppActive]) opts[__ppActive].scrollIntoView({block:'nearest'}); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); __ppActive = Math.max(__ppActive-1, 0); opts.forEach(function(o,i){ o.classList.toggle('pp-active',i===__ppActive); }); if(opts[__ppActive]) opts[__ppActive].scrollIntoView({block:'nearest'}); }
+  else if (e.key === 'Enter' && __ppActive >= 0) { e.preventDefault(); ppSelect(opts[__ppActive]); }
+  else if (e.key === 'Escape') { drop.classList.remove('open'); }
+}
+</script>
+
+<script src="data/member-types.js?v=p2-20260731e"></script>
+<script src="data/promo-codes.js?v=p2-20260731e"></script>
+<script src="data/staff-discount-types.js?v=p2-20260731e"></script>
+<script src="js/code-counter.js?v=p2-20260731e"></script>
+<script src="js/card-link.js?v=p2-20260731e"></script>
+<script src="js/code-mgmt.js?v=p2-20260803c"></script>
+<script>
+  /* พาเนล "ผูกบัตร/สิทธิ์ — รอ IT ผูกโค้ด": ย้ายไปอยู่ในแท็บโค้ดบัตรสมาชิก > แจ้งเพิ่มโค้ด (mount ใน renderMKT ของ code-mgmt.js) */
+</script>
+</body>
+</html>

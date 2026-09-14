@@ -1,0 +1,1288 @@
+<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+    <div>
+      <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
+        <i class="fas fa-file-invoice text-success me-2"></i>Item Set <span style="color:#2e934a;">Proposal</span>
+      </h2>
+      <p class="mb-0" style="font-size: 0.95rem; margin-top: 7px; color:#8a9099;">สร้างและจัดการโปรโมชัน Item Set สำหรับระบบ POS</p>
+    </div>
+    <div class="d-flex align-items-stretch gap-3 flex-wrap justify-content-end">
+      <div style="min-width:190px;background:rgba(255,255,255,.92);border:1.5px solid #d6dbe0;border-radius:10px;padding:9px 13px;">
+        <div class="fw-bold text-uppercase" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-calendar-check me-1"></i>วันที่ทำรายการ</div>
+        <div id="txnDateDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <div class="fw-bold text-uppercase mt-2" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-user-pen me-1"></i>ชื่อผู้ส่งงาน</div>
+        <div id="submitterDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <small class="text-muted d-block mt-1" style="font-size:9px;"><i class="fas fa-lock me-1"></i>บันทึกอัตโนมัติ (แก้ไขไม่ได้)</small>
+        <input type="hidden" id="txnDate"><input type="hidden" id="submittedBy">
+      </div>
+      <div style="min-width: 240px;">
+        <label class="fw-bold text-uppercase d-block mb-1" style="font-size: 12px; color: #6b7280; letter-spacing: 1px;">TARGET MONTH <span class="text-danger">*</span></label>
+        <input type="month" id="globalMonth" class="form-control fw-bold text-dark shadow-none" style="font-size: 1.05rem; border:1.5px solid #d6dbe0; border-radius:9px;" min="2026-06">
+        <small class="text-muted d-block mt-1" style="font-size:10px;"><i class="fas fa-lock me-1"></i>เลือกย้อนหลังไม่ได้</small>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* SPA: หน้าถูกแทรกหลัง DOMContentLoaded ยิงไปแล้ว → callback ไม่รัน (วันที่ทำรายการ/ชื่อผู้ส่งงานเป็น "—")
+       จึงรันทันทีถ้า DOM พร้อมอยู่แล้ว */
+    (function (fn) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else setTimeout(fn, 0); })(function() {
+      const monthInput = document.getElementById('globalMonth');
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const currentMonth = `${year}-${month}`;
+      monthInput.setAttribute('min', currentMonth);
+      monthInput.addEventListener('input', function() {
+        if (this.value && this.value < currentMonth) {
+          this.value = currentMonth;
+          Swal.fire({ icon: 'warning', title: 'ไม่สามารถเลือกเดือนย้อนหลังได้', confirmButtonColor: '#000' });
+        }
+      });
+      // stamp วันที่ทำรายการ + ชื่อผู้ส่งงาน (audit · อัตโนมัติ · แก้ไขไม่ได้)
+      try {
+        var _u = (localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || '').trim() || 'ไม่ระบุผู้ใช้';
+        var _txt = now.toLocaleString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        var d1=document.getElementById('txnDateDisplay'); if(d1) d1.textContent=_txt;
+        var d2=document.getElementById('submitterDisplay'); if(d2) d2.textContent=_u;
+        var h1=document.getElementById('txnDate'); if(h1) h1.value=now.toISOString();
+        var h2=document.getElementById('submittedBy'); if(h2) h2.value=_u;
+      } catch(e) {}
+    });
+  </script>
+
+  <div id="loadingStatus" class="text-center p-5">
+    <div class="spinner-border text-warning" role="status"></div>
+    <p class="mt-2 fw-bold" id="statusMessage">LOADING MASTER DATA...</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div id="pcCustomerGroup"></div>
+    <div id="campaignList"></div>
+    
+    <div class="mb-4">
+      <button class="btn btn-dark w-100 fw-bold py-3 text-white shadow-sm" onclick="window.addCampaign()">
+        <i class="fas fa-plus-circle me-2"></i> ADD NEW CAMPAIGN
+      </button>
+    </div>
+
+    <div class="text-center mb-5">
+      <button class="btn btn-warning shadow px-5 py-3 fw-bold border border-dark text-dark" onclick="window.submitAllData()" id="mainSubmitBtn" style="min-width: 450px; font-size: 1.3rem;">
+        SEND TO IT DEPARTMENT <i class="fas fa-paper-plane ms-2"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="branchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-dark" style="border-radius: 15px; border: 2px solid #000;">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-store me-2 text-warning"></i> SELECT STORES</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        
+        <div class="row g-3 mb-4 bg-light p-3 rounded border">
+            <div class="col-md-4">
+                <label class="small fw-bold text-success text-uppercase">Selection Type</label>
+                <select class="form-select border-dark shadow-none fw-bold" id="mainBranchMode" onchange="window.handleBranchModeChange()">
+                    <option value="MASTER">Shop Master (Show All)</option>
+                    <option value="HIERARCHY">Hierarchy Item (Filter by Group/Class)</option>
+                </select>
+            </div>
+            <div class="col-md-4 h-options" style="display:none;" id="hItemTypeContainer">
+                <label class="small fw-bold text-success text-uppercase">Hierarchy Item</label>
+                <select class="form-select border-dark shadow-none" id="hItemType" onchange="window.handleHItemChange()">
+                    <option value="">-- Select Group --</option>
+                    <option value="type">Store Type</option>
+                    <option value="group">Shop Group</option>
+                    <option value="class">Shop Class</option>
+                </select>
+            </div>
+            <div class="col-md-4 h-options" style="display:none;" id="hItemContentContainer">
+                <label class="small fw-bold text-success text-uppercase">Content</label>
+                <select class="form-select border-dark shadow-none" id="hItemContent" onchange="window.renderBranchTable()">
+                    <option value="ALL">-- All Stores --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex gap-2 w-50">
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-dark"><i class="fas fa-search"></i></span>
+                  <input type="text" id="branchSearch" class="form-control border-dark border-start-0" placeholder="Search Code or Name..." oninput="window.renderBranchTable()">
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-dark p-2" id="selectedCountDisplay" style="font-size: 14px;">Selected: 0</span>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid #000; border-radius: 5px;">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="sticky-top bg-dark text-white">
+                    <tr class="text-center">
+                        <th width="50"><input type="checkbox" id="selectAllVisible" onclick="window.toggleAllVisible(this.checked)"></th>
+                        <th>รหัสสาขา (Branch Code)</th>
+                        <th>ชื่อสาขา (Branch Name) EN</th>
+                        <th>ชื่อสาขา (Branch Name) TH</th>
+                    </tr>
+                </thead>
+                <tbody id="branchTableBody">
+                    </tbody>
+            </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-danger fw-bold" onclick="window.clearSelection()">CLEAR ALL</button>
+        <button type="button" class="btn btn-dark fw-bold px-5" onclick="window.confirmBranchSelection()">APPLY SELECTION</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+  window.masterData = [];
+  window.masterBranches = [];
+  window.categories = [];
+  window.catCodeMap = {};
+  window.campaignCount = 0;
+  window.activeCampId = null;
+  window.branchModalObj = null;
+  window.campaignSearchTimer = null;
+
+  /* ---- Subset helpers (shared key: pc_subset_price) ---- */
+  window.smpEsc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); };
+  window.PC_subsetList = function(){ return (window.PC_SUBSET_MASTER||[]).filter(function(s){ if(String(s.status||'Active').toLowerCase()==='inactive') return false; return window.pcSubsetShownInForm(s.ssCode, s); }); };
+  /* subset \u0e19\u0e35\u0e49\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e2b\u0e49\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e43\u0e19\u0e1f\u0e2d\u0e23\u0e4c\u0e21 Item Set \u0e44\u0e2b\u0e21? (\u0e04\u0e38\u0e21\u0e08\u0e32\u0e01\u0e2b\u0e19\u0e49\u0e32 Form Display \u2014 pc_subset_forms, form key = itemset) */
+  window.pcSubsetShownInForm = function(ss, s){ try{ var m=JSON.parse(localStorage.getItem('pc_subset_forms')||'{}')||{}; var o=m[ss]; if(o){ if(o.proposal!==undefined) return !!o.proposal; if(o.itemset!==undefined) return !!o.itemset; } }catch(e){} try{ var meta=JSON.parse(localStorage.getItem('pc_subset_meta')||'{}'); var mo=meta[ss]; if(mo&&(mo.show===0||mo.show===1)) return mo.show===1; }catch(e){} var n=String((s&&(s.name||s.short))||ss).toLowerCase(); if(/flavor/.test(n)) return false; return /drink|เครื่องดื่ม|soda|pepsi|sauce|topping/.test(n); };
+  /* ดึงสมาชิกของกลุ่ม "Drink ..." จากคลังสินค้า (Beverages) อัตโนมัติ — จับคู่จากชื่อ subset · เอาเฉพาะ SG (ไม่เอา combo/CB) */
+  window.pcDrinkMembers = function(name){
+    var MD = window.PC_ITEM_MASTER || window.masterData || [];
+    var nm0 = String(name||'');
+    if(!/^\s*drinks?\b/i.test(nm0)) return [];
+    var pool = MD.filter(function(i){
+      if(String(i.category||'')!=='Beverages') return false;
+      /* อ่านทุกสถานะ (Active+Inactive) — เครื่องมือสร้างปุ่มอาจเอาของเก่ากลับมาขาย · POS ค่อยกรอง Active */
+      var en=String(i.itemNameEN||''), th=String(i.itemNameTH||'');
+      if(!/\bsg\b/i.test(th)) return false;                 // เอาเฉพาะ SG (combo/CB ไม่มี SG → ถูกตัดออก)
+      if(/^\s*ว่าง\s*$|xxxx/i.test(en) || /^\s*ว่าง\s*$|xxxx/i.test(th)) return false;
+      return true;
+    });
+    var rest = nm0.replace(/^\s*drinks?\s*/i,'').trim();
+    var sizeM = rest.match(/(\d+)\s*oz/i); var size = sizeM?sizeM[1]:null;
+    var base = rest.replace(/(\d+)\s*oz/ig,'').replace(/\ball\b/ig,' ').trim();
+    var parts = base.split(/&|\+|,|\//).map(function(s){return s.trim();}).filter(Boolean);
+    function sizeOK(en){ return !size || new RegExp('\\b'+size+'\\s*oz','i').test(en); }
+    function partOK(en){
+      if(!parts.length) return true;
+      var lnm=en.toLowerCase();
+      return parts.some(function(pt){ var lp=pt.toLowerCase();
+        if(lp==='pepsi') return /\bpepsi\b/.test(lnm) && !/pepsi\s*max/.test(lnm);
+        return lnm.indexOf(lp)>=0; });
+    }
+    var picked = pool.filter(function(p){ var en=String(p.itemNameEN||''); return sizeOK(en)&&partOK(en); });
+    var byName={}, out=[];
+    picked.forEach(function(p){
+      var en=String(p.itemNameEN||p.itemNameTH||''); var pr=Number(p.priceTA)||Number(p.priceDLV)||0;
+      var stt=String(p.status||'Active'); var act=stt.toLowerCase()!=='inactive';
+      var k=en.toLowerCase();
+      if(byName[k]!=null){ var cur=out[byName[k]]; var curAct=String(cur.status||'Active').toLowerCase()!=='inactive';
+        /* เลือกตัวแทน: Active มาก่อน · ถ้าสถานะเท่ากันเลือกตัวที่มีราคา */
+        if((act&&!curAct) || (act===curAct && pr>0 && !(cur.price>0))) out[byName[k]]={code:p.itemCode,name:en,price:pr,status:stt};
+        return; }
+      byName[k]=out.length; out.push({code:p.itemCode,name:en,price:pr,status:stt});
+    });
+    return out;
+  };
+  /* pcSubsetMembers(ss[, {activeOnly:true}])
+     — default: คืนสมาชิกทุกสถานะ (Item Set Builder / สร้างปุ่ม = อ่านทุกสถานะ)
+     — activeOnly:true: กรองเฉพาะ Active (มุมมอง POS/สาขา — ขึ้นจริง)
+     — ทุกสมาชิกมี field .status ติดมาด้วย (lookup จาก item master) */
+  window.pcSubsetMembers = function(ss, opts){
+    var rec=(window.PC_SUBSET_FLAVORS||{})[ss]||{};
+    var byCode={}; (window.PC_ITEM_MASTER||window.masterData||[]).forEach(function(it){ byCode[String(it.itemCode)]=it; });
+    function stOf(code){ var it=byCode[String(code)]; return it?String(it.status||'Active'):'Active'; }
+    var out=(rec.flavors||[]).map(function(f){ return {code:f.code||'', name:f.flavor||f.name||'', status:stOf(f.code)}; });
+    try{ var SI=JSON.parse(localStorage.getItem('pc_subset_items')||'{}')||{}; var codes=SI[ss]||[]; var seen={}; out.forEach(function(x){ seen[String(x.code)]=1; }); codes.forEach(function(c){ if(seen[String(c)]) return; var it=byCode[String(c)]; out.push({code:c, name:it?(it.itemNameEN||it.itemNameTH||''):'', status:it?String(it.status||'Active'):'Active'}); }); }catch(e){}
+    if(!out.length){ var sm=(window.PC_SUBSET_MASTER||[]).find(function(x){return x.ssCode===ss;})||{}; out = (window.pcDrinkMembers(rec.name||sm.name||'')||[]).map(function(m){ return {code:m.code, name:m.name, price:m.price, status:m.status||'Active'}; }); }
+    if(opts && opts.activeOnly){ out=out.filter(function(m){ return String(m.status||'Active').toLowerCase()!=='inactive'; }); }
+    return out;
+  };
+  /* ตัวช่วยสำหรับมุมมอง POS/สาขา — เอาเฉพาะสมาชิก Active */
+  window.pcSubsetMembersActive = function(ss){ return window.pcSubsetMembers(ss, {activeOnly:true}); };
+  window.pcSubsetDD = function(rowId, btnId){
+    var row=document.getElementById(rowId); if(!row) return;
+    var inp=row.querySelector('.row-search-input'); if(!inp) return;
+    var td=inp.closest('td'); if(!td) return;
+    td.style.position='relative'; inp.removeAttribute('list');
+    if(!document.getElementById('sub-dd-css')){ var st=document.createElement('style'); st.id='sub-dd-css'; st.textContent=
+      '.sub-dd{display:none;position:absolute;left:0;top:100%;z-index:1200;min-width:300px;max-width:340px;max-height:280px;overflow-y:auto;overflow-x:visible;background:#fff;border:1px solid #d9dee3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);margin-top:3px}'+
+      '.sub-dd-row{position:relative;display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid #f1f4f7;font-size:.82rem}'+
+      '.sub-dd-row:last-child{border-bottom:none}.sub-dd-row:hover{background:#eef9f1}'+
+      '.sub-dd-row .ss{font-family:monospace;font-weight:700;color:#2c4a82;background:#eef1f4;border-radius:5px;padding:1px 6px;font-size:.74rem}'+
+      '.sub-dd-row .nm{font-weight:600;color:#1a1d20;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+      '.sub-dd-row .ct{color:#8a9099;font-size:.72rem;white-space:nowrap}'+
+      '.sub-dd-fly{display:none;position:absolute;left:100%;top:-1px;margin-left:5px;min-width:210px;max-width:260px;max-height:300px;overflow-y:auto;background:#fff;border:1px solid #d9dee3;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px 0;z-index:1300}'+
+      '.sub-dd-row:hover .sub-dd-fly{display:block}'+
+      '.sub-dd-fly .hd{font-weight:700;font-size:.74rem;color:#2e934a;padding:3px 12px 6px;border-bottom:1px solid #eef1f4;margin-bottom:4px}'+
+      '.sub-dd-m{padding:3px 12px;font-size:.78rem;color:#333;white-space:nowrap}.sub-dd-m .c{font-family:monospace;color:#2c4a82;font-size:.72rem;margin-right:5px}'+
+      '.sub-dd-empty{padding:12px;color:#9aa1aa;font-size:.82rem;text-align:center}';
+      document.head.appendChild(st); }
+    var dd=td.querySelector('.sub-dd'); if(!dd){ dd=document.createElement('div'); dd.className='sub-dd'; td.appendChild(dd); }
+    function render(){
+      var q=(inp.value||'').toLowerCase().trim();
+      var subs=window.PC_subsetList().filter(function(s){ return !q || (String(s.ssCode)+' '+String(s.name||'')).toLowerCase().indexOf(q)>=0; });
+      dd.innerHTML = subs.length ? subs.map(function(s){
+        var mem=window.pcSubsetMembers(s.ssCode); var price=window.PC_subsetPrice(s.ssCode);
+        var memAct=mem.filter(function(m){return String(m.status||'Active').toLowerCase()!=='inactive';}).length;
+        var fly = mem.length ? mem.map(function(m){var inact=String(m.status||'Active').toLowerCase()==='inactive';return '<div class="sub-dd-m"'+(inact?' style="opacity:.5"':'')+'><span class="c">'+window.smpEsc(m.code||'')+'</span>'+window.smpEsc(m.name||'')+(inact?' <span style="color:#c0392b;font-size:.66rem">· Inactive</span>':'')+'</div>';}).join('') : '<div class="sub-dd-m" style="color:#9aa1aa">— ยังไม่มีสมาชิก —</div>';
+        var nmEsc=String(s.name||'').replace(/'/g,"\\'");
+        var ctTxt=mem.length+' รายการ'+(mem.length!==memAct?(' · ขาย '+memAct):'')+(price?(' · ฿'+price):'');
+        return '<div class="sub-dd-row" onmousedown="event.preventDefault();window.pcSubsetPick(\''+rowId+'\',\''+btnId+'\',\''+window.smpEsc(s.ssCode)+'\',\''+nmEsc+'\');"><span class="ss">'+window.smpEsc(s.ssCode)+'</span><span class="nm">'+window.smpEsc(s.name||'')+'</span><span class="ct">'+ctTxt+'</span><div class="sub-dd-fly"><div class="hd">'+window.smpEsc(s.ssCode)+' · '+window.smpEsc(s.name||'')+' ('+mem.length+(mem.length!==memAct?(' · ขาย '+memAct):'')+')</div>'+fly+'</div></div>';
+      }).join('') : '<div class="sub-dd-empty">ไม่พบกลุ่มสินค้า</div>';
+    }
+    if(!inp._subdd){ inp._subdd=true;
+      inp.addEventListener('focus', function(){ render(); dd.style.display='block'; });
+      inp.addEventListener('input', function(){ render(); dd.style.display='block'; });
+      inp.addEventListener('blur', function(){ setTimeout(function(){ dd.style.display='none'; }, 220); });
+    }
+    render();
+  };
+  window.pcSubsetPick = function(rowId, btnId, ss, name){
+    var row=document.getElementById(rowId); if(!row) return;
+    var inp=row.querySelector('.row-search-input'); if(inp){ inp.value=name||ss; window.handleFill(rowId, inp.value, btnId); }
+    var dd=row.querySelector('.sub-dd'); if(dd) dd.style.display='none';
+    if(window.Swal && Swal.isVisible && Swal.isVisible()) Swal.close();
+  };
+  window.pcSubsetPeek = function(ss){
+    var rec=(window.PC_SUBSET_FLAVORS||{})[ss]||{};
+    var sm=(window.PC_SUBSET_MASTER||[]).find(function(x){return x.ssCode===ss;})||{};
+    var fl=window.pcSubsetMembers(ss); var nm=rec.name||sm.name||ss;
+    var flAct=fl.filter(function(m){return String(m.status||'Active').toLowerCase()!=='inactive';}).length;
+    var rows = fl.length ? fl.map(function(f,i){ var inact=String(f.status||'Active').toLowerCase()==='inactive'; return '<tr'+(inact?' style="opacity:.55"':'')+'><td style="padding:5px 8px;color:#8a9099">'+(i+1)+'</td><td style="padding:5px 8px;font-family:monospace;color:#2c4a82">'+(f.code||'-')+'</td><td style="padding:5px 8px;text-align:left">'+(f.name||'')+'</td><td style="padding:5px 8px;text-align:center">'+(inact?'<span style="color:#c0392b;font-size:.72rem;font-weight:700">Inactive</span>':'<span style="color:#2e934a;font-size:.72rem;font-weight:700">Active</span>')+'</td></tr>'; }).join('') : '<tr><td colspan="4" style="padding:14px;color:#9aa1aa">— ยังไม่ได้ผูกสินค้าในชุดนี้ (ผูกได้ที่ Products → ผูกสินค้า) —</td></tr>';
+    var html='<div style="text-align:left"><div style="font-size:.82rem;color:#6c757d;margin-bottom:8px"><i class="fas fa-circle-info me-1"></i>รายการที่เลือกได้ในชุดนี้ (ดูอย่างเดียว) · <b style="color:#2e934a">ขึ้น POS เฉพาะ Active</b> · Inactive = ของเก่าที่ดึงกลับมาได้</div><div style="max-height:340px;overflow:auto;border:1px solid #e7eaee;border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:.84rem"><thead style="background:#1a1d20;color:#fff;position:sticky;top:0"><tr><th style="padding:6px 8px;text-align:left;width:34px">#</th><th style="padding:6px 8px;text-align:left;width:90px">Code</th><th style="padding:6px 8px;text-align:left">รสชาติ / รายการ</th><th style="padding:6px 8px;text-align:center;width:78px">สถานะ</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    if(window.Swal) Swal.fire({ title:'<span style="font-size:1rem"><i class="fas fa-mortar-pestle me-1" style="color:#2e934a"></i> '+ss+' · '+nm+' ('+fl.length+' · ขาย '+flAct+')</span>', html:html, width:600, confirmButtonText:'ปิด', confirmButtonColor:'#1a1d20' });
+  };
+  /* เปิดหน้าต่างเลือกกลุ่มสินค้า (Subset) — ดูสมาชิกในชุดก่อนเลือก */
+  window.pcSubsetBrowse = function(rowId, btnId){
+    var subs = window.PC_subsetList();
+    function rowsHTML(q){
+      q=(q||'').toLowerCase().trim();
+      var list = subs.filter(function(s){ return !q || (String(s.ssCode)+' '+String(s.name||'')).toLowerCase().indexOf(q)>=0; });
+      if(!list.length) return '<div style="padding:22px;color:#9aa1aa;text-align:center">ไม่พบกลุ่มสินค้า</div>';
+      return list.map(function(s){
+        var mem=window.pcSubsetMembers(s.ssCode); var price=window.PC_subsetPrice(s.ssCode);
+        var ml = mem.length ? mem.slice(0,10).map(function(m){return window.smpEsc(m.name||m.code);}).join(' · ')+(mem.length>10?(' … +'+(mem.length-10)):'') : '— ยังไม่มีสมาชิก —';
+        var nmEsc=String(s.name||'').replace(/'/g,"\\'");
+        return '<div class="ssb-row" onmousedown="event.preventDefault();window.pcSubsetPick(\''+rowId+'\',\''+btnId+'\',\''+window.smpEsc(s.ssCode)+'\',\''+nmEsc+'\');">'
+          +'<div class="ssb-h"><span class="ssb-c">'+window.smpEsc(s.ssCode)+'</span><span class="ssb-n">'+window.smpEsc(s.name||'')+'</span><span class="ssb-m">'+mem.length+' รายการ'+(price?(' · ฿'+price):'')+'</span></div>'
+          +'<div class="ssb-l">'+ml+'</div></div>';
+      }).join('');
+    }
+    if(!document.getElementById('ssb-css')){ var st=document.createElement('style'); st.id='ssb-css'; st.textContent=
+      '.ssb-row{text-align:left;padding:9px 12px;border:1px solid #e7eaee;border-radius:9px;margin-bottom:7px;cursor:pointer;transition:.12s}'+
+      '.ssb-row:hover{background:#eef9f1;border-color:#9cd9b1}'+
+      '.ssb-h{display:flex;align-items:center;gap:8px}'+
+      '.ssb-c{font-family:monospace;font-weight:700;color:#2c4a82;background:#eef1f4;border-radius:5px;padding:1px 7px;font-size:.76rem}'+
+      '.ssb-n{font-weight:700;color:#1a1d20;flex:1}'+
+      '.ssb-m{color:#2e934a;font-weight:700;font-size:.78rem;white-space:nowrap}'+
+      '.ssb-l{color:#6c757d;font-size:.78rem;margin-top:4px;line-height:1.4}';
+      document.head.appendChild(st); }
+    if(!window.Swal) return;
+    Swal.fire({
+      title:'<span style="font-size:1rem"><i class="fas fa-layer-group me-1" style="color:#2e934a"></i> เลือกกลุ่มสินค้า (Subset)</span>',
+      html:'<input id="ssb-q" class="form-control mb-2" placeholder="ค้นหากลุ่มสินค้า…" style="font-size:.86rem"><div id="ssb-list" style="max-height:420px;overflow:auto;text-align:left">'+rowsHTML('')+'</div>',
+      width:640, showConfirmButton:true, confirmButtonText:'ปิด', confirmButtonColor:'#1a1d20',
+      didOpen:function(){ var q=document.getElementById('ssb-q'); var lst=document.getElementById('ssb-list'); if(q){ q.focus(); q.addEventListener('input',function(){ lst.innerHTML=rowsHTML(q.value); }); } }
+    });
+  };
+  window.PC_subsetPrice = function(ss){
+    try{ var m=JSON.parse(localStorage.getItem('pc_subset_price')||'{}'); var v=m[ss]; if(v!=null&&v!=='') return Number(v)||0; }catch(e){}
+    var s=(window.PC_SUBSET_MASTER||[]).find(function(x){return x.ssCode===ss;});
+    if(s&&s.price!=null&&s.price!=='') return Number(s.price)||0;
+    /* ไม่มีราคากำหนด → ดึงจากราคาสมาชิกในกลุ่ม (ราคาที่พบบ่อยสุด · เสมอกันเลือกสูงสุด) */
+    var mem=window.pcSubsetMembers(ss)||[];
+    var prices=mem.map(function(x){return Number(x.price)||0;}).filter(function(p){return p>0;});
+    if(prices.length){ var cnt={}; prices.forEach(function(p){cnt[p]=(cnt[p]||0)+1;}); var best=0,bc=-1; Object.keys(cnt).forEach(function(k){var n=cnt[k],val=Number(k); if(n>bc||(n===bc&&val>best)){bc=n;best=val;}}); return best; }
+    return 0;
+  };
+
+  (function init() {
+    const modalEl = document.getElementById('branchModal');
+    if (modalEl) {
+        window.branchModalObj = new bootstrap.Modal(modalEl);
+    }
+
+    if (typeof google !== 'undefined') {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
+            window.__pcRawMaster = response.items || [];
+            window.masterBranches = response.branches || [];
+            window.categories = (function(){ var cc={}; window.masterData.forEach(function(it){ if(it.category && it.cateCode && !(it.category in cc)) cc[it.category]=it.cateCode; }); return [...new Set(window.masterData.map(i => i.category))].filter(Boolean).sort(function(a,b){ var na=parseInt(cc[a],10),nb=parseInt(cc[b],10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; if(isNaN(na)&&!isNaN(nb))return 1; if(!isNaN(na)&&isNaN(nb))return -1; return String(a).localeCompare(String(b)); }); })();
+            window.catCodeMap = {}; window.masterData.forEach(it => { if (it.category && it.cateCode) window.catCodeMap[it.category] = it.cateCode; });
+            document.getElementById('loadingStatus').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            window.addCampaign(); 
+          })
+          .getMasterDataExtended();
+    } else {
+        window.masterBranches = [
+            {id: 'PC1001', name: 'Central World', nameTH: 'เซ็นทรัล เวิลด์', type: 'COCO', group: 'BKK', class: 'Central'},
+            {id: 'PC1002', name: 'Mega Bangna', nameTH: 'เมกา บางนา', type: 'COCO', group: 'GBKK', class: 'Indy'},
+            {id: 'PC8001', name: 'Franchise A', nameTH: 'แฟรนไชส์ เอ', type: 'FRAN', group: 'UPC', class: 'Standard'}
+        ];
+        if(document.getElementById('loadingStatus')) document.getElementById('loadingStatus').style.display = 'none';
+        if(document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'block';
+        window.addCampaign();
+    }
+  })();
+
+  window.campCatPick = function(campId, val) {
+    const card = document.getElementById(campId);
+    if (!card) return;
+    const codeEl = card.querySelector('.camp-catecode');
+    if (codeEl) codeEl.value = window.catCodeMap[val] || '';
+  };
+
+  window.checkDuplicateCampaign = function(inputEl) {
+    const currentName = inputEl.value.trim();
+    if (!currentName) return;
+
+    const allNameInputs = document.querySelectorAll('.camp-name');
+    let duplicateOnScreen = false;
+    allNameInputs.forEach(input => {
+        if (input !== inputEl && input.value.trim() === currentName) {
+            duplicateOnScreen = true;
+        }
+    });
+
+    if (duplicateOnScreen) {
+        Swal.fire({
+            icon: 'error',
+            title: 'ชื่อแคมเปญซ้ำบนหน้าจอ',
+            text: `ชื่อ "${currentName}" ถูกใช้งานในใบอื่นแล้ว กรุณาใช้ชื่อที่แตกต่างกัน`,
+            confirmButtonColor: '#000'
+        });
+        inputEl.value = ''; 
+        return;
+    }
+
+    if (window.campaignSearchTimer) clearTimeout(window.campaignSearchTimer);
+
+    window.campaignSearchTimer = setTimeout(function() {
+        if (typeof google !== 'undefined') {
+            google.script.run
+                .withSuccessHandler(function(isDuplicate) {
+                    if (isDuplicate) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'พบข้อมูลซ้ำในระบบ',
+                            text: `พบชื่อแคมเปญ "${currentName}" มีอยู่แล้วในระบบ`,
+                            confirmButtonColor: '#000'
+                        });
+                        inputEl.value = '';
+                    }
+                })
+                .checkCampaignDuplicateInSheet(currentName);
+        }
+    }, 500); 
+  };
+
+  window.checkDuplicateShortName = function(inputEl) {
+    const currentShortName = inputEl.value.trim();
+    if (!currentShortName) return;
+
+    const allShortNameInputs = document.querySelectorAll('.btn-sn');
+    let duplicateOnScreen = false;
+    allShortNameInputs.forEach(input => {
+        if (input !== inputEl && input.value.trim().toLowerCase() === currentShortName.toLowerCase()) {
+            duplicateOnScreen = true;
+        }
+    });
+
+    if (duplicateOnScreen) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Short Name ซ้ำบนหน้าจอ',
+            text: `ชื่อย่อ "${currentShortName}" ถูกใช้งานในปุ่มอื่นแล้ว กรุณาตั้งชื่อใหม่ไม่ให้ซ้ำกัน`,
+            confirmButtonColor: '#000'
+        });
+        inputEl.value = '';
+        return;
+    }
+
+    if (typeof google !== 'undefined') {
+        google.script.run
+            .withSuccessHandler(function(isDuplicate) {
+                if (isDuplicate) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Short Name นี้ถูกใช้ไปแล้ว',
+                        text: `ชื่อย่อ "${currentShortName}"กรุณาใช้ชื่ออื่น`,
+                        confirmButtonColor: '#000'
+                    });
+                    inputEl.value = '';
+                }
+            })
+            .checkShortNameDuplicateInSheet(currentShortName);
+    }
+  };
+
+  window.openBranchModal = function(campId) {
+    window.activeCampId = campId;
+    var hidden = document.getElementById('hidden-store-' + campId);
+    var initial = (hidden && hidden.value) ? hidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+    StoreSelect.pick({
+      getBranches: function(){ return window.masterBranches || []; },
+      initialIds: initial,
+      onApply: function(ids, tokenStr, summary){
+        var container = document.getElementById('tag-container-' + campId);
+        if (container) container.querySelectorAll('.branch-tag').forEach(function(t){ t.remove(); });
+        var isTok = tokenStr==='ALL' || /(^|,\s*)[GCT]:/i.test(tokenStr||'');
+        if (isTok) window.createBranchTag(campId, summary || tokenStr, false, tokenStr);
+        else if (ids.length > 10) window.createBranchTag(campId, 'SELECTED ' + ids.length + ' STORES', false, ids.join(', '));
+        else ids.forEach(function(v){ window.createBranchTag(campId, v, false); });
+      }
+    });
+  };
+  window._legacyOpenBranchModal = function(campId) {
+    window.activeCampId = campId;
+    document.getElementById('branchSearch').value = '';
+    document.getElementById('mainBranchMode').value = 'MASTER';
+    window.handleBranchModeChange();
+    if (window.branchModalObj) window.branchModalObj.show();
+  };
+
+  window.handleBranchModeChange = function() {
+    const mode = document.getElementById('mainBranchMode').value;
+    const hOptions = document.querySelectorAll('.h-options');
+    hOptions.forEach(el => el.style.display = (mode === 'HIERARCHY' ? 'block' : 'none'));
+    document.getElementById('hItemType').value = '';
+    document.getElementById('hItemContent').innerHTML = '<option value="ALL">-- All Stores --</option>';
+    window.renderBranchTable();
+  };
+
+  window.handleHItemChange = function() {
+    const type = document.getElementById('hItemType').value;
+    const contentDrop = document.getElementById('hItemContent');
+    contentDrop.innerHTML = '<option value="ALL">-- All Stores --</option>';
+    if (type) {
+        const uniqueVals = [...new Set(window.masterBranches.map(b => b[type]))].filter(Boolean).sort();
+        uniqueVals.forEach(val => {
+            contentDrop.innerHTML += `<option value="${val}">${val}</option>`;
+        });
+    }
+    window.renderBranchTable();
+  };
+
+  window.renderBranchTable = function() {
+    const search = (document.getElementById('branchSearch').value || "").toLowerCase();
+    const mode = document.getElementById('mainBranchMode').value;
+    const hType = document.getElementById('hItemType').value;
+    const hContent = document.getElementById('hItemContent').value;
+    
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    if (!container) return;
+    const currentTags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+
+    const filtered = window.masterBranches.filter(b => {
+        const bId = String(b.id || "").toLowerCase();
+        const bName = String(b.name || "").toLowerCase();
+        const bNameTH = String(b.nameTH || "").toLowerCase();
+        const matchSearch = bId.includes(search) || bName.includes(search) || bNameTH.includes(search);
+        let matchHierarchy = true;
+        if (mode === 'HIERARCHY' && hType && hContent !== 'ALL') {
+            matchHierarchy = (String(b[hType] || "") === hContent);
+        }
+        return matchSearch && matchHierarchy;
+    });
+
+    const body = document.getElementById('branchTableBody');
+    body.innerHTML = filtered.map(b => {
+        const isChecked = currentTags.includes(b.id) ? 'checked' : '';
+        return `
+        <tr class="text-center align-middle">
+            <td><input type="checkbox" class="branch-item-check" value="${b.id}" ${isChecked} onchange="window.updateSelectedCounter()"></td>
+            <td class="fw-bold text-primary">${b.id}</td>
+            <td class="text-start ps-3">${b.name}</td>
+            <td class="text-start ps-3">${b.nameTH || ''}</td>
+        </tr>`;
+    }).join('');
+    window.updateSelectedCounter();
+    document.getElementById('selectAllVisible').checked = false;
+  };
+
+  window.confirmBranchSelection = function() {
+    const selected = Array.from(document.querySelectorAll('.branch-item-check:checked')).map(ck => ck.value);
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    if(!container) return;
+    
+    container.querySelectorAll('.branch-tag').forEach(t => t.remove());
+    
+    if (selected.length > 10) {
+        window.createBranchTag(window.activeCampId, `SELECTED ${selected.length} STORES`, false, selected.join(', '));
+    } else {
+        selected.forEach(val => window.createBranchTag(window.activeCampId, val, false));
+    }
+    
+    if(window.branchModalObj) window.branchModalObj.hide();
+  };
+
+  window.submitAllData = function() {
+    if(window.PC_CustomerGroup){ const _cg=PC_CustomerGroup.validate(); if(!_cg.ok){ return Swal.fire('เลือกกลุ่มลูกค้า', _cg.msg, 'warning'); } }
+    const monthEl = document.getElementById('globalMonth');
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    const _txnDate = (document.getElementById('txnDate') || {}).value || now.toISOString();
+    const _submittedBy = (document.getElementById('submittedBy') || {}).value || (function(){ try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch(e){ return ''; } })();
+    
+    if (!monthEl.value) { 
+        Swal.fire({ icon: 'warning', title: 'กรุณาระบุ Target Month', confirmButtonColor: '#000' }); 
+        monthEl.focus();
+        return; 
+    }
+    if (monthEl.value < currentMonth) {
+        Swal.fire({ icon: 'error', title: 'ไม่สามารถเลือกเดือนย้อนหลังได้', text: 'กรุณาเลือกเดือนปัจจุบันหรือเดือนถัดไป', confirmButtonColor: '#d33' });
+        monthEl.focus();
+        return;
+    }
+
+    const allData = [];
+    const usedNames = [];
+    const usedShortNames = []; 
+    const campaignCards = document.querySelectorAll('.campaign-card');
+
+    for (let camp of campaignCards) {
+      const campNameInput = camp.querySelector('.camp-name');
+      const startInput = camp.querySelector('.camp-start');
+      const endInput = camp.querySelector('.camp-end');
+      const storeInput = camp.querySelector('.camp-store');
+      const detailInput = camp.querySelector('.camp-detail');
+      const mechanicInput = camp.querySelector('.camp-mechanic');
+      const modes = Array.from(camp.querySelectorAll('.mode-check:checked, .mode-check-all:checked')).map(c => c.value).join(', ');
+
+      if (!campNameInput.value.trim()) { Swal.fire('กรุณาระบุชื่อแคมเปญ','','warning'); campNameInput.focus(); return; }
+      
+      if (usedNames.includes(campNameInput.value.trim())) {
+          Swal.fire('ชื่อแคมเปญซ้ำกัน', `พบชื่อ "${campNameInput.value}" ซ้ำในฟอร์มนี้`, 'error');
+          campNameInput.focus();
+          return;
+      }
+      usedNames.push(campNameInput.value.trim());
+
+      if (!startInput.value) { Swal.fire('กรุณาระบุวันเริ่ม','','warning'); startInput.focus(); return; }
+      if (window.PCLock && !PCLock.ok('createPromo', startInput.value)) { Swal.fire('แจ้งล่วงหน้าไม่พอ', PCLock.leadText('createPromo'), 'warning'); startInput.focus(); return; }
+      if (!endInput.value) { Swal.fire('กรุณาระบุวันสิ้นสุด','','warning'); endInput.focus(); return; }
+      
+      if (!storeInput.value) { 
+          Swal.fire('กรุณาเลือกสาขา','(พิมพ์ All หรือกดปุ่ม List)','warning'); 
+          camp.querySelector('.manual-branch-input').focus(); 
+          return; 
+      }
+      if (!modes) { Swal.fire('กรุณาเลือก Sale Mode','อย่างน้อย 1 อย่าง','warning'); return; }
+
+      const posBlocks = camp.querySelectorAll('.pos-button-block');
+      if (posBlocks.length === 0) { Swal.fire('ต้องมีอย่างน้อย 1 POS Button','','warning'); return; }
+
+      for (let btn of posBlocks) {
+          const kitchen = btn.querySelector('.btn-kitchen');
+          const shortName = btn.querySelector('.btn-sn');
+          const net = btn.querySelector('.btn-net');
+
+          if (!kitchen.value) { Swal.fire('กรุณากรอก Kitchen Name','','warning'); kitchen.focus(); return; }
+          if (!shortName.value) { Swal.fire('กรุณากรอก Short Name','','warning'); shortName.focus(); return; }
+          
+          const snValue = shortName.value.trim().toLowerCase();
+          if (usedShortNames.includes(snValue)) {
+              Swal.fire('Short Name ซ้ำกันในระบบฟอร์ม', `ชื่อย่อ "${shortName.value}" ซ้ำกับปุ่มอื่น กรุณาแก้ไข`, 'error');
+              shortName.focus();
+              return;
+          }
+          usedShortNames.push(snValue);
+          
+          if (!net.value || net.value <= 0) { Swal.fire('กรุณากรอก Net Price','','warning'); net.focus(); return; }
+
+          const rows = btn.querySelectorAll('.item-body tr');
+          if (rows.length === 0) { Swal.fire('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ','','warning'); return; }
+
+          // ----- Add on เครื่องดื่ม / Single Item (ถ้าติ๊ก "มี Add on" ต้องกรอกให้ครบ) -----
+          const _addonOn = camp.querySelector('.up-addon') && camp.querySelector('.up-addon').checked;
+          const _addons = [];
+          if (_addonOn) {
+            const _arows = camp.querySelectorAll('.addon-row');
+            if (!_arows.length) { Swal.fire('Add on ไม่ครบ','ติ๊ก "มี Add on" แล้วต้องเพิ่มเครื่องดื่มอย่างน้อย 1 รายการ','warning'); return; }
+            for (let ar of _arows) {
+              const aic = (ar.querySelector('.ao-ic')||{}).value || '';
+              const anm = ((ar.querySelector('.ao-item')||{}).value || '').replace(/^\d+\s*-\s*/,'').trim();
+              const apr = (ar.querySelector('.ao-price')||{}).value;
+              if (!aic || apr === '' || apr == null) { Swal.fire('Add on ไม่ครบ','กรอกเครื่องดื่ม + ราคา Add on ให้ครบทุกแถว (หรือลบแถวที่ว่างออก)','warning'); return; }
+              _addons.push({ code: aic, name: anm, price: Number(apr) || 0 });
+            }
+          }
+
+          for (let row of rows) {
+              const itemName = row.querySelector('.row-search-input');
+              const ic = row.querySelector('.row-ic').value;
+
+              if (!itemName.value || !ic) { Swal.fire('กรุณาเลือกสินค้าให้ถูกต้อง','','warning'); itemName.focus(); return; }
+              
+              const postCate = camp.querySelector('.camp-postcate') ? camp.querySelector('.camp-postcate').value.trim() : '';
+              allData.push({
+                  txnDate: _txnDate,
+                  submittedBy: _submittedBy,
+                  monthYear: monthEl.value, 
+                  campaign: campNameInput.value, 
+                  start: startInput.value, 
+                  end: endInput.value, 
+                  storeSelection: storeInput.value,
+                  saleMode: modes, 
+                  kitchenName: kitchen.value, 
+                  shortName: shortName.value, 
+                  itemCode: ic, 
+                  itemNameEN: (window.masterData.find(d => String(d.itemCode) === String(ic)) || {}).itemNameEN || itemName.value.replace(/^\d+\s*-\s*/,''),
+                  addons: JSON.stringify(_addons),
+                  qty: row.querySelector('.row-qty').value, 
+                  originalPrice: row.querySelector('.row-op').value, 
+                  netPrice: net.value, 
+                  promotionDetail: detailInput.value, 
+                  mechanic: mechanicInput.value,
+                  cateRemark: postCate,
+                  cateRemarkCode: '',
+                  postCate: postCate,
+                  cateCode: row.querySelector('.row-catecode').value, 
+                  cateName: row.querySelector('.row-catname').value,
+                  isSubset: row.querySelector('.row-issubset').value === '1' ? 'Y' : '',
+                  chooseMin: (row.querySelector('.row-ssmin')||{}).value || '',
+                  chooseMax: (row.querySelector('.row-ssmax')||{}).value || '',
+                  ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+              });
+          }
+      }
+
+      if (!detailInput.value.trim()) {
+          Swal.fire('กรุณาระบุรายละเอียดโปรโมชั่น', 'ช่อง PROMOTION DETAIL ห้ามปล่อยว่าง', 'warning');
+          detailInput.focus();
+          return;
+      }
+      if (!mechanicInput.value.trim()) {
+          Swal.fire('กรุณาระบุเงื่อนไขโปรโมชั่น', 'ช่อง PROMOTION MECHANIC ห้ามปล่อยว่าง', 'warning');
+          mechanicInput.focus();
+          return;
+      }
+    }
+
+    Swal.fire({ 
+        title: 'ยืนยันการส่งข้อมูล?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2e934a',
+        confirmButtonText: 'ตกลง',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ 
+              title: 'กำลังบันทึก...', 
+              didOpen: () => Swal.showLoading(), 
+              allowOutsideClick: false 
+            });
+            if (typeof google !== 'undefined') {
+                google.script.run
+                  .withSuccessHandler(res => {
+                    if (res === "SUCCESS") {
+                        var _camps = Array.from(new Set(allData.map(d => d.campaign).filter(Boolean)));
+                        var _hasEV = allData.some(d => /voucher/i.test(String(d.postCate || d.cate || d.cateRemark || '')));
+                        /* ⭐ ตรวจจากต้นทางว่าเข้าระบบจริง — เดิมขึ้นสำเร็จทั้งที่ข้อมูลอาจไม่เข้า */
+                        if (window.PC_SaveVerify) {
+                            window.PC_SaveVerify.after({
+                                kind: 'campaign', key: _camps[0] || '', payload: allData,
+                                okTitle: 'บันทึกสำเร็จ!', okHtml: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว',
+                                onDone: function (ok) {
+                                    if (!ok) return;
+                                    window.resetForm();
+                                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV });
+                                },
+                                onRetry: function () { try { document.querySelector('[onclick*="submitAll"],#btnSubmitAll')?.click(); } catch (e) {} }
+                            });
+                        } else Swal.fire({
+                            title: 'บันทึกสำเร็จ!',
+                            text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว',
+                            icon: 'success',
+                            confirmButtonColor: '#2e934a'
+                        }).then(() => {
+                            window.resetForm();
+                            if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV });
+                        });
+                    } else {
+                        Swal.fire('บันทึกไม่สำเร็จ', res, 'error');
+                    }
+                  })
+                  .withFailureHandler(err => { 
+                    Swal.fire('เกิดข้อผิดพลาดทางเทคนิค', err.message, 'error'); 
+                  })
+                  .saveBulkProposal(allData);
+            } else {
+                console.log("Submitting:", allData);
+                setTimeout(() => Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย (Local Mode)', 'success'), 1000);
+            }
+        }
+    });
+  };
+
+  window.createBranchTag = function(campId, value, isManual, fullList = null) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if(!container) return;
+    const input = container.querySelector('.manual-branch-input');
+    const existing = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    
+    if (existing.includes(value)) return;
+    
+    if (value.toUpperCase() === 'ALL') {
+        container.querySelectorAll('.branch-tag').forEach(t => t.remove());
+    } else if (existing.some(v => v.toUpperCase() === 'ALL')) {
+        return;
+    }
+
+    const tag = document.createElement('span');
+    const isAll = value.toUpperCase() === 'ALL';
+    tag.className = `branch-tag badge ${isAll ? 'bg-warning text-dark border border-dark' : (isManual ? 'bg-secondary' : 'bg-primary')} d-flex align-items-center gap-1`;
+    tag.style.fontSize = '12px';
+    tag.dataset.val = fullList || value;
+    tag.innerHTML = `${value} <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove(); window.syncStoreHidden('${campId}')"></i>`;
+    container.insertBefore(tag, input);
+    window.syncStoreHidden(campId);
+  };
+
+  window.syncStoreHidden = function(campId) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if(!container) return;
+    const tags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    document.getElementById(`hidden-store-${campId}`).value = tags.join(', ');
+  };
+
+  window.handleBranchTag = function(e, campId) {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+      e.preventDefault();
+      window.createBranchTag(campId, e.target.value.trim().toUpperCase(), true);
+      e.target.value = '';
+    }
+  };
+
+  window.updateSelectedCounter = function() {
+    const count = document.querySelectorAll('.branch-item-check:checked').length;
+    const display = document.getElementById('selectedCountDisplay');
+    if(display) display.innerText = `Selected: ${count}`;
+  };
+
+  window.clearSelection = function() {
+    document.querySelectorAll('.branch-item-check').forEach(ck => ck.checked = false);
+    const selectAll = document.getElementById('selectAllVisible');
+    if(selectAll) selectAll.checked = false;
+    window.updateSelectedCounter();
+  };
+
+  window.toggleAllVisible = function(checked) {
+    document.querySelectorAll('.branch-item-check').forEach(ck => ck.checked = checked);
+    window.updateSelectedCounter();
+  };
+
+  window.pcApplyModeFilter = function(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} };
+  window.addCampaign = function() {
+    window.campaignCount++;
+    const campId = 'camp-' + Date.now();
+    const today = new Date().toISOString().split('T')[0]; 
+    const html = `
+      <div class="card mb-5 border-dark campaign-card shadow" id="${campId}" style="border: 2px solid #000; border-radius: 15px; overflow: hidden;">
+        <div class="card-header bg-dark d-flex justify-content-between align-items-center py-2 border-0">
+          <span class="fw-bold text-white"><i class="fas fa-cubes text-warning me-2"></i> ITEM SET CAMPAIGN NAME #${window.campaignCount}</span>
+          <i class="fas fa-trash-alt text-danger cursor-pointer" onclick="document.getElementById('${campId}').remove()"></i>
+        </div>
+        <div class="card-body bg-white">
+          <div class="row g-3 mb-3 bg-light p-3 rounded border border-dark mx-0">
+            <div class="col-md-3">
+              <label class="small fw-bold text-uppercase">ITEM SET Campaign Name *</label>
+              <input type="text" class="form-control camp-name border-dark shadow-none" oninput="window.checkDuplicateCampaign(this)">
+            </div>
+            <div class="col-md-2"><label class="small fw-bold text-uppercase">Start *</label><input type="date" class="form-control camp-start border-dark shadow-none" min="${(window.PCLock&&PCLock.minStartISO('createPromo'))||today}"></div>
+            <div class="col-md-2"><label class="small fw-bold text-uppercase">End *</label><input type="date" class="form-control camp-end border-dark shadow-none" min="${today}"></div>
+            <div class="col-md-5">
+              <label class="small fw-bold text-uppercase">Store Selection *</label>
+              <div class="input-group">
+                <div class="form-control border-dark d-flex flex-wrap gap-1 p-2 bg-white" style="min-height: 38px; height: auto;" id="tag-container-${campId}">
+                   <input type="text" class="border-0 shadow-none flex-grow-1 manual-branch-input" style="outline: none; min-width: 100px;" placeholder="Branch ID แล้ว Enter..." onkeydown="window.handleBranchTag(event, '${campId}')">
+                </div>
+                <button class="btn btn-dark" type="button" onclick="window.openBranchModal('${campId}')"><i class="fas fa-list"></i></button>
+              </div>
+              <input type="hidden" class="camp-store" id="hidden-store-${campId}">
+            </div>
+          </div>
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #6d3bd1 !important;">
+            <label class="small fw-bold text-uppercase d-block mb-1"><i class="fas fa-shapes me-1" style="color:#6d3bd1"></i>ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด *</label>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-5">
+                <select class="form-select camp-postcate border-dark fw-bold shadow-none">
+                  <option value="Promotion set">Promotion set</option>
+                  <option value="Combo">Combo</option>
+                  <option value="Value set">Value set</option>
+                  <option value="E-Voucher">E-Voucher</option>
+                </select>
+              </div>
+              <div class="col-md-7">
+                <div class="small text-muted" style="font-size:.74rem;line-height:1.4"><i class="fas fa-circle-info me-1" style="color:#6d3bd1"></i>Promotion set / Combo / Value set → ผูก <b>Price Promotion</b> · E-Voucher → ผูก <b>item coupon online</b></div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #2e934a !important;">
+            <label class="small fw-bold text-uppercase d-block mb-1">CAMPAIGN SALE MODE *</label>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <div class="form-check p-2 rounded border border-dark bg-white d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                <input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="All Delivery" onchange="window.handleCampaignSelection(this, '${campId}', 'all')"> 
+                <label class="form-check-label small fw-bold">ALL DELIVERY</label>
+              </div>
+              <div class="form-check p-2 rounded border border-dark bg-white d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                <input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="All Channel" onchange="window.handleCampaignSelection(this, '${campId}', 'all')"> 
+                <label class="form-check-label small fw-bold">ALL CHANNEL</label>
+              </div>
+              <div class="vr mx-1" style="width: 2px; height: 30px; background-color: #000;"></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Take Away" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Take Away</label></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="GRAB" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">GRAB</label></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="LINEMAN" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">LINEMAN</label></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="ShopeeFood" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">ShopeeFood</label></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Robinhood" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Robinhood</label></div>
+              <div class="form-check"><input class="form-check-input mode-check border-dark me-1" type="checkbox" value="Gokoo" onchange="window.handleCampaignSelection(this, '${campId}', 'single')"> <label class="form-check-label small fw-bold">Gokoo</label></div>
+            </div>
+          </div>
+          <div class="button-container" id="btn-container-${campId}"></div>
+          <button class="btn btn-outline-dark btn-sm fw-bold w-100 mt-2 mb-4" onclick="window.addButton('${campId}')"><i class="fas fa-plus"></i> ADD NEW POS BUTTON</button>
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #2e934a !important;">
+            <label class="small fw-bold text-uppercase d-block mb-2"><i class="fas fa-arrow-up-right-dots me-1"></i> เงื่อนไขพิเศษ <span class="text-muted fw-normal" style="font-size:.72rem;">(ติ๊กหรือระบุ → ระบบเติมเข้าช่องเงื่อนไขให้อัตโนมัติ)</span></label>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <div class="form-check"><input class="form-check-input up-upsize border-dark me-1" type="checkbox" onchange="window.syncUpsizeMechanic('${campId}')"><label class="form-check-label small fw-bold">อัพไซด์เครื่องดื่ม 16oz. >> 22oz. + 5 บาท</label></div>
+              <div class="form-check"><input class="form-check-input up-truffle border-dark me-1" type="checkbox" onchange="window.syncUpsizeMechanic('${campId}')"><label class="form-check-label small fw-bold">เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย</label></div>
+              <div class="form-check"><input class="form-check-input up-addon border-dark me-1" type="checkbox" onchange="window.toggleAddonPanel('${campId}'); window.syncUpsizeMechanic('${campId}')"><label class="form-check-label small fw-bold">Add on (SAUCE &amp; TOPPING)</label></div>
+              <div class="form-check d-flex align-items-center gap-2 m-0"><input class="form-check-input up-other border-dark me-1" type="checkbox" onchange="window.syncUpsizeMechanic('${campId}')"><label class="form-check-label small fw-bold">อื่นๆ:</label><input type="text" class="form-control form-control-sm up-other-txt border-dark shadow-none" style="max-width:260px;" placeholder="ระบุเงื่อนไขเพิ่มเติม" oninput="window.syncUpsizeMechanic('${campId}')"></div>
+            </div>
+            <div class="addon-panel mt-3 pt-3 border-top" style="display:none">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-bold text-uppercase"><i class="fas fa-plus-circle me-1 text-success"></i>รายการ Add on <span class="text-muted fw-normal" style="font-size:.72rem;">(ค่าเริ่มต้น = หมวด SAUCE &amp; TOPPING · เปลี่ยนหมวดได้)</span></span>
+                <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="window.addAddonRow('${campId}')"><i class="fas fa-plus me-1"></i>เพิ่มรายการ</button>
+              </div>
+              <div class="addon-rows"></div>
+            </div>
+          </div>
+          <div class="row g-3 border-top pt-3 border-dark mx-0">
+            <div class="col-md-6">
+              <div class="bg-dark text-white p-2 small fw-bold text-uppercase">PROMOTION DETAIL (รายละเอียดโปรโมชั่น) *</div>
+              <textarea class="form-control border-dark camp-detail shadow-none" rows="6" style="border-radius: 0 0 5px 5px;"></textarea>
+            </div>
+            <div class="col-md-6">
+              <div class="bg-dark text-white p-2 small fw-bold text-uppercase">PROMOTION MECHANIC (เงื่อนไขโปรโมชั่น) *</div>
+              <textarea class="form-control border-dark camp-mechanic shadow-none" rows="6" style="border-radius: 0 0 5px 5px;"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('campaignList').insertAdjacentHTML('beforeend', html);
+    try{ window.pcApplyModeFilter(document.getElementById(campId), 'proposal'); }catch(e){}
+    window.addButton(campId); 
+  };
+
+  window.addButton = function(campId) {
+    const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const html = `
+      <div class="pos-button-block mb-4 p-3 border border-secondary rounded bg-white shadow-sm" id="${btnId}" style="border-left: 5px solid #000 !important;">
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="small fw-bold text-uppercase">KITCHEN NAME (BILL) * <span class="text-danger">(Max 40)</span></label>
+            <input type="text" class="form-control btn-kitchen border-dark fw-bold shadow-none" placeholder="MISS+MFF" oninput="window.checkLength(this, 40)">
+            <div class="char-count text-end text-muted" style="font-size:.72rem">0/40</div>
+          </div>
+          <div class="col-md-6">
+            <label class="small fw-bold text-uppercase">SHORT NAME (POS) * <span class="text-danger">(Max 20)</span></label>
+            <input type="text" class="form-control btn-sn border-dark fw-bold text-dark shadow-none" placeholder="Grab-PWsuper2[199]" onchange="window.checkDuplicateShortName(this)" oninput="window.checkLength(this, 20)">
+            <div class="char-count text-end text-muted" style="font-size:.72rem">0/20</div>
+          </div>
+        </div>
+        <table class="table table-sm table-bordered border-dark align-middle mb-2">
+          <thead class="table-dark small text-center">
+            <tr><th style="width: 20%;">Category</th><th style="width: 45%;">Search Item (Master) *</th><th style="width: 10%;">QTY *</th><th style="width: 20%;">Price</th><th style="width: 5%;"></th></tr>
+          </thead>
+          <tbody class="item-body"></tbody>
+          <tfoot class="table-light fw-bold small">
+            <tr><td colspan="3" class="text-end">GROSS TOTAL:</td><td class="text-end btn-gross">0.00</td><td></td></tr>
+            <tr><td colspan="3" class="text-end text-danger">DISCOUNT (AUTO):</td><td><input type="text" class="form-control form-control-sm text-end border-0 fw-bold btn-disc bg-transparent text-danger shadow-none" value="0.00" readonly></td><td></td></tr>
+            <tr class="table-warning">
+                <td colspan="3" class="text-end h6 fw-bold">PRICE PROMOTION (NET) * :</td>
+                <td><input type="number" class="form-control form-control-sm text-end border-dark fw-bold btn-net shadow-none" style="color: #28a745;" step="1" oninput="window.updateTotals('${btnId}')"></td>
+                <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-sm btn-dark fw-bold" onclick="window.addItemRow('${btnId}', '${campId}')"><i class="fas fa-plus"></i> ADD ITEM</button>
+          <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove Button</small>
+        </div>
+      </div>`;
+    document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.addItemRow(btnId, campId);
+  };
+
+  window.addItemRow = function(btnId, campId) {
+    const tbody = document.querySelector("#" + btnId + " .item-body");
+    const rowId = 'row-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.innerHTML = `
+      <td><select class="form-select form-select-sm border-0 row-cat-select shadow-none" onchange="window.updateDatalist('${rowId}', this.value)"><option value="">-- All --</option><option value="__SUBSET__">🧂 เลือกสินค้าเป็นกลุ่ม</option>${window.categories.filter(cat => String(cat).toLowerCase() !== 'flavors' && window.pcCatShownInProposal(cat)).map(cat => `<option value="${cat}">${(window.catCodeMap&&window.catCodeMap[cat])?window.catCodeMap[cat]+' - ':''}${cat}</option>`).join('')}</select></td>
+      <td>
+        <input type="text" list="list-${rowId}" class="form-control form-control-sm border-0 row-search-input shadow-none fw-bold" style="color: #28a745;" oninput="window.handleFill('${rowId}', this.value, '${btnId}', '${campId}')" placeholder="Search product...">
+        <datalist id="list-${rowId}"></datalist>
+        <input type="hidden" class="row-ic"><input type="hidden" class="row-catecode"><input type="hidden" class="row-catname">
+        <input type="hidden" class="row-issubset"><input type="hidden" class="row-ssmin"><input type="hidden" class="row-ssmax">
+      </td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-center row-qty shadow-none" value="1" min="1" oninput="window.updateTotals('${btnId}')"></td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-end row-op shadow-none bg-white" step="0.01" oninput="window.updateTotals('${btnId}')"></td>
+      <td class="text-center"><i class="fas fa-times-circle text-danger cursor-pointer" onclick="document.getElementById('${rowId}').remove(); window.updateTotals('${btnId}')"></i></td>`;
+    tbody.appendChild(tr);
+    window.updateDatalist(rowId, "");
+  };
+
+  window.updateTotals = function(btnId) {
+    const btnBlock = document.getElementById(btnId);
+    if (!btnBlock) return;
+    
+    let gross = 0;
+    btnBlock.querySelectorAll('.item-body tr').forEach(row => {
+      gross += (parseFloat(row.querySelector('.row-qty').value) || 0) * (parseFloat(row.querySelector('.row-op').value) || 0);
+    });
+    btnBlock.querySelector('.btn-gross').innerText = gross.toFixed(2);
+    
+    const netInput = btnBlock.querySelector('.btn-net');
+    let net = parseFloat(netInput.value) || 0;
+
+    if (net % 1 !== 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ไม่อนุญาตให้ใส่เศษสตางค์',
+        text: 'ระบบทำการปัดเป็นเลขถ้วนให้อัตโนมัติ',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      net = Math.floor(net);
+      netInput.value = net;
+    }
+
+    btnBlock.querySelector('.btn-disc').value = (gross - net).toFixed(2);
+  };
+
+  window.handleFill = function(rowId, val, btnId, campId) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    (function(){ var _pk=row.querySelector('.sub-peek'); if(_pk) _pk.remove(); })();
+    const isSub = row.querySelector('.row-issubset').value === '1';
+
+    // ----- SUBSET MODE: อ่านราคากลุ่มจาก subset master -----
+    if (isSub) {
+      const subs = window.PC_subsetList();
+      const s = subs.find(x => String(x.name||'')===val || String(x.ssCode)===String(val));
+      const si = row.querySelector('.row-subinfo');
+      const op = row.querySelector('.row-op');
+      if (s) {
+        row.querySelector('.row-search-input').value = s.name || s.ssCode;
+        row.querySelector('.row-ic').value = s.ssCode;
+        row.querySelector('.row-catecode').value = '';
+        row.querySelector('.row-catname').value = 'Subset';
+        const price = window.PC_subsetPrice(s.ssCode);
+        op.value = price || 0; op.readOnly = true; op.classList.add('bg-light');
+        const mn = (s.min!=null?s.min:(s.chooseMin!=null?s.chooseMin:''));
+        const mx = (s.max!=null?s.max:(s.chooseMax!=null?s.chooseMax:''));
+        row.querySelector('.row-ssmin').value = mn;
+        row.querySelector('.row-ssmax').value = mx;
+        if (si) {
+          si.style.display = '';
+          const cn = (mn!==''||mx!=='') ? ('เลือกได้ ' + (mn||'?') + (mx!==''?('–'+mx):'')) : 'เลือกได้';
+          si.querySelector('.sub-choose').textContent = cn + (price?(' · ฿'+price):'');
+        }
+        (function(){ var td=row.querySelector('.row-search-input').closest('td'); if(!td) return; var fl=window.pcSubsetMembers(s.ssCode); var pk=td.querySelector('.sub-peek'); if(!pk){ pk=document.createElement('button'); pk.type='button'; pk.className='sub-peek'; pk.style.cssText='display:block;margin-top:4px;background:#eef4ff;color:#2c4a82;border:1px solid #cfe0ff;border-radius:7px;padding:2px 9px;font-size:.72rem;font-weight:700;cursor:pointer'; td.appendChild(pk); } pk.innerHTML='<i class="fas fa-eye me-1"></i>ดูในชุด ('+fl.length+')'; pk.onclick=function(){ window.pcSubsetPeek(s.ssCode); }; pk.style.display=fl.length?'block':'none'; })();
+      } else {
+        row.querySelector('.row-ic').value = '';
+        if (si) si.style.display = 'none';
+        op.readOnly = false; op.classList.remove('bg-light');
+      }
+      window.updateTotals(btnId);
+      return;
+    }
+
+    // ----- ITEM MODE (เดิม) -----
+    const item = window.masterData.find(d => d.itemNameEN === val || String(d.itemCode) === String(val) || (String(d.itemCode) + ' - ' + d.itemNameEN) === val);
+    const campCard = document.getElementById(campId);
+    if (row) {
+      if (item && campCard) {
+        row.querySelector('.row-search-input').value = item.itemCode + ' - ' + item.itemNameEN; 
+        row.querySelector('.row-ic').value = item.itemCode; 
+        row.querySelector('.row-catecode').value = item.cateCode;
+        row.querySelector('.row-catname').value = item.category;
+        
+        const deliveryModes = ["GRAB", "LINEMAN", "SHOPEEFOOD", "ROBINHOOD", "GOKOO", "ALL DELIVERY"];
+        let isDelivery = false;
+        campCard.querySelectorAll('.mode-check:checked, .mode-check-all:checked').forEach(cb => {
+          if (deliveryModes.includes(cb.value.toUpperCase())) isDelivery = true;
+        });
+        row.querySelector('.row-op').value = isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0); 
+      } else {
+        row.querySelector('.row-ic').value = '';
+        row.querySelector('.row-catecode').value = '';
+        row.querySelector('.row-catname').value = '';
+        row.querySelector('.row-op').value = '';
+      }
+    }
+    window.updateTotals(btnId);
+    if(window.updateUpsizeLock) window.updateUpsizeLock(campId);
+  };
+
+  window.handleCampaignSelection = function(el, campId, type) {
+    const campaignCard = document.getElementById(campId);
+    if (type === 'all') {
+      if (el.checked) {
+        campaignCard.querySelectorAll('.mode-check').forEach(cb => cb.checked = false);
+        campaignCard.querySelectorAll('.mode-check-all').forEach(cb => { if (cb !== el) cb.checked = false; });
+      }
+    } else {
+      if (el.checked) {
+        if (el.value === "Take Away") {
+          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (cb !== el) cb.checked = false; });
+          campaignCard.querySelectorAll('.mode-check-all').forEach(cb => cb.checked = false);
+        } else {
+          campaignCard.querySelectorAll('.mode-check-all').forEach(cb => cb.checked = false);
+          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (cb.value === "Take Away") cb.checked = false; });
+        }
+      }
+    }
+    campaignCard.querySelectorAll('.pos-button-block').forEach(btn => { window.updateAllPricesInBlock(btn.id, campId); });
+  };
+
+  window.updateAllPricesInBlock = function(btnId, campId) {
+    const btnBlock = document.getElementById(btnId);
+    const campCard = document.getElementById(campId);
+    if (!btnBlock || !campCard) return;
+    
+    const deliveryModes = ["GRAB", "LINEMAN", "SHOPEEFOOD", "ROBINHOOD", "GOKOO", "ALL DELIVERY"];
+    let isDelivery = false;
+    campCard.querySelectorAll('.mode-check:checked, .mode-check-all:checked').forEach(cb => {
+      if (deliveryModes.includes(cb.value.toUpperCase())) isDelivery = true;
+    });
+    btnBlock.querySelectorAll('.item-body tr').forEach(row => {
+      const itemName = row.querySelector('.row-search-input').value;
+      const item = window.masterData.find(d => d.itemNameEN === itemName);
+      if (item) row.querySelector('.row-op').value = isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0);
+    });
+    window.updateTotals(btnId);
+  };
+
+  /* cate นี้เปิดให้เลือกในฟอร์ม Proposal ไหม? (คุมจากหน้า Form Display — pc_cat_forms) */
+  window.pcCatShownInProposal = function(cat){
+    try{ var m=JSON.parse(localStorage.getItem('pc_cat_forms')||'{}')||{}; var o=m[cat]; if(o && o.proposal!==undefined) return !!o.proposal; }catch(e){}
+    return true;
+  };
+
+  /* item ตัวนี้แสดงในฟอร์มไหม? — ยึดตามเงื่อนไข status = Active
+     • override รายตัวจากหน้าสินค้า (pc_product_flags.active) มาก่อน (0=ซ่อนเสมอ / 1=แสดงเสมอ)
+     • ไม่มี override → แสดงเมื่อ status=Active (ไม่สนใจ showInForm Hide/Show ในไฟล์แล้ว) */
+  window.pcItemShownInForm = function(it){
+    try{ var pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{}; var f=pf[String(it&&it.itemCode)]||{};
+      if(f.active===0) return false; if(f.active===1) return true;
+    }catch(e){}
+    return String((it&&it.status)||'Active').toLowerCase()!=='inactive';
+  };
+
+  window.updateDatalist = function(rowId, catName) {
+    const dl = document.getElementById('list-' + rowId);
+    const row = document.getElementById(rowId);
+    const isSub = catName === '__SUBSET__';
+    if (row) {
+      const inp = row.querySelector('.row-search-input');
+      inp.value = '';
+      inp.placeholder = isSub ? 'ค้นหากลุ่มสินค้า…' : 'Search product...';
+      inp.style.color = isSub ? '#9a6700' : '#28a745';
+      row.querySelector('.row-ic').value = '';
+      row.querySelector('.row-issubset').value = isSub ? '1' : '';
+      const si = row.querySelector('.row-subinfo'); if (si) si.style.display = 'none';
+      const op = row.querySelector('.row-op'); if (op) { op.readOnly = false; op.classList.remove('bg-light'); op.value = ''; }
+    }
+    if (isSub) {
+      const subs = window.PC_subsetList();
+      dl.innerHTML = subs.length
+        ? subs.map(s => `<option value="${window.smpEsc(s.name||s.ssCode)}">${window.smpEsc(s.ssCode)} · ${window.pcSubsetMembers(s.ssCode).length} รายการ${(s.price!=null&&s.price!=='')?' · ฿'+s.price:''}</option>`).join('')
+        : '';
+      (function(){ var r=document.getElementById(rowId); if(!r) return; var sx=r.querySelector('.row-search-input'); if(!sx) return; var td=sx.closest('td'); if(!td) return; var oi=sx.getAttribute('oninput')||''; var mm=oi.match(/handleFill\([^,]+,[^,]+,\s*'([^']+)'/); var bId=mm?mm[1]:''; var bb=td.querySelector('.sub-browse'); if(!bb){ bb=document.createElement('button'); bb.type='button'; bb.className='sub-browse'; bb.style.cssText='display:block;margin-top:4px;background:#fff4d6;color:#8a6d00;border:1px solid #f0d98c;border-radius:7px;padding:2px 9px;font-size:.72rem;font-weight:700;cursor:pointer'; td.appendChild(bb); } bb.innerHTML='<i class="fas fa-list me-1"></i>เลือก Subset (ดูในชุดก่อน)'; bb.onclick=function(){ window.pcSubsetBrowse(rowId, bId); }; })();
+    } else {
+      var _r=document.getElementById(rowId); if(_r){ var _bb=_r.querySelector('.sub-browse'); if(_bb) _bb.remove(); }
+      const pool = window.masterData.filter(i => window.pcItemShownInForm(i) && String(i.category||'').toLowerCase() !== 'flavors' && window.pcCatShownInProposal(i.category));
+      var _wantCode = catName ? String(window.catCodeMap[catName] || '') : '';
+      let filtered = catName ? pool.filter(i => String(i.category) === String(catName) && (!_wantCode || String(i.cateCode || '') === _wantCode)) : pool;
+      dl.innerHTML = filtered.map(d => `<option value="${d.itemCode} - ${d.itemNameEN}">${window.smpEsc(d.category||'')}</option>`).join('');
+    }
+  };
+
+  window.checkLength = function(el, max) {
+    max = max || 40;
+    var n = el.value.length, over = n > max;
+    el.classList.toggle('is-invalid', over);
+    var c = el.parentElement.querySelector('.char-count');
+    if (c) { c.textContent = n + '/' + max + (over ? ' \u2022 \u0e40\u0e01\u0e34\u0e19 ' + max + ' \u0e15\u0e31\u0e27' : ''); c.className = 'char-count text-end ' + (over ? 'text-danger fw-bold' : 'text-muted'); c.style.fontSize = '.72rem'; }
+  };
+
+  /* ===== Add on เครื่องดื่ม / Single Item (ดึงจากสินค้าที่เปิด "แสดงในฟอร์ม") ===== */
+  window.addonCats = function(){
+    var seen={}, cats=[];
+    (window.masterData||[]).forEach(function(i){
+      if(!window.pcItemShownInForm(i)) return;
+      if(!window.pcCatShownInProposal(i.category)) return;
+      var single=/single/i.test(String(i.itemType||i.saleType||''));
+      var bevTop=/beverage|เครื่องดื่ม|drink|topping|ท็อปปิ้ง/i.test(String(i.category||''));
+      if((single||bevTop) && i.category && !seen[i.category]){ seen[i.category]=1; cats.push(i.category); }
+    });
+    return cats.sort();
+  };
+  window.addonPool = function(catName){
+    var items=(window.masterData||[]).filter(function(i){
+      if(!window.pcItemShownInForm(i)) return false;
+      if(!window.pcCatShownInProposal(i.category)) return false;
+      var single=/single/i.test(String(i.itemType||i.saleType||''));
+      var bevTop=/beverage|เครื่องดื่ม|drink|topping|ท็อปปิ้ง/i.test(String(i.category||''));
+      if(!(single||bevTop)) return false;
+      if(catName && String(i.category||'')!==catName) return false;
+      return true;
+    }).map(function(i){return {code:i.itemCode,name:i.itemNameEN,cat:i.category,price:(i.priceTA||i.priceDLV||'')};});
+    // drink subset (ชุดเลือกได้) — รวมตอนไม่ระบุหมวด หรือเลือกหมวดเครื่องดื่ม
+    if(!catName || /beverage|เครื่องดื่ม|drink/i.test(catName)){
+      var subs=(window.PC_subsetList?window.PC_subsetList():[]).filter(function(s){ return /drink|เครื่องดื่ม/i.test(String(s.name||s.short||'')); }).map(function(s){return {code:s.ssCode,name:s.name||s.short||s.ssCode,cat:'Subset (ชุดเลือกได้)',price:(window.PC_subsetPrice?window.PC_subsetPrice(s.ssCode):'')};});
+      items=items.concat(subs);
+    }
+    return items;
+  };
+  window.toggleAddonPanel = function(campId){
+    var camp=document.getElementById(campId); if(!camp) return;
+    var chk=camp.querySelector('.up-addon'), panel=camp.querySelector('.addon-panel');
+    if(!chk||!panel) return;
+    panel.style.display = chk.checked ? 'block':'none';
+    if(chk.checked && !camp.querySelector('.addon-row')) window.addAddonRow(campId);
+  };
+  window.addAddonRow = function(campId){
+    var camp=document.getElementById(campId); if(!camp) return;
+    var rows=camp.querySelector('.addon-rows'); if(!rows) return;
+    /* ค่าเริ่มต้นของหมวด = SAUCE & TOPPING ถ้ามีในข้อมูลหลัก (ผู้ใช้เปลี่ยนเป็นหมวดอื่นได้) */
+    var _cats=window.addonCats()||[]; var _def=_cats.filter(function(c){ return /sauce|topping|ท็อปปิ้ง/i.test(String(c)); })[0]||'';
+    var rid='ao-'+(Date.now()+Math.random().toString(36).substr(2,4));
+    var div=document.createElement('div');
+    div.className='addon-row d-flex align-items-center gap-2 mb-2'; div.setAttribute('data-rid',rid);
+    div.innerHTML=
+      '<select class="form-select form-select-sm border-dark ao-kind" style="max-width:230px" onchange="window.aoFillList(\''+rid+'\')"><option value="">ทุกหมวด</option>'+(window.addonCats?window.addonCats():[]).map(function(c){var cc=(window.catCodeMap&&window.catCodeMap[c])?window.catCodeMap[c]:'';return '<option value="'+window.smpEsc(c)+'"'+(c===_def?' selected':'')+'>'+(cc?window.smpEsc(cc)+' · ':'')+window.smpEsc(c)+'</option>';}).join('')+'</select>'+
+      '<input list="aolist-'+rid+'" class="form-control form-control-sm border-dark ao-item fw-bold" style="color:#28a745" placeholder="ค้นหาเครื่องดื่ม / Topping / สินค้า…" oninput="window.aoFillList(\''+rid+'\',this.value); window.aoPick(\''+rid+'\',this.value); window.syncUpsizeMechanic(\''+campId+'\')">'+
+      '<datalist id="aolist-'+rid+'"></datalist>'+
+      '<input type="hidden" class="ao-ic">'+
+      '<span class="ao-base small text-muted" style="white-space:nowrap;min-width:90px"></span>'+
+      '<div class="input-group input-group-sm" style="max-width:140px"><span class="input-group-text">+฿</span><input type="number" min="0" class="form-control ao-price border-dark" placeholder="บาท" oninput="window.syncUpsizeMechanic(\''+campId+'\')"></div>'+
+      '<button type="button" class="btn btn-sm btn-outline-danger" onclick="var c=this.closest(\'.addon-row\'); c.parentNode.removeChild(c); window.syncUpsizeMechanic(\''+campId+'\')"><i class="fas fa-trash"></i></button>';
+    rows.appendChild(div);
+    window.aoFillList(rid, '');
+  };
+  window.aoFillList = function(rid, query){
+    var rowEl=document.querySelector('[data-rid="'+rid+'"]'); if(!rowEl) return;
+    var kind=(rowEl.querySelector('.ao-kind')||{}).value||'';
+    var dl=document.getElementById('aolist-'+rid); if(!dl) return;
+    var q=String(query||'').trim().toLowerCase();
+    var pool=window.addonPool(kind);
+    if(q) pool=pool.filter(function(d){ return (String(d.name)+' '+String(d.code)+' '+String(d.cat||'')).toLowerCase().indexOf(q)>=0; });
+    dl.innerHTML=pool.slice(0,80).map(function(d){var pr=(d.price!=null&&d.price!=='')?(' · ฿'+d.price):''; return '<option value="'+window.smpEsc(d.name)+'">'+window.smpEsc(d.code)+pr+(d.cat?(' · '+window.smpEsc(d.cat)):'')+'</option>';}).join('');
+    if(query===undefined){ rowEl.querySelector('.ao-ic').value=''; rowEl.querySelector('.ao-item').value=''; }
+  };
+  window.aoPick = function(rid,val){
+    var rowEl=document.querySelector('[data-rid="'+rid+'"]'); if(!rowEl) return;
+    var pool=window.addonPool('');
+    var it=pool.find(function(x){ return x.name===val || String(x.code)===val; });
+    rowEl.querySelector('.ao-ic').value=it?it.code:'';
+    var base=rowEl.querySelector('.ao-base');
+    if(base) base.innerHTML = (it && it.price!=null && it.price!=='') ? ('ราคาปกติ <b class="text-dark">฿'+it.price+'</b>') : '';
+  };
+
+  /* ล็อก "อัพไ຋ด์เครื่องดื่ม +5" — ติ๊กได้ต่อเมื่อชุดมีเครื่องดื่ม 16 ให้อัพไ຋ด์ได้ · ถ้ามีแค่ 22 (ล็อก 22oz) → ติ๊กไม่ได้ */
+  window.updateUpsizeLock = function(campId){
+    var camp=document.getElementById(campId); if(!camp) return;
+    var chk=camp.querySelector('.up-upsize'); if(!chk) return;
+    var names=[].slice.call(camp.querySelectorAll('.row-search-input')).map(function(i){return String(i.value||'');});
+    var has22=names.some(function(n){return /22/.test(n);});
+    var has16=names.some(function(n){return /16/.test(n);});
+    var lock = has22 && !has16;   // มีแค่ 22oz (ไม่มี 16) → ล็อก อัพไ຋ด์ไม่ได้
+    chk.disabled = lock;
+    if(lock && chk.checked){ chk.checked=false; }
+    var fc=chk.closest('.form-check'); if(fc){ fc.style.opacity=lock?'0.45':''; fc.title=lock?'ชุดนี้มีเครื่องดื่ม 22oz อย่างเดียว (ล็อก) — อัพไ຋ด์ไม่ได้':''; }
+    if(window.syncUpsizeMechanic) window.syncUpsizeMechanic(campId);
+  };
+  window.syncUpsizeMechanic = function(campId) {
+    const camp = document.getElementById(campId);
+    if (!camp) return;
+    const ta = camp.querySelector('.camp-mechanic');
+    if (!ta) return;
+    const otherChk = camp.querySelector('.up-other');
+    const otherTxt = camp.querySelector('.up-other-txt');
+    if (otherTxt && otherTxt.value.trim()) otherChk.checked = true;
+
+    const lines = [];
+    if (camp.querySelector('.up-upsize') && camp.querySelector('.up-upsize').checked)  lines.push('• อัพไซด์เครื่องดื่ม 16oz. >> 22oz. + 5 บาท');
+    if (camp.querySelector('.up-truffle') && camp.querySelector('.up-truffle').checked) lines.push('• เลือกทรัฟเฟิลบวกเพิ่ม 10 บาทต่อถ้วย');
+    var _ab = camp.querySelector('.up-addon');
+    if (_ab && _ab.checked) {
+      var _aos = [].slice.call(camp.querySelectorAll('.addon-row')).map(function(r){
+        var nm=((r.querySelector('.ao-item')||{}).value||'').replace(/^\d+\s*-\s*/,''); var pr=(r.querySelector('.ao-price')||{}).value||'';
+        return nm ? (nm+(pr?(' +'+pr+'฿'):'')) : '';
+      }).filter(Boolean);
+      lines.push('• Add on'+(_aos.length?': '+_aos.join(', '):''));
+    }
+    if (otherChk && otherChk.checked && otherTxt && otherTxt.value.trim()) lines.push('• ' + otherTxt.value.trim());
+
+    // strip the previously-inserted auto block (remembered verbatim), keep manual text intact — ไม่มีหัวข้อนำ
+    const prev = camp.dataset.upauto || '';
+    let manual = ta.value;
+    if (prev && manual.indexOf(prev) === 0) manual = manual.slice(prev.length);
+
+    const auto = lines.length ? (lines.join('\n') + '\n\n') : '';
+    ta.value = auto + manual;
+    camp.dataset.upauto = auto;
+  };
+
+  window.resetForm = function() {
+    const monthEl = document.getElementById('globalMonth');
+    if(monthEl) monthEl.value = '';
+    document.getElementById('campaignList').innerHTML = '';
+    window.campaignCount = 0;
+    window.addCampaign(); 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
+  .cursor-pointer { cursor: pointer; }
+  .text-green-custom { color: #28a745 !important; font-weight: bold !important; }
+  .label-input-header { color: #28a745 !important; font-weight: 800 !important; }
+  .detail-header { background: #000; color: #ffffff; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 5px 5px 0 0; }
+  .mechanic-header { background: var(--pc-yellow,#2e934a); color: #000; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 5px 5px 0 0; border: 1px solid #000; }
+  .form-control:focus { border-color: #ffffff !important; box-shadow: none; border-width: 2px; }
+  .form-check-input:checked { background-color: #000 !important; border-color: #000 !important; }
+  .branch-tag { border-radius: 4px; padding: 4px 8px; font-weight: bold; }
+  .btn-warning { background-color: var(--pc-yellow,#2e934a) !important; }
+  .campaign-card { transition: all 0.3s ease; }
+  .sticky-top { position: sticky; top: 0; z-index: 10; }
+  #branchTableBody tr:hover { background-color: #fff9e6; }
+  .pc-promo-io .btn { white-space: nowrap; }
+</style>
+<script>/* Item Set: โชว์แถบ Import เฉพาะเมื่อเปิดใช้งานที่หน้า "ตั้งค่า Import" (pc_import_enabled='1') */
+if(localStorage.getItem('pc_import_enabled')==='1'){ window.PromoIO && window.PromoIO.mount('proposal'); }</script>

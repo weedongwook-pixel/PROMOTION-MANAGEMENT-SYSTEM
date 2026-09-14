@@ -1,0 +1,261 @@
+<!-- RD / สินค้าใหม่ — wrapper + left-rail (พับ/กางได้) · NPD / เพิ่มผง + ตาราง RM Master / Recipe (read-only) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+
+<style>
+  #rd-page{ padding:0; }
+  #rd-page .rd-head{ background:#2e934a; color:#fff; border-radius:0 0 16px 16px; padding:18px 24px; display:flex; align-items:center; gap:16px; }
+  #rd-page .rd-head .bar{ width:10px; height:52px; background:var(--pc-yellow,#2e934a); border-radius:5px; flex:0 0 auto; }
+  #rd-page .rd-head h2{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.5rem; margin:0; text-transform:uppercase; letter-spacing:.4px; }
+  #rd-page .rd-crumb{ font-size:.84rem; color:rgba(255,255,255,.78); font-weight:600; margin-top:3px; }
+  #rd-page .rd-crumb b{ color:var(--pc-yellow,#2e934a); }
+  #rd-page .pm-layout{ display:flex; gap:18px; align-items:flex-start; margin:18px; }
+  #rd-page .pm-rail{ width:230px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+  #rd-page .pm-rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+  #rd-page .pm-rail-item{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+  #rd-page .pm-rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+  #rd-page .pm-rail-item:hover{ background:#f4f6f9; }
+  #rd-page .pm-rail-item.on{ background:var(--pc-black,#1a1d20); color:#fff; }
+  #rd-page .pm-rail-item.on i{ color:var(--pc-yellow,#2e934a); }
+  #rd-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; position:relative; min-height:82vh; }
+  #rd-page .rd-empty{ text-align:center; color:#9aa1aa; padding:64px 20px; }
+  /* read-only data tables (RM master / Recipe) */
+  #rd-page .rdt-wrap{ padding:18px 20px; font-family:'Kanit',sans-serif; }
+  #rd-page .rdt-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  #rd-page .rdt-head h3{ margin:0; font-weight:700; font-size:1.05rem; color:#1a1d20; }
+  #rd-page .rdt-ro{ font-size:.7rem; font-weight:700; color:#2c4a82; background:#eef3f7; border:1px solid #d4e0ea; border-radius:6px; padding:3px 9px; }
+  #rd-page .rdt-cnt{ font-size:.8rem; color:#9aa1aa; margin-left:auto; }
+  #rd-page .rdt-search{ border:1.5px solid #dde2e7; border-radius:9px; padding:8px 12px; font-family:inherit; font-size:.86rem; min-width:240px; }
+  #rd-page .rdt-card{ border:1px solid #e7eaee; border-radius:12px; overflow:auto; max-height:66vh; }
+  #rd-page table.rdt{ width:100%; border-collapse:collapse; font-size:.84rem; }
+  #rd-page table.rdt thead th{ background:var(--pc-dark,#1a1d20); color:#fff; font-weight:600; padding:10px 13px; position:sticky; top:0; z-index:2; text-align:left; white-space:nowrap; font-size:.78rem; }
+  #rd-page table.rdt tbody td{ padding:8px 13px; border-top:1px solid #eef1f4; vertical-align:middle; }
+  #rd-page table.rdt tbody tr:hover{ background:#fafbfc; }
+  #rd-page table.rdt .mono{ font-family:'JetBrains Mono',monospace; font-weight:700; color:#2c4a82; }
+  #rd-page .rdt-tag{ font-size:.68rem; font-weight:700; border-radius:6px; padding:2px 8px; background:#eaf4ee; color:#9a6700; }
+  #rd-page .rdt-note{ font-size:.78rem; color:#8a9099; margin-top:10px; }
+  #rd-page table.rdt thead tr.rdt-filt th{ top:36px; background:#2b2f33; padding:5px 8px; z-index:1; }
+  #rd-page .rdt-filt input, #rd-page .rdt-filt select{ width:100%; min-width:58px; font-size:.74rem; padding:3px 6px; border:1px solid #5a5f64; border-radius:5px; background:#fff; color:#1a1d20; font-family:inherit; }
+</style>
+
+<div id="rd-page">
+  <div class="rd-head">
+    <div class="bar"></div>
+    <div>
+      <h2><i class="fas fa-flask me-2" style="color:var(--pc-yellow,#2e934a)"></i><span data-en="RD / NEW ITEM" data-th="RD / สินค้าใหม่">RD / สินค้าใหม่</span></h2>
+      <div class="rd-crumb" id="rdCrumb"></div>
+    </div>
+  </div>
+  <div class="pm-layout">
+    <aside class="pm-rail" id="rdRail"></aside>
+    <div class="pm-main" id="rdMain">
+      <div class="p-5 text-center text-muted"><div class="spinner-border text-warning" role="status"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ITEMS = [
+    { pg:'NPD',      icon:'fa-flask',         en:'NPD New Item', th:'NPD สินค้าใหม่' },
+    { pg:'Flavor',   icon:'fa-mortar-pestle', en:'Add Flavor',   th:'เพิ่มผงรสชาติ' },
+    { pg:'AbbrReq',  icon:'fa-font',          en:'Rename Abbr',  th:'ขอเปลี่ยนตัวย่อ',  inline:true },
+    { pg:'RmMaster', icon:'fa-vials',         en:'RM Master',    th:'RM Master',        inline:true },
+    { pg:'Recipe',   icon:'fa-list-check',    en:'Recipe',       th:'Recipe (สูตร)',    inline:true }
+  ];
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function fmt4(v){ if(v===''||v==null) return ''; var n=parseFloat(v); if(isNaN(n)) return String(v); return String(Math.round(n*10000)/10000); }
+  function fmtDate(s){ s=String(s==null?'':s); return s ? s.slice(0,10) : ''; }
+  function run(fn,args){ return new Promise(function(res){ try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ google.script.run.withSuccessHandler(res).withFailureHandler(function(){res(null);})[fn].apply(null,args||[]); } else res(null); }catch(e){ res(null); } }); }
+  function allowedItems() {
+    var role = localStorage.getItem('pc_role') || 'Admin';
+    var perms = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : null;
+    var allow = perms ? (perms[role] || perms.Admin || []) : null;
+    return ITEMS.filter(function (it) { return it.inline || !allow || allow.indexOf(it.pg) !== -1; });
+  }
+  function lang() { try { return localStorage.getItem('pc_lang') === 'en' ? 'en' : 'th'; } catch (e) { return 'th'; } }
+  var curSub = null;
+
+  function renderRail() {
+    var items = allowedItems(), L = lang();
+    document.getElementById('rdRail').innerHTML =
+      '<div class="pm-rail-grp" data-en="RD FORMS" data-th="ฟอร์ม RD">ฟอร์ม RD</div>' +
+      items.map(function (it) {
+        return '<div class="pm-rail-item ' + (it.pg === curSub ? 'on' : '') + '" onclick="window.rdGo(\'' + it.pg + '\')">' +
+          '<i class="fas ' + it.icon + '"></i>' +
+          '<span class="navlbl" data-en="' + it.en + '" data-th="' + it.th + '">' + (L === 'en' ? it.en : it.th) + '</span></div>';
+      }).join('');
+    var cur = ITEMS.find(function (x) { return x.pg === curSub; });
+    var cr = document.getElementById('rdCrumb');
+    if (cr && cur) cr.innerHTML = (L === 'en' ? 'RD / NEW ITEM » <b>' + cur.en + '</b>' : 'RD / สินค้าใหม่ » <b>' + cur.th + '</b>');
+  }
+
+  window.rdGo = function (pg) {
+    if (pg === curSub) return;
+    if (curSub && typeof window['dispose' + curSub] === 'function') { try { window['dispose' + curSub](); } catch (e) {} }
+    curSub = pg;
+    try { localStorage.setItem('pc_createrd_sub', pg); } catch (e) {}
+    renderRail();
+    var main = document.getElementById('rdMain');
+    var item = ITEMS.find(function (x) { return x.pg === pg; });
+    if (item && item.inline) {
+      if (pg === 'RmMaster') renderRmMaster(main);
+      else if (pg === 'Recipe') renderRecipe(main);
+      else if (pg === 'AbbrReq') { if (window.PC_Abbr && window.PC_Abbr.renderRD) window.PC_Abbr.renderRD(main); else main.innerHTML = '<div class="p-4 text-danger">โมดูลเปลี่ยนตัวย่อยังไม่โหลด</div>'; }
+      return;
+    }
+    if (window.pcLoadSub) window.pcLoadSub(main, pg);
+    else main.innerHTML = '<div class="p-4 text-danger">loader missing</div>';
+  };
+
+  /* ===== RM Master (read-only) — store.rmMaster ผ่าน getRmMaster ===== */
+  function renderRmMaster(main) {
+    main.innerHTML = '<div class="rdt-wrap"><div class="p-4 text-center text-muted"><div class="spinner-border text-warning"></div></div></div>';
+    run('getRmMaster').then(function (list) {
+      var rm = list || (window.PC_getRmMaster ? window.PC_getRmMaster() : []) || [];
+      window.__rdRm = rm;
+      var rmUnits = [...new Set(rm.map(function(r){return r.unit;}).filter(Boolean))];
+      var lastUpd = rm.map(function(r){return r.updatedAt;}).filter(Boolean).sort().pop();
+      main.innerHTML =
+        '<div class="rdt-wrap">' +
+          '<div class="rdt-head"><h3><i class="fas fa-vials me-2" style="color:#1d7a4d"></i>RM Master</h3>' +
+            '<span class="rdt-ro"><i class="fas fa-lock me-1"></i>READ-ONLY</span>' +
+            '<button class="btn btn-sm btn-dark fw-bold" style="white-space:nowrap" onclick="window.rdRmAdd()"><i class="fas fa-plus me-1"></i>เพิ่ม RM</button>' +
+            '<span class="rdt-cnt" id="rdRmCnt"></span>' + (lastUpd ? '<span class="rdt-cnt" style="color:#2e934a"><i class="fas fa-clock me-1"></i>อัปเดตล่าสุด ' + esc(fmtDate(lastUpd)) + '</span>' : '') + '</div>' +
+          '<div class="rdt-card"><table class="rdt"><thead>' +
+            '<tr><th style="width:130px">RM Code</th><th>Description</th><th style="width:90px">Unit</th><th style="width:100px">สถานะ</th><th style="width:120px">วันที่อัปเดต</th></tr>' +
+            '<tr class="rdt-filt">' +
+              '<th><input data-f="code" placeholder="พิมพ์ค้นหา" oninput="window.rdRmFilter()"></th>' +
+              '<th><input data-f="desc" placeholder="พิมพ์ค้นหา" oninput="window.rdRmFilter()"></th>' +
+              '<th><select data-f="unit" onchange="window.rdRmFilter()"><option value="">ทั้งหมด</option>' + rmUnits.map(function(u){return '<option>'+esc(u)+'</option>';}).join('') + '</select></th>' +
+              '<th><select data-f="status" onchange="window.rdRmFilter()"><option value="">ทั้งหมด</option><option>Active</option><option>Inactive</option></select></th>' +
+              '<th><input data-f="upd" placeholder="yyyy-mm-dd" oninput="window.rdRmFilter()"></th>' +
+            '</tr></thead><tbody id="rdRmBody"></tbody></table></div>' +
+          '<div class="rdt-note"><i class="fas fa-circle-info me-1"></i>ตารางวัตถุดิบกลาง (rm_master) — โค้ด RM ใหม่จากฟอร์ม NPD/เพิ่มผง ไหลเข้าตารางนี้ตอน IT บันทึก (harvest) · อัปเดตเรียลไทม์ทุกครั้งที่เปิดหน้านี้</div>' +
+        '</div>';
+      window.rdRmFilter();
+    });
+  }
+  window.rdRmToggleStatus = function(code){
+    var list=window.__rdRm||[]; var rm=list.find(function(r){return String(r.code)===String(code);}); if(!rm) return;
+    var ns=String(rm.status||'Active').toLowerCase()==='inactive'?'Active':'Inactive';
+    run('setRmStatus', code, ns).then(function(){ rm.status=ns; rm.updatedAt=new Date().toISOString(); window.rdRmFilter(); });
+  };
+  window.rdRmAdd = function(){
+    if(!window.Swal) return;
+    Swal.fire({ title:'เพิ่ม RM ใหม่', html:'<input id="rmA" class="swal2-input" placeholder="RM Code"><input id="rmB" class="swal2-input" placeholder="Description"><input id="rmC" class="swal2-input" placeholder="หน่วย (Unit)">', showCancelButton:true, confirmButtonText:'เพิ่ม', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก', preConfirm:function(){ var c=(document.getElementById('rmA').value||'').trim(), d=(document.getElementById('rmB').value||'').trim(), u=(document.getElementById('rmC').value||'').trim(); if(!c||!d){ Swal.showValidationMessage('ใส่ RM Code + Description'); return false; } return {code:c,desc:d,unit:u}; } }).then(function(rr){ if(!rr.isConfirmed) return; run('addRmCode', rr.value).then(function(res){ if(res&&res.status==='success'){ (window.__rdRm=window.__rdRm||[]).push({code:rr.value.code,desc:rr.value.desc,unit:rr.value.unit||'g',status:'Active',updatedAt:new Date().toISOString()}); window.rdRmFilter(); Swal.fire({icon:'success',title:'เพิ่มแล้ว',timer:1200,showConfirmButton:false}); } else Swal.fire('ผิดพลาด',(res&&res.message)||'เพิ่มไม่สำเร็จ','error'); }); });
+  };
+  window.rdRmFilter = function () {
+    var rm = window.__rdRm || [];
+    var f = {}; document.querySelectorAll('#rdMain .rdt-filt [data-f]').forEach(function(el){ var v=String(el.value||'').trim().toLowerCase(); if(v) f[el.getAttribute('data-f')]=v; });
+    var rows = rm.filter(function (r) {
+      if (f.code && String(r.code||'').toLowerCase().indexOf(f.code)<0) return false;
+      if (f.desc && String(r.desc||'').toLowerCase().indexOf(f.desc)<0) return false;
+      if (f.unit && String(r.unit||'').toLowerCase().indexOf(f.unit)<0) return false;
+      if (f.status && String(r.status||'Active').toLowerCase().indexOf(f.status)<0) return false;
+      if (f.upd && fmtDate(r.updatedAt).toLowerCase().indexOf(f.upd)<0) return false;
+      return true;
+    });
+    var body = document.getElementById('rdRmBody'); if (!body) return;
+    body.innerHTML = rows.length ? rows.map(function (r) {
+      return '<tr><td class="mono">' + esc(r.code) + '</td><td>' + esc(r.desc || '') + '</td><td>' + esc(r.unit || '') + '</td><td><span style="font-weight:600;cursor:pointer;text-decoration:underline dotted;color:' + (String(r.status||'Active').toLowerCase()==='inactive'?'#c0392b':'#1d7a4d') + '" title="คลิกเปลี่ยนสถานะ" onclick="window.rdRmToggleStatus(\'' + esc(r.code) + '\')">' + esc(r.status || 'Active') + '</span></td><td style="color:#8a9099">' + (esc(fmtDate(r.updatedAt)) || '—') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:#9aa1aa;padding:28px">ไม่พบรายการ</td></tr>';
+    var cnt = document.getElementById('rdRmCnt'); if (cnt) cnt.textContent = rows.length + ' / ' + rm.length + ' รายการ';
+  };
+
+  /* ===== Recipe (read-only) — รวมสูตรจาก NPD (item.recipes) + Flavor (group.flavors) ===== */
+  function renderRecipe(main) {
+    main.innerHTML = '<div class="rdt-wrap"><div class="p-4 text-center text-muted"><div class="spinner-border text-warning"></div></div></div>';
+    Promise.all([run('getNPDList'), run('getFlavorList')]).then(function (r) {
+      var npd = r[0] || [], flv = r[1] || [];
+      var rows = [];
+      var BOM = window.PC_RECIPE || {};
+      Object.keys(BOM).forEach(function (code) { var it = BOM[code] || {}; var modes = it.modes || {}; Object.keys(modes).forEach(function (mode) { (modes[mode] || []).forEach(function (x) { rows.push({ src: 'Backoffice', kind: 'BOM', itemCode: code, itemName: it.name || '', mode: mode, rmCode: x.rm || '', rmDesc: x.d || '', qty: x.q || '', unit: x.u || '' }); }); }); });
+      npd.forEach(function (n) {
+        (n.items || []).forEach(function (it) {
+          (it.recipes || []).forEach(function (rc) {
+            rows.push({ src: n.id || n.project || 'NPD', kind: 'NPD', itemCode: it.code || '', itemName: it.name || it.th || '', mode: (rc.channels || it.saleModes || []).join(', '), rmCode: rc.code || '', rmDesc: rc.desc || '', qty: rc.qty || '', unit: rc.unit || '' });
+          });
+          (it.formulas || []).forEach(function (f) {
+            rows.push({ src: n.id || n.project || 'NPD', kind: 'Subset', itemCode: it.code || '', itemName: it.name || it.th || '', mode: 'สูตรผง', rmCode: f.ss || '', rmDesc: 'เลือกได้ ' + (f.choose || 1), qty: f.choose || '', unit: 'รส' });
+          });
+        });
+      });
+      flv.forEach(function (n) {
+        (n.groups || []).forEach(function (g) {
+          (g.flavors || []).forEach(function (f) {
+            rows.push({ src: n.id || n.project || 'FLV', kind: 'Flavor', itemCode: f.cmpos || f.code || '', itemName: f.eng || '', mode: g.ssCode || '', rmCode: f.code || '', rmDesc: f.desc || '', qty: f.qty || '', unit: f.unit || '' });
+          });
+        });
+      });
+      var dts=[]; npd.concat(flv).forEach(function(n){ ['updatedDate','itDoneDate','submittedDate','timestamp'].forEach(function(k){ if(n&&n[k]) dts.push(String(n[k])); }); }); window.__rdRcUpd = dts.length ? dts.sort().pop().slice(0,10) : '';
+      window.__rdRecipe = rows;
+      var rcKinds = [...new Set(rows.map(function(r){return r.kind;}).filter(Boolean))];
+      var rcModes = [...new Set(rows.map(function(r){return r.mode;}).filter(Boolean))];
+      var rcUnits = [...new Set(rows.map(function(r){return r.unit;}).filter(Boolean))];
+      main.innerHTML =
+        '<div class="rdt-wrap">' +
+          '<div class="rdt-head"><h3><i class="fas fa-list-check me-2" style="color:#2e934a"></i>Recipe (สูตร) — จาก NPD / เพิ่มผง</h3>' +
+            '<span class="rdt-ro"><i class="fas fa-lock me-1"></i>READ-ONLY</span>' +
+            '<span class="rdt-cnt" id="rdRcCnt"></span>' + (window.__rdRcUpd ? '<span class="rdt-cnt" style="color:#2e934a"><i class="fas fa-clock me-1"></i>อัปเดตล่าสุด ' + esc(window.__rdRcUpd) + '</span>' : '') + '</div>' +
+          '<div class="rdt-card"><table class="rdt"><thead>' +
+            '<tr><th style="width:120px">ที่มา</th><th style="width:110px">Item Code</th><th>Item Name</th><th style="width:130px">Sale Mode / Subset</th><th style="width:100px">RM Code</th><th>RM / รายละเอียด</th><th style="width:70px">QTY</th><th style="width:70px">Unit</th></tr>' +
+            '<tr class="rdt-filt">' +
+              '<th><select data-f="kind" onchange="window.rdRecipeFilter()"><option value="">ทั้งหมด</option>' + rcKinds.map(function(k){return '<option>'+esc(k)+'</option>';}).join('') + '</select></th>' +
+              '<th><input data-f="itemCode" placeholder="ค้นหา" oninput="window.rdRecipeFilter()"></th>' +
+              '<th><input data-f="itemName" placeholder="ค้นหา" oninput="window.rdRecipeFilter()"></th>' +
+              '<th><select data-f="mode" onchange="window.rdRecipeFilter()"><option value="">ทั้งหมด</option>' + rcModes.map(function(m){return '<option>'+esc(m)+'</option>';}).join('') + '</select></th>' +
+              '<th><input data-f="rmCode" placeholder="ค้นหา" oninput="window.rdRecipeFilter()"></th>' +
+              '<th><input data-f="rmDesc" placeholder="ค้นหา" oninput="window.rdRecipeFilter()"></th>' +
+              '<th><input data-f="qty" placeholder="ค้นหา" oninput="window.rdRecipeFilter()"></th>' +
+              '<th><select data-f="unit" onchange="window.rdRecipeFilter()"><option value="">ทั้งหมด</option>' + rcUnits.map(function(u){return '<option>'+esc(u)+'</option>';}).join('') + '</select></th>' +
+            '</tr></thead><tbody id="rdRcBody"></tbody></table></div>' +
+          '<div class="rdt-note"><i class="fas fa-circle-info me-1"></i>สูตรเก็บฝังในเรคคอร์ด NPD/Flavor (item.recipes · subset formula · flavor powders) — ใช้ตรวจว่าข้อมูลต้นทางวิ่งเข้าครบก่อนนำไปผูก Item Set</div>' +
+        '</div>';
+      window.rdRecipeFilter();
+    });
+  }
+  window.rdRecipeFilter = function () {
+    var all = window.__rdRecipe || [];
+    var f = {}; document.querySelectorAll('#rdMain .rdt-filt [data-f]').forEach(function(el){ var v=String(el.value||'').trim().toLowerCase(); if(v) f[el.getAttribute('data-f')]=v; });
+    var rows = all.filter(function (r) {
+      if (f.kind && String(r.kind||'').toLowerCase().indexOf(f.kind)<0) return false;
+      if (f.itemCode && String(r.itemCode||'').toLowerCase().indexOf(f.itemCode)<0) return false;
+      if (f.itemName && String(r.itemName||'').toLowerCase().indexOf(f.itemName)<0) return false;
+      if (f.mode && String(r.mode||'').toLowerCase().indexOf(f.mode)<0) return false;
+      if (f.rmCode && String(r.rmCode||'').toLowerCase().indexOf(f.rmCode)<0) return false;
+      if (f.rmDesc && String(r.rmDesc||'').toLowerCase().indexOf(f.rmDesc)<0) return false;
+      if (f.qty && fmt4(r.qty).toLowerCase().indexOf(f.qty)<0) return false;
+      if (f.unit && String(r.unit||'').toLowerCase().indexOf(f.unit)<0) return false;
+      return true;
+    });
+    var body = document.getElementById('rdRcBody'); if (!body) return;
+    var CAP = 600, shown = rows.slice(0, CAP);
+    body.innerHTML = shown.length ? shown.map(function (r) {
+      return '<tr><td><span class="rdt-tag">' + esc(r.kind) + '</span> <span class="mono" style="font-size:.74rem">' + esc(r.src) + '</span></td>' +
+        '<td class="mono">' + esc(r.itemCode || '—') + '</td><td>' + esc(r.itemName || '') + '</td><td>' + esc(r.mode || '') + '</td>' +
+        '<td class="mono">' + esc(r.rmCode || '—') + '</td><td>' + esc(r.rmDesc || '') + '</td><td>' + esc(fmt4(r.qty)) + '</td><td>' + esc(r.unit || '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;color:#9aa1aa;padding:36px"><i class="fas fa-list-check fa-2x mb-2 d-block" style="opacity:.4"></i>ไม่พบสูตร — ใช้ filter หัวตาราง</td></tr>';
+    var cnt = document.getElementById('rdRcCnt'); if (cnt) cnt.textContent = (rows.length > CAP ? ('แสดง ' + CAP + ' / ') : '') + rows.length + ' / ' + all.length + ' แถว';
+  };
+
+  window.disposeCreateRD = function () {
+    if (curSub && typeof window['dispose' + curSub] === 'function') { try { window['dispose' + curSub](); } catch (e) {} }
+  };
+
+  window.initCreateRD = function () {
+    var items = allowedItems();
+    var rail = document.getElementById('rdRail'), main = document.getElementById('rdMain');
+    if (!items.length) {
+      if (rail) rail.innerHTML = '';
+      if (main) main.innerHTML = '<div class="rd-empty"><i class="fas fa-lock fa-2x mb-3 d-block"></i><span data-en="No RD forms available for your role." data-th="บทบาทของคุณยังไม่มีสิทธิ์แจ้งงาน RD">บทบาทของคุณยังไม่มีสิทธิ์แจ้งงาน RD</span></div>';
+      if (typeof window.applyLang === 'function') window.applyLang();
+      return;
+    }
+    var last = null; try { last = localStorage.getItem('pc_createrd_sub'); } catch (e) {}
+    var start = items.some(function (x) { return x.pg === last; }) ? last : items[0].pg;
+    curSub = null;
+    window.rdGo(start);
+  };
+})();
+</script>

@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head><meta name="build" content="p2-20260820c">
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>POTATO CORNER PROMOTION SYSTEM</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/table-std.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Microsoft Entra (MSAL.js) — "เข้าด้วย Microsoft" SSO -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+
+  <!-- seed data + app modules: loaded SEQUENTIALLY with retry so the preview/serve
+       never drops a script under parallel-load pressure (order matters: data → mock-backend) -->
+  <script>
+  window.__pcBoot = (function () {
+    // Core modules: order matters (data → mock-backend → libs). item-master.js (1.25MB)
+    // is DEFERRED out of this list and streamed in the background so first paint isn't
+    // blocked by the catalog — pages that need products await PC_ensureItemMaster().
+    var scripts = [
+      "data/seed.js", "data/department-master.js", "data/subset-master.js", "data/member-types.js", "data/member-card-coupons.js", "data/staff-discount-types.js", "js/card-link.js",
+      "data/subset-flavors.js", "data/item-master-prices.js", "data/rm-master.js", "data/recipe-bom.js", "js/flavor-order.js", "data/hardware-master.js", "data/asset-seed.js", "data/plan-2026.js", "data/promo-codes.js", "data/price-promotion.js", "data/price-promos-live.js", "data/product-formula.js",
+      "js/branch-master.js", "data/tender-master.js", "data/edc-zone-seed.js", "data/epay-seed.js", "js/edc-zone-seeder.js", "js/edc-reminder.js", "data/real-promos.js", "data/code-promos.js", "data/bill-discount-confirmed.js", "data/pro-july-2026.js", "data/voucher-coupon-confirmed.js", "data/co-promotions-seed.js", "js/rd-sticker.js", "data/device-change-cases.js",
+      "js/themes.js",
+      "data/evoucher-copro-seed.js", "js/format.js", "js/code-pack.js", "js/mock-backend.js", "js/code-counter.js", "js/store-select.js", "js/customer-group.js", "js/voucher-tag.js", "js/form-subset.js", "js/promo-code-convert.js",
+      "js/code-guard.js", "js/abbr-rename.js", "js/save-verify.js", "js/name-limit.js", "js/flavor-import.js", "js/lock-enforce.js", "js/item-picker.js", "js/item-cate-picker.js", "js/table-engine.js", "js/npd-readonly-view.js", "js/promo-import.js", "js/i18n-dict.js", "js/i18n.js", "js/easy-datepicker.js", "js/promo-report.js", "js/co-promo.js", "js/calendar-reminder.js", "js/email-templates.js", "js/notify.js", "js/cloud-store.js"
+    ];
+    var ITEM_MASTER = "data/item-master.js";
+    var ready = false, cbs = [];
+    function onReady(cb) { if (ready) { try { cb(); } catch (e) { console.error(e); } } else cbs.push(cb); }
+    function done() { ready = true; cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); }
+    function run(src, code) {
+      var s = document.createElement("script");
+      s.textContent = code + "\n//# sourceURL=" + src;
+      document.head.appendChild(s);
+    }
+    // fetch one file as text with retry — uses the HTTP cache (revalidates) so reloads are fast.
+    function fetchText(src) {
+      var tries = 0;
+      return new Promise(function (resolve) {
+        (function attempt() {
+          fetch(src)
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+            .then(resolve)
+            .catch(function () {
+              tries++;
+              if (tries <= 8) { setTimeout(attempt, 120 * tries); }
+              else { console.error("[boot] gave up loading " + src); resolve(""); }
+            });
+        })();
+      });
+    }
+    // PARALLEL download, SEQUENTIAL execute — kick off every fetch at once (one round-trip
+    // wall-clock instead of 23), then run them strictly in order so dependencies hold.
+    var fetches = scripts.map(fetchText);
+    (async function () {
+      for (var i = 0; i < scripts.length; i++) {
+        var code = await fetches[i];
+        if (code) run(scripts[i], code);
+      }
+      done();
+      // start streaming the heavy catalog in the background once core is up
+      ensureItemMaster();
+    })();
+
+    // ---- deferred item master (1.25MB) ----
+    var imPromise = null;
+    function ensureItemMaster() {
+      if (window.PC_ITEM_MASTER && window.PC_ITEM_MASTER.length) return Promise.resolve();
+      if (!imPromise) imPromise = fetchText(ITEM_MASTER).then(function (code) { if (code) run(ITEM_MASTER, code); });
+      return imPromise;
+    }
+
+    return { onReady: onReady, isReady: function () { return ready; }, ensureItemMaster: ensureItemMaster };
+  })();
+  window.PC_ensureItemMaster = function () { return window.__pcBoot.ensureItemMaster(); };
+  </script>
+
+  <!-- ====== Styles (inlined from the Apps Script 'Styles' include) ====== -->
+  <style>
+    :root {
+      --pc-dark: #1a1d20; --dark: #1a1d20;
+      --pc-yellow: #2e934a; --pc-green: #2e934a;
+      --pc-red: #dc3545; --pc-white: #ffffff; --pc-bg: #f4f6f9;
+      --pc-blue: #0dcaf0; --pc-purple: #2e934a;
+    }
+    body { font-family: 'Kanit', sans-serif; background-color: var(--pc-bg); font-size: 15px; }
+    h1,h2,h3,h4,h5,h6,.fw-bold { font-family: 'Kanit', sans-serif; }
+    .btn, .form-control, .form-select, .badge { font-family: 'Kanit', sans-serif; }
+    .text-warning { color: var(--pc-yellow) !important; }
+    .btn-warning { background-color: var(--pc-yellow) !important; border-color: var(--pc-yellow) !important; }
+    .text-success { color: var(--pc-green) !important; }
+    .btn-success { background-color: var(--pc-green) !important; border-color: var(--pc-green) !important; }
+    .bg-dark { background-color: var(--pc-dark) !important; }
+    .border-dark { border-color: var(--pc-dark) !important; }
+
+    /* --- LOGO STYLE --- */
+    .brand-text {
+      font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 3.5rem;
+      line-height: 0.8; color: #000;
+      text-shadow: -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff;
+      letter-spacing: -2px; text-align: center; text-transform: uppercase;
+    }
+    .brand-subtext {
+      background: var(--pc-green); color: white; display: inline-block; padding: 5px 15px;
+      font-weight: bold; margin-top: 10px; border: 3px solid #000; font-family: 'Montserrat', sans-serif;
+    }
+
+    /* --- LOGIN WRAPPER --- */
+    .login-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--pc-yellow); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-container { width: 100%; max-width: 372px; padding: 20px; }
+    .login-card { background: white; border: 4px solid var(--dark); padding: 28px 26px; box-shadow: 10px 10px 0px rgba(0,0,0,0.2); }
+    /* login logo = same size as splash */
+    .login-logo .brand-text { font-size: 3rem; }
+    .login-logo .brand-subtext { font-size: .82rem; }
+
+    /* --- MAIN APP STRUCTURE --- */
+    #sidebar { display: none; flex-direction: column; height: 100vh; position: fixed; width: 250px; z-index: 1000; transition: all 0.3s; background: var(--dark); }
+    #main-content { margin-left: 0; width: 100%; transition: all 0.3s; min-height: 100vh; display: none; position: relative; }
+    body.logged-in #main-content { display: block; }
+    @media (min-width: 769px) {
+      body.logged-in #main-content { margin-left: 250px; width: calc(100% - 250px); }
+      body.logged-in #sidebar { display: flex; }
+      body.logged-in.sidebar-collapsed #sidebar { margin-left: 0; width: 84px; overflow-x: hidden; overflow-y: auto; }
+      body.logged-in.sidebar-collapsed #main-content { margin-left: 84px; width: calc(100% - 84px); }
+      body.logged-in.sidebar-collapsed #sidebar .mt-auto,
+      body.logged-in.sidebar-collapsed #sidebar #section-badge { display: none !important; }
+      /* hide the colored group-title rows — keep only the icon buttons */
+      body.logged-in.sidebar-collapsed #sidebar .flex-grow-1 > div:not(.nav-link) { display: none !important; }
+      body.logged-in.sidebar-collapsed #sidebar .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 9px 3px; }
+      body.logged-in.sidebar-collapsed #sidebar .nav-link i { margin: 0 !important; font-size: 1.1rem; width: auto; }
+      body.logged-in.sidebar-collapsed #sidebar .nav-link .navlbl { font-size: 0.5rem; line-height: 1.12; font-weight: 700; letter-spacing: 0.2px; white-space: normal; word-break: break-word; }
+      body.logged-in.sidebar-collapsed #sidebar .sidebar-header { padding: 54px 4px 12px; }
+      body.logged-in.sidebar-collapsed #sidebar .sidebar-logo-text { font-size: 0.6rem; line-height: 1; }
+      body.logged-in #desk-toggle { display: flex; }
+      body.logged-in.sidebar-collapsed #desk-toggle { left: 22px; }
+    }
+    body.logged-in.sidebar-collapsed #main-content .container,
+    body.logged-in.sidebar-collapsed #main-content .container-sm,
+    body.logged-in.sidebar-collapsed #main-content .container-md,
+    body.logged-in.sidebar-collapsed #main-content .container-lg,
+    body.logged-in.sidebar-collapsed #main-content .container-xl { max-width: 100% !important; }
+    #desk-toggle { display: none; align-items: center; justify-content: center; position: fixed; top: 14px; left: 198px; z-index: 1101; width: 40px; height: 34px; background: var(--dark); color: var(--pc-yellow); border: 2px solid var(--pc-yellow); border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+    #mobile-toggle { display: none; position: fixed; top: 15px; left: 15px; z-index: 1001; background: var(--dark); color: var(--pc-yellow); border: 2px solid var(--pc-yellow); padding: 5px 12px; }
+    @media (max-width: 768px) {
+      body.logged-in #mobile-toggle { display: block; }
+      #sidebar.active { margin-left: 0; display: flex; }
+      #sidebar { margin-left: -250px; }
+    }
+    .nav-link { color: white; cursor: pointer; padding: 12px 20px; transition: 0.3s; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .nav-sub { font-size: 0.82rem !important; color: #b8ccc0 !important; padding-top: 13px !important; padding-bottom: 4px !important; }
+    .nav-link:hover { background: rgba(255,255,255,0.08); color: var(--pc-yellow); }
+    .active-menu { background: rgba(46,147,74,0.16) !important; color: var(--pc-yellow) !important; font-weight: bold; border-left: 3px solid var(--pc-yellow); }
+    /* per-device theme: drive sidebar text from the chosen palette (light sidebars need dark text) */
+    body.logged-in #sidebar { background: var(--pc-sb, var(--dark)); }
+    body.logged-in #sidebar .nav-link { color: var(--pc-sbtx, #fff); }
+    body.logged-in #sidebar .active-menu { background: var(--pc-navon, rgba(46,147,74,0.16)) !important; color: var(--pc-yellow) !important; }
+    body.logged-in #sidebar .nav-link i.text-info, body.logged-in #sidebar .nav-link i.text-warning { color: var(--pc-yellow) !important; }
+    body.logged-in #sidebar .flex-grow-1 { overflow-y: auto; overflow-x: hidden; min-height: 0; }
+    .lang-switch { display:inline-flex; border:2px solid #000; border-radius:8px; overflow:hidden; }
+    .lang-btn { border:none; background:#fff; color:#000; font-weight:700; font-size:.7rem; padding:3px 12px; cursor:pointer; }
+    .lang-btn.active { background:#2e934a; color:#fff; }
+    body.logged-in { overflow: hidden; }
+    body.logged-in #content-area { position: absolute; top: 46px; left: 0; right: 0; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    @media (max-width: 768px){ body.logged-in #content-area { top: 56px; } }
+
+    /* shared in-content left-rail (Shop Master style) — used by multi-tab pages */
+    .pc-railwrap{ display:flex; gap:18px; align-items:flex-start; margin-top:16px; }
+    .pc-rail{ width:220px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+    .pc-rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+    .pc-rail-item{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+    .pc-rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+    .pc-rail-item:hover{ background:#f4f6f9; }
+    .pc-rail-item.on{ background:var(--dark,#1a1d20); color:#fff; }
+    .pc-rail-item.on i{ color:var(--pc-yellow,#2e934a); }
+    .pc-railmain{ flex:1; min-width:0; }
+    /* ===== sub-rail fold — พับ sub-rail ขึ้นเป็นแถบปุ่มแนวนอนด้านบน เพื่อขยายพื้นที่ตาราง ===== */
+    .pc-railwrap{ position:relative; }
+    .pc-rail-fold{ position:absolute; top:8px; left:8px; z-index:7; width:32px; height:32px; border:none; border-radius:9px; background:#1a1d20; color:var(--pc-yellow,#2e934a); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.85rem; box-shadow:0 2px 6px rgba(0,0,0,.18); transition:background .15s; }
+    .pc-rail-fold:hover{ background:#000; }
+    .pc-railwrap.has-fold > .pc-rail{ padding-top:46px; }
+    body.rail-folded .pc-railwrap{ flex-direction:column; align-items:stretch; }
+    body.rail-folded .pc-railwrap > .pc-rail{ width:100%; position:static; display:flex; flex-wrap:wrap; gap:7px; align-items:center; padding:8px 10px 8px 50px; }
+    body.rail-folded .pc-railwrap > .pc-rail .pc-rail-grp{ display:none; }
+    body.rail-folded .pc-railwrap > .pc-rail .pc-rail-item{ padding:8px 15px; border-radius:999px; font-size:.85rem; background:#f4f6f9; }
+    body.rail-folded .pc-railwrap > .pc-rail .pc-rail-item.on{ background:var(--dark,#1a1d20); color:#fff; }
+    body.rail-folded .pc-railwrap > .pc-rail .pc-rail-item.on i{ color:var(--pc-yellow,#2e934a); }
+    /* fold รองรับ rail แบบอื่นด้วย (.pm-layout/.pm-rail ของ Products/CreatePromotion, .layout/.rail ของ Master Settings) */
+    .pm-layout, .layout, .pickwrap{ position:relative; }
+    .pm-layout.has-fold > .pm-rail, .layout.has-fold > .rail{ padding-top:46px; }
+    body.rail-folded .pm-layout, body.rail-folded .layout, body.rail-folded .pickwrap{ flex-direction:column !important; align-items:stretch !important; }
+    body.rail-folded .pm-rail, body.rail-folded .rail{ width:100% !important; position:static !important; display:flex !important; flex-wrap:wrap; gap:7px; align-items:center; padding:8px 10px 8px 50px !important; top:auto !important; }
+    body.rail-folded .pm-rail .pm-rail-grp, body.rail-folded .rail .rail-grp{ display:none !important; }
+    body.rail-folded .pm-rail .pm-rail-item, body.rail-folded .rail .rail-item{ display:inline-flex !important; width:auto !important; flex:0 0 auto !important; padding:8px 15px !important; border-radius:999px !important; }
+    .sidebar-header { background: var(--pc-yellow); padding: 15px; text-align: center; border-bottom: 2px solid #000; }
+    .sidebar-logo-text { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 1.5rem; line-height: 0.9; color: #000; text-shadow: 1px 1px 0 #fff; }
+    .role-pill { display:none; font-size:.7rem; font-weight:700; letter-spacing:.5px; }
+    /* instant branded splash — shown immediately, removed once core modules are ready */
+    #boot-splash { position: fixed; inset: 0; z-index: 99999; background: var(--pc-yellow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+    #boot-splash .brand-text { font-size: 3rem; }
+
+    /* ===================== Responsive layer ===================== */
+    @media (max-width: 1024px){
+      body.logged-in #content-area table{ font-size: .86rem; }
+    }
+    @media (max-width: 768px){
+      #content-area .p-4{ padding: 12px !important; }
+      #content-area .p-3{ padding: 10px !important; }
+      /* wide tables scroll sideways instead of overflowing the screen */
+      #content-area .table-responsive,
+      #content-area .table-responsive-scroll,
+      #content-area .tblwrap,
+      #content-area .tblscroll,
+      #content-area .brscroll,
+      #content-area .table-frame{ overflow-x: auto !important; -webkit-overflow-scrolling: touch; max-width: 100%; }
+      #content-area table{ font-size: .8rem; }
+      /* shrink oversized page headers */
+      #content-area h1{ font-size: 1.15rem !important; line-height: 1.25; }
+      #content-area h2{ font-size: 1.05rem !important; }
+      /* let space-between toolbars/headers stack */
+      #content-area .d-flex.justify-content-between{ flex-wrap: wrap; gap: 10px; }
+      /* left rails become full-width top bars, stacked layout */
+      #content-area .pm-layout, #content-area .layout, #content-area .pickwrap, #content-area .pc-railwrap{ flex-direction: column !important; display: flex !important; }
+      #content-area .pm-rail, #content-area .rail, #content-area .pc-rail{ width: 100% !important; position: static !important; }
+      #content-area .pm-rail, #content-area .pc-rail{ display: flex !important; flex-wrap: wrap; }
+      /* bootstrap modals near full width */
+      #content-area .modal-dialog{ margin: 8px !important; max-width: calc(100% - 16px); }
+      /* grids that force many columns wrap down */
+      #content-area .row.g-3 > [class*="col-md-"]{ margin-bottom: 4px; }
+    }
+    @media (max-width: 560px){
+      #content-area .btn{ font-size: .85rem; }
+      #content-area h1{ font-size: 1.02rem !important; }
+    }
+  </style>
+  <style id="pc-clean-headers">
+    /* หัวเรื่องแต่ละหน้าแบบสะอาด — เอาแถบสีพื้นหลังเขียวออก เหลือพื้นขาว + ตัวอักษรเข้ม + เส้นคั่นล่าง (ทุกหน้า) */
+    [style*="background:#2e934a;color:#fff"]:not(button):not(.btn){
+      background:transparent !important; color:#1a1d20 !important;
+      box-shadow:none !important; border-radius:0 !important;
+      border-bottom:none !important;
+    }
+    [style*="background:#2e934a;color:#fff"] h1,
+    [style*="background:#2e934a;color:#fff"] h2,
+    [style*="background:#2e934a;color:#fff"] h3,
+    [style*="background:#2e934a;color:#fff"] h4,
+    [style*="background:#2e934a;color:#fff"] p,
+    [style*="background:#2e934a;color:#fff"] small,
+    [style*="background:#2e934a;color:#fff"] label{ color:#1a1d20 !important; }
+    /* ให้ชื่อหัวเรื่องเป็นสไตล์เดียวกับหัวฟอร์ม — ตัวพิมพ์ปกติ (ไม่ uppercase) */
+    [style*="background:#2e934a;color:#fff"] h1, [style*="background:#2e934a;color:#fff"] h2, [style*="background:#2e934a;color:#fff"] h3{ text-transform:none !important; letter-spacing:.2px !important; }
+    [style*="background:#2e934a;color:#fff"] h2{ font-size:1.8rem !important; font-weight:800 !important; }
+    [style*="background:#2e934a;color:#fff"] p,
+    [style*="background:#2e934a;color:#fff"] small{ color:#8a9099 !important; }
+    [style*="background:#2e934a;color:#fff"] .text-warning{ color:#2e934a !important; }
+    /* ปุ่มในหัวเรื่อง — กันปุ่มสีอ่อน (สำหรับพื้นเขียวเดิม) จมหายบนพื้นขาว */
+    [style*="background:#2e934a;color:#fff"] .btn-light{ background:#fff !important; border:1.5px solid #cfd6dd !important; color:#1a1d20 !important; }
+    [style*="background:#2e934a;color:#fff"] .btn-light *{ color:#1a1d20 !important; }
+    [style*="background:#2e934a;color:#fff"] .btn-outline-light{ background:#fff !important; border:1.5px solid #2e934a !important; color:#2e934a !important; }
+    [style*="background:#2e934a;color:#fff"] .btn-outline-light *{ color:#2e934a !important; }
+    /* ไม่ต้องมีกรอบ — เหลือแค่ไอคอน + ตัวหนังสือ · ซ่อนแถบ accent ซ้าย */
+    [style*="background:#2e934a;color:#fff"] [style*="var(--pc-yellow"]{ display:none !important; }
+    /* หัว wrapper (CreatePromotion + breadcrumb) ที่ใช้ gradient ผ่าน class */
+    #cp2-page .cp2-head{ background:transparent !important; color:#1a1d20 !important; border-radius:0 !important; border-bottom:none !important; }
+    #cp2-page .cp2-head h2{ color:#1a1d20 !important; text-transform:none !important; font-size:1.55rem !important; }
+    #cp2-page .cp2-head .cp2-crumb{ color:#8a9099 !important; }
+    #cp2-page .cp2-head .cp2-crumb b{ color:#2e934a !important; }
+    #cp2-page .cp2-head .ic{ background:#eafaf1 !important; color:#2e934a !important; }
+    /* wrapper headers อื่น (ITWork = dark gradient + JS-stamp, CatBranchSetting) — เอาพื้นหลังออก */
+    #itwork-page .itw-head, .cbs-head{ background:transparent !important; color:#1a1d20 !important; border-radius:0 !important; box-shadow:none !important; border-left:none !important; padding-top:8px !important; padding-bottom:8px !important; }
+    #itwork-page .itw-head h2, .cbs-head h3{ color:#1a1d20 !important; }
+    #itwork-page .itw-crumb{ color:#8a9099 !important; }
+    #itwork-page .itw-crumb b{ color:#2e934a !important; }
+    #itwork-page .itw-head .ic{ background:#eafaf1 !important; color:#2e934a !important; }
+    .cbs-head h3 i{ color:#2e934a !important; }
+    /* wrapper/banner headers อื่นทุกหน้า (ยกเว้น Dashboard d-head) — เอาพื้นหลังออก */
+    #bw2-page .bw2-head, #rd-page .rd-head, .bh-scope .bh-head, .tf-scope .tf-head, .bv-head{
+      background:transparent !important; color:#1a1d20 !important; border-radius:0 !important; box-shadow:none !important; border-left:none !important;
+    }
+    #bw2-page .bw2-head h2, #rd-page .rd-head h2, .bh-scope .bh-head h1, .tf-scope .tf-head h1, .bv-head h1, .bv-head h2{ color:#1a1d20 !important; }
+    .bh-scope .bh-head h1 i, .tf-scope .tf-head h1 i, .bv-head h1 i, #rd-page .rd-head h2 i{ color:#2e934a !important; }
+    #bw2-page .bw2-head .ic, #rd-page .rd-head .bar{ background:#eafaf1 !important; color:#2e934a !important; }
+    .bv-head .back{ background:#eafaf1 !important; color:#2e934a !important; }
+    /* Dashboard header (d-head) — เอาพื้นหลังออกด้วย (โหมดสว่าง · dark mode คงเดิม) */
+    .dash2:not(.dark) .d-head{ background:transparent !important; color:#1a1d20 !important; box-shadow:none !important; border-radius:0 !important; }
+    .dash2:not(.dark) .d-head h1{ color:#1a1d20 !important; }
+    .dash2:not(.dark) .d-head p{ color:#8a9099 !important; }
+    .dash2:not(.dark) .d-datepill{ background:#fff !important; border-color:#e6eaef !important; }
+    .dash2:not(.dark) .d-datepill .num{ color:#14202b !important; }
+    .dash2:not(.dark) .d-datepill .y{ color:#2e934a !important; }
+    .dash2:not(.dark) .d-head .eyebrow{ color:#2e934a !important; }
+    .dash2:not(.dark) .d-head .sub{ color:#8a9099 !important; }
+    .dash2:not(.dark) .d-datepill .lbl{ color:#9aa5b1 !important; }
+    .dash2:not(.dark) .d-datepill .cal{ background:#eafaf1 !important; color:#1f8a4e !important; }
+    .dash2:not(.dark) .d2-dark-btn{ background:#fff !important; color:#1f8a4e !important; border-color:#e6eaef !important; }
+    /* .topbar (Code Management · Tender · RD Sticker · Member Card · Calendar · RD Cancel ฯลฯ) — เอาพื้นหลังออก เหลือไอคอน+ตัวหนังสือ */
+    .topbar{ background:transparent !important; color:#1a1d20 !important; box-shadow:none !important; border-radius:0 !important; }
+    .topbar h1, .topbar h2{ color:#1a1d20 !important; }
+    .topbar h1{ font-size:1.9rem !important; font-weight:800 !important; line-height:1.15 !important; }
+    .topbar h1 i{ color:#2e934a !important; }
+    .topbar .sub{ color:#8a9099 !important; }
+    .topbar .role, .topbar .gear, .topbar .back, .topbar .pbtn{ background:#eafaf1 !important; color:#2e934a !important; }
+    .topbar .role.on{ background:#2e934a !important; color:#fff !important; }
+    /* Code Counter (cc-head พื้นดำ) + accent bar เหลือง Dashboard → พื้นโล่ง/เขียว */
+    .cc-scope .cc-head{ background:transparent !important; color:#1a1d20 !important; border-left:none !important; box-shadow:none !important; border-radius:0 !important; }
+    .cc-scope .cc-head h3, .cc-scope .cc-head h2{ color:#1a1d20 !important; }
+    .cc-scope .cc-head h3 i{ color:#2e934a !important; }
+    .cc-scope .cc-head p{ color:#8a9099 !important; }
+    .dash2 .d-head .hbar{ background:#2e934a !important; }
+    /* Discount Report (dr-header สีเขียว, in-shell) → พื้นโล่ง */
+    .dr-scope .dr-header{ background:transparent !important; color:#1a1d20 !important; box-shadow:none !important; border-radius:0 !important; }
+    .dr-scope .dr-header h2{ color:#1a1d20 !important; }
+    .dr-scope .dr-header p, .dr-scope .dr-header label{ color:#8a9099 !important; }
+    .dr-scope .dr-header [style*="background:var(--pc-yellow"]{ background:#2e934a !important; }
+    .dr-scope .dr-sel{ border:1.5px solid #d6dbe0 !important; background:#fff !important; color:#1a1d20 !important; }
+  </style>
+</head>
+<body class="loading" style="background-color: rgb(238, 242, 239);">
+
+  <div id="boot-splash">
+    <div class="brand-text">POTATO<br>CORNER</div>
+    <div class="brand-subtext">PROMOTION MANAGEMENT SYSTEM</div>
+    <div class="spinner-border text-dark" role="status" style="width:2.2rem;height:2.2rem;"></div>
+  </div>
+
+  <div id="login-section" class="login-wrapper">
+    <div class="login-container text-center">
+      <div class="login-logo mb-4">
+        <h1 class="brand-text">POTATO<br>CORNER</h1>
+        <div class="brand-subtext">PROMOTION MANAGEMENT SYSTEM</div>
+      </div>
+      <div class="login-card">
+        <h4 class="fw-bold mb-4 text-center">L O G I N</h4>
+        <div class="mb-3 text-start">
+          <label class="form-label fw-bold small">USERNAME</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-dark" style="border-width: 2px;"><i class="fas fa-user"></i></span>
+            <input type="text" id="user" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
+          </div>
+        </div>
+        <div class="mb-4 text-start">
+          <label class="form-label fw-bold small">PASSWORD</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-dark" style="border-width: 2px;"><i class="fas fa-lock"></i></span>
+            <input type="password" id="pass" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Password" autocomplete="new-password">
+          </div>
+        </div>
+        <button class="btn btn-dark w-100 py-3 fw-bold" onclick="doLogin()" id="loginBtn" style="border: 2px solid #000;">
+          ENTER SYSTEM
+        </button>
+
+        <div class="d-flex align-items-center my-3" style="gap:10px;">
+          <div style="flex:1;height:2px;background:#e3e3e3;"></div>
+          <span class="small fw-bold text-muted">หรือ</span>
+          <div style="flex:1;height:2px;background:#e3e3e3;"></div>
+        </div>
+
+        <button class="btn w-100 d-flex align-items-center justify-content-center" onclick="loginWithMicrosoft()" id="msLoginBtn" style="gap:11px; border:1px solid rgba(0,0,0,.10); background:#fff; color:#1a1d20; border-radius:14px; padding:14px; font-weight:600; box-shadow:0 2px 10px rgba(16,24,40,.08); transition:transform .15s, box-shadow .15s, border-color .15s;">
+          <svg width="19" height="19" viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="1" y="1" width="8" height="8" fill="#F25022"></rect>
+            <rect x="11" y="1" width="8" height="8" fill="#7FBA00"></rect>
+            <rect x="1" y="11" width="8" height="8" fill="#00A4EF"></rect>
+            <rect x="11" y="11" width="8" height="8" fill="#FFB900"></rect>
+          </svg>
+          <span style="font-size:.95rem;">Login Outlook</span>
+        </button>
+
+        <div id="errMsg" class="text-danger mt-3 fw-bold text-center small"></div>
+      </div>
+    </div>
+  </div>
+
+  <button id="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+  <button id="desk-toggle" onclick="toggleDeskSidebar()" title="ซ่อน/แสดงเมนู"><i class="fas fa-bars"></i></button>
+
+  <div id="lang-switch-top" class="lang-switch" style="display:none; position:fixed; top:14px; right:18px; z-index:1100; box-shadow:0 2px 8px rgba(0,0,0,.2);">
+    <button type="button" id="langEN" class="lang-btn" onclick="setLang('EN')">EN</button>
+    <button type="button" id="langTH" class="lang-btn active" onclick="setLang('TH')">TH</button>
+  </div>
+
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-text">POTATO<br>CORNER</div>
+      <div id="section-badge" onclick="window.openSectionChooser && window.openSectionChooser()" style="font-size: 0.6rem; background:#2e934a; color:#fff; display:inline-block; padding:2px 5px; margin-top:5px; font-weight:bold; cursor:pointer;">PROMOTION SYSTEM</div>
+    </div>
+    <div class="mt-2 flex-grow-1">
+      <div style="font-size:0.92rem;font-weight:800;color:#dbe4ee;letter-spacing:0.3px;padding:8px 16px;background:#0a5d33;margin-bottom:2px;text-transform:uppercase;">งานโปรโมชั่น &amp; งานสาขา</div>
+      <div class="nav-link" id="nav-Dashboard" onclick="loadPage('Dashboard', this)"><i class="fas fa-chart-line me-2"></i> <span class="navlbl" data-en="DASHBOARD" data-th="แดชบอร์ด">DASHBOARD</span></div>
+      <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">เสนอ / สร้างโปร</div>
+      <div id="nav-CreatePromotion" class="nav-link" onclick="loadPage('CreatePromotion', this)"><i class="fas fa-bullhorn me-2"></i> <span class="navlbl" data-en="CREATE PROMOTION" data-th="แจ้งโปรโมชั่น">CREATE PROMOTION</span></div>
+      <div id="nav-Proposal" class="nav-link" onclick="loadPage('Proposal', this)" style="display:none;"><i class="fas fa-file-invoice me-2"></i> <span class="navlbl" data-en="ITEM SET PROPOSAL" data-th="เสนอ Item Set">ITEM SET PROPOSAL</span></div>
+      <div id="nav-Coupon" class="nav-link" onclick="loadPage('Coupon', this)" style="display:none;"><i class="fas fa-ticket-alt me-2"></i> <span class="navlbl" data-en="COUPON PROPOSAL" data-th="เสนอคูปอง">COUPON PROPOSAL</span></div>
+      <div id="nav-BillDiscountProposal" class="nav-link" onclick="loadPage('BillDiscountProposal', this)" style="display:none;"><i class="fas fa-calculator me-2"></i> <span class="navlbl" data-en="BILL DISCOUNT PROPOSAL" data-th="เสนอ Bill Discount">BILL DISCOUNT PROPOSAL</span></div>
+      <div id="nav-VoucherProposal" class="nav-link" onclick="loadPage('VoucherProposal', this)" style="display:none;"><i class="fas fa-gift me-2"></i> <span class="navlbl" data-en="VOUCHER PROPOSAL" data-th="เสนอ Voucher">VOUCHER PROPOSAL</span></div>
+      <div id="nav-Memo" class="nav-link" onclick="loadPage('Memo', this)"><i class="fas fa-file-lines me-2 text-warning"></i> <span class="navlbl" data-en="CREATE MEMO" data-th="สร้าง MEMO">CREATE MEMO</span></div>
+      <div id="nav-VoucherMaster" class="nav-link" onclick="loadPage('VoucherMaster', this)"><i class="fas fa-gift me-2 text-warning"></i> <span class="navlbl" data-en="VOUCHER MASTER" data-th="VOUCHER">VOUCHER</span></div>
+      <div id="nav-MemberCard" class="nav-link" onclick="loadPage('MemberCard', this)"><i class="fas fa-id-card me-2 text-warning"></i> <span class="navlbl" data-en="MEMBER CARDS" data-th="บัตรสมาชิก">บัตรสมาชิก</span></div>
+      <div id="nav-CreateRD" class="nav-link" onclick="loadPage('CreateRD', this)"><i class="fas fa-flask me-2 text-warning"></i> <span class="navlbl" data-en="RD / NEW ITEM" data-th="RD / สินค้าใหม่">RD / NEW ITEM</span></div>
+      <div id="nav-RDReopen" class="nav-link" onclick="loadPage('RDReopen', this)"><i class="fas fa-rotate me-2 text-warning"></i> <span class="navlbl" data-en="RE-OPEN PRODUCT (RD)" data-th="เปิด/ปิดปุ่มสินค้าเดิม (RD)">เปิด/ปิดปุ่มสินค้าเดิม (RD)</span></div>
+      <div id="nav-NPD" class="nav-link" onclick="loadPage('NPD', this)" style="display:none;"><i class="fas fa-flask me-2 text-warning"></i> <span class="navlbl" data-en="NPD NEW ITEM" data-th="NPD สินค้าใหม่">NPD NEW ITEM</span></div>
+      <div id="nav-Flavor" class="nav-link" onclick="loadPage('Flavor', this)" style="display:none;"><i class="fas fa-mortar-pestle me-2 text-warning"></i> <span class="navlbl" data-en="ADD FLAVOR POWDER" data-th="เพิ่มผงรสชาติ">ADD FLAVOR POWDER</span></div>
+      <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">ข้อมูลสินค้า</div>
+      <div id="nav-Products" class="nav-link" onclick="loadPage('Products', this)"><svg viewBox="0 0 24 24" style="height:1.1em;width:auto;flex:none;margin-right:.5rem;vertical-align:-0.15em" aria-hidden="true"><g fill="#2e934a"><rect x="5.6" y="4.2" width="2.1" height="9.5" rx="1.05"/><rect x="8.4" y="2.4" width="2.1" height="11.3" rx="1.05"/><rect x="11" y="3.3" width="2.1" height="10.4" rx="1.05"/><rect x="13.6" y="2" width="2.1" height="11.7" rx="1.05"/><rect x="16.3" y="4.6" width="2.1" height="9.1" rx="1.05"/></g><path d="M3.7 10.5h16.6l-1 4H4.7z" fill="#e23b3b"/><path d="M4.9 14h14.2l-1.5 6.2a1.3 1.3 0 0 1-1.27 1H7.67a1.3 1.3 0 0 1-1.27-1z" fill="#d62828"/></svg> <span class="navlbl" data-en="PRODUCT DATA" data-th="ข้อมูลหลัก (สินค้า)">ข้อมูลหลัก (สินค้า)</span></div>
+      <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">งานโค้ด / IT</div>
+      <div id="nav-ITWork" class="nav-link" onclick="loadPage('ITWork', this)"><i class="fas fa-screwdriver-wrench me-2 text-warning"></i> <span class="navlbl" data-en="IT WORK" data-th="งาน IT (รวม)">งาน IT (รวม)</span></div>
+      <div id="nav-CodeCounter" class="nav-link" onclick="loadPage('CodeCounter', this)"><i class="fas fa-hashtag me-2 text-warning"></i> <span class="navlbl" data-en="CODE COUNTER" data-th="ระบบเลขโค้ดกลาง">ระบบเลขโค้ดกลาง</span></div>
+      <div id="nav-CodeMgmt" class="nav-link" onclick="loadPage('CodeMgmt', this)"><i class="fas fa-barcode me-2 text-warning"></i> <span class="navlbl" data-en="CODE MANAGEMENT" data-th="แจ้งเพิ่มโค้ด/บัตร">แจ้งเพิ่มโค้ด/บัตร</span></div>
+      <div id="nav-CardLink" class="nav-link" onclick="loadPage('CardLink', this)"><i class="fas fa-id-card me-2 text-info"></i> <span class="navlbl" data-en="CARD LINK" data-th="ผูกบัตร (สิทธิ์บัตร)">ผูกบัตร</span></div>
+      <div id="nav-StaffDiscountIT" class="nav-link" onclick="loadPage('StaffDiscountIT', this)"><i class="fas fa-gears me-2 text-info"></i> <span class="navlbl" data-en="STAFF DISCOUNT — IT SETUP" data-th="ตั้งค่าส่วนลดพนักงาน (IT)">ตั้งค่าส่วนลดพนักงาน (IT)</span></div>
+      <div id="nav-InterfaceERP" class="nav-link" onclick="loadPage('InterfaceERP', this)"><i class="fas fa-plug me-2 text-info"></i> <span class="navlbl" data-en="INTERFACE ERP" data-th="Interface ERP (Co-Promo)">Interface ERP</span></div>
+      <div id="nav-CompCode" class="nav-link" onclick="loadPage('CompCode', this)" style="display:none;"><i class="fas fa-gift me-2 text-warning"></i> <span class="navlbl" data-en="COMP CODE" data-th="คลังโค้ดแลกฟรี">คลังโค้ดแลกฟรี</span></div>
+      <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">ติดตามงาน</div>
+      <div id="nav-Campaign_Tracking" class="nav-link" onclick="loadPage('Campaign_Tracking', this)"><i class="fas fa-satellite-dish me-2 text-info"></i> <span class="navlbl" data-en="TRACKING CENTER" data-th="ศูนย์ติดตามงาน">TRACKING CENTER</span></div>
+      <div id="nav-Op_Tracking" class="nav-link" onclick="loadPage('Op_Tracking', this)"><i class="fas fa-tasks me-2 text-success"></i> <span class="navlbl" data-en="OP TRACKING" data-th="ตรวจสอบ (OP)">OP TRACKING</span></div>
+      <div id="nav-DiscountReport" class="nav-link" onclick="loadPage('DiscountReport', this)"><i class="fas fa-coins me-2 text-warning"></i> <span class="navlbl" data-en="DISCOUNT REPORT" data-th="รายงานเฉลี่ยส่วนลด">รายงานเฉลี่ยส่วนลด</span></div>
+      <div id="nav-CoPromotion" class="nav-link" onclick="loadPage('CoPromotion', this)"><i class="fas fa-handshake me-2 text-warning"></i> <span class="navlbl" data-en="CO-PROMOTION (ACC)" data-th="Co-Promotion (บัญชี)">Co-Promotion (ACC)</span></div>
+      <div id="nav-TeamQueue" class="nav-link" onclick="loadPage('TeamQueue', this)"><i class="fas fa-people-group me-2 text-info"></i> <span class="navlbl" data-en="INTAKE QUEUE — BY TEAM/DEPT" data-th="คิวรับเรื่อง — ตามทีม/แผนก">คิวรับเรื่อง — ตามทีม/แผนก</span></div>
+      <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">งานสาขา</div>
+      <div id="nav-StaffDiscount" class="nav-link" onclick="loadPage('StaffDiscount', this)"><i class="fas fa-user-tag me-2 text-warning"></i> <span class="navlbl" data-en="STAFF DISCOUNT CODE" data-th="รหัสส่วนลดพนักงาน">รหัสส่วนลดพนักงาน</span></div>
+      <div id="nav-BranchWork" class="nav-link" onclick="loadPage('BranchWork', this)"><i class="fas fa-store me-2 text-warning"></i> <span class="navlbl" data-en="ITEMS & PROMOTIONS" data-th="สินค้าและโปรโมชั่น">สินค้าและโปรโมชั่น</span></div>
+      <div id="nav-Tender" class="nav-link" onclick="loadPage('Tender', this)"><i class="fas fa-cash-register me-2 text-warning"></i> <span class="navlbl" data-en="OPEN/CLOSE TENDER" data-th="แจ้งเปิด-ปิด Tender">แจ้งเปิด-ปิด Tender</span></div>
+      <div id="nav-BillDiff" class="nav-link" onclick="loadPage('BillDiff', this)"><i class="fas fa-scale-unbalanced me-2 text-info"></i> <span class="navlbl" data-en="BILL DIFF REPORT" data-th="แจ้งปิดบิลไม่ตรง">แจ้งปิดบิลไม่ตรง (Diff)</span></div>
+      <div id="nav-BranchEDC" class="nav-link" onclick="loadPage('BranchEDC', this)"><i class="fas fa-credit-card me-2 text-warning"></i> <span class="navlbl" data-en="BRANCH EDC" data-th="เครื่อง EDC (สาขา)">เครื่อง EDC (สาขา)</span></div>
+      <div id="nav-BranchTickets" class="nav-link" onclick="loadPage('BranchTickets', this)"><i class="fas fa-clipboard-list me-2 text-warning"></i> <span class="navlbl" data-en="ISSUE TRACKING" data-th="ติดตามงานแจ้งปัญหา">ติดตามงานแจ้งปัญหา</span></div>
+      <div id="nav-BranchHours" class="nav-link" onclick="loadPage('BranchHours', this)"><i class="fas fa-clock me-2 text-warning"></i> <span class="navlbl" data-en="STORE HOURS" data-th="เวลาทำการร้าน">เวลาทำการร้าน</span></div>
+      <div style="font-size:0.92rem;font-weight:800;color:#dbe4ee;letter-spacing:0.3px;padding:8px 16px;text-transform:uppercase;background:#0a5d33;margin:8px 0 2px;">งาน IT · อุปกรณ์</div>
+      <div id="nav-Asset" class="nav-link" onclick="loadPage('Asset', this)"><i class="fas fa-desktop me-2 text-info"></i> <span class="navlbl" data-en="ASSET REGISTER" data-th="ทะเบียนเครื่อง">ทะเบียนเครื่อง</span></div>
+      <div id="nav-Plan2026" class="nav-link" onclick="loadPage('Plan2026', this)"><i class="fas fa-calendar-days me-2 text-info"></i> <span class="navlbl" data-en="DEVICE PLAN" data-th="แผนเครื่อง (Plan)">แผนเครื่อง (Plan)</span></div>
+      <div id="nav-ITForms" class="nav-link" onclick="loadPage('ITForms', this)"><i class="fas fa-clipboard-list me-2 text-info"></i> <span class="navlbl" data-en="IT FORMS" data-th="แจ้งงาน IT">แจ้งงาน IT</span></div>
+      <div id="nav-ITPlan" class="nav-link" onclick="loadPage('ITPlan', this)"><i class="fas fa-list-check me-2 text-info"></i> <span class="navlbl" data-en="IT WORK PLAN" data-th="แผนงาน IT (Plan)">แผนงาน IT (Plan)</span></div>
+      <div style="font-size:0.92rem;font-weight:800;color:#dbe4ee;letter-spacing:0.3px;padding:8px 16px;text-transform:uppercase;background:#0a5d33;margin:8px 0 2px;">งานสติ๊กเกอร์สรรพากร</div>
+      <div id="nav-RDSticker" class="nav-link" onclick="loadPage('RDSticker', this)"><i class="fas fa-receipt me-2 text-warning"></i> <span class="navlbl" data-en="RD STICKER" data-th="แจ้งเพิ่มเลขสติ๊กเกอร์">แจ้งเพิ่มเลขสติ๊กเกอร์</span></div>
+      <div id="nav-RDCancel" class="nav-link" onclick="loadPage('RDCancel', this)"><i class="fas fa-rotate me-2 text-warning"></i> <span class="navlbl" data-en="RD CANCEL/RE-REGISTER" data-th="แจ้งยกเลิก/จดใหม่">แจ้งยกเลิก/จดใหม่</span></div>
+      <div id="nav-RDWorkflow" class="nav-link" onclick="loadPage('RDWorkflow', this)"><i class="fas fa-diagram-project me-2 text-info"></i> <span class="navlbl" data-en="RD WORKFLOW" data-th="ตั้งค่าเคส">ตั้งค่าเคส</span></div>
+      <div id="nav-RDAccess" class="nav-link" onclick="loadPage('RDAccess', this)"><i class="fas fa-user-lock me-2 text-info"></i> <span class="navlbl" data-en="RD ACCESS" data-th="ตั้งค่าการเข้าถึง">ตั้งค่าการเข้าถึง</span></div>
+      <div id="nav-RDGuide" class="nav-link" onclick="loadPage('RDGuide', this)"><i class="fas fa-circle-info me-2 text-info"></i> <span class="navlbl" data-en="RD GUIDE" data-th="คู่มือใช้งาน">คู่มือใช้งาน</span></div>
+      <div style="font-size:0.92rem;font-weight:800;color:#dbe4ee;letter-spacing:0.3px;padding:8px 16px;text-transform:uppercase;background:#0a5d33;margin:8px 0 2px;">SYSTEM SETTING
+▾</div>
+      <div id="nav-ReportSettings" class="nav-link" onclick="loadPage('ReportSettings', this)"><i class="fas fa-flag me-2 text-warning"></i> <span class="navlbl" data-en="BRANCH REPORT SETTINGS" data-th="ตั้งค่าแจ้งปัญหาสาขา">ตั้งค่าแจ้งปัญหาสาขา</span></div>
+      <div id="nav-MasterData" class="nav-link" onclick="loadPage('MasterData', this)"><i class="fas fa-store me-2 text-info"></i> <span class="navlbl" data-en="SHOP MASTER" data-th="ข้อมูลร้าน (Shop Master)">ข้อมูลร้าน (Shop Master)</span></div>
+      <div id="nav-ReportButtons" class="nav-link" onclick="loadPage('ReportButtons', this)"><i class="fas fa-bars-staggered me-2 text-warning"></i> <span class="navlbl" data-en="REPORT BUTTONS" data-th="ตั้งค่าปุ่มแจ้งปัญหา">ตั้งค่าปุ่มแจ้งปัญหา</span></div>
+      <div id="nav-TenderSettings" class="nav-link" onclick="loadPage('TenderSettings', this)"><i class="fas fa-cash-register me-2 text-warning"></i> <span class="navlbl" data-en="TENDER SETTINGS" data-th="ตั้งค่า Tender (ช่องทางรับชำระ)">ตั้งค่า Tender</span></div>
+      <div id="nav-NotificationSettings" class="nav-link" onclick="loadPage('NotificationSettings', this)"><i class="fas fa-bell me-2 text-warning"></i> <span class="navlbl" data-en="NOTIFICATIONS" data-th="ตั้งค่าการแจ้งเตือน">ตั้งค่าการแจ้งเตือน</span></div>
+      <div id="nav-CalendarReminder" class="nav-link" onclick="loadPage('CalendarReminder', this)"><i class="fas fa-calendar-check me-2 text-warning"></i> <span class="navlbl" data-en="แจ้งเตือนเข้าปฏิทิน" data-th="แจ้งเตือนเข้าปฏิทิน">แจ้งเตือนเข้าปฏิทิน</span></div>
+      <div id="nav-LockSettings" class="nav-link" onclick="loadPage('LockSettings', this)"><i class="fas fa-lock me-2 text-warning"></i> <span class="navlbl" data-en="LOCK SETTINGS" data-th="ตั้งค่าล็อกแจ้งล่วงหน้า">ตั้งค่าล็อกแจ้งล่วงหน้า</span></div>
+      <div id="nav-ImportSettings" class="nav-link" onclick="loadPage('ImportSettings', this)"><i class="fas fa-file-import me-2 text-warning"></i> <span class="navlbl" data-en="IMPORT SETTINGS" data-th="ตั้งค่า Import">ตั้งค่า Import</span></div>
+      <div id="nav-Permissions" class="nav-link" onclick="loadPage('Permissions', this)" style="display:none;"><i class="fas fa-user-shield me-2 text-warning"></i> <span class="navlbl" data-en="USER PERMISSIONS" data-th="กำหนดสิทธิ์ผู้ใช้">USER PERMISSIONS</span></div>
+      <div id="nav-Appearance" class="nav-link" onclick="loadPage('Appearance', this)"><i class="fas fa-palette me-2 text-warning"></i> <span class="navlbl" data-en="THEME / APPEARANCE" data-th="ธีม / หน้าตา (เฉพาะเครื่องนี้)">ธีม / หน้าตา</span></div>
+    </div>
+    <div class="mt-auto">
+      <div class="px-3 py-3 text-center text-white-50 small border-top border-secondary">
+        <i class="fas fa-user-circle me-1"></i> <span id="who-name">-</span>
+        <span class="badge bg-warning text-dark role-pill ms-1" id="who-role">-</span>
+      </div>
+      <div class="px-3 pb-3 text-center">
+        <button onclick="logout()" class="btn btn-danger w-100 fw-bold"><span data-en="LOGOUT" data-th="ออกจากระบบ">LOGOUT</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <div id="main-content">
+    <div id="content-area"></div>
+  </div>
+
+  <script>
+    /* 1. Auth check on load — wait for the sequential module loader to finish first */
+    window.onload = () => {
+      var boot = function () {
+        const session = localStorage.getItem('pc_session');
+        if (session === 'active') {
+          initApp(localStorage.getItem('pc_last_page') || 'Dashboard');
+        } else if (window.PC_tryBranchGuest && window.PC_tryBranchGuest()) {
+          /* entered branch guest mode via #hash — no login needed */
+        } else {
+          showLoginScreen();
+        }
+        // view is set — drop the splash (no flash) and unhide
+        var sp = document.getElementById('boot-splash'); if (sp) sp.remove();
+        document.body.classList.remove('loading');
+      };
+      if (window.__pcBoot && window.__pcBoot.onReady) window.__pcBoot.onReady(boot);
+      else boot();
+    };
+
+    window.PC_tryBranchGuest = function () {
+      try {
+        var hash = (location.hash || '').replace(/^#/, '').split('?')[0].trim();
+        var GUEST = ['Branch_View','BranchWork','ProductLookup','BranchCards','BranchVoucher','BranchTickets','Tender','BillDiff','BranchEDC','BranchHours','BranchIssues'];
+        if (!hash || GUEST.indexOf(hash) < 0) return false;
+        localStorage.setItem('pc_session', 'active');
+        localStorage.setItem('pc_guest', '1');
+        localStorage.setItem('pc_role', 'Branch');
+        if (!localStorage.getItem('pc_userName')) localStorage.setItem('pc_userName', 'สาขา');
+        localStorage.setItem('pc_section', 'promo');
+        initApp(hash);
+        return true;
+      } catch (e) { return false; }
+    };
+    function showLoginScreen() {
+      localStorage.removeItem('pc_session');
+      const loginSection = document.getElementById('login-section');
+      if (loginSection) loginSection.style.setProperty('display', 'flex', 'important');
+      if (document.getElementById('main-content')) document.getElementById('main-content').style.display = 'none';
+      if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = 'none';
+      document.body.classList.remove('logged-in');
+      // ล้างช่องกรอกทุกครั้งที่เข้าหน้า login — ไม่จำค่าที่กรอกก่อน
+      try { var _u = document.getElementById('user'), _p = document.getElementById('pass'); if (_u) _u.value = ''; if (_p) _p.value = ''; var _e = document.getElementById('errMsg'); if (_e) _e.textContent = ''; if (_u) setTimeout(function(){ _u.value=''; try{ _u.focus(); }catch(e){} }, 60); } catch (e) {}
+    }
+
+    function doLogin() {
+      const u = document.getElementById('user').value;
+      const p = document.getElementById('pass').value;
+      const btn = document.getElementById('loginBtn');
+      const errMsg = document.getElementById('errMsg');
+      if (!u || !p) { errMsg.innerText = "⚠ กรุณาระบุชื่อผู้ใช้งานและรหัสผ่าน"; return; }
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AUTHENTICATING...';
+      google.script.run.withSuccessHandler(res => {
+        if (res.status === "success") {
+          localStorage.setItem('pc_session', 'active');
+          localStorage.setItem('pc_role', res.role);
+          localStorage.setItem('pc_userName', res.name);
+          afterLogin();
+        } else {
+          errMsg.innerText = "❌ " + res.message;
+          btn.disabled = false;
+          btn.innerHTML = 'ENTER SYSTEM';
+        }
+      }).checkLogin(u, p);
+    }
+
+    /* ---- Microsoft Entra (MSAL) SSO ------------------------------------------
+     * Client ID + tenant มาจากแอปที่ลงทะเบียนใน Entra (Rocks Group tenant).
+     * เข้าได้เฉพาะบัญชีองค์กร (My organization only) → ดึงอีเมล → จับคู่กับผู้ใช้
+     * ที่ตั้งค่าไว้ในหน้าจัดการสิทธิ์ (checkLoginByEmail). อีเมลที่ไม่ได้ตั้ง = ปฏิเสธ. */
+    const PC_MS = {
+      clientId:    '8c0e2312-d9ae-4dff-accb-65fa3cb9815e',
+      authority:   'https://login.microsoftonline.com/512d498e-05ac-402b-a2aa-d61d10c3bee8',  /* ROCKS.CO.TH tenant (App = My organization only → ใช้ tenant นี้ · @rocksgroup.com เข้าได้) */
+      redirectUri: window.location.origin   /* ใช้ที่อยู่เว็บที่เปิดอยู่จริง — เอา origin นี้ไปลงทะเบียนใน Entra */
+    };
+    let _msalApp = null, _msalReady = null;
+    function getMsalApp() {
+      if (_msalApp) return _msalApp;
+      _msalApp = new msal.PublicClientApplication({
+        auth: { clientId: PC_MS.clientId, authority: PC_MS.authority, redirectUri: PC_MS.redirectUri },
+        cache: { cacheLocation: 'sessionStorage' }
+      });
+      _msalReady = _msalApp.initialize ? _msalApp.initialize() : Promise.resolve();
+      return _msalApp;
+    }
+
+    async function loginWithMicrosoft() {
+      const errMsg = document.getElementById('errMsg');
+      const btn = document.getElementById('msLoginBtn');
+      errMsg.innerText = '';
+      if (typeof msal === 'undefined' || !msal.PublicClientApplication) {
+        errMsg.innerText = '⚠ กำลังโหลดตัวช่วย Microsoft... ลองใหม่อีกครั้ง'; return;
+      }
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ Microsoft...';
+      try {
+        const app = getMsalApp();
+        if (_msalReady) await _msalReady;
+        const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account' });
+        const acct = result.account || {};
+        const claims = acct.idTokenClaims || {};
+        const email = String(acct.username || claims.preferred_username || claims.email || '').trim().toLowerCase();
+        if (!email) { errMsg.innerText = '❌ ไม่พบอีเมลจากบัญชี Microsoft'; btn.disabled = false; btn.innerHTML = orig; return; }
+        google.script.run.withSuccessHandler(res => {
+          if (res && res.status === 'success') {
+            localStorage.setItem('pc_session', 'active');
+            localStorage.setItem('pc_role', res.role);
+            localStorage.setItem('pc_userName', res.name);
+            try { localStorage.setItem('pc_userEmail', res.email || email); } catch (e) {}
+            afterLogin();
+          } else {
+            errMsg.innerText = '❌ ' + ((res && res.message) || 'อีเมลนี้ยังไม่ได้รับสิทธิ์');
+            btn.disabled = false; btn.innerHTML = orig;
+          }
+        }).checkLoginByEmail(email);
+      } catch (e) {
+        const code = (e && e.errorCode) || '';
+        if (code === 'user_cancelled' || code === 'popup_window_error' || /cancel/i.test((e && e.errorMessage) || '')) {
+          btn.disabled = false; btn.innerHTML = orig; return;
+        }
+        errMsg.innerText = '❌ เข้าสู่ระบบ Microsoft ไม่สำเร็จ: ' + ((e && (e.errorMessage || e.message)) || e);
+        btn.disabled = false; btn.innerHTML = orig;
+      }
+    }
+
+    /* 2. App init */
+    function initApp(pageToLoad) {
+      if (localStorage.getItem('pc_session') !== 'active') { showLoginScreen(); return; }
+      const loginSec = document.getElementById('login-section');
+      if (loginSec) loginSec.style.display = 'none';
+      document.body.classList.add('logged-in');
+      if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = 'flex';
+      if (document.getElementById('main-content')) document.getElementById('main-content').style.display = 'block';
+      if (localStorage.getItem('pc_sidebar_collapsed') === '1') document.body.classList.add('sidebar-collapsed');
+      // show user identity
+      document.getElementById('who-name').innerText = localStorage.getItem('pc_userName') || '-';
+      const roleEl = document.getElementById('who-role');
+      roleEl.innerText = localStorage.getItem('pc_role') || '-';
+      roleEl.style.display = 'inline-block';
+      var lst = document.getElementById('lang-switch-top'); if (lst) lst.style.display = 'inline-flex';
+      applyPermissions();
+      if (window.PC_applyTheme) { try { window.PC_applyTheme(); } catch (e) {} }
+      if (window.PC_i18nInit) window.PC_i18nInit();
+      // seed the first history entry so Back returns here (not out of the app)
+      var firstPage = pageToLoad || 'Dashboard';
+      if (window.history && window.history.replaceState) window.history.replaceState({ pcPage: firstPage }, '', '#' + firstPage);
+      loadPage(firstPage);
+    }
+
+    /* ---- Browser Back/Forward → navigate within the app (no full reload) ---- */
+    window.addEventListener('popstate', function (e) {
+      if (localStorage.getItem('pc_session') !== 'active') return;   // ignore when logged out
+      var pg = (e.state && e.state.pcPage) || 'Dashboard';
+      // permission guard: only navigate to a page this role may see
+      var role = localStorage.getItem('pc_role') || 'Admin';
+      var allowed = (getPermissions()[role] || []);
+      if (allowed.length && allowed.indexOf(pg) === -1 && pg !== 'Appearance') pg = (allowed.indexOf('Dashboard') >= 0 ? 'Dashboard' : (allowed[0] || 'Dashboard'));
+      loadPage(pg, null, true);   // fromHistory=true → don't push another entry
+    });
+
+    /* ---- language toggle is provided by js/i18n.js (window.setLang / applyLang / PC_i18nInit) ---- */
+
+    /* ---- permissions: hide nav items per role; Admin sees the config page ---- */
+    function ensureITWork(perms) {
+      var FOUR = ['IT_Settlement', 'ItemSet', 'ITTicketQueue', 'DiffAnalysis'];
+      Object.keys(perms || {}).forEach(function (role) {
+        if (Array.isArray(perms[role]) && FOUR.some(function (p) { return perms[role].includes(p); }) && !perms[role].includes('ITWork')) perms[role].push('ITWork');
+      });
+      return perms;
+    }
+    function getPermissions() {
+      const defaults = {
+        Admin: ['Dashboard','CardLink','CompCode','ReportSettings','ImportSettings','BranchHours','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','SaleModePrice','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','Asset','Plan2026','ITPlan','CmposForm','Maintenance','ITForms','DeviceSwap','AssetLogistics','Tender','RDSticker','RDCancel','MasterData','RDWorkflow','RDAccess','RDGuide','ReportButtons','TenderSettings','NotificationSettings','LockSettings','CalendarReminder','Permissions','CodeCounter','CatBranchSetting','CoPromotion','InterfaceERP','RDReopen'],
+        MKT:   ['Dashboard','CardLink','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','Campaign_Tracking','DiscountReport','Memo','CreateRD','NPD','Flavor','Products','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','TeamQueue','BranchTickets','Tender','BillDiff','BranchWork','Branch_View','ProductLookup','CoPromotion'],
+        IT:    ['Dashboard','CardLink','CompCode','ReportSettings','ImportSettings','IT_Settlement','Campaign_Tracking','DiscountReport','ItemSet','Products','SaleModePrice','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','BranchWork','Branch_View','ProductLookup','ITTicketQueue','BillDiff','DiffAnalysis','TeamQueue','Asset','Plan2026','ITPlan','CmposForm','Maintenance','ITForms','DeviceSwap','AssetLogistics','Tender','RDSticker','RDCancel','MasterData','RDWorkflow','RDAccess','RDGuide','ReportButtons','TenderSettings','NotificationSettings','LockSettings','CalendarReminder','CodeCounter','CoPromotion','InterfaceERP','RDReopen'],
+        OP:    ['Dashboard','BranchHours','Op_Tracking','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','BranchCards','BranchVoucher'],
+        ACC:   ['Dashboard','CardLink','Campaign_Tracking','Branch_View','ProductLookup','BranchWork','BillDiff','Tender','VoucherMaster','MemberCard','CodeMgmt','BranchCards','BranchVoucher','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','CoPromotion'],
+        'Admin HQ': ['Dashboard','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','CodeMgmt'],
+        BD: ['Dashboard','Campaign_Tracking','Branch_View','ProductLookup','BranchWork','RDSticker','RDCancel','RDGuide','CodeMgmt'],
+        RD: ['Dashboard','CreateRD','NPD','Flavor','Campaign_Tracking','Branch_View','ProductLookup','BranchWork','RDReopen'],
+        SC:    ['Dashboard','CardLink','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','Campaign_Tracking','DiscountReport','Memo','CreateRD','NPD','Flavor','Products','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','TeamQueue','BranchTickets','Tender','BillDiff','BranchWork','Branch_View','ProductLookup','CoPromotion','RDReopen'],   /* Supply Chain — สิทธิ์รวมของ MKT + RD */
+        Branch: ['Branch_View','ProductLookup','BranchWork','BranchCards','BranchVoucher','BranchTickets','Tender','BillDiff','BranchEDC','BranchHours','BranchIssues'],
+      };
+      ['Admin','IT','OP','ACC','MKT','SC'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchEDC')<0) defaults[rr].push('BranchEDC'); });
+      ['Admin','IT','OP'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchIssues')<0) defaults[rr].push('BranchIssues'); });
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem('pc_permissions')); } catch (e) {}
+      if (!saved) return ensureITWork(defaults);
+      // one-time migration: ลบ StaffDiscount ออกจากทุกบทบาท (หน้าถูกถอดออก — จะสร้างใหม่ในงาน IT ภายหลัง)
+      try {
+        if (!localStorage.getItem('pc_perm_mig_staffdisc_removed')) {
+          Object.keys(saved).forEach(r => { if (Array.isArray(saved[r])) saved[r] = saved[r].filter(p => p !== 'StaffDiscount'); });
+          localStorage.setItem('pc_permissions', JSON.stringify(saved));
+          localStorage.setItem('pc_perm_mig_staffdisc_removed', '1');
+        }
+      } catch (e) {}
+      // ⭐ หน้างาน IT — ห้ามแผนกอื่นเห็น (เหลือเฉพาะหน้าที่ใช้ร่วมกัน) · strip ออกจากทุก role นอก Admin/IT (ทำครั้งเดียว)
+      const IT_ONLY = ['IT_Settlement','ItemSet','ITTicketQueue','DiffAnalysis','ITWork','Asset','Plan2026','ITPlan','CmposForm','Maintenance','ITForms','DeviceSwap','AssetLogistics','StaffDiscountIT','CompCode','ReportSettings','ReportButtons','TenderSettings','LockSettings','CalendarReminder','MasterData','CatBranchSetting','CodeCounter','Products','SaleModePrice','CatModeMaster','NotificationSettings'];
+      try {
+        if (!localStorage.getItem('pc_perm_mig_itonly_v1')) {
+          Object.keys(saved).forEach(r => { if (r !== 'Admin' && r !== 'IT' && Array.isArray(saved[r])) saved[r] = saved[r].filter(p => !IT_ONLY.includes(p)); });
+          localStorage.setItem('pc_permissions', JSON.stringify(saved));
+          localStorage.setItem('pc_perm_mig_itonly_v1', '1');
+        }
+      } catch (e) {}
+      // backfill หน้าใหม่ให้ผู้ใช้เดิม — ทำ“ครั้งเดียวต่อเวอร์ชัน” → หลังจากนี้ถ้า Admin ติ๊กออกเองจะไม่ถูกเติมกลับ (คุมได้จริง)
+      const BACKFILL_VER = 16;
+      let _bfv = 0; try { _bfv = +localStorage.getItem('pc_perm_backfill_ver') || 0; } catch (e) {}
+      if (_bfv < BACKFILL_VER) {
+        const NEW_MODULES = ['Products','ImportSettings','DiscountReport','CompCode','CodeCounter','BranchHours','ProductLookup','Branch_View','Campaign_Tracking','Flavor','CreatePromotion','CreateRD','Tender','BillDiff','BranchWork','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','TeamQueue','Products','CoPromotion','InterfaceERP','RDReopen','BranchEDC','BranchIssues','CardLink'];
+        Object.keys(defaults).forEach(role => {
+          if (!Array.isArray(saved[role])) { saved[role] = defaults[role].slice(); return; }   // บทบาทใหม่ → ใส่ค่าเริ่มต้น
+          NEW_MODULES.forEach(m => { if (defaults[role].includes(m) && !saved[role].includes(m)) saved[role].push(m); });
+        });
+        try { localStorage.setItem('pc_permissions', JSON.stringify(saved)); localStorage.setItem('pc_perm_backfill_ver', String(BACKFILL_VER)); } catch (e) {}
+      } else {
+        /* บทบาทใหม่ (เช่น SC) → เติมค่าเริ่มต้นแล้ว "บันทึกลงเครื่อง" ด้วย ไม่งั้นหน้าสิทธิ์/ตัวซิงค์มองไม่เห็น */
+        let _added = false;
+        Object.keys(defaults).forEach(role => { if (!Array.isArray(saved[role])) { saved[role] = defaults[role].slice(); _added = true; } });
+        if (_added) { try { localStorage.setItem('pc_permissions', JSON.stringify(saved)); } catch (e) {} }
+      }
+      // Admin = superuser: ต้องมีสิทธิ์ครบทุกหน้า default เสมอ (กันหน้าใหม่หายเพราะ saved เก่า/ตกหล่นจาก backfill) — ไม่กระทบ role อื่น
+      if (Array.isArray(saved.Admin)) { let _adCh = false; defaults.Admin.forEach(m => { if (!saved.Admin.includes(m)) { saved.Admin.push(m); _adCh = true; } }); if (_adCh) { try { localStorage.setItem('pc_permissions', JSON.stringify(saved)); } catch (e) {} } }
+      return ensureITWork(saved);
+    }
+    window.PC_getPermissions = getPermissions;
+    const SECTIONS = [
+      { key:'promo', label:'PROMOTION', th:'งานโปรโมชั่น & งานสาขา', color:'#2e934a', icon:'fa-bullhorn', pages:['Dashboard','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','ITWork','CodeCounter','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','CardLink','CompCode','BranchCards','BranchVoucher','BranchHours','BranchIssues','CoPromotion','InterfaceERP','RDReopen'] },
+      { key:'it', label:'IT WORK', th:'งาน IT · อุปกรณ์', color:'#9a6700', icon:'fa-desktop', pages:['Asset','Plan2026','ITForms','DeviceSwap','AssetLogistics','ITPlan','CmposForm','Maintenance'] },
+      { key:'rd', label:'RD STICKER', th:'งานสติ๊กเกอร์สรรพากร', color:'#c0392b', icon:'fa-receipt', pages:['RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide'] },
+      { key:'sys', label:'SYSTEM', th:'ตั้งค่าระบบ', color:'#1a1d20', icon:'fa-gear', pages:['MasterData','ImportSettings','SaleModePrice','CatBranchSetting','CatModeMaster','ReportButtons','ReportSettings','TenderSettings','NotificationSettings','CalendarReminder','LockSettings','Permissions'] },
+    ];
+    function roleAllowed() { const role = localStorage.getItem('pc_role') || 'Admin'; return getPermissions()[role] || getPermissions().Admin || []; }
+    function accessibleSections() { const a = roleAllowed(); return SECTIONS.filter(s => s.pages.some(p => a.includes(p))); }
+    function currentSection() { const secs = accessibleSections(); let s = secs.find(x => x.key === localStorage.getItem('pc_section')); if (!s) { s = secs[0] || SECTIONS[0]; localStorage.setItem('pc_section', s.key); } return s; }
+    function landingPage(sec) { const a = roleAllowed(); return sec.pages.find(p => a.includes(p)) || 'Dashboard'; }
+    window.openSectionChooser = function () {
+      const secs = accessibleSections();
+      if (secs.length <= 1) { localStorage.setItem('pc_section', (secs[0]||SECTIONS[0]).key); initApp(landingPage(secs[0]||SECTIONS[0])); return; }
+      let ov = document.getElementById('section-chooser');
+      if (!ov) { ov = document.createElement('div'); ov.id = 'section-chooser'; document.body.appendChild(ov); }
+      ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#1a1d20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;';
+      ov.innerHTML = `<div style="font-family:Montserrat,sans-serif;font-weight:900;font-size:2rem;color:#ffffff;text-shadow:3px 3px 0 #000;letter-spacing:-1px;">เลือกส่วนงาน</div><div style="color:#9aa7b4;font-weight:600;margin-top:-12px;">${localStorage.getItem('pc_userName')||''} · เลือกพื้นที่ทำงาน</div><div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:840px;">` +
+        secs.map(s => `<div onclick="window.pickSection('${s.key}')" style="cursor:pointer;width:220px;background:#fff;border:3px solid #000;box-shadow:6px 6px 0 ${s.color};padding:26px 20px;text-align:center;"><div style="width:60px;height:60px;border-radius:14px;background:${s.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 14px;"><i class="fas ${s.icon}"></i></div><div style="font-family:Montserrat,sans-serif;font-weight:900;font-size:1.05rem;color:#1a1d20;">${s.label}</div><div style="font-size:.85rem;color:#666;margin-top:4px;">${s.th}</div></div>`).join('') +
+        `</div>`;
+      ov.style.display = 'flex';
+    };
+    window.pickSection = function (key) { localStorage.setItem('pc_section', key); const ov = document.getElementById('section-chooser'); if (ov) ov.style.display = 'none'; const s = SECTIONS.find(x=>x.key===key)||SECTIONS[0]; initApp(landingPage(s)); };
+    function afterLogin() { const secs = accessibleSections(); const s = secs[0]||SECTIONS[0]; localStorage.setItem('pc_section', s.key); initApp(landingPage(s)); }
+
+    function applyPermissions() {
+      const role = localStorage.getItem('pc_role') || 'Admin';
+      const perms = getPermissions();
+      const allowed = perms[role] || perms.Admin;
+      const HIDDEN_IN_SIDEBAR = ['Proposal','Coupon','BillDiscountProposal','VoucherProposal','NPD','Flavor','CmposForm','Maintenance','CompCode','StaffDiscount','StaffDiscountIT'];
+      document.querySelectorAll('#sidebar [id^="nav-"]').forEach(el => {
+        const page = el.id.replace('nav-', '');
+        const permPage = (page === 'StaffDiscount' || page === 'StaffDiscountIT') ? 'CodeMgmt' : page;
+        const show = !HIDDEN_IN_SIDEBAR.includes(page) && (page === 'Appearance' || allowed.includes(permPage));
+        el.dataset.show = show ? '1' : '0';
+        el.style.display = show ? '' : 'none';
+      });
+      // hide sub-group labels (nav-sub) when every nav item beneath them (up to the next
+      // sub-label or section header) is hidden — so guests don't see empty group headings
+      document.querySelectorAll('#sidebar .nav-sub').forEach(function (sub) {
+        var anyVisible = false, n = sub.nextElementSibling;
+        while (n && !n.classList.contains('nav-sub') && !/0a5d33/.test(n.getAttribute('style') || '')) {
+          if (n.id && n.id.indexOf('nav-') === 0 && n.style.display !== 'none') { anyVisible = true; break; }
+          n = n.nextElementSibling;
+        }
+        sub.dataset.show = anyVisible ? '1' : '0';
+        sub.style.display = anyVisible ? '' : 'none';
+      });
+      const badge = document.getElementById('section-badge');
+      if (badge) badge.style.display = 'none';
+      setupNavAccordion();
+      (window.__navSecs || []).forEach(s => { s.header.style.display = s.items.some(i => i.dataset.show === '1') ? '' : 'none'; });
+    }
+    window.PC_applyPermissions = applyPermissions;
+
+    /* ===== live-refresh product options in open promotion forms when Active/Inactive changes =====
+       ตารางสินค้าไม่แตะ · ฟอร์มยังกรอง Inactive ออกเหมือนเดิม · แต่ถ้าสถานะเปลี่ยน (อีกแท็บ/อีกเครื่อง)
+       ฟอร์มที่เปิดค้างจะรีเฟรช "ตัวเลือกสินค้า" ตามสถานะทันที โดยไม่ล้างค่าที่กรอกไว้ */
+    (function () {
+      function filt(items) {
+        var pf = {}, cf = {}, df = {};
+        try { pf = JSON.parse(localStorage.getItem('pc_product_flags') || '{}') || {}; } catch (e) {}
+        try { cf = JSON.parse(localStorage.getItem('pc_cat_flags') || '{}') || {}; } catch (e) {}
+        try { df = JSON.parse(localStorage.getItem('pc_dep_flags') || '{}') || {}; } catch (e) {}
+        return (items || []).filter(function (it) {
+          var f = pf[it.itemCode] || {};
+          if (f.active === 0 || f.status === 0) return false;                                   // Inactive (กดในตาราง) → ซ่อน
+          if (!(f.active === 1 || f.status === 1) && String(it.status || 'Active').toLowerCase() === 'inactive') return false; // ไฟล์ Inactive + ไม่ override → ซ่อน
+          if ((cf[it.category] || {}).active === 0) return false;
+          if (it.department && (df[it.department] || {}).active === 0) return false;
+          return true;
+        }).sort(function (a, b) {
+          var na = parseInt(a.itemCode, 10), nb = parseInt(b.itemCode, 10);
+          if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+          if (isNaN(na) && !isNaN(nb)) return 1;
+          if (!isNaN(na) && isNaN(nb)) return -1;
+          return String(a.itemCode || '').localeCompare(String(b.itemCode || ''));
+        });
+      }
+      window.PC_filterProductsByFlags = filt;
+      // ชื่อช่องทางขาย: ตัวแรกใหญ่ ที่เหลือเล็ก (Grab, Lineman, Robinhood, Gokoo) — ไม่คละ ALL CAPS
+      window.PCniceChannel = function (s) {
+        return String(s == null ? '' : s).split(',').map(function (p) {
+          return p.trim().split(/\s+/).map(function (w) { return w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w; }).join(' ');
+        }).filter(Boolean).join(', ') || '-';
+      };
+      function refresh(announce) {
+        if (!Array.isArray(window.__pcRawMaster)) return;
+        var before = Array.isArray(window.masterData) ? window.masterData.length : -1;
+        window.masterData = filt(window.__pcRawMaster);
+        var after = window.masterData.length;
+        if (typeof window.pcOnMasterRefresh === 'function') { try { window.pcOnMasterRefresh(); } catch (e) {} }
+        try { window.dispatchEvent(new CustomEvent('pc-master-refreshed')); } catch (e) {}
+        if (announce && before !== -1 && before !== after && window.Swal) {
+          Swal.fire({ toast: true, position: 'top-end', timer: 2600, showConfirmButton: false, icon: 'info', title: 'อัปเดตสถานะสินค้าแล้ว', text: 'ตัวเลือกในฟอร์มรีเฟรชตามตารางสินค้า' });
+        }
+      }
+      window.PC_refreshMasterData = refresh;
+      window.addEventListener('storage', function (e) { if (['pc_product_flags', 'pc_cat_flags', 'pc_dep_flags', 'pc_product_edits'].indexOf(e.key) >= 0) refresh(true); });
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(false); });
+    })();
+
+    /* ช่องโค้ดทุกช่อง (Item Code / Code Promotion / Code Item Set / CMPOS / SS Code) รับเฉพาะ A-Z 0-9 — พิมพ์ไทยไม่ติด */
+    (function () {
+      var CODE_SEL = '.f-code,.f-itempromo,.f-itemcode,.f-cmpos,.f-ss,.itc-code,.itc-cmpos,.itc-ss,.itc-itemcode,.code,[list="listCode"],[data-cc-reserve],[data-code-only]';
+      document.addEventListener('input', function (e) {
+        var el = e.target;
+        if (!el || !el.matches || !el.matches(CODE_SEL)) return;
+        var clean = (el.value || '').replace(/[^A-Za-z0-9]/g, '');
+        if (clean !== el.value) { var p = el.selectionStart; el.value = clean; try { el.setSelectionRange(p - 1, p - 1); } catch (x) {} }
+      }, true);
+    })();
+
+    /* Sidebar accordion: section headers collapse/expand their group; one open at a time. */
+    function getNavSections() {
+      const cont = document.querySelector('#sidebar .flex-grow-1');
+      if (!cont) return [];
+      const secs = []; let cur = null;
+      [...cont.children].forEach(el => {
+        if (el.classList.contains('nav-sub')) { if (cur) cur.items.push(el); return; } // sub-label: ไหลตามกลุ่ม ไม่ใช่ header
+        const isHeader = !el.id && !el.classList.contains('nav-link');
+        if (isHeader) { cur = { header: el, items: [] }; secs.push(cur); }
+        else if (cur && el.id && el.id.indexOf('nav-') === 0) cur.items.push(el);
+      });
+      return secs;
+    }
+    function setSecOpen(sec, open) {
+      sec._open = open;
+      sec.items.forEach(i => { i.style.display = (open && i.dataset.show !== '0') ? '' : 'none'; });
+      const ch = sec.header.querySelector('.sec-chev');
+      if (ch) ch.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+    function toggleSec(sec, secs) {
+      setSecOpen(sec, !sec._open);
+    }
+    function setupNavAccordion() {
+      const secs = getNavSections(); if (!secs.length) return;
+      window.__navSecs = secs;
+      secs.forEach(sec => {
+        sec.header.style.cursor = 'pointer';
+        sec.header.style.userSelect = 'none';
+        if (!sec.header.querySelector('.sec-chev')) {
+          const c = document.createElement('span');
+          c.className = 'sec-chev';
+          c.style.cssText = 'float:right;font-size:0.7rem;transition:transform .2s;opacity:.7;';
+          c.textContent = '▾';
+          sec.header.appendChild(c);
+        }
+        sec.header.onclick = () => toggleSec(sec, secs);
+      });
+      // default: ทุกกลุ่มงาน "ยุบ" (collapsed) — เปิดเฉพาะกลุ่มของหน้าที่กำลังเปิดอยู่
+      secs.forEach(s => setSecOpen(s, false));
+      const _lp = localStorage.getItem('pc_last_page');
+      if (_lp && window.PC_openNavSection) window.PC_openNavSection(_lp);
+    }
+    // keep the active page's section open when navigating
+    window.PC_openNavSection = function (page) {
+      const secs = window.__navSecs; if (!secs) return;
+      const sec = secs.find(s => s.items.some(i => i.id === 'nav-' + page));
+      if (sec && !sec._open) toggleSec(sec, secs);
+    };
+
+    /* 3. Page routing */
+    function loadPage(pg, el, fromHistory) {
+      // leave-guard: เตือนเฉพาะตอนมีข้อมูลกรอกค้างจริง (NPD / เพิ่มผง) ก่อนออกจากหน้า
+      var _lg = window.__leaveGuard;
+      if (_lg && _lg.page !== pg && !fromHistory) {
+        var _dirty = false; try { _dirty = !!_lg.check(); } catch (e) {}
+        if (_dirty) {
+          var _hasDraft = typeof _lg.onDraft === 'function';
+          Swal.fire({
+            title: _lg.title || 'มีข้อมูลที่ยังไม่บันทึก',
+            html: _lg.html || (_hasDraft
+              ? 'ต้องการเก็บเป็น <b>ฉบับร่าง</b> ไว้ทำต่อ หรือออกโดยไม่บันทึก?<br><small class="text-muted">(ถ้าไม่บันทึก เลขโค้ดที่จองไว้จะถูกคืนให้อัตโนมัติ)</small>'
+              : 'ออกจากหน้านี้เลยไหม? ข้อมูลที่กรอกไว้จะหาย<br><small class="text-muted">(เลขโค้ดที่จองไว้จะถูกคืนให้อัตโนมัติ)</small>'),
+            icon: 'warning', showCancelButton: true, showDenyButton: _hasDraft, reverseButtons: true,
+            confirmButtonColor: _hasDraft ? '#2e934a' : '#dc3545', denyButtonColor: '#dc3545',
+            confirmButtonText: _hasDraft ? '<i class="fas fa-save me-1"></i>บันทึกร่าง' : '<i class="fas fa-arrow-right me-1"></i>ออกจากหน้า',
+            denyButtonText: '<i class="fas fa-arrow-right me-1"></i>ออกโดยไม่บันทึก',
+            cancelButtonText: 'อยู่ต่อ'
+          }).then(function (r) {
+            if (r.isConfirmed && _hasDraft) { try { _lg.onDraft(); } catch (e) {} window.__leaveGuard = null; loadPage(pg, el, fromHistory); }
+            else if (r.isConfirmed || r.isDenied) { try { if (typeof _lg.onLeave === 'function') _lg.onLeave(); } catch (e) {} window.__leaveGuard = null; loadPage(pg, el, fromHistory); }
+          });
+          return;
+        }
+      }
+      // bump page generation so stale async callbacks from the previous page are dropped
+      window.__pageGen = (window.__pageGen || 0) + 1;
+      const oldActivePage = localStorage.getItem('pc_last_page');
+      if (oldActivePage && typeof window["dispose" + oldActivePage] === "function") {
+        try { window["dispose" + oldActivePage](); } catch (e) { console.warn("Dispose error:", e); }
+      }
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+
+      localStorage.setItem('pc_last_page', pg);
+      // Browser Back/Forward: push a history entry on forward nav; skip when we got here FROM history (popstate)
+      if (!fromHistory && window.history && window.history.pushState) {
+        if (!window.history.state || window.history.state.pcPage !== pg) {
+          window.history.pushState({ pcPage: pg }, '', '#' + pg);
+        }
+      }
+      document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active-menu'));
+      if (el) { el.classList.add('active-menu'); }
+      else { const t = document.getElementById('nav-' + pg); if (t) t.classList.add('active-menu'); }
+
+      // Sidebar collapse is user-controlled only (via the toggle button) — no auto-collapse on navigation.
+
+      const area = document.getElementById('content-area');
+      area.innerHTML = `
+        <div class="pc-pageload">
+          <div class="spinner-border text-warning" role="status"></div>
+          <span class="fw-bold text-muted">Loading…</span>
+        </div>`;
+
+      function _renderPage() {
+        google.script.run.withSuccessHandler(html => {
+          area.innerHTML = "";
+          area.innerHTML = html;
+          executeScripts(area);
+          setTimeout(() => {
+            const initFn = "init" + pg;
+            if (typeof window[initFn] === "function") window[initFn]();
+            if (window.pcEnsureRailFold) window.pcEnsureRailFold(area);
+          }, 300);
+          if (window.innerWidth < 768) {
+            const sb = document.getElementById('sidebar');
+            if (sb) sb.classList.remove('active');
+          }
+        }).getPageContent(pg);
+      }
+
+      // Pages that read the product catalog must wait for the deferred item-master to finish.
+      // (Resolves instantly once it has streamed in the background — only the very first
+      // navigation into a product page right after boot may wait.)
+      const NEEDS_ITEMS = ['Products','SaleModePrice','ItemSet','CreatePromotion','Proposal','Coupon',
+        'BillDiscountProposal','VoucherProposal','BillDiff','CodeCounter','Campaign_Tracking','IT_Settlement',
+        'ITWork','NPD','Flavor','ProductLookup','Branch_View','MemberCard','CatModeMaster','CatBranchSetting',
+        'Op_Tracking','CodeMgmt','BranchWork','BranchTickets','TeamQueue','DiscountReport','AbbrPreview'];
+      if (NEEDS_ITEMS.indexOf(pg) !== -1 && window.PC_ensureItemMaster) {
+        window.PC_ensureItemMaster().then(_renderPage, _renderPage);
+      } else {
+        _renderPage();
+      }
+    }
+
+    // load a sub-page partial into an arbitrary container (used by ITWork left-rail)
+    window.pcLoadSub = function (area, pg) {
+      area.innerHTML = '<div class="pc-pageload"><div class="spinner-border text-warning" role="status"></div><span class="fw-bold text-muted">Loading…</span></div>';
+      function go() {
+        google.script.run.withSuccessHandler(function (html) {
+          area.innerHTML = html;
+          executeScripts(area);
+          setTimeout(function () { var fn = 'init' + pg; if (typeof window[fn] === 'function') { try { window[fn](); } catch (e) { console.warn('sub init', pg, e); } } if (window.pcEnsureRailFold) window.pcEnsureRailFold(area); }, 300);
+        }).getPageContent(pg);
+      }
+      if (window.PC_ensureItemMaster) window.PC_ensureItemMaster().then(go, go); else go();
+    };
+
+    /* 4. Logout */
+    function logout() {
+      Swal.fire({
+        title: 'ยืนยันการออกจากระบบ\nConfirm Logout',
+        text: "คุณต้องการออกจากระบบใช่หรือไม่?",
+        icon: 'warning', showCancelButton: true,
+        confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ยืนยัน (LOGOUT)', cancelButtonText: 'ยกเลิก (CANCEL)'
+      }).then((r) => {
+        if (r.isConfirmed) {
+          // keep the mock data store; only clear the session keys
+          ['pc_session','pc_role','pc_userName','pc_last_page','pc_guest','pc_section'].forEach(k => localStorage.removeItem(k));
+          // ล้าง hash ก่อน reload — กันไม่ให้ PC_tryBranchGuest เห็น #Branch_View ฯลฯ แล้วเข้า guest mode ซ้ำ (logout ไม่หลุดจากหน้าสาขา)
+          try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
+          // reload ทันที เพื่อล้าง state ในหน่วยความจำ (MSAL instance/interaction) — กัน login ค้างหลัง logout (เดิมต้องรีเฟรชเอง)
+          location.replace(location.pathname + location.search);
+        }
+      });
+    }
+
+    /* 5. Utilities */
+    function executeScripts(container) {
+      const scripts = container.getElementsByTagName("script");
+      for (let i = 0; i < scripts.length; i++) {
+        const t = (scripts[i].type || "").toLowerCase();
+        // skip non-JS scripts (editor/babel instrumentation, JSON, templates) — re-running them as plain JS throws
+        if (t && t !== "text/javascript" && t !== "application/javascript" && t !== "module") continue;
+        const newScript = document.createElement("script");
+        if (scripts[i].src) {
+          newScript.src = scripts[i].src;
+          document.body.appendChild(newScript); // keep src scripts in DOM so async load completes
+          continue;
+        } else {
+          var src = scripts[i].textContent || "";
+          // skip injected editor/babel instrumentation (not part of the page's own logic)
+          if (/text\/babel|text\/jsx|transform-react-jsx|__OmT|registerPlugin\(|babel/i.test(src)) continue;
+          // Wrap each page's inline script in an IIFE so top-level let/const/var/function
+          // declarations are scoped to the page and never collide when a page is re-loaded.
+          // Page handlers are exposed via window.* so inline onclick still resolves them.
+          newScript.text = "(function(){\ntry{\n" + src + "\n}catch(e){console.error('[page-script]', e);}\n})();";
+        }
+        try {
+          document.body.appendChild(newScript);
+        } catch (e) {
+          console.error("[executeScripts] skipped a script:", e);
+        }
+        if (newScript.parentNode) document.body.removeChild(newScript);
+      }
+    }
+
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      if (sb) sb.classList.toggle('active');
+    }
+    function toggleDeskSidebar() {
+      const on = document.body.classList.toggle('sidebar-collapsed');
+      try { localStorage.setItem('pc_sidebar_collapsed', on ? '1' : '0'); } catch (e) {}
+    }
+    /* ===== sub-rail fold (พับ/กาง sub-rail — ใช้ร่วมทุกหน้าที่มี .pc-railwrap) ===== */
+    function pcSyncRailFoldBtns() {
+      const on = document.body.classList.contains('rail-folded');
+      [].forEach.call(document.querySelectorAll('.pc-rail-fold'), function (b) {
+        b.innerHTML = '<i class="fas ' + (on ? 'fa-angles-down' : 'fa-angles-up') + '"></i>';
+        b.title = on ? 'กางเมนูย่อย' : 'พับเมนูย่อยขึ้นด้านบน (ขยายตาราง)';
+      });
+    }
+    window.toggleRailFold = function () {
+      const on = document.body.classList.toggle('rail-folded');
+      try { localStorage.setItem('pc_rail_folded', on ? '1' : '0'); } catch (e) {}
+      pcSyncRailFoldBtns();
+    };
+    window.pcEnsureRailFold = function (root) {
+      root = root || document;
+      [].forEach.call(root.querySelectorAll ? root.querySelectorAll('.pc-railwrap, .pm-layout, .layout') : [], function (w) {
+        if (w.classList.contains('has-fold')) return;
+        if (!w.querySelector('.pc-rail, .pm-rail, .rail')) return;
+        w.classList.add('has-fold');
+        const btn = document.createElement('button');
+        btn.className = 'pc-rail-fold';
+        btn.type = 'button';
+        btn.setAttribute('onclick', 'window.toggleRailFold()');
+        w.insertBefore(btn, w.firstChild);
+      });
+      if (localStorage.getItem('pc_rail_folded') === '1') document.body.classList.add('rail-folded');
+      pcSyncRailFoldBtns();
+    };
+
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const loginSection = document.getElementById('login-section');
+        if (loginSection && loginSection.style.display !== 'none' && !document.body.classList.contains('logged-in')) {
+          doLogin();
+        }
+      }
+    });
+  </script>
+  <style>
+    /* มาสคอต Potato Corner เป็นลายน้ำในหัวแต่ละหน้า (tone-on-tone จาง) */
+    .pc-wm-host{ position:relative; overflow:hidden; }
+    .pc-wm-host::before{ content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:.07; background-image:repeating-linear-gradient(135deg,#fff 0 1px,transparent 1px 19px); }
+    .pc-wm-host::after{ content:''; position:absolute; top:50%; right:16px; transform:translateY(-50%); width:280px; height:280px; z-index:-1; pointer-events:none; background:url('assets/brand/mascot.png') center/contain no-repeat; opacity:.10; filter:grayscale(1) brightness(1.5); mix-blend-mode:soft-light; }
+    /* โลโก้พื้นหลังเขียวแบรนด์ */
+    .sidebar-header{ background:#2e934a !important; }
+    .sidebar-logo-text{ color:#fff !important; text-shadow:1px 1px 0 rgba(0,0,0,.35) !important; }
+    .login-wrapper{ background:
+        radial-gradient(120% 80% at 25% 12%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 42%),
+        radial-gradient(90% 70% at 82% 108%, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 55%),
+        linear-gradient(158deg, #3fae5b 0%, #2e934a 46%, #0a5d33 100%) !important; }
+    #boot-splash{ background:
+        radial-gradient(120% 80% at 25% 12%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 42%),
+        radial-gradient(90% 70% at 82% 108%, rgba(0,0,0,.30) 0%, rgba(0,0,0,0) 55%),
+        linear-gradient(158deg, #3fae5b 0%, #2e934a 46%, #0a5d33 100%) !important; }
+    /* loader ทุกที่ = โลโก้แบรนด์หมุนเล็กๆ (พายุ) แทน spinner เดิม */
+    .spinner-border, .spinner-grow{
+      width:2.6rem !important; height:2.6rem !important; border:none !important; border-radius:0 !important;
+      background:url('assets/brand/mascot.png') center/contain no-repeat !important;
+      color:transparent !important; opacity:1 !important;
+      animation:pcStormSpin .72s linear infinite !important;
+    }
+    .spinner-border::after, .spinner-grow::after{ display:none !important; content:none !important; }
+    .spinner-border-sm, .spinner-grow-sm{ width:1.5rem !important; height:1.5rem !important; }
+    @keyframes pcStormSpin{ to{ transform:rotate(360deg); } }
+    /* SweetAlert loader (กำลังบันทึก/ดำเนินการ) = มาสคอตหมุนเหมือนกัน */
+    .swal2-loader{ border:none !important; border-radius:0 !important; width:2.8em !important; height:2.8em !important; background:url('assets/brand/mascot.png') center/contain no-repeat !important; animation:pcStormSpin .72s linear infinite !important; }
+    /* ป๊อปอัปแจ้งเตือน — ใช้มาสคอตแบรนด์แทนไอคอนทุกแบบ (success/info/warning/error/question) */
+    .swal2-icon{ border:none !important; border-radius:0 !important; box-shadow:none !important; background:url('assets/brand/mascot.png') center/contain no-repeat !important; animation:none !important; }
+    .swal2-icon *{ display:none !important; }
+    /* พื้นหลังตอนสลับหน้า — โลโก้มาสคอตจางๆ + ลายเส้นบาง */
+    .pc-pageload{ position:relative; min-height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; overflow:hidden; }
+    .pc-pageload::before{ content:''; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.05; background-image:repeating-linear-gradient(135deg,#2e934a 0 1px,transparent 1px 22px); }
+    .pc-pageload::after{ content:none !important; }
+    .pc-pageload > *{ position:relative; z-index:1; }
+  </style>
+  <script>
+  (function(){
+    function colored(el){ var s=getComputedStyle(el); var bi=s.backgroundImage||''; if(/gradient/i.test(bi)) return true;
+      var m=(s.backgroundColor||'').match(/rgba?\(([^)]+)\)/); if(!m) return false; var p=m[1].split(',').map(parseFloat);
+      var r=p[0],g=p[1],b=p[2],a=(p[3]==null?1:p[3]); if(a<0.35) return false;
+      var mx=Math.max(r,g,b),mn=Math.min(r,g,b); return (mx<235) && ((mx-mn>22) || mx<95); }
+    window.pcStampHeader=function(root){ return; /* ปิดการระบายหัวเรื่องเป็นสีเขียว — หัวทุกหน้าเป็นพื้นโล่งตามดีไซน์ใหม่ */ try{
+      root=root||document.getElementById('content-area'); if(!root) return;
+      var W=root.clientWidth||window.innerWidth; if(!W) return;
+      [].forEach.call(root.querySelectorAll('.pc-wm-host'),function(e){ e.classList.remove('pc-wm-host'); });
+      var els=root.querySelectorAll('div,header,section');
+      for(var i=0;i<els.length && i<90;i++){ var el=els[i]; var r=el.getBoundingClientRect();
+        if(r.width < W*0.5) continue; if(r.height < 46 || r.height > 280) continue; if(r.top > 460) continue;
+        if(!colored(el)) continue; el.style.background='linear-gradient(118deg,#23793c 0%,#2e934a 52%,#3fae63 100%)'; el.classList.add('pc-wm-host'); break; }
+    }catch(e){} };
+    var t=null; function sched(){ clearTimeout(t); t=setTimeout(function(){ window.pcStampHeader(); },200); }
+    var ca=document.getElementById('content-area');
+    if(ca){ try{ new MutationObserver(sched).observe(ca,{childList:true,subtree:true}); }catch(e){} }
+    document.addEventListener('DOMContentLoaded',sched); setTimeout(sched,900);
+  })();
+  </script>
+</body>
+</html>
+
+<style id="__om-edit-overrides">
+</style>

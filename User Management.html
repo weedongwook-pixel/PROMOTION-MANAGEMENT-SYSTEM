@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จัดการผู้ใช้ (รหัสแคชเชียร์)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1040px; margin:0 auto; padding:22px 18px 60px; }
+
+  .bv-head{ background:var(--pc-black); color:#fff; border-radius:18px; padding:20px 24px; }
+  .bv-head .back{ display:inline-flex; align-items:center; gap:9px; color:#fff; text-decoration:none; background:rgba(255,255,255,.12); border-radius:11px; padding:9px 14px; font-weight:600; font-size:.88rem; }
+  .bv-head .back:hover{ background:rgba(255,255,255,.22); color:#fff; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.35rem; font-weight:700; margin:10px 0 0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); }
+  .bv-head .sub{ opacity:.7; font-size:.9rem; margin-top:3px; }
+
+  .toolbar{ display:flex; gap:12px; align-items:center; margin:22px 2px 14px; flex-wrap:wrap; }
+  .toolbar .search{ flex:1; min-width:220px; position:relative; }
+  .toolbar .search i{ position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#9aa1aa; }
+  .toolbar .search input{ width:100%; border:2px solid #e2e6ea; border-radius:12px; padding:11px 14px 11px 40px; font-family:inherit; font-size:.96rem; }
+  .toolbar .search input:focus{ outline:none; border-color:var(--pc-green); }
+  .toolbar select{ border:2px solid #e2e6ea; border-radius:12px; padding:11px 14px; font-family:inherit; font-size:.96rem; background:#fff; }
+  .btn-add{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:11px 20px; font-weight:700; font-size:.96rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-add:hover{ background:#00632f; }
+  .btn-sec{ background:#fff; color:#3a4150; border:1.5px solid #d8dde2; border-radius:12px; padding:11px 16px; font-family:inherit; font-weight:600; font-size:.92rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-sec:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+  .sec-note{ font-size:.82rem; color:#6b7280; margin:11px 2px 0; background:#f6f8fa; border:1px solid #e7eaee; border-radius:10px; padding:9px 13px; }
+  .sec-note i{ color:var(--pc-green); margin-right:6px; }
+  .sec-note b{ color:var(--pc-black); }
+  /* import modal */
+  .imp-ov{ position:fixed; inset:0; background:rgba(20,22,25,.6); display:none; align-items:center; justify-content:center; z-index:60; padding:18px; }
+  .imp-ov.show{ display:flex; }
+  .imp{ background:#fff; border-radius:18px; width:780px; max-width:100%; max-height:92vh; overflow:auto; box-shadow:0 30px 80px rgba(0,0,0,.4); }
+  .imp-hd{ background:var(--pc-black); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:2; }
+  .imp-hd h3{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.05rem; margin:0; flex:1; }
+  .imp-hd h3 i{ color:var(--pc-yellow); margin-right:8px; }
+  .imp-hd .x{ width:34px; height:34px; border:0; border-radius:10px; background:rgba(255,255,255,.14); color:#fff; cursor:pointer; }
+  .imp-bd{ padding:18px 20px; }
+  .imp-bd .lab{ font-weight:600; font-size:.9rem; margin:0 0 7px; }
+  .imp-file{ border:2px dashed #cfd5db; border-radius:12px; padding:14px; width:100%; font-family:inherit; }
+  .imp-ta{ width:100%; min-height:110px; border:1.5px solid #d8dde2; border-radius:12px; padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:.84rem; margin-top:12px; resize:vertical; }
+  .imp-ta:focus{ outline:none; border-color:var(--pc-green); }
+  .imp-or{ text-align:center; color:#aab0b8; font-size:.82rem; font-weight:600; margin:12px 0 0; }
+  .imp-chk{ background:#1a1d20; color:#fff; border:0; border-radius:11px; padding:11px 20px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:14px; }
+  .imp-chk:hover{ background:#000; }
+  .imp-sum{ display:flex; gap:10px; flex-wrap:wrap; margin:16px 0 10px; }
+  .imp-pill{ font-size:.82rem; font-weight:700; border-radius:9px; padding:6px 12px; }
+  .imp-pill.ok{ background:#eafaf1; color:#1d7a4d; }
+  .imp-pill.skip{ background:#fdecec; color:#c0392b; }
+  .imp-tbl{ width:100%; border-collapse:collapse; font-size:.86rem; }
+  .imp-tbl th{ background:#f6f8fa; text-align:left; padding:8px 10px; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; color:#8a9099; border-bottom:1px solid #e7eaee; }
+  .imp-tbl td{ padding:8px 10px; border-bottom:1px solid #eef1f4; }
+  .imp-tbl tr.bad td{ background:#fdf3f3; }
+  .st-chip{ font-size:.74rem; font-weight:700; border-radius:6px; padding:2px 8px; white-space:nowrap; }
+  .st-chip.ok{ background:#eafaf1; color:#1d7a4d; }
+  .st-chip.bad{ background:#fdecec; color:#c0392b; }
+  .imp-foot{ position:sticky; bottom:0; background:#fff; border-top:1px solid #e7eaee; padding:14px 20px; display:flex; justify-content:flex-end; gap:10px; }
+  .imp-submit{ background:var(--pc-green); color:#fff; border:0; border-radius:12px; padding:12px 22px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .imp-submit:disabled{ background:#cfd5db; cursor:not-allowed; }
+  .imp-empty{ color:#9aa1aa; padding:14px; text-align:center; }
+
+  .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; overflow:auto; max-height:72vh; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{ position:sticky; top:0; z-index:3; background:#f6f8fa; color:#5a616b; font-size:.74rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; text-align:left; padding:13px 16px; border-bottom:2px solid #e7eaee; white-space:nowrap; }
+  tbody td{ padding:13px 16px; border-bottom:1px solid #eef1f4; font-size:.95rem; vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:0; }
+  tbody tr:hover{ background:#f9fafb; }
+  .code{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); }
+  .pw{ font-family:'JetBrains Mono',monospace; color:#6b7280; }
+  .pos-tag{ font-size:.8rem; font-weight:600; background:#eef1ff; color:#3a4ba0; border-radius:8px; padding:3px 10px; display:inline-block; }
+  .br-tag{ font-size:.84rem; color:#1d7a4d; }
+  .br-tag i{ color:#54b585; margin-right:5px; }
+  .rowbtn{ width:34px; height:34px; border:0; border-radius:9px; cursor:pointer; font-size:.85rem; }
+  .rowbtn.edit{ background:#eaf4ee; color:#9a6700; }
+  .rowbtn.edit:hover{ background:#ffe9c4; }
+  .rowbtn.del{ background:#fdecec; color:#c0392b; margin-left:6px; }
+  .rowbtn.del:hover{ background:#fbd9d9; }
+  .empty{ text-align:center; padding:46px 20px; color:#9aa1aa; }
+  .empty i{ font-size:2rem; display:block; margin-bottom:12px; opacity:.5; }
+  .meta-note{ font-size:.82rem; color:#8a9099; margin:14px 2px 0; }
+  .meta-note b{ color:var(--pc-black); }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+  .count-pill{ font-size:.8rem; font-weight:700; color:#5a616b; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <a class="back" href="Report Settings.html"><i class="fas fa-arrow-left"></i>กลับไปตั้งค่า</a>
+    <h1><i class="fas fa-users-gear me-2"></i>จัดการผู้ใช้ (รหัสแคชเชียร์)</h1>
+    <div class="sub">ตารางผู้ใช้สำหรับโหมด “ใส่รหัสแคชเชียร์ + รหัสผ่าน” — ใช้ตรวจสอบตัวตนตอนสาขาแจ้งปัญหา</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search"><i class="fas fa-search"></i><input id="search" placeholder="ค้นหา รหัส / ชื่อ / ตำแหน่ง / สาขา" oninput="render()"></div>
+    <select id="fBranch" onchange="render()"></select>
+    <button class="btn-add" onclick="openForm()"><i class="fas fa-plus"></i>เพิ่มผู้ใช้</button>
+    <button class="btn-sec" onclick="downloadTemplate()"><i class="fas fa-file-arrow-down"></i>เทมเพลต</button>
+    <button class="btn-sec" onclick="openImport()"><i class="fas fa-file-import"></i>นำเข้า</button>
+    <button class="btn-sec" onclick="exportData()"><i class="fas fa-file-export"></i>ส่งออก</button>
+  </div>
+  <div class="sec-note"><i class="fas fa-shield-halved"></i>ความปลอดภัยข้อมูลระดับมาตรฐาน: ไฟล์ส่งออก<b>ไม่รวมรหัสผ่านจริง</b> · <b>User Code ห้ามซ้ำ</b> — ระบบตรวจซ้ำให้ก่อนยืนยันทุกครั้ง</div>
+
+  <div class="card">
+    <table>
+      <thead><tr>
+        <th style="width:130px">User Code</th>
+        <th>User Name</th>
+        <th style="width:130px">Password</th>
+        <th style="width:170px">ตำแหน่ง</th>
+        <th>สังกัดสาขา</th>
+        <th style="width:96px;text-align:right">จัดการ</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="meta-note">ทั้งหมด <span class="count-pill" id="count">0</span> ผู้ใช้ · บันทึกในเครื่องนี้ (localStorage <b>pc_cashier_users</b>) — ใช้ร่วมกับหน้า “แจ้งปัญหา” ของสาขา</div>
+
+  <div class="demo-note">— หน้าตัวอย่าง (Mockup) · ในระบบจริงตารางนี้จะผูกกับฐานข้อมูลผู้ใช้/แคชเชียร์ —</div>
+</div>
+
+<div class="imp-ov" id="impOv">
+  <div class="imp">
+    <div class="imp-hd"><i class="fas fa-file-import"></i><h3>นำเข้าผู้ใช้จากไฟล์</h3><button class="x" onclick="closeImport()"><i class="fas fa-times"></i></button></div>
+    <div class="imp-bd">
+      <div class="lab">1) เลือกไฟล์ CSV (ตามเทมเพลต)</div>
+      <input type="file" class="imp-file" id="impFile" accept=".csv,.txt" onchange="impFileLoad(this)">
+      <div class="imp-or">— หรือวางข้อมูลจาก Excel (คั่นด้วย , หรือ Tab) —</div>
+      <textarea class="imp-ta" id="impText" placeholder="User Code,User Name,Password,ตำแหน่ง,สังกัดสาขา&#10;7001,สมญา ใจดี,1234,แคชเชียร์,101 · Central World"></textarea>
+      <button class="imp-chk" onclick="impValidate()"><i class="fas fa-magnifying-glass me-1"></i>ตรวจสอบข้อมูล (เช็คซ้ำ)</button>
+      <div id="impResult"></div>
+    </div>
+    <div class="imp-foot">
+      <button class="btn-sec" onclick="closeImport()">ยกเลิก</button>
+      <button class="imp-submit" id="impSubmitBtn" disabled onclick="impSubmit()"><i class="fas fa-check me-1"></i>นำเข้า</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CASHIER_KEY='pc_cashier_users';
+const CASHIER_SEED=[
+  {code:'4821', name:'สมชาย ใจดี',    password:'1234', position:'ผู้จัดการสาขา', branch:'101 · Central World'},
+  {code:'5510', name:'มาลี สดใส',     password:'1234', position:'แคชเชียร์',     branch:'101 · Central World'},
+  {code:'6093', name:'อนุชา รักงาน',  password:'1234', position:'ผู้ช่วยผู้จัดการ', branch:'088 · Mega Bangna'},
+];
+const BRANCHES=[
+  '101 · Central World','088 · Mega Bangna','142 · Terminal 21','203 · Siam Paragon','311 · CentralPlaza Ladprao'
+];
+const POSITIONS=['ผู้จัดการสาขา','ผู้ช่วยผู้จัดการ','แคชเชียร์','พนักงานประจำร้าน'];
+
+function load(){ let a; try{ a=JSON.parse(localStorage.getItem(CASHIER_KEY)); }catch(e){ a=null; }
+  if(!Array.isArray(a)||!a.length){ a=CASHIER_SEED.slice(); save(a); } return a; }
+function save(a){ localStorage.setItem(CASHIER_KEY, JSON.stringify(a)); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function buildBranchFilter(){
+  const sel=document.getElementById('fBranch');
+  sel.innerHTML='<option value="ALL">— ทุกสาขา —</option>'+BRANCHES.map(b=>`<option value="${b}">${b}</option>`).join('');
+}
+function render(){
+  const all=load();
+  const q=(document.getElementById('search').value||'').toLowerCase().trim();
+  const bf=document.getElementById('fBranch').value;
+  const rows=all.filter(u=>{
+    if(bf!=='ALL' && u.branch!==bf) return false;
+    if(q && !(`${u.code} ${u.name} ${u.position} ${u.branch}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  document.getElementById('count').textContent=all.length;
+  const tb=document.getElementById('tbody');
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6"><div class="empty"><i class="fas fa-user-slash"></i>ไม่พบผู้ใช้</div></td></tr>`; return; }
+  tb.innerHTML=rows.map(u=>{
+    const i=all.indexOf(u);
+    return `<tr>
+      <td><span class="code">${esc(u.code)}</span></td>
+      <td>${esc(u.name)}</td>
+      <td><span class="pw">${'•'.repeat(String(u.password||'').length||4)}</span></td>
+      <td><span class="pos-tag">${esc(u.position)}</span></td>
+      <td><span class="br-tag"><i class="fas fa-store"></i>${esc(u.branch)}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="rowbtn edit" title="แก้ไข" onclick="openForm(${i})"><i class="fas fa-pen"></i></button>
+        <button class="rowbtn del" title="ลบ" onclick="delUser(${i})"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function formHTML(u){
+  u=u||{};
+  const posOpts=POSITIONS.map(p=>`<option value="${p}" ${u.position===p?'selected':''}>${p}</option>`).join('');
+  const brOpts=BRANCHES.map(b=>`<option value="${b}" ${u.branch===b?'selected':''}>${b}</option>`).join('');
+  return `<div style="text-align:left;font-size:14px">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">User Code <span style="color:#c0392b">*</span></label>
+    <input id="fCode" class="swal2-input" style="margin:0 0 12px;width:100%" inputmode="numeric" placeholder="เช่น 4821" value="${esc(u.code)}">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">User Name <span style="color:#c0392b">*</span></label>
+    <input id="fName" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="ชื่อ-นามสกุล" value="${esc(u.name)}">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">Password <span style="color:#c0392b">*</span></label>
+    <input id="fPw" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="รหัสผ่าน" value="${esc(u.password)}">
+    <label style="font-weight:600;display:block;margin:2px 0 4px">ตำแหน่ง <span style="color:#c0392b">*</span></label>
+    <select id="fPos" class="swal2-select" style="margin:0 0 12px;width:100%"><option value="">— เลือกตำแหน่ง —</option>${posOpts}</select>
+    <label style="font-weight:600;display:block;margin:2px 0 4px">สังกัดสาขา <span style="color:#c0392b">*</span></label>
+    <select id="fBr" class="swal2-select" style="margin:0;width:100%"><option value="">— เลือกสาขา —</option>${brOpts}</select>
+  </div>`;
+}
+function openForm(idx){
+  const all=load();
+  const editing=(idx!==undefined);
+  const u=editing?all[idx]:{};
+  Swal.fire({
+    title: editing?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้',
+    html: formHTML(u), width:480,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText: editing?'บันทึก':'เพิ่ม', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{
+      const code=(document.getElementById('fCode').value||'').trim();
+      const name=(document.getElementById('fName').value||'').trim();
+      const pw=(document.getElementById('fPw').value||'').trim();
+      const pos=document.getElementById('fPos').value;
+      const br=document.getElementById('fBr').value;
+      if(!code||!name||!pw||!pos||!br){ Swal.showValidationMessage('กรอกข้อมูลให้ครบทุกช่อง'); return false; }
+      const dup=all.find((x,j)=> String(x.code)===code && j!==idx);
+      if(dup){ Swal.showValidationMessage('รหัส User Code นี้มีอยู่แล้ว'); return false; }
+      return {code,name,password:pw,position:pos,branch:br};
+    }
+  }).then(r=>{
+    if(!r.isConfirmed) return;
+    if(editing) all[idx]=r.value; else all.unshift(r.value);
+    save(all); render();
+    Swal.fire({icon:'success',title: editing?'บันทึกแล้ว':'เพิ่มผู้ใช้แล้ว', timer:1100, showConfirmButton:false});
+  });
+}
+function delUser(idx){
+  const all=load(); const u=all[idx]; if(!u) return;
+  Swal.fire({icon:'warning',title:'ลบผู้ใช้?',html:`<b>${esc(u.name)}</b> (${esc(u.code)})`, showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก'})
+    .then(r=>{ if(r.isConfirmed){ all.splice(idx,1); save(all); render(); }});
+}
+
+/* ── template / export / import ──────────────────── */
+const HEADERS=['User Code','User Name','Password','ตำแหน่ง','สังกัดสาขา'];
+let IMP_VALID=[];
+function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function toCSV(headers, rows){ return [headers.join(',')].concat(rows.map(r=>r.map(csvCell).join(','))).join('\n'); }
+function downloadFile(name, text){ const blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),500); }
+function downloadTemplate(){ downloadFile('cashier_users_template.csv', toCSV(HEADERS, [['4821','สมชาย ใจดี','1234','ผู้จัดการสาขา','101 · Central World']])); }
+function exportData(){ const rows=load().map(u=>[u.code,u.name,'••••',u.position,u.branch]); downloadFile('cashier_users_export.csv', toCSV(HEADERS, rows)); Swal.fire({icon:'info',title:'ส่งออกแล้ว',html:'ไฟล์ไม่รวมรหัสผ่านจริง (มาตรฐานความปลอดภัย)',confirmButtonColor:'#2e934a',timer:1800,showConfirmButton:false}); }
+
+function openImport(){ document.getElementById('impText').value=''; document.getElementById('impResult').innerHTML=''; document.getElementById('impSubmitBtn').disabled=true; IMP_VALID=[]; document.getElementById('impOv').classList.add('show'); }
+function closeImport(){ document.getElementById('impOv').classList.remove('show'); }
+function impFileLoad(input){ const f=input.files&&input.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{ document.getElementById('impText').value=String(e.target.result||'').replace(/^\ufeff/,''); impValidate(); }; r.readAsText(f); }
+function splitLine(line,d){ const out=[]; let cur='',q=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(c==='"'){ if(q&&line[i+1]==='"'){cur+='"';i++;} else q=!q; } else if(c===d&&!q){ out.push(cur); cur=''; } else cur+=c; } out.push(cur); return out.map(s=>s.trim()); }
+function parseTable(text){ return String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim().length).map(l=> splitLine(l, l.indexOf('\t')>=0?'\t':',')); }
+function impValidate(){
+  let rows=parseTable(document.getElementById('impText').value);
+  if(!rows.length){ document.getElementById('impResult').innerHTML='<div class="imp-empty">ยังไม่มีข้อมูล — แนบไฟล์หรือวางข้อมูลก่อน</div>'; document.getElementById('impSubmitBtn').disabled=true; return; }
+  const head=rows[0].map(s=>s.toLowerCase()).join(',');
+  if(head.includes('user code')||head.includes('password')) rows=rows.slice(1);
+  const existing=new Set(load().map(u=>String(u.code)));
+  const seen=new Set(); IMP_VALID=[];
+  const checked=rows.map((r,i)=>{
+    const code=(r[0]||'').trim(), name=(r[1]||'').trim(), password=(r[2]||'').trim(), position=(r[3]||'').trim(), branch=(r[4]||'').trim();
+    let status='ok', reason='พร้อมนำเข้า';
+    if(!code||!name||!password){ status='bad'; reason='ข้อมูลไม่ครบ (ต้องมี รหัส/ชื่อ/รหัสผ่าน)'; }
+    else if(seen.has(code)){ status='bad'; reason='รหัสซ้ำในไฟล์'; }
+    else if(existing.has(code)){ status='bad'; reason='รหัสซ้ำกับที่มีอยู่ในระบบ'; }
+    if(code) seen.add(code);
+    if(status==='ok') IMP_VALID.push({code,name,password,position,branch});
+    return {code,name,position,branch,status,reason,line:i+1};
+  });
+  const ok=checked.filter(c=>c.status==='ok').length, bad=checked.length-ok;
+  const tbl=`<div class="imp-sum"><span class="imp-pill ok"><i class="fas fa-check me-1"></i>พร้อมนำเข้า ${ok}</span>${bad?`<span class="imp-pill skip"><i class="fas fa-ban me-1"></i>ข้าม (ซ้ำ/ไม่ครบ) ${bad}</span>`:''}</div>
+    <table class="imp-tbl"><thead><tr><th>#</th><th>User Code</th><th>ชื่อ</th><th>สาขา</th><th>สถานะ</th></tr></thead><tbody>
+    ${checked.map(c=>`<tr class="${c.status==='ok'?'ok':'bad'}"><td>${c.line}</td><td class="mono">${esc(c.code)||'<span style=\'color:#c0392b\'>—</span>'}</td><td>${esc(c.name)||'—'}</td><td>${esc(c.branch)||'—'}</td><td><span class="st-chip ${c.status==='ok'?'ok':'bad'}">${c.status==='ok'?'<i class="fas fa-check me-1"></i>':'<i class="fas fa-xmark me-1"></i>'}${c.reason}</span></td></tr>`).join('')}
+    </tbody></table>`;
+  document.getElementById('impResult').innerHTML=tbl;
+  document.getElementById('impSubmitBtn').disabled = ok===0;
+  document.getElementById('impSubmitBtn').innerHTML = `<i class="fas fa-check me-1"></i>นำเข้า ${ok} รายการ`;
+}
+function impSubmit(){
+  if(!IMP_VALID.length) return;
+  const all=load();
+  const existing=new Set(all.map(u=>String(u.code)));
+  const add=IMP_VALID.filter(u=>!existing.has(String(u.code)));
+  add.forEach(u=>all.unshift(u));
+  save(all); render(); closeImport();
+  Swal.fire({icon:'success',title:'นำเข้าสำเร็จ',html:`เพิ่มผู้ใช้ <b>${add.length}</b> ราย`,confirmButtonColor:'#2e934a'});
+}
+
+buildBranchFilter();
+render();
+</script>
+</body>
+</html>

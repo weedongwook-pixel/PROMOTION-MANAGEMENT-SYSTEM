@@ -1,0 +1,436 @@
+<!-- SUBSET MANAGER — ตารางจัดการ Subset + แก้ไขรายตัว (Item List ผง Single) -->
+<style>
+  #subm-page{ --g:#2e934a; --y:#2e934a; --bk:#1a1d20; font-family:'Kanit',sans-serif; color:#2a2f36; }
+  #subm-page .sm-wrap{ padding:18px; }
+  #subm-page .sm-head{ display:flex; align-items:center; gap:14px; background:var(--bk); color:#fff; padding:16px 20px; border-radius:13px; margin-bottom:16px; }
+  #subm-page .sm-head .bar{ width:9px; height:42px; background:var(--y); border-radius:5px; }
+  #subm-page .sm-head h3{ margin:0; font-weight:700; font-size:1.18rem; }
+  #subm-page .sm-head small{ opacity:.75; font-size:.82rem; }
+  #subm-page .sm-stats{ display:flex; gap:10px; margin-left:auto; }
+  #subm-page .sm-stat{ background:rgba(255,255,255,.08); border-radius:9px; padding:6px 14px; text-align:center; }
+  #subm-page .sm-stat .n{ font-weight:700; font-size:1.1rem; color:var(--y); }
+  #subm-page .sm-stat .l{ font-size:.66rem; opacity:.8; text-transform:uppercase; letter-spacing:.4px; }
+  #subm-page .sm-toolbar{ display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  #subm-page .sm-toolbar input[type=text]{ border:1.5px solid #dde2e7; border-radius:9px; padding:9px 13px; font-family:inherit; font-size:.9rem; min-width:240px; }
+  #subm-page .btn-grn{ background:var(--g); color:#fff; border:0; border-radius:9px; padding:9px 16px; font-weight:600; font-size:.88rem; cursor:pointer; font-family:inherit; }
+  #subm-page .btn-grn:hover{ filter:brightness(1.08); }
+  #subm-page .btn-ghost{ background:#fff; color:#3a4150; border:1.5px solid #dde2e7; border-radius:9px; padding:8px 14px; font-weight:600; font-size:.85rem; cursor:pointer; font-family:inherit; }
+  #subm-page .sm-card{ background:#fff; border:1px solid #e7eaee; border-radius:13px; overflow:hidden; }
+  #subm-page table{ width:100%; border-collapse:collapse; font-size:.875rem; }
+  #subm-page thead th{ background:var(--bk); color:#fff; font-weight:600; padding:11px 12px; text-align:left; position:sticky; top:0; z-index:2; white-space:nowrap; font-size:.8rem; }
+  #subm-page tbody td{ padding:8px 12px; border-top:1px solid #eef1f4; vertical-align:middle; }
+  #subm-page tbody tr:hover{ background:#fafbfc; }
+  #subm-page .sscode{ font-family:'JetBrains Mono',monospace; font-weight:700; color:#2c4a82; }
+  #subm-page .cell-in{ border:1.4px solid #e1e6ec; border-radius:7px; padding:6px 9px; font-family:inherit; font-size:.85rem; width:100%; }
+  #subm-page .price-in{ width:92px; text-align:right; }
+  #subm-page .name-in{ min-width:150px; }
+  #subm-page .pill{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 11px; font-size:.76rem; font-weight:600; cursor:pointer; border:1.4px solid transparent; }
+  #subm-page .pill.on{ background:#e6f4ec; color:#0b6b3a; border-color:#bfe3cd; }
+  #subm-page .pill.off{ background:#fdeaea; color:#b3261e; border-color:#f3c9c6; }
+  /* segmented show/hide */
+  #subm-page .seg{ display:inline-flex; border:1.4px solid #dde2e7; border-radius:8px; overflow:hidden; }
+  #subm-page .seg button{ border:0; background:#fff; padding:5px 11px; font-size:.76rem; font-weight:600; cursor:pointer; color:#7a828c; font-family:inherit; }
+  #subm-page .seg button.act-show{ background:var(--g); color:#fff; }
+  #subm-page .seg button.act-hide{ background:#b3261e; color:#fff; }
+  #subm-page .seg .def{ font-size:.64rem; color:#9aa1aa; padding:5px 8px; align-self:center; }
+  #subm-page .ic-btn{ background:var(--bk); color:var(--y); border:0; border-radius:7px; padding:6px 11px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  #subm-page .ic-btn.edit{ background:#eef3f7; color:#2c4a82; border:1.4px solid #d4e0ea; }
+  #subm-page .empty{ text-align:center; color:#9aa1aa; padding:36px; }
+  /* edit panel */
+  #subm-page .ed-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  #subm-page .ed-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:16px; }
+  #subm-page .ed-card{ background:#fff; border:1px solid #e7eaee; border-radius:12px; padding:16px 18px; }
+  #subm-page .ed-card h5{ font-size:.95rem; font-weight:700; margin:0 0 12px; display:flex; align-items:center; gap:7px; }
+  #subm-page .fld{ margin-bottom:11px; }
+  #subm-page .fld label{ display:block; font-size:.76rem; font-weight:600; color:#6b727b; margin-bottom:4px; }
+  #subm-page .fld input, #subm-page .fld select{ width:100%; border:1.5px solid #dde2e7; border-radius:8px; padding:9px 12px; font-family:inherit; font-size:.9rem; }
+  #subm-page .fld.ro input{ background:#f1f3f5; color:#5a626c; }
+  #subm-page .it-tag{ display:inline-block; background:#e3f0ff; color:#2c6fd6; font-size:.62rem; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:middle; }
+  #subm-page .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  #subm-page .pw-add{ display:flex; gap:8px; margin-top:10px; }
+  @media (max-width:820px){ #subm-page .ed-grid{ grid-template-columns:1fr; } }
+</style>
+
+<div id="subm-page">
+  <div class="sm-wrap">
+    <div class="sm-head">
+      <div class="bar"></div>
+      <div>
+        <h3><i class="fas fa-flask-vial me-2" style="color:var(--y)"></i>Subset</h3>
+        <small>คลังชุดผง · กำหนดราคา/ชื่อ · เลือกโชว์ในฟอร์ม · เพิ่มผง (Single Item) เข้าชุด</small>
+      </div>
+      <div class="sm-stats" id="smStats"></div>
+    </div>
+
+    <!-- ===== LIST VIEW ===== -->
+    <div id="smList">
+      <div class="sm-toolbar">
+        <input type="text" id="smSearch" placeholder="ค้นหา SS Code / ชื่อ Subset" oninput="window.SUBM.render()">
+        <select id="smStatusF" class="cell-in" style="width:auto" onchange="window.SUBM.render()">
+          <option value="">ทุกสถานะ</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <button class="btn-grn" style="margin-left:auto" onclick="window.SUBM.addSubset()"><i class="fas fa-plus me-1"></i>เพิ่ม Subset</button>
+      </div>
+      <div class="sm-card" style="overflow:auto; max-height:600px">
+        <table>
+          <thead>
+            <tr>
+              <th>SS Code</th>
+              <th>ชื่อ Subset (TH)</th>
+              <th>ชื่อ Subset (EN)</th>
+              <th style="text-align:right">ราคากลุ่ม (฿)</th>
+              <th>Status</th>
+              <th>ผง (Item List)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="smBody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:.76rem;color:#9aa1aa;margin-top:9px">
+        <i class="fas fa-circle-info me-1"></i>ตั้งค่า <b>แสดงในฟอร์ม</b> ย้ายไปที่หน้า <b>ตั้งค่าแสดงในฟอร์ม · แท็บ Subset</b> — จัดการที่เดียว
+      </div>
+    </div>
+
+    <!-- ===== EDIT VIEW ===== -->
+    <div id="smEdit" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var MASTER_K='pc_subset_custom';   // user-created subsets [{ssCode,nameTH,nameEN}]
+  var META_K='pc_subset_meta';       // {ssCode:{nameTH,nameEN,status,show,min,max}}
+  var PRICE_K='pc_subset_price';     // {ssCode:price}
+  var POW_K='pc_subset_powders';     // {ssCode:[itemCode]}
+  var DEL_K='pc_subset_deleted';      // {ssCode:1} hide master rows
+  var ITEMS=[];
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function ls(k,d){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){} return (arguments.length>1?d:null); }
+  function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function meta(){ var m=ls(META_K); return (m&&typeof m==='object')?m:{}; }
+  function prices(){ var m=ls(PRICE_K); return (m&&typeof m==='object')?m:{}; }
+  function powders(){ var m=ls(POW_K); return (m&&typeof m==='object')?m:{}; }
+  function customs(){ var a=ls(MASTER_K); return Array.isArray(a)?a:[]; }
+  function deleted(){ var m=ls(DEL_K); return (m&&typeof m==='object')?m:{}; }
+
+  // merged subset list: master file + custom, with meta overrides applied
+  function allSubsets(){
+    var del=deleted();
+    var base=(window.PC_SUBSET_MASTER||[]).filter(function(s){return !del[s.ssCode];}).map(function(s){ return { ssCode:s.ssCode, name:s.name, short:s.short, status:s.status||'Active', promoFormActive:s.promoFormActive, _src:'master' }; });
+    var seen={}; base.forEach(function(s){ seen[s.ssCode]=1; });
+    customs().forEach(function(s){ if(!seen[s.ssCode] && !del[s.ssCode]){ base.push({ ssCode:s.ssCode, name:s.nameEN||s.nameTH||s.ssCode, short:s.short, status:'Active', promoFormActive:'Show', _src:'custom' }); seen[s.ssCode]=1; } });
+    var M=meta();
+    return base.map(function(s){
+      var mo=M[s.ssCode]||{};
+      var formDef = s.promoFormActive==='Show' ? true : s.promoFormActive==='Hide' ? false : (String(s.status||'Active').toLowerCase()!=='inactive');
+      return {
+        ssCode: s.ssCode,
+        nameTH: mo.nameTH!=null?mo.nameTH:(s.name||''),
+        nameEN: mo.nameEN!=null?mo.nameEN:(s.name||''),
+        status: mo.status||s.status||'Active',
+        show:   (mo.show===0||mo.show===1)?mo.show:null,   // null=auto (ตาม Promo_Form_Active)
+        formDefault: formDef,
+        min:    mo.min!=null?mo.min:1,
+        max:    mo.max!=null?mo.max:1,
+        src:    s._src
+      };
+    });
+  }
+  function isActive(s){ return String(s.status||'Active').toLowerCase()!=='inactive'; }
+  function shows(s){ if(s.show===0) return false; if(s.show===1) return true; return !!s.formDefault; }
+  function setMeta(ss, patch){ var M=meta(); M[ss]=Object.assign({}, M[ss]||{}, patch); save(META_K,M); }
+  // localStorage override ถ้ามี, ไม่งั้นใช้ default จาก PC_SUBSET_FLAVORS (auto-map)
+  function powderDefault(ss){ var f=(window.PC_SUBSET_FLAVORS||{})[ss]; return (f&&Array.isArray(f.flavors))?f.flavors.map(function(x){return x.code;}):[]; }
+  function powderList(ss){ var p=powders()[ss]; if(Array.isArray(p)) return p; return powderDefault(ss); }
+  function delSubset(ss){
+    Swal.fire({ title:'ลบ Subset?', html:'ลบ <b>'+esc(ss)+'</b> ออกจากรายการ?', icon:'warning', showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก' })
+    .then(function(r){ if(!r.isConfirmed) return;
+      var c=customs().filter(function(x){return x.ssCode!==ss;}); save(MASTER_K,c);
+      var d=deleted(); d[ss]=1; save(DEL_K,d);
+      var M=meta(); delete M[ss]; save(META_K,M);
+      var P=prices(); delete P[ss]; save(PRICE_K,P);
+      var PW=powders(); delete PW[ss]; save(POW_K,PW);
+      render();
+    });
+  }
+
+  /* ===== STATS ===== */
+  function renderStats(){
+    var all=allSubsets(), act=all.filter(isActive).length, shown=all.filter(shows).length;
+    document.getElementById('smStats').innerHTML =
+      '<div class="sm-stat"><div class="n">'+all.length+'</div><div class="l">ทั้งหมด</div></div>'+
+      '<div class="sm-stat"><div class="n">'+act+'</div><div class="l">Active</div></div>'+
+      '<div class="sm-stat"><div class="n">'+shown+'</div><div class="l">โชว์ในฟอร์ม</div></div>';
+  }
+
+  /* ===== LIST RENDER ===== */
+  function render(){
+    renderStats();
+    var q=(document.getElementById('smSearch').value||'').toLowerCase().trim();
+    var sf=document.getElementById('smStatusF').value;
+    var rows=allSubsets().filter(function(s){
+      if(sf==='active' && !isActive(s)) return false;
+      if(sf==='inactive' && isActive(s)) return false;
+      if(q && (s.ssCode+' '+s.nameTH+' '+s.nameEN).toLowerCase().indexOf(q)===-1) return false;
+      return true;
+    });
+    var body=document.getElementById('smBody');
+    if(!rows.length){ body.innerHTML='<tr><td colspan="8" class="empty"><i class="fas fa-flask me-1"></i>ยังไม่มี Subset — กด “เพิ่ม Subset” เพื่อสร้าง หรือ import ไฟล์ master</td></tr>'; return; }
+    var P=prices();
+    body.innerHTML=rows.map(function(s){
+      var ss=esc(s.ssCode), pv=(P[s.ssCode]!=null&&P[s.ssCode]!=='')?P[s.ssCode]:'';
+      var act=isActive(s), nPow=powderList(s.ssCode).length;
+      var showState=shows(s), isAuto=(s.show===null);
+      var seg='<div class="seg">'+
+        '<button class="'+(showState?'act-show':'')+'" onclick="window.SUBM.setShow(\''+ss+'\',1)">โชว์</button>'+
+        '<button class="'+(!showState?'act-hide':'')+'" onclick="window.SUBM.setShow(\''+ss+'\',0)">ซ่อน</button>'+
+        (isAuto?'<span class="def" title="ใช้ค่าเริ่มต้นจากไฟล์ (Promo_Form_Active)">auto</span>':'<button class="def" title="คืนค่าเริ่มต้น (auto ตาม Promo_Form_Active)" onclick="window.SUBM.setShow(\''+ss+'\',null)"><i class=\'fas fa-rotate-left\'></i></button>')+
+        '</div>';
+      return '<tr>'+
+        '<td class="sscode">'+ss+'</td>'+
+        '<td><span class="ro-cell">'+esc(s.nameTH||'—')+'</span></td>'+
+        '<td><span class="ro-cell">'+esc(s.nameEN||'—')+'</span></td>'+
+        '<td style="text-align:right"><span class="ro-cell">'+((pv===''||pv==null)?'—':esc(pv))+'</span></td>'+
+        '<td><span class="pill '+(act?'on':'off')+'">'+(act?'<i class="fas fa-circle-check"></i>Active':'<i class="fas fa-circle"></i>Inactive')+'</span></td>'+
+        '<td><button class="ic-btn" onclick="window.SUBM.edit(\''+ss+'\',\'powder\')"><i class="fas fa-mortar-pestle me-1"></i>ผง ('+nPow+')</button></td>'+
+        '<td><div style="display:flex;gap:7px;justify-content:flex-end"><button class="ic-btn edit" onclick="window.SUBM.edit(\''+ss+'\')"><i class="fas fa-pen me-1"></i>แก้ไข</button>'+
+          '<button class="ic-btn" style="background:#fdeaea;color:#c0392b;border:1.4px solid #f3c9c6" title="ลบ" onclick="window.SUBM.delSubset(\''+ss+'\')"><i class="fas fa-trash-alt"></i></button></div></td>'+
+        '</tr>';
+    }).join('');
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+
+  /* ===== INLINE SETTERS ===== */
+  function setField(ss,k,v){ setMeta(ss,{}); var M=meta(); M[ss][k]=v; save(META_K,M); }
+  function setPrice(ss,v){ var P=prices(); if(v===''||v==null){ delete P[ss]; } else { P[ss]=Number(v)||0; } save(PRICE_K,P); renderStats(); }
+  function setShow(ss,v){ setMeta(ss,{show:v}); render(); }
+  function toggleStatus(ss){ var s=allSubsets().filter(function(x){return x.ssCode===ss;})[0]; if(!s) return; setMeta(ss,{status:isActive(s)?'Inactive':'Active'}); render(); }
+
+  /* ===== ADD SUBSET ===== */
+  function addSubset(){
+    curEdit=null;
+    document.getElementById('smList').style.display='none';
+    var ed=document.getElementById('smEdit'); ed.style.display='block';
+    ed.innerHTML=
+      '<div class="ed-head">'+
+        '<button class="btn-ghost" onclick="window.SUBM.back()"><i class="fas fa-arrow-left me-1"></i>ย้อนกลับ</button>'+
+        '<h3 style="margin:0;font-size:1.1rem"><i class="fas fa-plus me-2" style="color:#2e934a"></i>เพิ่ม Subset ใหม่</h3>'+
+      '</div>'+
+      '<div class="ed-grid">'+
+        '<div class="ed-card">'+
+          '<h5><i class="fas fa-circle-info" style="color:#2e934a"></i>ข้อมูลชุดผง</h5>'+
+          '<div class="fld"><label>SS Code <span class="it-tag">IT</span></label><input id="nsCode" placeholder="เช่น SS0001" autocomplete="off"></div>'+
+          '<div class="fld"><label>ชื่อ Subset (TH)</label><input id="nsTH" placeholder="เช่น ชุดผง 1"></div>'+
+          '<div class="fld"><label>ชื่อ Subset (EN)</label><input id="nsEN" placeholder="เช่น Flavored Fries 1"></div>'+
+          '<div class="row2">'+
+            '<div class="fld"><label>ราคากลุ่ม (฿)</label><input id="nsPrice" type="number" step="1" placeholder="—"></div>'+
+            '<div class="fld"><label>Status</label><select id="nsStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="ed-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9aa1aa;text-align:center">'+
+          '<i class="fas fa-mortar-pestle" style="font-size:1.8rem;color:#dde2e7;margin-bottom:10px"></i>'+
+          '<div style="font-size:.86rem">บันทึก Subset ก่อน แล้วระบบจะเปิดหน้าแก้ไข<br>ให้เพิ่มผง (Item List) เข้าชุดได้</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+        '<button class="btn-ghost" onclick="window.SUBM.back()">ยกเลิก</button>'+
+        '<button class="btn-grn" onclick="window.SUBM.saveNew()"><i class="fas fa-save me-1"></i>บันทึก</button>'+
+      '</div>';
+    var el=document.getElementById('nsCode'); if(el) el.focus();
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+  function saveNew(){
+    var code=(document.getElementById('nsCode').value||'').trim();
+    if(!code){ Swal.fire({icon:'warning',title:'กรุณากรอก SS Code',confirmButtonColor:'#2e934a'}); return; }
+    if(allSubsets().some(function(s){return s.ssCode.toLowerCase()===code.toLowerCase();})){ Swal.fire({icon:'error',title:'SS Code นี้มีอยู่แล้ว',confirmButtonColor:'#2e934a'}); return; }
+    var nameTH=(document.getElementById('nsTH').value||'').trim(), nameEN=(document.getElementById('nsEN').value||'').trim();
+    var c=customs(); c.push({ssCode:code,nameTH:nameTH,nameEN:nameEN}); save(MASTER_K,c);
+    setMeta(code,{nameTH:nameTH,nameEN:nameEN,status:document.getElementById('nsStatus').value});
+    setPrice(code, document.getElementById('nsPrice').value);
+    Swal.fire({icon:'success',title:'เพิ่ม Subset แล้ว',timer:1000,showConfirmButton:false});
+    edit(code);  // เปิดหน้าแก้ไขต่อ เพื่อเพิ่มผง
+  }
+
+  /* ===== EDIT PANEL ===== */
+  var curEdit=null, pwPage=1, pwPer=5;
+  function edit(ss, focus){
+    var s=allSubsets().filter(function(x){return x.ssCode===ss;})[0]; if(!s) return;
+    curEdit=ss;
+    var P=prices(); var pv=(P[ss]!=null&&P[ss]!=='')?P[ss]:'';
+    document.getElementById('smList').style.display='none';
+    var ed=document.getElementById('smEdit'); ed.style.display='block';
+    ed.innerHTML=
+      '<div class="ed-head">'+
+        '<button class="btn-ghost" onclick="window.SUBM.back()"><i class="fas fa-arrow-left me-1"></i>ย้อนกลับ</button>'+
+        '<h3 style="margin:0;font-size:1.1rem"><span class="sscode">'+esc(ss)+'</span> · แก้ไข Subset</h3>'+
+      '</div>'+
+      '<div class="ed-grid">'+
+        '<div class="ed-card">'+
+          '<h5><i class="fas fa-circle-info" style="color:#2e934a"></i>ข้อมูลชุดผง</h5>'+
+          '<div class="fld ro"><label>SS Code <span class="it-tag">IT</span></label><input value="'+esc(ss)+'" readonly></div>'+
+          '<div class="fld"><label>ชื่อ Subset (TH)</label><input id="edTH" value="'+esc(s.nameTH)+'"></div>'+
+          '<div class="fld"><label>ชื่อ Subset (EN)</label><input id="edEN" value="'+esc(s.nameEN)+'"></div>'+
+          '<div class="row2">'+
+            '<div class="fld"><label>ราคากลุ่ม (฿)</label><input id="edPrice" type="number" step="1" value="'+esc(pv)+'" placeholder="—"></div>'+
+            '<div class="fld"><label>Status</label><select id="edStatus"><option value="Active"'+(isActive(s)?' selected':'')+'>Active</option><option value="Inactive"'+(!isActive(s)?' selected':'')+'>Inactive</option></select></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="ed-card">'+
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
+            '<h5 style="margin:0"><i class="fas fa-mortar-pestle" style="color:#ffffff"></i>Single Item ในชุด (Item List) <span style="font-weight:400;color:#9aa1aa;font-size:.78rem" id="edPwCount"></span></h5>'+
+            '<button class="btn-grn" style="margin-left:auto" onclick="window.SUBM.pwAddModal()"><i class="fas fa-plus me-1"></i>Add New</button>'+
+          '</div>'+
+          '<div style="font-size:.76rem;color:#9aa1aa;margin-bottom:10px">เพิ่มได้เฉพาะสินค้าประเภท <b>Single Item</b> ที่สถานะ <b>Active</b> (Inactive ต้องเปลี่ยนเป็น Active ก่อน · ไม่รวม Item Set)</div>'+
+          '<div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;font-size:.82rem;color:#6b727b">Show <select id="edPwPer" class="cell-in" style="width:auto;padding:5px 9px" onchange="window.SUBM.pwPerSet(this.value)"><option value="5">5</option><option value="10">10</option><option value="25">25</option><option value="all">ทั้งหมด</option></select> entries</div>'+
+          '<div id="edPwList"></div>'+
+          '<div id="edPwPager" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:.78rem;color:#6b727b;flex-wrap:wrap"></div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+        '<button class="btn-ghost" onclick="window.SUBM.back()">ยกเลิก</button>'+
+        '<button class="btn-grn" onclick="window.SUBM.saveEdit()"><i class="fas fa-save me-1"></i>บันทึก</button>'+
+      '</div>';
+    renderPwList();
+    if(typeof window.applyLang==='function') window.applyLang();
+  }
+  function back(){ curEdit=null; document.getElementById('smEdit').style.display='none'; document.getElementById('smList').style.display='block'; render(); }
+
+  function pwPerSet(v){ pwPer = (v==='all')?'all':(parseInt(v)||5); pwPage=1; renderPwList(); }
+  function pwStatusPill(it){
+    if(!it) return '<span class="pill off" style="cursor:default">—</span>';
+    var act=String(it.status||'Active').toLowerCase()!=='inactive';
+    return '<span class="pill '+(act?'on':'off')+'" style="cursor:default">'+(act?'Active':'Inactive')+'</span>';
+  }
+  // powders in current subset (table แบบ Item List + status + แบ่งหน้า)
+  function renderPwList(){
+    var list=powderList(curEdit);
+    if(window.pcFlavorSort) list=window.pcFlavorSort(list, function(code){ var it=ITEMS.filter(function(x){return x.itemCode===code;})[0]; return it?(it.itemNameEN||it.itemNameTH||code):code; });
+    var cnt=document.getElementById('edPwCount'); if(cnt) cnt.textContent='('+list.length+' ผง)';
+    var sf=window.__pwStatusF||'all';
+    if(sf!=='all'){ list=list.filter(function(code){ var it=ITEMS.filter(function(x){return x.itemCode===code;})[0]; var act=itemActive(it); return sf==='active'?act:!act; }); }
+    var box=document.getElementById('edPwList'), pgEl=document.getElementById('edPwPager'); if(!box) return;
+    if(!list.length){ box.innerHTML='<div style="text-align:center;color:#9aa1aa;padding:18px;font-size:.85rem;border:1px solid #eef1f4;border-radius:8px">— ยังไม่มีผงในชุดนี้ —</div>'; if(pgEl) pgEl.innerHTML=''; return; }
+    var total=list.length;
+    var pages = pwPer==='all'?1:Math.max(1,Math.ceil(total/pwPer));
+    if(pwPage>pages) pwPage=pages; if(pwPage<1) pwPage=1;
+    var start = pwPer==='all'?0:(pwPage-1)*pwPer;
+    var pageItems = pwPer==='all'?list:list.slice(start,start+pwPer);
+    box.innerHTML='<div style="overflow:auto;border:1px solid #e7eaee;border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:.84rem"><thead><tr style="background:#2c6fd6;color:#fff">'+
+      '<th style="text-align:left;padding:8px 10px">Item Code</th>'+
+      '<th style="text-align:left;padding:8px 10px">Description 1</th>'+
+      '<th style="text-align:left;padding:8px 10px">Description 2</th>'+
+      '<th style="text-align:center;padding:6px 10px;width:130px">Status<br><select onchange="window.pwStatusFilter(this.value)" style="font-size:.7rem;padding:2px 4px;border-radius:5px;color:#1a1d20;margin-top:3px"><option value="all"'+(sf==='all'?' selected':'')+'>ทั้งหมด</option><option value="active"'+(sf==='active'?' selected':'')+'>Active</option><option value="inactive"'+(sf==='inactive'?' selected':'')+'>Inactive</option></select></th>'+
+      '<th style="text-align:center;padding:8px 10px;width:60px">จัดการ</th></tr></thead><tbody>'+
+      pageItems.map(function(code){ var it=ITEMS.filter(function(x){return x.itemCode===code;})[0];
+        return '<tr style="border-top:1px solid #eef1f4">'+
+          '<td style="padding:7px 10px" class="sscode">'+esc(code)+'</td>'+
+          '<td style="padding:7px 10px">'+esc(it?(it.itemNameEN||''):'(ไม่พบในตารางสินค้า)')+'</td>'+
+          '<td style="padding:7px 10px">'+esc(it?(it.itemNameTH||it.itemNameEN||''):'')+'</td>'+
+          '<td style="padding:7px 10px;text-align:center">'+pwStatusPill(it)+'</td>'+
+          '<td style="padding:7px 10px;text-align:center"><i class="fas fa-trash-alt" style="color:#c0392b;cursor:pointer" title="ลบออกจากชุด" onclick="window.SUBM.pwDel(\''+esc(code)+'\')"></i></td></tr>';
+      }).join('')+'</tbody></table></div>';
+    if(pgEl){
+      var to=pwPer==='all'?total:Math.min(start+pwPer,total);
+      var btns='';
+      if(pwPer!=='all' && pages>1){
+        btns+='<button class="btn-ghost" style="padding:5px 10px" '+(pwPage<=1?'disabled':'')+' onclick="window.SUBM.pwGoPage('+(pwPage-1)+')">Previous</button>';
+        var seq=[]; for(var i=1;i<=pages;i++){ if(i===1||i===pages||Math.abs(i-pwPage)<=1){ seq.push(i); } else if(seq[seq.length-1]!=='…'){ seq.push('…'); } }
+        seq.forEach(function(n){ btns += (n==='…') ? '<span style="padding:0 4px">…</span>' : '<button class="btn-ghost" style="padding:5px 10px;'+(n===pwPage?'background:#2c6fd6;color:#fff;border-color:#2c6fd6':'')+'" onclick="window.SUBM.pwGoPage('+n+')">'+n+'</button>'; });
+        btns+='<button class="btn-ghost" style="padding:5px 10px" '+(pwPage>=pages?'disabled':'')+' onclick="window.SUBM.pwGoPage('+(pwPage+1)+')">Next</button>';
+      }
+      pgEl.innerHTML='<span>Showing '+(start+1)+' to '+to+' of '+total+' entries</span><span style="display:flex;gap:5px;flex-wrap:wrap">'+btns+'</span>';
+    }
+  }
+  function pwGoPage(n){ pwPage=n; renderPwList(); }
+
+  /* ===== ADD NEW (modal ค้นหา Single Item) ===== */
+  function pwAddModal(){
+    window.__pwmSel={};
+    var cats=[]; try{ var seen={}; ITEMS.forEach(function(it){ if(/single/i.test(String(it.itemType||'')) && it.category && !seen[it.category]){ seen[it.category]=1; cats.push(it.category);} }); cats.sort(); }catch(e){}
+    var catOpts='<option value="">ทุกหมวด</option>'+cats.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');
+    Swal.fire({ title:'เพิ่ม Single Item เข้าชุด '+esc(curEdit), width:640,
+      html:'<div style="display:flex;gap:10px;margin-bottom:10px;align-items:stretch">'+
+        '<select id="pwmCat" class="swal2-input" style="margin:0;flex:0 0 200px;height:44px;font-size:.95rem" onchange="window.SUBM.pwmFilter()">'+catOpts+'</select>'+
+        '<input id="pwmQ" class="swal2-input" style="margin:0;flex:1;height:44px;font-size:.95rem" placeholder="ค้นหา รหัส/ชื่อ (Single Item)" oninput="window.SUBM.pwmFilter()" autocomplete="off">'+
+        '</div>'+
+        '<div id="pwmRes" style="max-height:340px;overflow:auto;text-align:left;border:1px solid #eef1f4;border-radius:8px"></div>',
+      didOpen:function(){ pwmFilter(); var q=document.getElementById('pwmQ'); if(q) q.focus(); },
+      showCancelButton:true, confirmButtonText:'เพิ่มที่เลือก', confirmButtonColor:'#2e934a', cancelButtonText:'ปิด',
+      preConfirm:function(){ return Object.keys(window.__pwmSel||{}); }
+    }).then(function(r){ if(r.isConfirmed && r.value && r.value.length){ var P=powders(); P[curEdit]=powderList(curEdit); r.value.forEach(function(c){ if(P[curEdit].indexOf(c)===-1) P[curEdit].push(c); }); save(POW_K,P); pwPage=1; renderPwList(); } });
+  }
+  // Active เท่านั้น: override จาก pc_product_flags.status ก่อน, ไม่งั้นใช้ it.status (default Active)
+  function prodFlags(){ var m=ls('pc_product_flags'); return (m&&typeof m==='object')?m:{}; }
+  function itemActive(it){ var f=prodFlags()[it.itemCode]||{}; if(f.status!==undefined&&f.status!==null) return f.status!==0; return String(it.status||'Active').toLowerCase()!=='inactive'; }
+  function pwmFilter(){
+    var qel=document.getElementById('pwmQ'); if(!qel) return; var q=(qel.value||'').toLowerCase().trim();
+    var box=document.getElementById('pwmRes'); if(!box) return;
+    var cat=(document.getElementById('pwmCat')||{}).value||'';
+    var have={}; powderList(curEdit).forEach(function(c){ have[c]=1; });
+    /* type rule: เลือกหมวดเจาะจง → โชว์ Active ทุกชนิดในหมวดนั้น (เครื่องดื่มหลายตัว status Active แต่ itemType=Item Set)
+                  ไม่เลือกหมวด (ทุกหมวด) → เฉพาะ Single Item (กัน Item Set/combo ทั้งระบบท่วมจอ) */
+    function typeOK(it){ return cat ? true : /single/i.test(String(it.itemType||'')); }
+    function matchBase(it){
+      if(cat && String(it.category||'')!==cat) return false;       // กรองตามหมวด
+      if(!typeOK(it)) return false;
+      if(have[it.itemCode]) return false;                          // ตัดที่อยู่ในชุดแล้ว
+      return (!q || (it.itemCode+' '+(it.itemNameEN||'')+' '+(it.itemNameTH||'')).toLowerCase().indexOf(q)!==-1);
+    }
+    var hits=ITEMS.filter(function(it){ return matchBase(it) && itemActive(it); });   // ค้นได้เฉพาะสินค้า Active
+    if(window.pcFlavorSort) hits=window.pcFlavorSort(hits, function(it){ return it.itemNameEN||it.itemNameTH||it.itemCode; });
+    hits=hits.slice(0,2000);
+    if(!hits.length){
+      var inactN=ITEMS.filter(function(it){ return matchBase(it) && !itemActive(it); }).length;
+      box.innerHTML='<div style="color:#9aa1aa;padding:14px;font-size:.85rem"><i class="fas fa-circle-info me-1"></i>'+
+        (inactN ? ('ไม่พบสินค้า <b>Active</b> ที่ตรง'+(cat?(' ในหมวด '+esc(cat)):'')+' · มี '+inactN+' รายการแต่เป็น <b>Inactive</b> — ไปเปิด Active ที่หน้า “สินค้า” ก่อน')
+                : ('ไม่พบ Single Item ที่ตรง'+(cat?(' ในหมวด '+esc(cat)):'')))+'</div>';
+      return;
+    }
+    var html='<div style="position:sticky;top:0;background:#f8faf9;border-bottom:1px solid #eef1f4;padding:6px 10px;font-size:.74rem;color:#5b6470;font-weight:700;z-index:1">เพิ่มได้ '+hits.length+' รายการ (Active เท่านั้น)</div>';
+    html+=hits.map(function(it){ var on=window.__pwmSel&&window.__pwmSel[it.itemCode];
+      return '<label style="display:flex;gap:9px;align-items:center;padding:7px 10px;border-bottom:1px solid #f1f3f5;cursor:pointer"><input type="checkbox" '+(on?'checked':'')+' onchange="window.SUBM.pwmToggle(\''+esc(it.itemCode)+'\',this.checked)">'+
+        '<span class="sscode" style="font-size:.8rem">'+esc(it.itemCode)+'</span>'+
+        '<span style="font-size:.85rem">'+esc(it.itemNameEN||it.itemNameTH)+'</span>'+
+        '<span style="margin-left:auto;font-size:.72rem;color:#9aa1aa">'+esc(it.category||'')+'</span></label>';
+    }).join('');
+    box.innerHTML=html;
+  }
+  function pwmToggle(code,on){ window.__pwmSel=window.__pwmSel||{}; if(on) window.__pwmSel[code]=1; else delete window.__pwmSel[code]; }
+  function pwDel(code){ var P=powders(); P[curEdit]=powderList(curEdit).filter(function(c){return c!==code;}); save(POW_K,P); renderPwList(); }
+
+  window.pwStatusFilter=function(v){ window.__pwStatusF=v; pwPage=1; renderPwList(); };
+  function saveEdit(){
+    if(!curEdit) return;
+    setMeta(curEdit, {
+      nameTH: document.getElementById('edTH').value,
+      nameEN: document.getElementById('edEN').value,
+      status: document.getElementById('edStatus').value
+    });
+    setPrice(curEdit, document.getElementById('edPrice').value);
+    Swal.fire({icon:'success',title:'บันทึกแล้ว',timer:1100,showConfirmButton:false});
+    back();
+  }
+
+  window.SUBM={ render:render, setField:setField, setPrice:setPrice, setShow:setShow, toggleStatus:toggleStatus,
+    addSubset:addSubset, saveNew:saveNew, edit:edit, back:back, pwAddModal:pwAddModal, pwmFilter:pwmFilter, pwmToggle:pwmToggle, pwDel:pwDel, pwPerSet:pwPerSet, pwGoPage:pwGoPage, saveEdit:saveEdit, delSubset:delSubset };
+
+  /* ดึง master สินค้าจริง — PC_API (sync) → google.script.run (shim) → window globals (fallback) */
+  function getItems(){
+    return new Promise(function(res){
+      function globals(){ return (window.PC_ITEM_MASTER&&window.PC_ITEM_MASTER.length)?window.PC_ITEM_MASTER.slice():((window.masterData&&window.masterData.length)?window.masterData.slice():[]); }
+      try{ if(window.PC_API&&typeof window.PC_API.getMasterDataExtended==='function'){ var d=window.PC_API.getMasterDataExtended(); if(d&&d.items&&d.items.length){ res(d.items); return; } } }catch(e){}
+      try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ var done=false; google.script.run.withSuccessHandler(function(r){ done=true; res((r&&r.items&&r.items.length)?r.items:globals()); }).withFailureHandler(function(){ done=true; res(globals()); }).getMasterDataExtended(); setTimeout(function(){ if(!done) res(globals()); },1500); return; } }catch(e){}
+      res(globals());
+    });
+  }
+
+  window.initSubsetManager=function(){
+    getItems().then(function(items){ ITEMS=items||[]; render(); });
+    render();
+  };
+})();
+</script>

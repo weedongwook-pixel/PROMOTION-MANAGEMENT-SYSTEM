@@ -1,0 +1,391 @@
+<!-- ============================================================
+     pages/CoPromotion.html — Co-Promotion (ACC ดูข้อมูล · export ERP)
+     entry: initCoPromotion()
+     ตาราง: pc_co_promotions (MKT กรอกตอนแจ้งโปร · IT ยืนยัน Interface ERP)
+     สิทธิ์: ACC/IT อ่าน · MKT แก้ของตัวเอง · Admin ทั้งหมด
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  .cp-scope { background:#f4f6f9; min-height:100vh; padding:24px 26px 60px; font-family:'Kanit',sans-serif; color:#3b4753; }
+  .cp-scope .cp-head { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .cp-scope .cp-head .ic { width:52px; height:52px; border-radius:14px; background:#eafaf1; color:#1f8a4e; display:grid; place-items:center; font-size:1.35rem; flex:none; }
+  .cp-scope .cp-head h1 { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; color:#1a1d20; margin:0; line-height:1.1; }
+  .cp-scope .cp-head .sub { font-size:.9rem; color:#6c757d; font-weight:600; margin-top:3px; }
+  .cp-scope .cp-head .actions { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+
+  .cp-scope .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .cp-scope .kpi { background:#fff; border:1px solid #e6eaef; border-radius:14px; padding:16px 18px; box-shadow:0 1px 2px rgba(20,32,43,.05); }
+  .cp-scope .kpi .l { font-size:.68rem; letter-spacing:1px; text-transform:uppercase; color:#8a9099; font-weight:700; }
+  .cp-scope .kpi .v { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.9rem; color:#14202b; line-height:1.1; margin-top:4px; }
+  .cp-scope .kpi.warn .v { color:#a06d13; } .cp-scope .kpi.ok .v { color:#1f8a4e; }
+
+  .cp-scope .btnp { background:#1f8a4e; color:#fff; border:0; border-radius:11px; padding:10px 18px; font-weight:800; font-size:.92rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .cp-scope .btnp:hover { background:#176b3a; }
+  .cp-scope .btnx { background:#eafaf1; color:#176b3a; border:1px solid #bfe6cd; border-radius:11px; padding:10px 16px; font-weight:800; font-size:.9rem; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .cp-scope .btnx:hover { background:#d7f2e0; }
+
+  .cp-scope .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .cp-scope .seg { display:inline-flex; background:#eef1f4; border-radius:11px; padding:3px; gap:2px; }
+  .cp-scope .seg button { border:0; background:transparent; padding:7px 14px; border-radius:9px; font-family:inherit; font-weight:700; font-size:.84rem; color:#5a616b; cursor:pointer; }
+  .cp-scope .seg button.on { background:#fff; color:#1f8a4e; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .cp-scope .srch { flex:1; min-width:220px; position:relative; }
+  .cp-scope .srch i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#aab0b8; }
+  .cp-scope .srch input { width:100%; border:2px solid #e3e7eb; border-radius:11px; padding:10px 12px 10px 40px; font-family:inherit; font-weight:600; }
+  .cp-scope .srch input:focus { outline:none; border-color:#1f8a4e; }
+
+  .cp-scope .tblwrap { background:#fff; border:1px solid #e6eaef; border-radius:16px; overflow:auto; max-height:calc(100vh - 250px); -webkit-overflow-scrolling:touch; box-shadow:0 1px 2px rgba(20,32,43,.05); }
+  .cp-scope table { width:max-content; min-width:100%; border-collapse:collapse; font-size:.82rem; }
+  .cp-scope td.desc { max-width:260px; white-space:normal; word-break:break-word; }
+  .cp-scope td.cpname { max-width:190px; white-space:normal; word-break:break-word; }
+  .cp-scope td.cpso { max-width:96px; white-space:normal; word-break:break-word; }
+  .cp-scope td.cpnum { max-width:92px; white-space:normal; word-break:break-word; }
+  .cp-scope thead th { background:#14202b; color:#fff; font-weight:700; padding:7px 10px; text-align:left; white-space:nowrap; position:sticky; top:0; z-index:3; font-size:.76rem; }
+  .cp-scope thead th.sorth { cursor:pointer; }
+  .cp-scope thead th.sorth:hover { background:#22384a; }
+  .cp-scope tbody td { padding:5px 9px; border-bottom:1px solid #eef1f4; vertical-align:middle; line-height:1.3; }
+  .cp-scope tbody tr:hover { background:#f8fbf9; }
+  .cp-scope .code { font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; background:#eafaf1; padding:1px 7px; border-radius:6px; white-space:nowrap; display:inline-block; }
+  .cp-scope .code2 { font-family:'JetBrains Mono',monospace; font-weight:700; color:#6d3bd1; background:#f3eefe; padding:1px 7px; border-radius:6px; white-space:nowrap; display:inline-block; margin-top:3px; }
+  .cp-scope .tag { display:inline-block; font-size:.66rem; font-weight:800; padding:2px 8px; border-radius:20px; background:#eef4ff; color:#2c4a82; white-space:nowrap; }
+  .cp-scope .tag.cash { background:#fff3e0; color:#a06d13; }
+  .cp-scope .st { display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+  .cp-scope .st.wait { background:rgba(201,138,30,.16); color:#a06d13; } .cp-scope .st.done { background:rgba(31,138,78,.16); color:#1f8a4e; }
+  .cp-scope .rowbtn { border:0; border-radius:8px; width:30px; height:30px; cursor:pointer; margin-right:3px; }
+  .cp-scope .rowbtn.edit { background:#eef4ff; color:#2c4a82; } .cp-scope .rowbtn.del { background:#fbe9e7; color:#c0392b; }
+  .cp-scope .rowbtn.ban { background:#fff3e0; color:#a06d13; } .cp-scope .rowbtn.undo { background:#eafaf1; color:#1f8a4e; }
+  .cp-scope .ncp { display:inline-block; font-size:.62rem; font-weight:800; padding:1px 8px; border-radius:20px; background:#f1f3f5; color:#8a9099; margin-top:3px; }
+  .cp-scope .empty { padding:50px; text-align:center; color:#9aa5b1; font-weight:600; }
+  .cp-scope .datepick { display:flex; align-items:center; gap:6px; background:#fff; border:2px solid #e3e7eb; border-radius:11px; padding:6px 10px; }
+  .cp-scope .datepick i { color:#1f8a4e; }
+  .cp-scope .datepick input[type=date] { border:0; font-family:inherit; font-weight:600; color:#2b333c; outline:none; }
+  .cp-scope .datepick .cpclr { border:0; background:#f1f3f5; color:#8a9099; border-radius:7px; width:28px; height:28px; cursor:pointer; }
+  .cp-scope .datepick .cpclr:hover { background:#e6e9ec; color:#c0392b; }
+  .cp-scope thead tr.filters th { background:#20303d; padding:5px 7px; position:sticky; top:31px; z-index:2; }
+  .cp-scope thead tr.filters input, .cp-scope thead tr.filters select { width:100%; min-width:70px; border:0; border-radius:6px; padding:5px 7px; font-family:'Kanit',sans-serif; font-size:.74rem; font-weight:600; background:#fff; color:#2b333c; }
+  .cp-scope thead tr.filters input::placeholder { color:#aeb6bf; font-weight:500; }
+  .cp-scope thead tr.filters input:focus, .cp-scope thead tr.filters select:focus { outline:2px solid #7fc79c; }
+  .cp-scope .muted { color:#9aa5b1; }
+  .cp-scope .desc { max-width:280px; white-space:normal; line-height:1.4; }
+  @media(max-width:640px){ .cp-scope{ padding:16px 12px 50px; } .cp-scope .kpis{ grid-template-columns:1fr 1fr; } .cp-scope .cp-head .actions{ width:100%; margin-left:0; } .cp-scope .cp-head .actions .btnp,.cp-scope .cp-head .actions .btnx{ flex:1; justify-content:center; } }
+</style>
+
+<div class="cp-scope">
+  <div class="cp-head">
+    <div class="ic"><i class="fas fa-handshake"></i></div>
+    <div>
+      <h1>Co-Promotion</h1>
+      <div class="sub">รายการโปรร่วมพาร์ทเนอร์ที่ MKT แจ้ง — สำหรับทีมบัญชี (ACC) นำไปตั้งค่า ERP</div>
+    </div>
+    <div class="actions">
+      <button class="btnx" id="cpAddBtn" onclick="cpAdd()"><i class="fas fa-plus"></i> เพิ่มรายการ</button>
+      <button class="btnp" onclick="cpExport()"><i class="fas fa-file-excel"></i> EXPORT EXCEL</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="l">ทั้งหมด</div><div class="v" id="cpKTotal">0</div></div>
+    <div class="kpi warn"><div class="l">รอ IT ยืนยัน Interface</div><div class="v" id="cpKWait">0</div></div>
+    <div class="kpi ok"><div class="l">Interface ERP แล้ว</div><div class="v" id="cpKDone">0</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" id="cpSeg">
+      <button class="on" data-f="ALL" onclick="cpSetFilter(this,'ALL')">ทั้งหมด</button>
+      <button data-f="WAIT" onclick="cpSetFilter(this,'WAIT')">รอ Interface</button>
+      <button data-f="DONE" onclick="cpSetFilter(this,'DONE')">Interface แล้ว</button>
+    </div>
+    <div class="seg" id="cpTP" style="flex-wrap:wrap">
+      <button class="on" data-t="" onclick="cpSetTP(this,'')">ทุก Type</button>
+      <button data-t="coupon" onclick="cpSetTP(this,'coupon')">Item Coupon</button>
+      <button data-t="bill" onclick="cpSetTP(this,'bill')">Bill Discount</button>
+      <button data-t="voucher-normal" onclick="cpSetTP(this,'voucher-normal')">Voucher</button>
+      <button data-t="e-voucher" onclick="cpSetTP(this,'e-voucher')">E-Voucher</button>
+      <button data-t="co-promotion" onclick="cpSetTP(this,'co-promotion')">Co-Promotion</button>
+    </div>
+    <div class="seg" id="cpLife">
+      <button class="on" data-l="ALL" onclick="cpSetLife(this,'ALL')">ทุกสถานะ</button>
+      <button data-l="active" onclick="cpSetLife(this,'active')">กำลังเล่น</button>
+      <button data-l="expired" onclick="cpSetLife(this,'expired')">หมดเขต</button>
+    </div>
+    <div class="srch"><i class="fas fa-magnifying-glass"></i><input id="cpSearch" placeholder="ค้นหา โค้ด / ชื่อ / Brand / บริษัท..." oninput="cpRender()"></div>
+    <div class="datepick"><i class="fas fa-calendar-day"></i>
+      <input type="date" id="cpDate" onchange="cpRender()" title="แสดงเฉพาะโปรที่ Active ในวันที่เลือก">
+      <button class="cpclr" title="ล้างวันที่" onclick="cpClearDate()"><i class="fas fa-eraser"></i></button>
+    </div>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No.</th><th class="sorth" onclick="cpSort('type')">Type</th><th class="sorth" onclick="cpSort('promoType')">Type Promotion</th><th class="sorth" onclick="cpSort('code')">CMPOS Code</th><th class="sorth" onclick="cpSort('name')">CMPOS Name</th><th class="sorth" onclick="cpSort('brand')">Brand</th>
+          <th class="sorth" onclick="cpSort('bill')">เรียกเก็บในนาม</th><th>รายละเอียด (MKT)</th><th class="sorth" onclick="cpSort('start')">เริ่ม</th><th class="sorth" onclick="cpSort('end')">สิ้นสุด</th><th class="sorth" onclick="cpSort('pay')">Payment</th>
+          <th class="sorth" onclick="cpSort('so')">SO / Quota</th><th class="sorth" onclick="cpSort('price')">Inc. / Exc. VAT</th><th>เงื่อนไขจ่าย</th><th>Remark</th>
+          <th class="sorth" onclick="cpSort('iface')">Interface ERP</th><th class="sorth" onclick="cpSort('updated')">แก้ไขล่าสุด</th><th>จัดการ</th>
+        </tr>
+        <tr class="filters">
+          <th></th>
+          <th><input data-col="type" list="cpDL_type" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="promoType" list="cpDL_promoType" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="code" list="cpDL_code" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="name" list="cpDL_name" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="brand" list="cpDL_brand" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="bill" list="cpDL_bill" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="detail" list="cpDL_detail" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="start" list="cpDL_start" oninput="cpRender()" placeholder="กรอง..."></th><th><input data-col="end" list="cpDL_end" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="pay" list="cpDL_pay" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="so" list="cpDL_so" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="price" list="cpDL_price" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="cond" list="cpDL_cond" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><input data-col="remark" list="cpDL_remark" oninput="cpRender()" placeholder="กรอง..."></th>
+          <th><select data-col="iface" onchange="cpRender()"><option value="">ทั้งหมด</option><option value="wait">รอ IT</option><option value="done">แล้ว</option></select></th>
+          <th><input data-col="updated" list="cpDL_updated" oninput="cpRender()" placeholder="กรอง..."></th><th></th>
+        </tr>
+      </thead>
+      <tbody id="cpBody"></tbody>
+    </table>
+    <span id="cpDatalists"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var FILTER = 'ALL', ROWS = [], TP_FILTER = '', LIFE = 'ALL';
+  function role() { try { return localStorage.getItem('pc_role') || ''; } catch (e) { return ''; } }
+  function uname() { try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch (e) { return ''; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function run(fn, arg) { return new Promise(function (res, rej) { try { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](arg); } catch (e) { rej(e); } }); }
+  function canEdit(r) { var ro = role(); return ro === 'Admin' || ro === 'MKT'; }
+  function canDelete() { var ro = role(); return ro === 'Admin' || ro === 'MKT'; }
+
+  window.cpSetFilter = function (btn, f) {
+    FILTER = f;
+    document.querySelectorAll('#cpSeg button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    cpRender();
+  };
+  window.cpSetTP = function (btn, t) {
+    TP_FILTER = t;
+    document.querySelectorAll('#cpTP button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    cpRender();
+  };
+  window.cpSetLife = function (btn, l) { LIFE = l; document.querySelectorAll('#cpLife button').forEach(function (b) { b.classList.toggle('on', b === btn); }); cpRender(); };
+  function cpMatchTP(r, tp) {
+    if (!tp) return true;
+    var hay = (String(r.promoType || '') + ' ' + String(r.type || '')).toLowerCase();
+    if (tp === 'e-voucher') return /e[-\s]?voucher/.test(hay);
+    if (tp === 'voucher-normal') return /voucher/.test(hay) && !/e[-\s]?voucher/.test(hay);
+    if (tp === 'coupon') return /coupon/.test(hay);
+    if (tp === 'bill') return /bill/.test(hay);
+    if (tp === 'co-promotion') return /co-?promotion/.test(hay);
+    return true;
+  }
+  // จัดเรียง: IC → BD → Voucher → Co-Promo → อื่น ๆ · e-Voucher ล่างสุด · ในกลุ่มเดียวกันวันที่ใหม่→เก่า
+  var CP_SORT = { col: 'code', dir: 1 };   // ค่าเริ่มต้น: CMPOS Code น้อย→มาก ข้ามทุก Type
+  var CP_SORTFN = {
+    type: function (r) { return String(r.type || ''); }, promoType: function (r) { return String(r.promoType || ''); },
+    code: function (r) { return String(r.codePromotion || r.codeItemSet || ''); }, name: function (r) { return String(r.cmposName || r.buttonName || ''); },
+    brand: function (r) { return String(r.brand || ''); }, bill: function (r) { return String(r.billingEntity || ''); },
+    detail: function (r) { return String(r.detail || ''); }, start: function (r) { return String(r.start || ''); }, end: function (r) { return String(r.end || ''); },
+    pay: function (r) { return String(r.paymentType || ''); }, so: function (r) { return String(r.soNo || ''); }, price: function (r) { return parseFloat(r.priceIncVat) || 0; },
+    cond: function (r) { return String(r.paymentCondition || ''); }, remark: function (r) { return String(r.remark || ''); },
+    iface: function (r) { return r.interfaceSetup ? 1 : 0; }, updated: function (r) { return String(r.updatedAt || r.createdAt || ''); }
+  };
+  function cpSortCmp(a, b) {
+    var f = CP_SORTFN[CP_SORT.col] || CP_SORTFN.code;
+    var va = f(a), vb = f(b), c;
+    if (typeof va === 'number') c = va - vb; else c = String(va).localeCompare(String(vb), 'th');
+    if (c === 0) c = String(a.codePromotion || '').localeCompare(String(b.codePromotion || ''));
+    return c * CP_SORT.dir;
+  }
+  window.cpSort = function (col) {
+    if (CP_SORT.col === col) CP_SORT.dir *= -1; else { CP_SORT.col = col; CP_SORT.dir = 1; }
+    cpRender();
+  };
+
+  window.cpLoad = function () {
+    run('getCoPromotions').then(function (rows) { ROWS = rows || []; cpKpis(); cpBuildDatalists(); cpRender(); })
+      .catch(function (e) { ROWS = []; cpRender(); });
+  };
+
+  // ตัวเลือกในช่องกรอง (datalist) — เลือกได้ + พิมพ์กรองได้
+  function cpFieldOptions(col) {
+    var set = {};
+    ROWS.forEach(function (r) {
+      var vals = [];
+      switch (col) {
+        case 'type': vals = [r.type]; break;
+        case 'promoType': vals = [r.promoType]; break;
+        case 'code': vals = [r.codePromotion, r.codeItemSet]; break;
+        case 'name': vals = [r.cmposName || r.buttonName]; break;
+        case 'brand': vals = [r.brand]; break;
+        case 'bill': vals = [r.billingEntity]; break;
+        case 'detail': vals = [r.detail]; break;
+        case 'period': vals = [r.periodText || ((r.start || '') + ' → ' + (r.end || ''))]; break;
+        case 'pay': vals = [r.paymentType]; break;
+        case 'so': vals = [r.soNo, r.quota]; break;
+        case 'price': vals = [r.priceIncVat]; break;
+        case 'cond': vals = [r.paymentCondition]; break;
+        case 'remark': vals = [r.remark]; break;
+        case 'start': vals = [r.start]; break;
+        case 'end': vals = [r.end]; break;
+        case 'updated': vals = [r.updatedBy || r.createdBy, String(r.updatedAt || r.createdAt || '').slice(0,10)]; break;
+      }
+      vals.forEach(function (v) { v = String(v == null ? '' : v).trim(); if (v) set[v] = 1; });
+    });
+    return Object.keys(set).sort();
+  }
+  function cpBuildDatalists() {
+    var host = document.getElementById('cpDatalists'); if (!host) return;
+    var cols = ['type', 'promoType', 'code', 'name', 'brand', 'bill', 'detail', 'start', 'end', 'period', 'pay', 'so', 'price', 'cond', 'remark', 'updated'];
+    host.innerHTML = cols.map(function (c) {
+      return '<datalist id="cpDL_' + c + '">' + cpFieldOptions(c).map(function (v) { return '<option value="' + esc(v).replace(/"/g, '&quot;') + '"></option>'; }).join('') + '</datalist>';
+    }).join('');
+  }
+
+  function cpKpis() {
+    var wait = ROWS.filter(function (r) { return !r.interfaceSetup; }).length;
+    document.getElementById('cpKTotal').textContent = ROWS.length;
+    document.getElementById('cpKWait').textContent = wait;
+    document.getElementById('cpKDone').textContent = ROWS.length - wait;
+  }
+
+  window.cpRender = function () {
+    var q = (document.getElementById('cpSearch').value || '').toLowerCase().trim();
+    var cf = {};
+    document.querySelectorAll('.filters [data-col]').forEach(function (el) { var v = (el.value || '').toLowerCase().trim(); if (v) cf[el.getAttribute('data-col')] = v; });
+    var dsel = (document.getElementById('cpDate') || {}).value || '';
+    var list = ROWS.filter(function (r) {
+      if (FILTER === 'WAIT' && r.interfaceSetup) return false;
+      if (FILTER === 'DONE' && !r.interfaceSetup) return false;
+      if (cf.iface === 'wait' && r.interfaceSetup) return false;
+      if (cf.iface === 'done' && !r.interfaceSetup) return false;
+      if (q) {
+        var hay = [r.codePromotion, r.codeItemSet, r.cmposName, r.brand, r.billingEntity, r.campaign, r.detail].join(' ').toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      var fields = {
+        type: r.type, promoType: r.promoType, code: (r.codePromotion || '') + ' ' + (r.codeItemSet || ''),
+        name: (r.cmposName || r.buttonName || '') + ' ' + (r.campaign || ''), brand: r.brand, bill: r.billingEntity,
+        detail: r.detail, start: r.start || '', end: r.end || '', updated: (String(r.updatedAt || r.createdAt || '').slice(0,10)) + ' ' + (r.updatedBy || r.createdBy || ''), period: (r.periodText || '') + ' ' + (r.start || '') + ' ' + (r.end || ''),
+        pay: r.paymentType, so: (r.soNo || '') + ' ' + (r.quota || ''),
+        price: (r.priceIncVat || '') + ' ' + (r.priceExcVat || ''), cond: r.paymentCondition, remark: r.remark
+      };
+      for (var k in cf) { if (k === 'iface') continue; if (String(fields[k] || '').toLowerCase().indexOf(cf[k]) < 0) return false; }
+      if (dsel && !cpDateInRange(dsel, r.start, r.end)) return false;
+      if (LIFE !== 'ALL') { var _t = new Date().toISOString().slice(0, 10); var _e = String(r.end || ''); var _exp = _e && _e < _t; if (LIFE === 'active' && _exp) return false; if (LIFE === 'expired' && !_exp) return false; }
+      return cpMatchTP(r, TP_FILTER);
+    }).sort(cpSortCmp);
+    var body = document.getElementById('cpBody');
+    if (!list.length) { body.innerHTML = '<tr><td colspan="18" class="empty"><i class="fas fa-inbox fa-2x d-block mb-2" style="opacity:.4"></i>ไม่พบรายการตามเงื่อนไข</td></tr>'; return; }
+    body.innerHTML = list.map(function (r, i) {
+      var codes = (r.codePromotion ? '<span class="code">' + esc(r.codePromotion) + '</span>' : '') +
+        (r.codeItemSet ? '<br><span class="code2">' + esc(r.codeItemSet) + '</span>' : '');
+      var types = String(r.type || '').split(',').map(function (t) { return '<span class="tag' + (/คูปอง/.test(t) ? ' cash' : '') + '">' + esc(t.trim()) + '</span>'; }).join(' ');
+      var so = [r.soNo, r.quota].filter(Boolean).join(' / ');
+      var price = (r.priceIncVat ? esc(r.priceIncVat) : '-') + (r.priceExcVat ? ' <span class="muted">/ ' + esc(Number(r.priceExcVat).toFixed(2)) + '</span>' : '');
+      var st = r.interfaceSetup
+        ? '<span class="st done"><i class="fas fa-check"></i> Interface แล้ว</span>' + (r.interfaceBy ? '<div class="muted" style="font-size:.66rem;margin-top:2px">' + esc(r.interfaceBy) + '</div>' : '')
+        : '<span class="st wait"><i class="fas fa-hourglass-half"></i> รอ IT</span>';
+      var acts = (canEdit(r) ? '<button class="rowbtn edit" title="แก้ไข" onclick="cpEdit(\'' + r.id + '\')"><i class="fas fa-pen"></i></button>' : '') +
+        (canEdit(r) ? (r.notCoPromo
+          ? '<button class="rowbtn undo" title="คืนสถานะเป็น Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',0)"><i class="fas fa-rotate-left"></i></button>'
+          : '<button class="rowbtn ban" title="ยกเลิก — ทำเครื่องหมายว่าไม่ใช่ Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',1)"><i class="fas fa-ban"></i></button>') : '') +
+        (canDelete() ? '<button class="rowbtn del" title="ลบ" onclick="cpDel(\'' + r.id + '\')"><i class="fas fa-trash"></i></button>' : '');
+      return '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + types + '</td>' +
+        '<td>' + esc(r.promoType || '-') + '</td>' +
+        '<td>' + (codes || '<span class="muted">-</span>') + '</td>' +
+        '<td class="cpname"><b>' + esc(r.cmposName || r.buttonName || '-') + '</b>' + (r.notCoPromo ? '<div><span class="ncp">ไม่ใช่ Co-Promo</span></div>' : '') + ((r.campaign && r.campaign !== (r.cmposName || r.buttonName)) ? '<div class="muted" style="font-size:.7rem">' + esc(r.campaign) + '</div>' : '') + '</td>' +
+        '<td>' + esc(r.brand || '-') + '</td>' +
+        '<td>' + esc(r.billingEntity || '-') + '</td>' +
+        '<td class="desc">' + esc(r.detail || '-') + '</td>' +
+        '<td style="white-space:nowrap">' + esc(r.start || '-') + '</td>' +
+        '<td style="white-space:nowrap">' + esc(r.end || '-') + '</td>' +
+        '<td>' + esc(r.paymentType || '-') + '</td>' +
+        '<td class="cpso">' + (so ? esc(so) : '-') + '</td>' +
+        '<td class="cpnum">' + price + '</td>' +
+        '<td class="desc">' + esc(r.paymentCondition || '-') + '</td>' +
+        '<td class="desc">' + esc(r.remark || '-') + '</td>' +
+        '<td>' + st + '</td>' +
+        '<td class="muted" style="white-space:nowrap;font-size:.72rem">' + ((r.updatedAt || r.createdAt) ? '<i class="fas fa-pen"></i> ' + esc(String(r.updatedAt || r.createdAt || '').slice(0, 10)) + ((r.updatedBy || r.createdBy) ? '<br>' + esc(r.updatedBy || r.createdBy) : '') : '-') + '</td>' +
+        '<td style="white-space:nowrap">' + (acts || '<span class="muted">—</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+  };
+  // parse yyyy-mm-dd | dd/mm/yyyy → Date (หรือ null)
+  function cpParse(s) {
+    s = String(s || '').trim(); if (!s) return null;
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    return null;
+  }
+  function cpDateInRange(sel, start, end) {
+    var d = cpParse(sel), s = cpParse(start), e = cpParse(end);
+    if (!d) return true;
+    if (!s && !e) return true; // ไม่มีวันในเรคคอร์ด → ไม่กรองออก
+    if (s && d < s) return false;
+    if (e && d > e) return false;
+    return true;
+  }
+  window.cpClearDate = function () { var el = document.getElementById('cpDate'); if (el) el.value = ''; cpRender(); };
+
+  window.cpEdit = function (id) {
+    var r = ROWS.find(function (x) { return x.id === id; });
+    if (!r || !window.PC_CoPromo) return;
+    window.PC_CoPromo.openForm(r.campaign, r).then(function () { cpLoad(); });
+  };
+  window.cpToggleCopro = function (id, val) {
+    var r = ROWS.find(function (x) { return x.id === id; }); if (!r) return;
+    if (val) {
+      Swal.fire({ title: '<span style="font-size:1.2rem">ต้องการยกเลิก “ไม่ใช่ Co-Promotion”?</span>', html: '<b>' + esc(r.cmposName || r.campaign || '') + '</b><br><span style="font-size:.85rem;color:#6c757d">รายการนี้จะถูกตัดออกจากการนับเป็น Co-Promotion (ป้ายในหน้าติดตามงานหาย) — แก้คืนได้ภายหลัง</span>', icon: 'warning', showCancelButton: true, confirmButtonColor: '#a06d13', confirmButtonText: 'ยืนยัน — ไม่ใช่ Co-Promo', cancelButtonText: 'ยกเลิก' })
+        .then(function (res) { if (!res.isConfirmed) return; run('setCoPromoNotCopro', { id: id, val: 1 }).then(function () { cpLoad(); }); });
+    } else {
+      run('setCoPromoNotCopro', { id: id, val: 0 }).then(function () { cpLoad(); });
+    }
+  };
+  window.cpDel = function (id) {
+    Swal.fire({ title: 'ลบรายการ Co-Promotion?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#c0392b', confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก' })
+      .then(function (res) { if (!res.isConfirmed) return; run('deleteCoPromotion', id).then(function () { cpLoad(); }); });
+  };
+  window.cpAdd = function () {
+    if (!window.PC_CoPromo) return;
+    run('getCoPromoCampaigns').then(function (camps) {
+      camps = camps || [];
+      Swal.fire({
+        title: 'เลือกแคมเปญ', input: 'text', inputPlaceholder: 'พิมพ์ชื่อแคมเปญ...',
+        html: camps.length ? '<div style="font-size:.8rem;color:#6c757d;text-align:left;max-height:150px;overflow:auto">แนะนำ:<br>' + camps.slice(0, 30).map(function (c) { return '• ' + esc(c); }).join('<br>') + '</div>' : '',
+        showCancelButton: true, confirmButtonText: 'ถัดไป', confirmButtonColor: '#1f8a4e', cancelButtonText: 'ยกเลิก',
+        inputValidator: function (v) { if (!v) return 'กรอกชื่อแคมเปญ'; }
+      }).then(function (res) { if (!res.isConfirmed) return; window.PC_CoPromo.openForm(res.value).then(function () { cpLoad(); }); });
+    });
+  };
+
+  /* ---- Export Excel (รูปแบบไฟล์ต้นฉบับ Co-Promotion) ---- */
+  window.cpExport = function () {
+    if (typeof XLSX === 'undefined') { Swal.fire('Error', 'XLSX ยังไม่โหลด', 'error'); return; }
+    var head = ['No.', 'Type', 'Type Promotion', 'CMPOS Code', 'CMPOS Name', 'Brand', 'เรียกเก็บในนาม', 'MKT Description', 'Campaign Period',
+      'Eff. date begin', 'Eff. date end', 'Payment Type', 'SO No.', 'Quota', 'Price Inc. VAT', 'Price Exc. VAT',
+      'Payment condition', 'Remark', 'Sales interface setup', 'หมายเหตุ'];
+    var aoa = [head];
+    ROWS.forEach(function (r, i) {
+      var code = [r.codePromotion, r.codeItemSet].filter(Boolean).join(' / ');
+      aoa.push([i + 1, r.type || '', r.promoType || '', code, r.cmposName || r.buttonName || '', r.brand || '', r.billingEntity || '',
+        r.detail || '', r.periodText || '', r.start || '', r.end || '', r.paymentType || '', r.soNo || '', r.quota || '',
+        r.priceIncVat || '', r.priceExcVat || '', r.paymentCondition || '', r.remark || '',
+        r.interfaceSetup ? 'YES' : '', r.interfaceBy ? ('Interface by ' + r.interfaceBy) : '']);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 5 }, { wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 26 }, { wch: 14 }, { wch: 30 }, { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 14 }, { wch: 9 }, { wch: 12 }, { wch: 12 }, { wch: 22 }, { wch: 30 }, { wch: 15 }, { wch: 26 }];
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Co-Promotion');
+    XLSX.writeFile(wb, 'Co-Promotion_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    Swal.fire({ icon: 'success', title: 'ส่งออกสำเร็จ', html: '<b>' + ROWS.length + '</b> รายการ', timer: 1800, showConfirmButton: false });
+  };
+
+  window.initCoPromotion = function () {
+    if (role() !== 'Admin' && role() !== 'MKT') { var b = document.getElementById('cpAddBtn'); if (b) b.style.display = 'none'; }
+    cpLoad();
+  };
+  if (document.getElementById('cpBody') && typeof google !== 'undefined') { try { window.initCoPromotion(); } catch (e) {} }
+})();
+</script>

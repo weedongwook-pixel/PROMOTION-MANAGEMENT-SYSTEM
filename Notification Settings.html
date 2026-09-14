@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตั้งค่าการแจ้งเตือน — Email / Team Chat</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; --mail:#c9870a; --chat:#2f5fb3; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:22px 18px 120px; }
+
+  .bv-head{ background:#2e934a; color:#fff; border-radius:18px; padding:20px 24px; }
+  .bv-head .back{ display:inline-flex; align-items:center; gap:9px; color:#fff; text-decoration:none; background:rgba(255,255,255,.12); border-radius:11px; padding:9px 14px; font-weight:600; font-size:.88rem; }
+  .bv-head .back:hover{ background:rgba(255,255,255,.22); color:#fff; }
+  .bv-head h1{ font-family:'Montserrat',sans-serif; font-size:1.35rem; font-weight:700; margin:10px 0 0; letter-spacing:.4px; text-transform:uppercase; }
+  .bv-head h1 i{ color:var(--pc-yellow); }
+  .bv-head .sub{ opacity:.7; font-size:.9rem; margin-top:3px; }
+
+  .sec-lbl{ font-size:.72rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#8a9099; margin:26px 2px 12px; display:flex; align-items:center; gap:8px; }
+  .sec-lbl .hint{ font-weight:500; text-transform:none; letter-spacing:0; color:#aab0b8; font-size:.8rem; }
+
+  /* event table */
+  .evcard{ background:#fff; border:1px solid #e7eaee; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); overflow:hidden; }
+  .evrow{ display:grid; grid-template-columns:1fr 215px 290px; gap:14px; align-items:center; padding:14px 18px; border-bottom:1px solid #eef1f4; }
+  .evrow:last-child{ border-bottom:0; }
+  .evrow:hover{ background:#f9fafb; }
+  .ev-name{ font-weight:600; font-size:.98rem; }
+  .ev-key{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#aab0b8; margin-top:2px; }
+  .dept-pick{ border:1.5px solid #d8dde2; border-radius:10px; padding:8px 11px; font-family:inherit; font-size:.9rem; background:#fff; width:100%; }
+  .dept-pick:focus{ outline:none; border-color:var(--pc-green); }
+  .dept-chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .dchip{ border:1.5px solid #d8dde2; background:#fff; color:#6b7280; border-radius:8px; padding:5px 9px; font-family:inherit; font-weight:700; font-size:.76rem; cursor:pointer; min-width:38px; }
+  .dchip:hover{ border-color:#b6bcc4; }
+  .dchip.on{ background:var(--pc-green); color:#fff; border-color:var(--pc-green); }
+  .gchip{ border:1.5px solid #d8dde2; background:#fff; color:#5a616b; border-radius:8px; padding:5px 11px; font-family:inherit; font-weight:600; font-size:.8rem; cursor:pointer; }
+  .gchip:hover{ border-color:#b6bcc4; }
+  .gchip.on{ background:#2f5fb3; color:#fff; border-color:#2f5fb3; }
+  .gchip.line.on{ background:#06c755; border-color:#06c755; }
+  .gchip.add{ color:#2e934a; border-style:dashed; border-color:#bcdcc9; }
+  .gchip.add:hover{ background:#f4faf6; }
+  .seg{ display:flex; background:#f1f4f7; border-radius:11px; padding:4px; gap:3px; }
+  .seg button{ flex:1; border:0; background:transparent; border-radius:8px; padding:8px 4px; font-family:inherit; font-weight:600; font-size:.78rem; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap; }
+  .seg button.on[data-ch="email"]{ background:#fff; color:var(--mail); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on[data-ch="chat"]{ background:#fff; color:var(--chat); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on[data-ch="both"]{ background:#fff; color:#6b5bd0; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .seg button.on[data-ch="line"]{ background:#fff; color:#06c755; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .evhead{ display:grid; grid-template-columns:1fr 215px 290px; gap:14px; padding:11px 18px; background:#f6f8fa; border-bottom:2px solid #e7eaee; font-size:.7rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8a9099; }
+
+  /* departments */
+  .depts{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .dept{ background:#fff; border:1px solid #e7eaee; border-radius:15px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .dept-hd{ display:flex; align-items:center; gap:11px; }
+  .dept-ic{ width:42px; height:42px; border-radius:11px; background:#eef4ff; color:var(--chat); display:flex; align-items:center; justify-content:center; font-size:1.15rem; flex:none; }
+  .dept-nm{ font-weight:700; font-size:1.05rem; }
+  .dept-grp{ font-size:.84rem; color:#6b7280; display:flex; align-items:center; gap:6px; margin-top:1px; }
+  .dept-grp i{ color:var(--chat); }
+  .mem-lbl{ font-size:.68rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; margin:14px 0 8px; }
+  .mem{ display:flex; align-items:center; gap:11px; padding:8px 0; border-top:1px dashed #eef1f4; }
+  .mem:first-of-type{ border-top:0; }
+  .mem .av{ width:38px; height:38px; border-radius:50%; background:#1a1d20; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem; flex:none; font-family:'Montserrat',sans-serif; }
+  .mem .mi{ flex:1; min-width:0; }
+  .mem .mn{ font-weight:600; font-size:.92rem; }
+  .mem .mr{ font-size:.78rem; color:#8a9099; }
+  .mem .mx{ border:0; background:#fdecec; color:#c0392b; width:30px; height:30px; border-radius:8px; cursor:pointer; flex:none; }
+  .mem .mx:hover{ background:#fbd9d9; }
+  .addmem{ margin-top:10px; border:1.5px dashed #cfd5db; background:#fff; border-radius:10px; padding:8px; width:100%; font-family:inherit; font-weight:600; font-size:.86rem; color:#5a616b; cursor:pointer; }
+  .addmem:hover{ border-color:var(--pc-green); color:var(--pc-green); }
+  .add-dept{ margin-top:14px; width:100%; background:#fff; border:2px dashed #cfd5db; border-radius:14px; padding:13px; font-family:inherit; font-weight:700; font-size:.96rem; color:#3a4150; cursor:pointer; }
+  .add-dept:hover{ border-color:var(--pc-green); color:var(--pc-green); background:#f6fbf8; }
+  .dept-del{ width:34px; height:34px; border:0; border-radius:9px; background:#fdecec; color:#c0392b; cursor:pointer; flex:none; }
+  .dept-del:hover{ background:#fbd9d9; }
+
+  /* preview */
+  .pv-pick{ border:1.5px solid #d8dde2; border-radius:11px; padding:10px 13px; font-family:inherit; font-size:.95rem; background:#fff; margin-bottom:14px; min-width:280px; }
+  .pv-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:16px; }
+  .pv-col.line .pv-tab{ color:#06c755; }
+  .pv-col .chat + .chat{ margin-top:12px; }
+  .lchat .chat-hd{ background:#06c755; }
+  .lchat .chat-hd .gi{ background:#fff; color:#06c755; }
+  .lchat .chat-hd .gn{ color:#fff; }
+  .lchat .chat-hd .gm{ color:rgba(255,255,255,.85); }
+  .msg .bot.oa{ background:#06c755; color:#fff; }
+  .txt.line{ background:#eafaef; border-radius:4px 12px 12px 12px; }
+  .lchat .mention{ background:#d8f5e0; color:#06934a; }
+  /* line config */
+  .linecfg{ background:#fff; border:1px solid #e7eaee; border-radius:15px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .line-cost{ font-size:.85rem; color:#5a616b; background:#eafaef; border:1px solid #bfe6cf; border-radius:11px; padding:10px 13px; line-height:1.5; }
+  .line-cost i{ color:#06934a; margin-right:5px; }
+  .line-cost b{ color:#1a1d20; }
+  .line-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px; }
+  .lf label{ font-size:.78rem; font-weight:600; color:#5a616b; display:block; margin-bottom:5px; }
+  .lf .req{ color:#aab0b8; font-weight:500; }
+  .lf-in{ width:100%; border:1.5px solid #d8dde2; border-radius:10px; padding:10px 12px; font-family:inherit; font-size:.92rem; }
+  .lf-in:focus{ outline:none; border-color:#06c755; }
+  .line-note{ font-size:.78rem; color:#9aa1aa; margin-top:11px; }
+  @media(max-width:760px){ .line-grid{ grid-template-columns:1fr; } }
+  .pv-col .pv-tab{ font-size:.78rem; font-weight:700; display:flex; align-items:center; gap:7px; margin-bottom:9px; }
+  .pv-col.mail .pv-tab{ color:var(--mail); }
+  .pv-col.chat .pv-tab{ color:var(--chat); }
+  .pv-off{ opacity:.42; }
+  .pv-off-note{ font-size:.78rem; color:#aab0b8; font-weight:600; }
+
+  /* email mock */
+  .email{ background:#fff; border:1px solid #e3e7ec; border-radius:13px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .email-hd{ padding:13px 16px; border-bottom:1px solid #eef1f4; }
+  .email-subj{ font-weight:700; font-size:1rem; }
+  .email-meta{ font-size:.8rem; color:#8a9099; margin-top:6px; line-height:1.5; }
+  .email-meta b{ color:#5a616b; font-weight:600; }
+  .email-body{ padding:15px 16px; font-size:.92rem; line-height:1.6; color:#3a4047; }
+  .email-cta{ display:inline-block; margin-top:12px; background:var(--pc-green); color:#fff; text-decoration:none; border-radius:9px; padding:9px 16px; font-weight:700; font-size:.86rem; }
+
+  /* chat mock */
+  .chat{ background:#fff; border:1px solid #e3e7ec; border-radius:13px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .chat-hd{ background:#f6f8fa; padding:11px 15px; border-bottom:1px solid #eef1f4; display:flex; align-items:center; gap:10px; }
+  .chat-hd .gi{ width:34px; height:34px; border-radius:9px; background:var(--chat); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.95rem; flex:none; }
+  .chat-hd .gn{ font-weight:700; font-size:.95rem; }
+  .chat-hd .gm{ font-size:.74rem; color:#8a9099; }
+  .chat-body{ padding:15px 15px 17px; }
+  .msg{ display:flex; gap:11px; }
+  .msg .bot{ width:38px; height:38px; border-radius:50%; background:var(--pc-yellow); color:#1a1d20; display:flex; align-items:center; justify-content:center; flex:none; font-size:1rem; }
+  .msg .bub{ flex:1; }
+  .msg .who{ font-weight:700; font-size:.88rem; }
+  .msg .who span{ font-weight:500; color:#9aa1aa; font-size:.74rem; margin-left:6px; }
+  .msg .txt{ background:#f4f6f9; border-radius:4px 12px 12px 12px; padding:11px 13px; margin-top:5px; font-size:.9rem; line-height:1.55; color:#2a2f36; }
+  .mention{ background:#e4ecfb; color:#1f4fae; font-weight:600; border-radius:5px; padding:1px 6px; }
+  .mention-row{ margin-bottom:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .react{ margin-top:9px; display:flex; gap:7px; }
+  .react span{ border:1px solid #e2e6ea; border-radius:14px; padding:3px 10px; font-size:.78rem; color:#6b7280; }
+
+  .savebar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:14px 18px; box-shadow:0 -4px 20px rgba(0,0,0,.06); z-index:30; }
+  .savebar .inner{ max-width:1080px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .savebar .cur{ font-size:.86rem; color:#6b7280; }
+  .btn-save{ background:var(--pc-green); color:#fff; border:0; border-radius:13px; padding:13px 26px; font-weight:700; font-size:1.02rem; cursor:pointer; }
+  .btn-save:hover{ background:#00632f; }
+  /* savebar: strip removed — float just the button */
+  .savebar{ background:transparent!important; border-top:none!important; box-shadow:none!important; padding:0!important; pointer-events:none!important; backdrop-filter:none!important; }
+  .savebar .inner{ justify-content:flex-end!important; pointer-events:none!important; }
+  .savebar .inner > div{ display:none!important; }
+  .savebar .btn-save{ pointer-events:auto!important; margin:14px 18px!important; box-shadow:0 6px 20px rgba(0,0,0,.22)!important; }
+  .demo-note{ font-size:.72rem; color:#aab0b8; text-align:center; margin-top:30px; }
+  @media(max-width:760px){ .evrow,.evhead{ grid-template-columns:1fr; } .depts,.pv-grid{ grid-template-columns:1fr; } }
+  .modgroup{ border:1px solid #e5e8ec; border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
+  .modhead{ display:flex; align-items:center; gap:12px; padding:14px 18px; cursor:pointer; background:#fafbfc; user-select:none; }
+  .modhead:hover{ background:#f3f5f7; }
+  .modhead.open{ background:#fdeff0; border-bottom:1px solid #f4d4d7; }
+  .modhead .mh-ic{ color:#eb2c39; width:16px; text-align:center; }
+  .modhead .mh-title{ font-weight:800; font-size:1rem; color:#1a1d20; flex:1; }
+  .modhead .mh-count{ font-size:.78rem; color:#6b7280; background:#eef1f4; border-radius:20px; padding:3px 11px; }
+  .modhead .mh-on{ font-size:.78rem; color:#c81e29; background:#fdeaec; border-radius:20px; padding:3px 11px; font-weight:600; }
+  .modbody{ padding:4px 0; }
+  .modbody .evrow{ border-bottom:1px solid #f2f4f7; }
+  .modbody .evrow:last-child{ border-bottom:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bv-head">
+    <a class="back" href="Report Settings.html"><i class="fas fa-arrow-left"></i>กลับ</a>
+    <h1><i class="fas fa-bell me-2"></i>ตั้งค่าการแจ้งเตือน</h1>
+    <div class="sub">เลือกว่าแต่ละเหตุการณ์ในระบบจะแจ้งเตือนไปทาง “อีเมล” หรือ “Team Chat” (กลุ่มแชท + Mention ตามแผนก)</div>
+  </div>
+
+  <div class="sec-lbl">ช่องทางแจ้งเตือนของแต่ละเหตุการณ์ <span class="hint">— ตั้งได้ว่าจะส่งเข้าอีเมล / Team Chat / LINE · เปิด Team Chat/LINE แล้วเลือกกลุ่มปลายทางได้ต่อเหตุการณ์</span></div>
+  <div class="evcard">
+    <div class="evhead"><div>เหตุการณ์</div><div>แผนกที่รับผิดชอบ</div><div>ช่องทางแจ้งเตือน</div></div>
+    <div id="events"></div>
+  </div>
+  <button class="add-dept" style="margin-top:12px" onclick="addEvent()"><i class="fas fa-plus me-2"></i>เพิ่มเหตุการณ์แจ้งเตือนใหม่ (ผูกกับโมดูล)</button>
+
+  <div class="sec-lbl">แผนก &amp; กลุ่มแชท (สำหรับ Mention) <span class="hint">— เมื่อแจ้งเข้า Team Chat ระบบจะ @mention คนในกลุ่มตามแผนก</span></div>
+  <div class="depts" id="depts"></div>
+  <button class="add-dept" onclick="addDept()"><i class="fas fa-plus me-2"></i>เพิ่มแผนก/ทีมใหม่</button>
+
+  <div class="sec-lbl">ตั้งค่า LINE Official Account <span class="hint">— ใช้เมื่อเปิดช่องทาง LINE (ส่งเข้ากลุ่ม LINE ผ่าน Messaging API)</span></div>
+  <div class="linecfg" id="lineCfg"></div>
+
+  <div class="sec-lbl">เทมเพลตข้อความ + ตัวอย่างการแจ้งเตือน</div>
+  <select class="pv-pick" id="pvPick" onchange="renderPreview()"></select>
+  <div id="evWf" style="margin:10px 0 0;border-left:4px solid #2e934a;background:#f4faf6;border-radius:0 10px 10px 0;padding:10px 14px;font-size:.84rem;line-height:1.55;color:#33413a"></div>
+  <div id="libBox" style="margin:10px 0 12px;border:1px solid #e5e8ec;border-radius:12px;background:#fafbfc;padding:12px 14px">
+    <label style="font-size:.85rem;font-weight:800;color:#1a1d20;display:block;margin-bottom:8px"><i class="fas fa-box-archive" style="color:#eb2c39"></i> คลังเทมเพลต <span style="font-weight:500;color:#8a9099">— เลือกเทมเพลตที่สร้างไว้ มาใช้กับเคสนี้</span></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="libPick" style="flex:1;min-width:240px;border:1.5px solid #d8dde2;border-radius:9px;padding:9px 12px;font-family:inherit;font-size:.88rem;background:#fff"></select>
+      <button onclick="libPreview()" style="border:1px solid #d8dde2;background:#fff;border-radius:9px;padding:9px 14px;font-family:inherit;font-weight:700;font-size:.82rem;color:#48505a;cursor:pointer"><i class="fas fa-eye"></i> ดูตัวอย่าง</button>
+      <button onclick="libApply()" style="border:0;background:#2e934a;color:#fff;border-radius:9px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer"><i class="fas fa-arrow-down"></i> ใช้กับเคสนี้</button>
+      <button onclick="libSaveCurrent()" style="border:1px solid #d8dde2;background:#fff;border-radius:9px;padding:9px 14px;font-family:inherit;font-weight:700;font-size:.82rem;color:#48505a;cursor:pointer"><i class="fas fa-plus"></i> บันทึกข้อความปัจจุบันเข้าคลัง</button>
+      <button onclick="libDelete()" title="ลบเทมเพลตนี้ออกจากคลัง" style="border:1px solid #f4d4d7;background:#fff;border-radius:9px;padding:9px 12px;font-family:inherit;font-size:.82rem;color:#eb2c39;cursor:pointer"><i class="fas fa-trash-can"></i></button>
+    </div>
+  </div>
+  <div id="tplBox" style="margin:10px 0 14px">
+    <label style="font-size:.82rem;font-weight:700;color:#48505a;display:block;margin-bottom:5px"><i class="fas fa-pen"></i> เทมเพลตข้อความของเคสนี้ (แก้ได้ · ส่งจริงตามนี้)</label>
+    <textarea id="tplEdit" oninput="onTplEdit()" style="width:100%;min-height:90px;border:1.5px solid #d8dde2;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.9rem;line-height:1.5"></textarea>
+    <div id="tplTokens" style="font-size:.74rem;color:#8a9099;margin-top:6px"></div>
+    <button onclick="resetTpl()" style="margin-top:6px;border:1px solid #e3e7eb;background:#fff;border-radius:8px;padding:5px 12px;font-family:inherit;font-size:.78rem;font-weight:700;color:#5a616b;cursor:pointer"><i class="fas fa-rotate-left"></i> คืนค่าเริ่มต้น</button>
+  </div>
+  <div class="pv-grid" id="preview"></div>
+
+  <div class="demo-note">— การตั้งค่านี้มีผลจริง: routing (แผนก · Email/Team Chat/LINE) + เทมเพลต ถูกใช้โดยระบบแจ้งเตือนกลาง (กระดิ่ง/log) ทุกเหตุการณ์ · บันทึกในระบบ + ซิงค์ทุกเครื่อง —</div>
+</div>
+
+<div class="savebar">
+  <div class="inner">
+    <div class="cur"><i class="fas fa-circle-info me-1" style="color:#aab0b8"></i> เปลี่ยนช่องทาง/แผนกแล้วกดบันทึก</div>
+    <button class="btn-save" onclick="save()"><i class="fas fa-check me-1"></i>บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<script>
+const KEY='pc_notify_settings';
+const DEFAULT={
+  depts:{
+    it:        { label:'Information Technology', short:'IT',  icon:'fa-laptop-code',  group:'PC • IT Support', lineGroup:'LINE: PC IT Support',
+      members:[ {name:'Big Chavalit Savittrakul', role:'AI Innovation Specialist', email:'chavalit.s@potatocornerth.com'},
+                {name:'IT Helpdesk',              role:'POS Support',             email:'it.support@potatocornerth.com'} ] },
+    marketing: { label:'Marketing',              short:'MKT', icon:'fa-bullhorn',     group:'PC • Delivery Price', lineGroup:'LINE: PC Delivery Price',
+      members:[ {name:'Marketing Team',           role:'Delivery Platform',       email:'marketing@potatocornerth.com'} ] },
+    operation: { label:'Operation',              short:'OP',  icon:'fa-store',        group:'PC • Operation', lineGroup:'LINE: PC Operation',
+      members:[ {name:'Operation Team',           role:'Store Operation',         email:'op@potatocornerth.com'} ] },
+    npd:       { label:'NPD / R&D',              short:'NPD', icon:'fa-flask',        group:'PC • NPD', lineGroup:'LINE: PC NPD',
+      members:[ {name:'NPD Team',                 role:'New Product Dev',         email:'npd@potatocornerth.com'} ] },
+    account:   { label:'Accounting',             short:'ACC', icon:'fa-calculator',   group:'PC • Accounting', lineGroup:'LINE: PC Accounting',
+      members:[ {name:'Accounting Team',          role:'Finance',                 email:'account@potatocornerth.com'} ] },
+  },
+  line:{ oaName:'Potato Corner OA', token:'', target:'' },
+  events:{
+    report_general:        { label:'แจ้งปัญหาปุ่ม POS (ทั่วไป)',        depts:['it'],        channels:{email:true,  chat:false, line:false} },
+    report_price_platform: { label:'ราคาแพลตฟอร์มเดลิเวอรีไม่ตรง',      depts:['marketing'], channels:{email:false, chat:true,  line:false} },
+    proposal_submitted:    { label:'แจ้งโปรโมชันใหม่ (MKT→OP/IT)',    module:'promotion', depts:['operation'], channels:{email:true,  chat:false, line:false} },
+    proposal_approved:     { label:'OP ยืนยันโปรโมชัน',            module:'promotion', depts:['operation'], channels:{email:true,  chat:false, line:false} },
+    proposal_rejected:     { label:'OP ตีกลับโปรโมชัน',              module:'promotion', depts:['operation'], channels:{email:true,  chat:false, line:false} },
+    promo_cancelled:       { label:'ยกเลิกโปรโมชัน',                module:'promotion', depts:['operation','marketing'], channels:{email:true, chat:true, line:false} },
+    promo_extended:        { label:'ขยาย/ต่ออายุโปรโมชัน',          module:'promotion', depts:['operation','marketing'], channels:{email:true, chat:true, line:false} },
+    promo_reduced:         { label:'ลดระยะเวลา/สาขาโปร',          module:'promotion', depts:['operation'], channels:{email:true,  chat:false, line:false} },
+    promo_ending:          { label:'โปรใกล้หมดอายุ (เตือน)',       module:'promotion', depts:['operation'], channels:{email:false, chat:true,  line:false} },
+    npd_new:               { label:'แจ้งสินค้าใหม่ (NPD)',             module:'npd', depts:['npd'],       channels:{email:true,  chat:false, line:false} },
+    npd_approved:          { label:'อนุมัติสินค้าใหม่ (NPD)',         module:'npd', depts:['npd'],       channels:{email:true,  chat:false, line:false} },
+    npd_rejected:          { label:'ตีกลับสินค้าใหม่ (NPD)',         module:'npd', depts:['npd'],       channels:{email:true,  chat:false, line:false} },
+    it_settlement:         { label:'งานตั้งค่า POS (IT Settlement)',    module:'promotion', depts:['it'],        channels:{email:true,  chat:false, line:false} },
+    it_settlement_done:    { label:'IT ทำปุ่ม/ตั้งค่า POS เสร็จ',    module:'promotion', depts:['it','operation'], channels:{email:true, chat:false, line:false} },
+    coupon_issued:         { label:'ออกคูปอง / Voucher',               module:'promotion', depts:['account'],   channels:{email:true,  chat:false, line:false} },
+    copro_submitted:       { label:'แจ้ง Co-Promotion (MKT→ACC/IT)',    module:'promotion',  depts:['account','it'], channels:{email:true,  chat:true, line:true} },
+    copro_interfaced:      { label:'ยืนยัน Interface ERP (IT→ACC/MKT)', module:'promotion',  depts:['account','marketing','it'], channels:{email:true, chat:true, line:true} },
+    code_add_request:      { label:'แจ้งเพิ่มโค้ดเข้าระบบ (MKT→IT)',  module:'code', depts:['it'],        channels:{email:true,  chat:true,  line:false} },
+    code_add_done:         { label:'เพิ่มโค้ดในระบบเสร็จ (IT→MKT)',   module:'code', depts:['marketing'], channels:{email:true,  chat:true,  line:false} },
+    code_remove_request:   { label:'แจ้งลบโค้ดออกจากระบบ (MKT→IT)', module:'code', depts:['it'],        channels:{email:true,  chat:true,  line:false} },
+    code_remove_done:      { label:'ลบโค้ดออกจากระบบเสร็จ (IT→MKT)', module:'code', depts:['marketing'], channels:{email:true,  chat:true,  line:false} },
+    code_not_found:        { label:'โค้ดใช้ไม่ได้ที่ POS (สาขา→IT)', module:'code', depts:['it'],        channels:{email:true,  chat:true,  line:false} },
+    itemset_done:          { label:'Item Set Builder — ขึ้นปุ่มเสร็จ',  module:'promotion',      depts:['it','operation'], channels:{email:true, chat:false, line:false} },
+    memo_sent:             { label:'ส่ง Memo เข้าระบบ',                module:'promotion',     depts:['operation','marketing'], channels:{email:true, chat:false, line:false} },
+    card_request:          { label:'ขอออกบัตรสมาชิก (MKT→IT)',        module:'card',          depts:['it'],        channels:{email:true,  chat:true,  line:false} },
+    card_approved:         { label:'ผูกสิทธิ์บัตรสมาชิกเสร็จ (IT→MKT)', module:'card',          depts:['marketing'], channels:{email:true,  chat:false, line:false} },
+    staff_discount_request:{ label:'ขอรหัสส่วนลดพนักงาน (สาขา→IT)',    module:'code',          depts:['it'],        channels:{email:true,  chat:true,  line:false} },
+    staff_discount_ready:  { label:'ตั้งค่ารหัสส่วนลดพนักงานเสร็จ',    module:'code',          depts:['operation'], channels:{email:true,  chat:false, line:false} },
+    flavor_new:            { label:'เพิ่มผงรสชาติใหม่ (RD→IT)',         module:'npd',           depts:['it','npd'],  channels:{email:true,  chat:false, line:false} },
+    tender_request:        { label:'แจ้งเปิด-ปิด Tender (สาขา→บัญชี)',  module:'general',       depts:['account'],   channels:{email:true,  chat:true,  line:false} },
+    tender_done:           { label:'เปิด-ปิด Tender เสร็จ (IT→สาขา)',   module:'general',       depts:['it','operation'], channels:{email:true, chat:false, line:false} },
+    billdiff_submitted:    { label:'แจ้งปิดบิลไม่ตรง (สาขา→บัญชี)',     module:'general',       depts:['account','it'], channels:{email:true,  chat:true,  line:false} },
+    billdiff_resolved:     { label:'ปิดเคสปิดบิลไม่ตรง (บัญชี→สาขา)',   module:'general',       depts:['account'],   channels:{email:true,  chat:false, line:false} },
+    ticket_urgent:         { label:'ปัญหาสาขาด่วน (Urgent) → IT',       module:'branch_report', depts:['it'],        channels:{email:true,  chat:true,  line:true } },
+    equipment_request:     { label:'แจ้งงาน IT / อุปกรณ์',              module:'general',       depts:['it'],        channels:{email:true,  chat:false, line:false} },
+    equipment_done:        { label:'งาน IT / อุปกรณ์เสร็จ',            module:'general',       depts:['it','operation'], channels:{email:true, chat:false, line:false} },
+    sticker_add:           { label:'สติ๊กเกอร์สรรพากร — แจ้งเพิ่มเลข',  module:'general',       depts:['account'],   channels:{email:true,  chat:false, line:false} },
+    sticker_cancel:        { label:'สติ๊กเกอร์สรรพากร — ยกเลิก/จดใหม่',  module:'general',       depts:['account'],   channels:{email:true,  chat:false, line:false} },
+  }
+};
+const EVENT_ORDER=['report_general','report_price_platform','ticket_urgent','proposal_submitted','proposal_approved','proposal_rejected','promo_cancelled','promo_extended','promo_reduced','promo_ending','memo_sent','npd_new','npd_approved','npd_rejected','flavor_new','it_settlement','it_settlement_done','itemset_done','coupon_issued','copro_submitted','copro_interfaced','code_add_request','code_add_done','code_remove_request','code_remove_done','code_not_found','card_request','card_approved','staff_discount_request','staff_discount_ready','tender_request','tender_done','billdiff_submitted','billdiff_resolved','equipment_request','equipment_done','sticker_add','sticker_cancel'];
+const SAMPLE={
+  report_general:        'มีปัญหาปุ่ม POS ใหม่จากสาขา 142 · Terminal 21 — ปุ่ม LOADED FRIES (1070455): “ไม่มีปุ่มผงรสชาติ” (ชีสเข้มข้น, สาหร่าย)',
+  report_price_platform: 'ราคาแอปเดลิเวอรีไม่ตรง — LOADED FRIES L: Grab / LINE MAN ขึ้น ฿199 (ควรเป็น ฿159) · ราคาบน POS ตรงแล้ว',
+  proposal_submitted:    'มีโปรโมชันใหม่ “Cheese Avalanche Combo” รอการอนุมัติจากทีม Operation',
+  proposal_approved:     'โปรโมชัน “Saver Bill 199.-” ได้รับการอนุมัติแล้ว พร้อมส่งต่อให้ IT ตั้งค่า POS',
+  npd_new:               'มีสินค้าใหม่ (NPD-2026004) “Truffle Fries” รอตรวจสอบสูตรผง/Subset',
+  proposal_rejected:     'โปรโมชัน “Cheese Avalanche Combo” ถูกตีกลับ — เหตุผล: ราคาส่วนลดยังไม่อนุมัติจากฝ่ายบัญชี',
+  promo_cancelled:       'ยกเลิกโปรโมชัน “Saver Bill 199.-” มีผล 20 มิ.ย. 2026 — เหตุผล: ยอดต่ำกว่าเป้า · โปรดนำปุ่มออกจาก POS',
+  promo_extended:        'ขยายเวลาโปรโมชัน “Cheese Avalanche Combo” จาก 30 มิ.ย. → 15 ก.ค. 2026 · ปุ่มบน POS ใช้ต่อได้',
+  promo_reduced:         'ลดระยะเวลาโปร “Songkran Splash Fries” สิ้นสุดเร็วขึ้นเป็น 25 มิ.ย. 2026 (เดิม 30 มิ.ย.)',
+  promo_ending:          'โปรโมชัน “Loaded Fries Mania” จะสิ้นสุด 22 มิ.ย. 2026 — เตรียมนำปุ่มออกจาก POS',
+  npd_approved:          'อนุมัติสินค้าใหม่ NPD-2026004 “Truffle Fries” แล้ว — ส่งต่อให้ IT ตั้งค่า POS',
+  npd_rejected:          'ตีกลับสินค้าใหม่ “Truffle Fries” — เหตุผล: ต้องระบุ Subset/สูตรผงให้ครบก่อน',
+  it_settlement_done:    'ตั้งค่า POS ของ “Cheese Avalanche Combo” เสร็จ — ขึ้นปุ่มพร้อมใช้งานบนเครื่องแล้ว',
+  it_settlement:         'งานตั้งค่า POS ใหม่ 3 ปุ่มเข้าคิว IT Settlement — รอออกรหัสและขึ้นปุ่ม',
+  copro_submitted:       'MKT แจ้ง Co-Promotion ใหม่ · BD105 “Samsung ส่วนลดแทนเงินสด 15 บาท” · Brand Samsung Galaxy · เรียกเก็บในนาม บริษัท ไทยซัมซุงฯ — รอ IT ยืนยัน Interface ERP',
+  copro_interfaced:      'IT ยืนยัน Interface ERP แล้ว · BD105 “Samsung ส่วนลดแทนเงินสด 15 บาท” — ทีมบัญชี (ACC) ตั้งค่า ERP ได้',
+  coupon_issued:         'ออก Voucher ใหม่ “SUMMER50” จำนวน 500 ใบ รอทีมบัญชีตรวจสอบ',
+  code_add_request:      'แจ้งเพิ่มโค้ด “Payday Voucher” (Voucher online) 500 โค้ด — เริ่มใช้ 1 ก.ค. 2026 · รอ IT อัป Backoffice',
+  code_add_done:         'เพิ่มโค้ด “Payday Voucher” 500 โค้ดเข้าระบบเสร็จแล้ว — พร้อมใช้งาน',
+  code_remove_request:   'แจ้งลบโค้ด “Cheese Lover Combo” 120 โค้ด (ยังไม่ redeem) — ข้าม 8 โค้ดที่ redeem แล้ว',
+  code_remove_done:      'ลบโค้ด “Cheese Lover Combo” 120 โค้ดออกจากระบบเสร็จแล้ว',
+  code_not_found:        'สาขา 142 · Terminal 21 แจ้งโค้ด CLC100001 ใช้ไม่ได้ที่ POS — แคมเปญ “Cheese Lover Combo” · ปุ่ม CHEESE COMBO',
+  itemset_done:          'สร้าง Item Set “Cheese Avalanche Combo” เสร็จ (รหัส 1073380) — ขึ้นปุ่มบน POS พร้อมใช้งานแล้ว',
+  memo_sent:             'ส่ง Memo “สรุปโปรโมชัน Cheese Avalanche Combo” เข้าระบบแล้ว — เปิดดูได้ที่หน้าติดตามโปรโมชัน',
+  card_request:          'แจ้งขอออกบัตรสมาชิก “VIP Platinum 2026” 200 ใบ (รหัส PTN) — รอ IT ผูกสิทธิ์แลกรับ',
+  card_approved:         'ผูกสิทธิ์บัตรสมาชิก “VIP Platinum 2026” เสร็จแล้ว — พร้อมแจกให้ลูกค้าใช้งานที่ POS',
+  staff_discount_request:'สาขา 142 (DODO) ขอรหัสส่วนลดพนักงาน — สมชาย ใจดี · ประเภท Staff Discount 50% · รอ IT จองเลข',
+  staff_discount_ready:  'ตั้งค่ารหัสส่วนลดพนักงาน “Staff Discount 50%” (BD169) เสร็จ — ใช้ได้ที่ POS แล้ว',
+  flavor_new:            'RD แจ้งเพิ่มผงรสชาติใหม่ “Truffle Powder” (103010) เข้า Subset SS0108 — รอ IT ขึ้นปุ่ม',
+  tender_request:        'สาขา 142 ขอเปิด Tender “GrabPay (GRP)” — เหตุผล: ลูกค้าขอชำระผ่าน GrabPay · รอบัญชีอนุมัติ',
+  tender_done:           'เปิด Tender “GrabPay (GRP)” ให้สาขา 142 เสร็จแล้ว — ใช้รับชำระได้ที่ POS',
+  billdiff_submitted:    'สาขา 142 แจ้งปิดบิลไม่ตรง — POS ฿12,450 · จริง ฿12,200 · ต่าง ฿250 (Cash) · รอบัญชีตรวจ',
+  billdiff_resolved:     'ปิดเคสปิดบิลไม่ตรง สาขา 142 (BD-0007) — สาเหตุ: ปุ่มโปรไม่ขึ้น · บันทึกและปิดเคสแล้ว',
+  ticket_urgent:         '⚠ ปัญหาด่วนจากสาขา 142 · Terminal 21 — POS ค้าง ขายไม่ได้ทั้งเครื่อง · ต้องการ IT ด่วน',
+  equipment_request:     'สาขา 142 แจ้งงาน IT — เครื่องพิมพ์ครัวเสีย ขอส่งซ่อม/เปลี่ยนเครื่อง · รอ IT รับเรื่อง',
+  equipment_done:        'งาน IT สาขา 142 (เปลี่ยนเครื่องพิมพ์ครัว) เสร็จแล้ว — เครื่องพร้อมใช้งาน',
+  sticker_add:           'RD แจ้งเพิ่มเลขสติ๊กเกอร์สรรพากร สาขา 142 — เลขใหม่ 5 เลข · รอบัญชีตรวจสอบ',
+  sticker_cancel:        'RD แจ้งยกเลิก/จดสติ๊กเกอร์สรรพากรใหม่ สาขา 142 (โอนสิทธิ์) — รอบัญชีดำเนินการ',
+};
+function load(){ try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.events&&s.depts){ normalize(s); return s; } }catch(e){} return JSON.parse(JSON.stringify(DEFAULT)); }
+function normalize(s){
+  s.line = s.line || { oaName:'Potato Corner OA', token:'', target:'' };
+  s.chat = s.chat || { webhook:'' }; s.email = s.email || { webhook:'' }; if(s.line.webhook===undefined) s.line.webhook='';
+  // backfill any default depts/events added later so existing saved configs get them too
+  Object.keys(DEFAULT.depts).forEach(k=>{ if(!s.depts[k]) s.depts[k]=JSON.parse(JSON.stringify(DEFAULT.depts[k])); });
+  Object.keys(DEFAULT.events).forEach(k=>{ if(!s.events[k]) s.events[k]=JSON.parse(JSON.stringify(DEFAULT.events[k])); });
+  Object.values(s.events).forEach(ev=>{
+    if(!ev.channels){ const c=ev.channel; ev.channels={ email:(c==='email'||c==='both'), chat:(c==='chat'||c==='both'), line:false }; delete ev.channel; }
+    ['email','chat','line'].forEach(ch=>{ if(typeof ev.channels[ch]!=='boolean') ev.channels[ch]=false; });
+    if(!Array.isArray(ev.depts)) ev.depts = ev.dept ? [ev.dept] : [];
+    if(!Array.isArray(ev.chatGroupDepts)) ev.chatGroupDepts = ev.chatGroupDept ? [ev.chatGroupDept] : [];
+    if(!Array.isArray(ev.lineGroupDepts)) ev.lineGroupDepts = ev.lineGroupDept ? [ev.lineGroupDept] : [];
+    delete ev.chatGroupDept; delete ev.lineGroupDept;
+    delete ev.dept;
+  });
+  Object.values(s.depts).forEach(d=>{ if(!d.lineGroup) d.lineGroup='LINE: '+(d.group||d.label); });
+}
+let CFG=load();
+let TPL=(function(){try{return JSON.parse(localStorage.getItem('pc_notify_templates'))||{};}catch(e){return{};}})();
+const TPL_TOKENS={
+  copro_submitted:['{code}','{name}','{brand}','{billing}','{payment}','{cond}','{priceInc}','{priceExc}','{so}','{quota}','{period}','{detail}','{remark}'],
+  copro_interfaced:['{code}','{name}','{brand}','{billing}','{payment}','{priceExc}','{period}','{by}'],
+};
+const DEFAULT_TPL={
+  copro_submitted:'Co-Promotion ใหม่: {code} · {name}\nBrand {brand} · เรียกเก็บ {billing} · รอ IT เชื่อม ERP',
+  copro_interfaced:'Interface ERP เสร็จ: {code} · {name}\nACC ตั้งค่าเรียกเก็บได้ · โดย {by}',
+  promo_extended:'⏳ ขยายเวลาโปร: {campaign} ({type})\nเดิมหมด {oldEnd} → ขยายถึง {newEnd}\nเหตุผล: {reason} · โดย {by}\n→ OP/IT ปรับวันสิ้นสุดปุ่มบน POS',
+  promo_reduced:'⚠️ ลดระยะเวลาโปร: {campaign} ({type})\nเดิมหมด {oldEnd} → สิ้นสุดเร็วขึ้น {newEnd}\nเหตุผล: {reason} · โดย {by}\n→ OP ปรับวัน/สาขาปุ่มบน POS',
+  promo_cancelled:'🛑 ยกเลิกโปร: {campaign} ({type})\nเหตุผล: {reason} · โดย {by}\n→ นำปุ่มออกจาก POS + หยุดประชาสัมพันธ์',
+};
+const SAMPLE_TOK={
+  copro_submitted:{code:'BD105',name:'Samsung ส่วนลดแทนเงินสด 15 บาท',brand:'Samsung Galaxy',billing:'บริษัท ไทยซัมซุงฯ',payment:'Advance',cond:'ตัดยอดล่วงหน้า',priceInc:'15',priceExc:'14.02',so:'-',quota:'-',period:'1 Apr - 31 Jan 26',detail:'ลูกค้า Samsung รับส่วนลดแทนเงินสด 15 บาท',remark:'-'},
+  copro_interfaced:{code:'BD105',name:'Samsung ส่วนลดแทนเงินสด 15 บาท',brand:'Samsung Galaxy',billing:'บริษัท ไทยซัมซุงฯ',payment:'Advance',priceExc:'14.02',period:'1 Apr - 31 Jan 26',by:'IT — สมชาย'},
+};
+function fillTok(t,k){ var st=SAMPLE_TOK[k]; if(!st) return t; return String(t).replace(/\{(\w+)\}/g,function(m,x){return st[x]!=null?st[x]:'';}).replace(/[ \t]*·[ \t]*(?=·|\n|$)/g,'').replace(/\n{3,}/g,'\n\n').trim(); }
+function tplOf(k){ return (TPL[k]&&TPL[k].msg!=null)?TPL[k].msg : (DEFAULT_TPL[k]!=null?DEFAULT_TPL[k]:(SAMPLE[k]||'')); }
+/* ===== คลังเทมเพลต — เก็บข้อความสำเร็จรูปข้ามเคส (localStorage pc_notify_lib) ===== */
+var LIB=(function(){ try{ var s=JSON.parse(localStorage.getItem('pc_notify_lib')); if(Array.isArray(s)) return s; }catch(e){}
+  // seed ครั้งแรกจากเทมเพลตเริ่มต้น (โปร ขยาย/ลด/ยกเลิก + Co-Promo + แจ้งโค้ด) — ใช้ \n ปลอดภัย ไม่พังหน้า
+  var seed=[]; Object.keys(DEFAULT_TPL).forEach(function(k){ seed.push({ id:'seed_'+k, name:(CFG.events[k]?CFG.events[k].label:k), ev:k, msg:DEFAULT_TPL[k] }); });
+  return seed;
+})();
+function saveLib(){ try{ localStorage.setItem('pc_notify_lib', JSON.stringify(LIB)); }catch(e){} }
+function renderLibPick(){ var sel=document.getElementById('libPick'); if(!sel) return; var cur=sel.value;
+  sel.innerHTML=LIB.map(function(t,i){ return '<option value="'+i+'">'+esc(t.name||('เทมเพลต '+(i+1)))+'</option>'; }).join('')||'<option value="">— ยังไม่มีเทมเพลตในคลัง —</option>';
+  if(cur&&LIB[cur]) sel.value=cur;
+}
+function libSelected(){ var sel=document.getElementById('libPick'); if(!sel||sel.value==='') return null; return LIB[+sel.value]||null; }
+function libApply(){ var t=libSelected(); if(!t){ Swal.fire({icon:'info',title:'ยังไม่มีเทมเพลตในคลัง',timer:1400,showConfirmButton:false}); return; }
+  var k=curEvKey(); TPL[k]={msg:t.msg}; var te=document.getElementById('tplEdit'); if(te) te.value=t.msg; drawPreview(k);
+  Swal.fire({icon:'success',title:'ใช้เทมเพลตกับเคสนี้แล้ว',timer:1200,showConfirmButton:false}); }
+function libPreview(){ var t=libSelected(); if(!t) return; var k=curEvKey();
+  Swal.fire({title:esc(t.name),html:'<pre style="text-align:left;white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;color:#333;background:#f6f8fa;border-radius:8px;padding:12px">'+esc(fillTok(t.msg,t.ev||k))+'</pre>',width:520,confirmButtonColor:'#2e934a',confirmButtonText:'ปิด'}); }
+function libSaveCurrent(){ var k=curEvKey(); var msg=(document.getElementById('tplEdit')||{}).value||tplOf(k);
+  Swal.fire({title:'บันทึกเข้าคลังเทมเพลต',input:'text',inputValue:(CFG.events[k]?CFG.events[k].label:k),inputPlaceholder:'ตั้งชื่อเทมเพลต',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'บันทึก',cancelButtonText:'ยกเลิก',inputValidator:function(v){return(!v||!v.trim())&&'พิมพ์ชื่อเทมเพลต';}})
+    .then(function(r){ if(!r.isConfirmed) return; LIB.push({id:'lib_'+Date.now().toString(36),name:r.value.trim(),ev:k,msg:msg}); saveLib(); renderLibPick(); var sel=document.getElementById('libPick'); if(sel) sel.value=LIB.length-1;
+      Swal.fire({icon:'success',title:'บันทึกเข้าคลังแล้ว',timer:1200,showConfirmButton:false}); }); }
+function libDelete(){ var sel=document.getElementById('libPick'); if(!sel||sel.value==='') return; var i=+sel.value; var t=LIB[i]; if(!t) return;
+  Swal.fire({icon:'warning',title:'ลบเทมเพลตนี้?',html:'<b>'+esc(t.name)+'</b>',showCancelButton:true,confirmButtonColor:'#eb2c39',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'})
+    .then(function(r){ if(!r.isConfirmed) return; LIB.splice(i,1); saveLib(); renderLibPick(); Swal.fire({icon:'success',title:'ลบแล้ว',timer:1000,showConfirmButton:false}); }); }
+function curEvKey(){ return document.getElementById('pvPick').value || EVENT_ORDER[0]; }
+/* ===== Workflow ต่อเคส (แสดงใต้ dropdown เลือกเหตุการณ์) — ครบทุกเคสปัจจุบัน ===== */
+var WORKFLOW={
+  report_general:'สาขาแจ้งปัญหาปุ่ม POS → เข้าคิว IT (หน้าแจ้งปัญหาสาขา/Ticket) → IT ตรวจ/แก้ → ปิดเคส แจ้งกลับสาขา',
+  report_price_platform:'สาขา/ทีมแจ้งราคาแพลตฟอร์มเดลิเวอรีไม่ตรง → MKT ตรวจสอบราคา → แก้ไข/ยืนยันกับแพลตฟอร์ม',
+  ticket_urgent:'สาขาแจ้งปัญหาด่วน → IT รับเรื่องทันที (Email+Chat+LINE) → เร่งแก้ → ปิดเคส',
+  proposal_submitted:'MKT เสนอโปรใหม่ → OP/IT รับพิจารณา → OP ยืนยัน → IT ตั้งค่า POS',
+  proposal_approved:'OP กดยืนยันโปร → แจ้ง MKT/IT ว่าอนุมัติ → เข้าคิวตั้งค่า POS',
+  proposal_rejected:'OP ตีกลับโปร → แจ้ง MKT พร้อมเหตุผล → MKT แก้ไขแล้วเสนอใหม่',
+  promo_cancelled:'ยกเลิกโปร → แจ้ง OP+MKT → นำปุ่มออกจาก POS + หยุดประชาสัมพันธ์',
+  promo_extended:'ขยาย/ต่ออายุโปร → แจ้ง OP+MKT → ปรับวันสิ้นสุดปุ่มบน POS',
+  promo_reduced:'ลดระยะเวลา/สาขาของโปร → แจ้ง OP → ปรับวัน/สาขาปุ่มบน POS',
+  promo_ending:'ระบบเตือนโปรใกล้หมดอายุ → OP เตรียมปิด/ต่ออายุก่อนถึงกำหนด',
+  memo_sent:'ส่ง Memo เข้าระบบ → OP+MKT เปิดดูรายละเอียด/ดำเนินการตาม Memo',
+  npd_new:'RD/NPD แจ้งสินค้าใหม่ → IT ขึ้นปุ่มบน POS',
+  npd_approved:'อนุมัติสินค้าใหม่ (NPD) → เข้าขั้นตอนขึ้นปุ่ม/ผลิต',
+  npd_rejected:'ตีกลับสินค้าใหม่ → NPD แก้ไขข้อมูลแล้วเสนอใหม่',
+  flavor_new:'RD แจ้งเพิ่มผงรสชาติใหม่ → IT/NPD บันทึกเข้าระบบ',
+  it_settlement:'งานตั้งค่า POS เข้าคิว IT Settlement → IT ออกรหัส/ขึ้นปุ่ม',
+  it_settlement_done:'IT ตั้งค่า POS/ขึ้นปุ่มเสร็จ → แจ้ง OP ว่าพร้อมขายที่สาขา',
+  itemset_done:'IT ขึ้นปุ่ม Item Set เสร็จ → พร้อมใช้งานบน POS',
+  coupon_issued:'ออกคูปอง/Voucher → ทีมบัญชี (ACC) ตรวจสอบ',
+  copro_submitted:'MKT กรอกฟอร์ม Co-Promotion (โค้ดล็อกจากระบบ ไม่เปลี่ยน) → เข้าตารางหน้า Co-Promotion (ACC) + Interface ERP (IT) · อีเมลแนบตาราง HTML ครบ · Team Chat = ข้อความสั้น',
+  copro_interfaced:'IT กด “ยืนยัน Interface ERP” → แจ้งกลับลูปเดิม ACC/MKT/IT ว่าพร้อมเรียกเก็บ (ปิดงาน Co-Promo)',
+  code_add_request:'MKT/ระบบส่งโค้ด → เข้าคิวงาน IT (หน้าแจ้งเพิ่มโค้ดฯ) → IT ดาวน์โหลดไฟล์ + ยืนยันเสร็จ → แจ้งกลับ MKT',
+  code_add_done:'IT เพิ่มโค้ดเข้าระบบเสร็จ → แจ้งกลับ MKT ว่าพร้อมใช้งาน',
+  code_remove_request:'MKT แจ้งลบโค้ด → IT นำโค้ดออกจาก Backoffice/POS',
+  code_remove_done:'IT ลบโค้ดออกจากระบบเสร็จ → แจ้งกลับ MKT',
+  code_not_found:'สาขาแจ้งโค้ดใช้ไม่ได้ที่ POS → IT ตรวจสอบ/แก้ไข → แจ้งกลับสาขา',
+  card_request:'MKT ขอออกบัตรสมาชิก → IT ผูกโค้ด/สิทธิ์บัตร',
+  card_approved:'IT ผูกสิทธิ์บัตรสมาชิกเสร็จ → แจ้งกลับ MKT',
+  staff_discount_request:'สาขา/FRC ขอรหัสส่วนลดพนักงาน → IT ออกรหัส/ตั้งค่า',
+  staff_discount_ready:'IT ตั้งค่ารหัสส่วนลดพนักงานเสร็จ → แจ้ง OP/สาขา เพิ่มพนักงานได้',
+  tender_request:'สาขาขอเปิด-ปิด Tender → บัญชีอนุมัติ/เลือกช่อง → IT เปิดบน POS',
+  tender_done:'IT เปิด-ปิด Tender บน POS เสร็จ → แจ้งสาขา',
+  billdiff_submitted:'สาขาแจ้งปิดบิลไม่ตรง → บัญชี+IT ตรวจสอบ',
+  billdiff_resolved:'บัญชีปิดเคสปิดบิลไม่ตรง → แจ้งกลับสาขา',
+  equipment_request:'แจ้งงาน IT/อุปกรณ์ → IT รับเรื่องดำเนินการ',
+  equipment_done:'งาน IT/อุปกรณ์เสร็จ → แจ้ง OP/สาขา',
+  sticker_add:'RD/บัญชี แจ้งเพิ่มเลขสติ๊กเกอร์สรรพากร → บัญชีบันทึกทะเบียน',
+  sticker_cancel:'ยกเลิก/จดสติ๊กเกอร์สรรพากรใหม่ → บัญชีปรับปรุงทะเบียน'
+};
+function renderEvWf(k){ var el=document.getElementById('evWf'); if(!el) return; var wf=WORKFLOW[k];
+  el.innerHTML = wf ? '<b style="color:#1f6b40"><i class="fas fa-route"></i> Workflow เคสนี้:</b> '+esc(wf)
+    : '<b style="color:#9a6700"><i class="fas fa-route"></i> Workflow:</b> <span style="color:#8a9099">เหตุการณ์กำหนดเอง — ยังไม่มีโน๊ต workflow (เพิ่มได้ที่คลังเทมเพลต)</span>'; }
+function renderPreview(){ const k=curEvKey(); const te=document.getElementById('tplEdit'); if(te) te.value=tplOf(k); const th=document.getElementById('tplTokens'); if(th) th.innerHTML = TPL_TOKENS[k]? ('ตัวแปรที่ใช้ได้ (เติมข้อมูลจริงตอนส่ง): <b>'+esc(TPL_TOKENS[k].join('  '))+'</b>') : 'ข้อความอิสระ — เคสนี้จะเติมข้อมูลจริงให้ตอนส่ง'; renderEvWf(k); drawPreview(k); }
+function onTplEdit(){ const k=curEvKey(); TPL[k]={msg:document.getElementById('tplEdit').value}; drawPreview(k); }
+function resetTpl(){ const k=curEvKey(); delete TPL[k]; const te=document.getElementById('tplEdit'); if(te) te.value=tplOf(k); drawPreview(k); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function initials(n){ const p=String(n||'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||'').toUpperCase() || '?'; }
+
+function deptChips(k, sel){ return `<div class="dept-chips">`+Object.keys(CFG.depts).map(dk=>`<button class="dchip ${(sel||[]).includes(dk)?'on':''}" title="${esc(CFG.depts[dk].label)}" onclick="setDept('${k}','${dk}')">${esc(CFG.depts[dk].short||CFG.depts[dk].label)}</button>`).join('')+`</div>`; }
+const MODULES=[ {k:'promotion',label:'โปรโมชัน'},{k:'code',label:'จัดการโค้ด'},{k:'card',label:'บัตรสมาชิก'},{k:'it_settlement',label:'IT Settlement'},{k:'npd',label:'NPD/สินค้าใหม่'},{k:'item_set',label:'Item Set Builder'},{k:'branch_report',label:'แจ้งปัญหาสาขา'},{k:'coupon',label:'Coupon/Voucher'},{k:'tender',label:'Tender / ปิดบิล'},{k:'equipment',label:'งาน IT · อุปกรณ์'},{k:'sticker',label:'สติ๊กเกอร์ RD'},{k:'general',label:'ทั่วไป'} ];
+if(!CFG.modules) CFG.modules=MODULES.map(m=>({k:m.k,label:m.label}));
+function allModules(){ return (CFG.modules&&CFG.modules.length)?CFG.modules:MODULES; }
+function moduleLabel(k){ const m=allModules().find(x=>x.k===k); return m?m.label:k; }
+function moveEvent(k,val){ if(!CFG.events[k]) return;
+  if(val==='__new__'){ Swal.fire({title:'ตั้งชื่อกลุ่มใหม่',input:'text',inputPlaceholder:'เช่น งานการตลาด',showCancelButton:true,confirmButtonColor:'#eb2c39',confirmButtonText:'สร้าง',cancelButtonText:'ยกเลิก',inputValidator:v=>(!v||!v.trim())&&'พิมพ์ชื่อกลุ่ม'})
+    .then(r=>{ if(!r.isConfirmed) return; const key='grp_'+Date.now().toString(36); CFG.modules=allModules().concat([{k:key,label:r.value.trim()}]); CFG.events[k].module=key; EXPANDED_MOD[key]=true; try{sessionStorage.setItem('pc_notify_expmod',JSON.stringify(EXPANDED_MOD));}catch(e){} renderEvents(); }); return; }
+  CFG.events[k].module=val; renderEvents(); }
+function renameModule(m){ const cur=allModules().find(x=>x.k===m); Swal.fire({title:'เปลี่ยนชื่อกลุ่ม',input:'text',inputValue:cur?cur.label:m,showCancelButton:true,confirmButtonColor:'#eb2c39',confirmButtonText:'บันทึก',cancelButtonText:'ยกเลิก',inputValidator:v=>(!v||!v.trim())&&'พิมพ์ชื่อกลุ่ม'})
+    .then(r=>{ if(!r.isConfirmed) return; CFG.modules=allModules().map(x=>x.k===m?{k:x.k,label:r.value.trim()}:x); if(!CFG.modules.some(x=>x.k===m)) CFG.modules.push({k:m,label:r.value.trim()}); renderEvents(); }); }
+function eventOrder(){ return EVENT_ORDER.filter(k=>CFG.events[k]).concat(Object.keys(CFG.events).filter(k=>!EVENT_ORDER.includes(k))); }
+function addEvent(){
+  const mopts=MODULES.map(m=>`<option value="${m.k}">${esc(m.label)}</option>`).join('');
+  Swal.fire({ title:'เพิ่มเหตุการณ์แจ้งเตือน', width:480, html:`<div style="text-align:left;font-size:14px">
+      <label style="font-weight:600;display:block;margin:2px 0 5px">ชื่อเหตุการณ์ <span style="color:#c0392b">*</span></label>
+      <input id="evL" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น อนุมัติบัตรสมาชิกใหม่">
+      <label style="font-weight:600;display:block;margin:2px 0 5px">ผูกกับโมดูล/ส่วนงาน <span style="color:#c0392b">*</span></label>
+      <select id="evM" class="swal2-input" style="margin:0;width:100%">${mopts}</select>
+      <div style="font-size:12px;color:#8a9099;margin-top:8px">เหตุการณ์จะผูกกับโมดูลที่เลือก เพื่อให้สอดคล้องกับส่วนงานที่สร้างไว้</div>
+    </div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const l=(document.getElementById('evL').value||'').trim(); if(!l){ Swal.showValidationMessage('กรอกชื่อเหตุการณ์'); return false; } return {label:l, module:document.getElementById('evM').value}; } })
+  .then(r=>{ if(!r.isConfirmed) return; const v=r.value; let key='custom_'+v.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,16); if(!key||key==='custom_') key='custom_'+Date.now().toString(36); if(CFG.events[key]) key+='_'+Date.now().toString(36).slice(-3);
+    CFG.events[key]={ label:v.label, module:v.module, custom:true, depts:['it'], channels:{email:true,chat:false,line:false}, chatGroupDepts:[], lineGroupDepts:[] };
+    renderEvents(); renderPvPick(); renderPreview(); Swal.fire({icon:'success',title:'เพิ่มเหตุการณ์แล้ว',timer:1300,showConfirmButton:false}); }); }
+function delEvent(k){ if(!CFG.events[k]||!CFG.events[k].custom) return; Swal.fire({icon:'warning',title:'ลบเหตุการณ์นี้?',html:`<b>${esc(CFG.events[k].label)}</b>`,showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'}).then(r=>{ if(r.isConfirmed){ delete CFG.events[k]; renderEvents(); renderPvPick(); renderPreview(); } }); }
+function evCardHTML(k){
+    const ev=CFG.events[k];
+    const chans=[['email','fa-envelope','Email'],['chat','fa-comments','Team Chat'],['line','fa-line','LINE']];
+    const seg=chans.map(([ch,ic,lb])=>`<button data-ch="${ch}" class="${ev.channels[ch]?'on':''}" onclick="setChannel('${k}','${ch}')"><i class="${ch==='line'?'fab':'fas'} ${ic}"></i>${lb}</button>`).join('');
+    const grpSel=(ch)=>{ const sel=(ch==='chat'?(ev.chatGroupDepts||[]):(ev.lineGroupDepts||[])); const color=ch==='chat'?'#2f5fb3':'#06c755'; const ico=ch==='chat'?'fas fa-comments':'fab fa-line'; const lbl=ch==='chat'?'Team Chat → กลุ่ม':'LINE → กลุ่ม';
+      const chips=Object.keys(CFG.depts).map(dk=>`<button class="gchip ${ch==='line'?'line':''} ${sel.includes(dk)?'on':''}" onclick="toggleGroupDept('${k}','${ch}','${dk}')">${esc(ch==='chat'?CFG.depts[dk].group:CFG.depts[dk].lineGroup)}</button>`).join('');
+      const add=`<button class="gchip add" onclick="addGroupQuick('${k}','${ch}')"><i class="fas fa-plus"></i> เพิ่มกลุ่ม</button>`;
+      const note=sel.length?'':`<span style="font-size:.76rem;color:#9aa1aa">= ส่งตามแผนกที่เลือก</span>`;
+      return `<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap"><span style="font-size:.8rem;color:${color};font-weight:600;min-width:135px;padding-top:5px"><i class="${ico}"></i> ${lbl}:</span><div style="flex:1;min-width:200px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">${chips}${add}${note}</div></div>`; };
+    const routeRow=(ev.channels.chat||ev.channels.line)?`<div class="grouproute" style="grid-column:1/-1;margin-top:9px;display:flex;flex-direction:column;gap:9px;border-top:1px dashed #e7eaee;padding-top:10px">${ev.channels.chat?grpSel('chat'):''}${ev.channels.line?grpSel('line'):''}</div>`:'';
+    return `<div class="evrow">
+      <div><div class="ev-name">${esc(ev.label)}${ev.custom?` <i class="fas fa-circle-xmark" title="ลบเหตุการณ์" style="color:#cbd0d6;cursor:pointer;font-size:.82rem" onclick="delEvent('${k}')"></i>`:''}</div><div class="ev-key">${k}</div>
+        <div style="margin-top:6px;display:flex;align-items:center;gap:6px"><span style="font-size:.74rem;color:#9aa1aa"><i class="fas fa-layer-group"></i> กลุ่ม:</span><select onchange="moveEvent('${k}',this.value)" style="border:1.5px solid #e0e4e8;border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.78rem;background:#fff;color:#374151">${allModules().map(mm=>`<option value="${mm.k}" ${(ev.module||'general')===mm.k?'selected':''}>${esc(mm.label)}</option>`).join('')}<option value="__new__">➕ กลุ่มใหม่…</option></select></div></div>
+      ${deptChips(k, ev.depts)}
+      <div class="seg">${seg}</div>
+      <div class="solo" style="grid-column:1/-1;margin-top:9px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-top:1px dashed #e7eaee;padding-top:9px">
+        <span style="font-size:.8rem;color:#6b7280;font-weight:600"><i class="fas fa-envelope"></i> ส่งเฉพาะอีเมลนี้:</span>
+        <input type="email" value="${esc(ev.soloEmail||'')}" oninput="setSolo('${k}',this.value)" placeholder="เว้นว่าง = ส่งตามทีม/แผนกตามปกติ" style="flex:1;min-width:200px;border:1.5px solid #d8dde2;border-radius:8px;padding:7px 11px;font-family:inherit;font-size:.86rem">
+        ${ev.soloEmail?`<span class="badge-ch mail" style="font-size:.72rem">→ ส่งเฉพาะ 1 อีเมล</span>`:''}
+      </div>
+      ${routeRow}
+    </div>`;
+}
+var EXPANDED_MOD=(function(){ try{ return JSON.parse(sessionStorage.getItem('pc_notify_expmod'))||{}; }catch(e){ return {}; } })();
+function toggleModule(m){ EXPANDED_MOD[m]=!EXPANDED_MOD[m]; try{ sessionStorage.setItem('pc_notify_expmod', JSON.stringify(EXPANDED_MOD)); }catch(e){} renderEvents(); }
+function toggleModLoop(m,on){ if(!CFG.modLoop) CFG.modLoop={}; CFG.modLoop[m]=on; renderEvents(); }
+function renderEvents(){
+  const keys=eventOrder();
+  // จัดกลุ่มตามโมดูล/ส่วนงาน — เรียงตามลำดับ MODULES แล้วต่อด้วยโมดูลอื่นที่พบ
+  const byMod={}; keys.forEach(k=>{ const m=CFG.events[k].module||'general'; (byMod[m]=byMod[m]||[]).push(k); });
+  const order=allModules().map(m=>m.k).filter(m=>byMod[m]).concat(Object.keys(byMod).filter(m=>!allModules().some(x=>x.k===m)));
+  document.getElementById('events').innerHTML = order.map(m=>{
+    const list=byMod[m]||[]; const open=!!EXPANDED_MOD[m];
+    const on=list.reduce((a,k)=>a+(CFG.events[k].channels&&(CFG.events[k].channels.email||CFG.events[k].channels.chat||CFG.events[k].channels.line)?1:0),0);
+    const head=`<div class="modhead${open?' open':''}" onclick="toggleModule('${m}')">
+      <span class="mh-ic"><i class="fas fa-chevron-${open?'down':'right'}"></i></span>
+      <span class="mh-title">${esc(moduleLabel(m))} <i class="fas fa-pen" title="เปลี่ยนชื่อกลุ่ม" style="font-size:.66rem;color:#c3c9d0;margin-left:5px" onclick="event.stopPropagation();renameModule('${m}')"></i></span>
+      <span class="mh-count">${list.length} เหตุการณ์</span>
+      <span class="mh-on">${on} เปิดแจ้งเตือน</span>
+      <label title="ส่งอีเมลทุกเหตุการณ์ในกลุ่มนี้เกาะ thread เดียวกัน (ลูปเดียว)" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:5px;font-size:.74rem;color:#6b7280;cursor:pointer"><input type="checkbox" ${(CFG.modLoop&&CFG.modLoop[m])?'checked':''} onchange="toggleModLoop('${m}',this.checked)" style="accent-color:#eb2c39"> เมลลูปเดียว</label>
+    </div>`;
+    const cards=open?`<div class="modbody">${list.map(evCardHTML).join('')}</div>`:'';
+    return `<div class="modgroup">${head}${cards}</div>`;
+  }).join('');
+}
+function renderDepts(){
+  document.getElementById('depts').innerHTML = Object.keys(CFG.depts).map(k=>{
+    const d=CFG.depts[k];
+    const mems=d.members.map((m,i)=>`
+      <div class="mem">
+        <span class="av">${esc(initials(m.name))}</span>
+        <div class="mi"><div class="mn">${esc(m.name)}</div><div class="mr">${esc(m.role)} · ${esc(m.email)}</div></div>
+        <button class="mx" title="ลบ" onclick="delMember('${k}',${i})"><i class="fas fa-times"></i></button>
+      </div>`).join('');
+    return `<div class="dept">
+      <div class="dept-hd">
+        <span class="dept-ic"><i class="fas ${d.icon||'fa-users'}"></i></span>
+        <div style="flex:1"><div class="dept-nm">${esc(d.label)}</div>
+          <div class="dept-grp"><i class="fas fa-comments"></i><span class="grp-edit" onclick="editGroup('${k}')" style="cursor:pointer;border-bottom:1px dashed #cfd5db">${esc(d.group)}</span></div>
+        </div>
+        <button class="dept-del" title="ลบแผนก" onclick="delDept('${k}')"><i class="fas fa-trash"></i></button>
+      </div>
+      <div class="mem-lbl">สมาชิกที่จะถูก @mention (${d.members.length})</div>
+      ${mems||'<div class="mr" style="color:#aab0b8">ยังไม่มีสมาชิก</div>'}
+      <button class="addmem" onclick="addMember('${k}')"><i class="fas fa-user-plus me-1"></i>เพิ่มสมาชิก</button>
+    </div>`;
+  }).join('');
+}
+function renderPvPick(){
+  const sel=document.getElementById('pvPick');
+  const cur=sel.value;
+  sel.innerHTML=eventOrder().map(k=>`<option value="${k}">${esc(CFG.events[k].label)}</option>`).join('');
+  if(cur) sel.value=cur;
+}
+function drawPreview(k){
+  k = k || (document.getElementById('pvPick').value || EVENT_ORDER[0]);
+  const ev=CFG.events[k];
+  const text=fillTok(tplOf(k)||ev.label, k);
+  let depts=(ev.depts||[]).map(dk=>CFG.depts[dk]).filter(Boolean);
+  const noDept = !depts.length;
+  if(noDept) depts=[{label:'(ยังไม่เลือกแผนก)',group:'-',lineGroup:'-',members:[]}];
+  const ment=d=> d.members.map(m=>`<span class="mention">@${esc(m.name)}</span>`).join(' ') || '<span class="mr">ยังไม่มีคนให้ mention</span>';
+
+  const allEmails = depts.flatMap(d=>d.members||[]).map(m=>esc(m.email));
+  const chatDepts = (ev.chatGroupDepts&&ev.chatGroupDepts.length) ? ev.chatGroupDepts.map(dk=>CFG.depts[dk]).filter(Boolean) : depts;
+  const lineDepts = (ev.lineGroupDepts&&ev.lineGroupDepts.length) ? ev.lineGroupDepts.map(dk=>CFG.depts[dk]).filter(Boolean) : depts;
+  const emailCol = `<div class="pv-col mail ${ev.channels.email?'':'pv-off'}">
+    <div class="pv-tab"><i class="fas fa-envelope"></i>EMAIL ${ev.channels.email?'':'<span class="pv-off-note">(ปิดอยู่)</span>'}</div>
+    <div class="email">
+      <div class="email-hd">
+        <div class="email-subj">[Potato Corner] ${esc(ev.label)}</div>
+        <div class="email-meta"><b>จาก:</b> ระบบจัดการโปรโมชัน &lt;noreply@potatocornerth.com&gt;<br>
+          <b>ถึง:</b> ${allEmails.join(', ')||'-'}</div>
+      </div>
+      <div class="email-body">เรียน ทีม ${depts.map(d=>esc(d.label)).join(' / ')},<br>${esc(text)}<br><a class="email-cta" href="#">เปิดดูรายละเอียด</a></div>
+    </div>
+  </div>`;
+
+  const chatCard = d => `<div class="chat">
+      <div class="chat-hd"><span class="gi"><i class="fas fa-hashtag"></i></span><div><div class="gn">${esc(d.group)}</div><div class="gm">${(d.members||[]).length} สมาชิก · แผนก ${esc(d.label)}</div></div></div>
+      <div class="chat-body"><div class="msg"><span class="bot"><i class="fas fa-robot"></i></span><div class="bub">
+        <div class="who">Promotion Bot <span>เมื่อสักครู่ · จากเว็บระบบ</span></div>
+        <div class="txt"><div class="mention-row">${ment(d)}</div><b>${esc(ev.label)}</b><br>${esc(text)}</div>
+        <div class="react"><span>👀 ดูแล้ว</span><span>✅ รับเรื่อง</span></div>
+      </div></div></div>
+    </div>`;
+  const chatCol = `<div class="pv-col chat ${ev.channels.chat?'':'pv-off'}">
+    <div class="pv-tab"><i class="fas fa-comments"></i>TEAM CHAT ${ev.channels.chat?'':'<span class="pv-off-note">(ปิดอยู่)</span>'}</div>
+    ${chatDepts.map(chatCard).join('')}
+  </div>`;
+
+  const lineCard = d => `<div class="chat lchat">
+      <div class="chat-hd"><span class="gi"><i class="fab fa-line"></i></span><div><div class="gn">${esc(d.lineGroup||d.group)}</div><div class="gm">ส่งผ่าน ${esc(CFG.line.oaName)} (Messaging API)</div></div></div>
+      <div class="chat-body"><div class="msg"><span class="bot oa"><i class="fab fa-line"></i></span><div class="bub">
+        <div class="who">${esc(CFG.line.oaName)} <span>เมื่อสักครู่</span></div>
+        <div class="txt line"><div class="mention-row">${ment(d)}</div><b>${esc(ev.label)}</b><br>${esc(text)}</div>
+      </div></div></div>
+    </div>`;
+  const lineCol = `<div class="pv-col line ${ev.channels.line?'':'pv-off'}">
+    <div class="pv-tab"><i class="fab fa-line"></i>LINE GROUP ${ev.channels.line?'':'<span class="pv-off-note">(ปิดอยู่)</span>'}</div>
+    ${lineDepts.map(lineCard).join('')}
+  </div>`;
+
+  document.getElementById('preview').innerHTML = emailCol + chatCol + lineCol;
+}
+function renderLineConfig(){
+  const L=CFG.line;
+  document.getElementById('lineCfg').innerHTML = `
+    <div class="line-cost"><i class="fas fa-circle-info"></i> การส่งเข้า“กลุ่ม LINE” ต้องใช้ <b>LINE Official Account + Messaging API</b> (LINE Notify ถูกยกเลิกแล้ว) · มีโควต้าข้อความฟรีต่อเดือน เกินแล้วคิดค่าบริการตามแพ็กเกจ</div>
+    <div class="line-grid">
+      <div class="lf"><label>ชื่อ LINE Official Account</label><input class="lf-in" value="${esc(L.oaName)}" oninput="CFG.line.oaName=this.value;renderPreview()" placeholder="Potato Corner OA"></div>
+      <div class="lf"><label>Channel Access Token <span class="req">(ลับ)</span></label><input class="lf-in" type="password" value="${esc(L.token)}" oninput="CFG.line.token=this.value" placeholder="•••••• (ใส่ตอนเชื่อม API จริง)"></div>
+      <div class="lf"><label>Default Group / Target ID</label><input class="lf-in" value="${esc(L.target)}" oninput="CFG.line.target=this.value" placeholder="Cxxxxxxxxxxxxxxxx"></div>
+    </div>
+    <div class="line-note">* กลุ่ม LINE ของแต่ละแผนกตั้งได้ที่การ์ดแผนก (ช่อง LINE) — หน้านี้ตั้งค่าไว้ก่อน ยังไม่ยิงจริงจนกว่าจะเชื่อม OA จริง</div>
+    <div class="line-cost" style="margin-top:16px"><i class="fas fa-bolt"></i> <b>ส่งจริง (Webhook)</b> — ใส่ URL แล้วระบบจะ POST ข้อความ <code>{text}</code> ไปทุกครั้งที่มีการแจ้งเตือน (รองรับ Google Chat space / Slack incoming webhook)</div>
+    <div class="line-grid">
+      <div class="lf"><label><i class="fas fa-comments" style="color:#2f5fb3"></i> Team Chat Webhook URL</label><input class="lf-in" value="${esc((CFG.chat||{}).webhook||'')}" oninput="CFG.chat=CFG.chat||{};CFG.chat.webhook=this.value" placeholder="https://chat.googleapis.com/... หรือ Slack webhook"></div>
+      <div class="lf"><label><i class="fab fa-line" style="color:#06c755"></i> LINE Webhook / Proxy URL</label><input class="lf-in" value="${esc((CFG.line||{}).webhook||'')}" oninput="CFG.line.webhook=this.value" placeholder="ปลายทางที่รับ {text}"></div>
+      <div class="lf"><label><i class="fas fa-envelope" style="color:#a06d13"></i> Email Webhook URL</label><input class="lf-in" value="${esc((CFG.email||{}).webhook||'')}" oninput="CFG.email=CFG.email||{};CFG.email.webhook=this.value" placeholder="endpoint ส่งเมล (Apps Script / Worker)"></div>
+    </div>
+    <div class="line-note">* Google Chat/Slack: สร้าง Incoming Webhook ในกลุ่ม → วาง URL ช่อง Team Chat → กด "บันทึก" ด้านล่าง · จากนั้นทุกเหตุการณ์ที่เปิดช่อง Team Chat จะส่งเข้ากลุ่มจริง (บาง endpoint ต้องส่งผ่าน proxy/Worker เพราะ CORS)</div>
+    <details style="margin-top:16px;border:1px solid #e2e6ea;border-radius:12px;background:#fbfcfd;overflow:hidden">
+      <summary style="cursor:pointer;padding:12px 16px;font-weight:600;background:#f4f7f9;list-style:none"><i class="fas fa-book" style="color:#2f5fb3"></i> คู่มือ — เอา URL/Token แต่ละช่องมาจากไหน</summary>
+      <div style="padding:4px 18px 18px;font-size:.86rem;line-height:1.65;color:#333">
+
+        <div style="margin-top:14px;border-left:4px solid #2f5fb3;padding:2px 0 2px 14px">
+          <b><i class="fas fa-comments" style="color:#2f5fb3"></i> Team Chat Webhook URL</b> — กลุ่มแชทของทีม (แนะนำ · ตั้งง่ายสุด)
+          <div style="font-weight:600;margin-top:8px">ถ้าใช้ Google Chat:</div>
+          <ol style="margin:4px 0;padding-left:20px">
+            <li>เปิด Google Chat → เข้ากลุ่ม (Space) ที่ต้องการให้แจ้งเตือนเข้า</li>
+            <li>คลิกชื่อกลุ่มด้านบน → <b>Apps &amp; integrations</b> → <b>Webhooks</b> → <b>Add webhook</b></li>
+            <li>ตั้งชื่อ (เช่น "Promotion Bot") → <b>Save</b> → คัดลอก URL ที่ขึ้นต้น <code>https://chat.googleapis.com/...</code></li>
+            <li>วางในช่องนี้ → กด "บันทึก" ด้านล่าง</li>
+          </ol>
+          <div style="font-weight:600;margin-top:6px">ถ้าใช้ Slack:</div>
+          <ol style="margin:4px 0;padding-left:20px">
+            <li>ไปที่ <code>api.slack.com/apps</code> → Create App → เปิด <b>Incoming Webhooks</b></li>
+            <li><b>Add New Webhook to Workspace</b> → เลือกห้อง → คัดลอก URL <code>https://hooks.slack.com/services/...</code></li>
+          </ol>
+        </div>
+
+        <div style="margin-top:16px;border-left:4px solid #06c755;padding:2px 0 2px 14px">
+          <b><i class="fab fa-line" style="color:#06c755"></i> LINE Official Account + Messaging API</b> — ส่งเข้ากลุ่ม/ผู้ใช้ LINE
+          <ol style="margin:6px 0;padding-left:20px">
+            <li>สมัคร <b>LINE Official Account</b> ที่ <code>manager.line.biz</code> (ฟรี) → ได้ <b>ชื่อ OA</b> ใส่ช่อง "ชื่อ LINE Official Account"</li>
+            <li>เปิด <b>LINE Developers Console</b> (<code>developers.line.biz</code>) → สร้าง Provider → เพิ่ม <b>Messaging API channel</b> ผูกกับ OA นั้น</li>
+            <li>แท็บ <b>Messaging API</b> → <b>Channel access token (long-lived)</b> → กด Issue → คัดลอกใส่ช่อง <b>Channel Access Token</b> (เป็นความลับ)</li>
+            <li><b>Target ID</b> = ปลายทางที่จะส่ง: userId / groupId — ได้จาก webhook event ตอนแอดเพื่อน/เชิญบอทเข้ากลุ่ม (ขึ้นต้น <code>U…</code> หรือ <code>C…</code>)</li>
+          </ol>
+          <div style="font-size:.8rem;color:#777">หมายเหตุ: LINE Notify ถูกยกเลิกแล้ว ต้องใช้ Messaging API · มีโควต้าข้อความฟรีต่อเดือน เกินคิดเงิน · ช่อง "LINE Webhook / Proxy URL" ใช้เมื่อยิงผ่าน proxy/Worker กลางแทนการต่อ API ตรง</div>
+        </div>
+
+        <div style="margin-top:16px;border-left:4px solid #a06d13;padding:2px 0 2px 14px">
+          <b><i class="fas fa-envelope" style="color:#a06d13"></i> Email Webhook URL</b> — endpoint ที่รับ <code>{subject, text, to}</code> แล้วส่งอีเมลออก
+          <ul style="margin:6px 0;padding-left:20px">
+            <li><b>Google Apps Script</b> (ง่าย/ฟรี): เขียนฟังก์ชัน <code>doPost(e)</code> เรียก <code>MailApp.sendEmail()</code> → Deploy เป็น <b>Web app</b> (Anyone) → คัดลอก URL <code>https://script.google.com/macros/s/.../exec</code></li>
+            <li><b>Power Automate</b>: สร้าง flow "When an HTTP request is received" → ต่อ action <b>Send an email (Outlook)</b> → คัดลอก HTTP POST URL</li>
+            <li><b>Cloudflare Worker / เซิร์ฟเวอร์เอง</b>: endpoint ที่รับ POST แล้วส่งผ่าน SMTP/บริการเมล</li>
+          </ul>
+        </div>
+
+        <div style="margin-top:14px;background:#fff8e1;border-radius:8px;padding:10px 14px;font-size:.82rem">
+          <b>วิธีทดสอบ:</b> วาง URL → กด "บันทึก" → ใช้ปุ่มทดสอบ (ถ้ามี) หรือกดทำเหตุการณ์จริงที่เปิดช่องนั้นไว้ · ระบบจะ POST ข้อความ <code>{text}</code> ไปยัง URL ทันที
+        </div>
+      </div>
+    </details>`;
+}
+
+function setChannel(k,ch){ CFG.events[k].channels[ch]=!CFG.events[k].channels[ch]; renderEvents(); renderPreview(); }
+function setSolo(k,v){ CFG.events[k].soloEmail=String(v||'').trim(); renderPreview(); }
+function setDept(k,dk){ const a=CFG.events[k].depts||(CFG.events[k].depts=[]); const i=a.indexOf(dk); if(i>=0) a.splice(i,1); else a.push(dk); renderEvents(); renderPreview(); }
+function toggleGroupDept(k,ch,dk){ const key=ch==='chat'?'chatGroupDepts':'lineGroupDepts'; const a=CFG.events[k][key]||(CFG.events[k][key]=[]); const i=a.indexOf(dk); if(i>=0) a.splice(i,1); else a.push(dk); renderEvents(); renderPreview(); }
+function addGroupQuick(k,ch){
+  Swal.fire({ title:(ch==='chat'?'เพิ่มกลุ่ม Team Chat':'เพิ่มกลุ่ม LINE'), input:'text', inputPlaceholder:(ch==='chat'?'เช่น PC • Marketing War Room':'เช่น LINE: PC Promotion'), showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก', inputValidator:v=>(!v||!v.trim())&&'พิมพ์ชื่อกลุ่ม' })
+    .then(r=>{ if(!r.isConfirmed) return; const name=r.value.trim();
+      let key=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('grp_'+Date.now().toString(36)); if(CFG.depts[key]) key=key+'_'+Date.now().toString(36).slice(-3);
+      CFG.depts[key]={ label:name, short:name.slice(0,3).toUpperCase(), icon:'fa-comments', group:(ch==='chat'?name:'PC • '+name), lineGroup:(ch==='line'?name:'LINE: '+name), members:[] };
+      const arr=ch==='chat'?'chatGroupDepts':'lineGroupDepts'; (CFG.events[k][arr]||(CFG.events[k][arr]=[])).push(key);
+      renderEvents(); renderDepts(); renderPreview();
+      Swal.fire({icon:'success', title:'เพิ่มกลุ่มแล้ว', timer:1200, showConfirmButton:false}); });
+}
+function editGroup(k){
+  Swal.fire({ title:'ชื่อกลุ่มแชท', input:'text', inputValue:CFG.depts[k].group, showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'บันทึก', cancelButtonText:'ยกเลิก',
+    inputValidator:v=> (!v||!v.trim()) && 'พิมพ์ชื่อกลุ่ม' })
+    .then(r=>{ if(r.isConfirmed){ CFG.depts[k].group=r.value.trim(); renderDepts(); renderPreview(); } });
+}
+function memberForm(m){ m=m||{}; return `<div style="text-align:left;font-size:14px">
+  <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อ <span style="color:#c0392b">*</span></label>
+  <input id="mN" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="ชื่อ-นามสกุล" value="${esc(m.name)}">
+  <label style="font-weight:600;display:block;margin:2px 0 4px">ตำแหน่ง</label>
+  <input id="mR" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น POS Support" value="${esc(m.role)}">
+  <label style="font-weight:600;display:block;margin:2px 0 4px">อีเมล <span style="color:#c0392b">*</span></label>
+  <input id="mE" class="swal2-input" style="margin:0;width:100%" placeholder="name@potatocornerth.com" value="${esc(m.email)}">
+</div>`; }
+function addMember(k){
+  Swal.fire({ title:'เพิ่มสมาชิก', html:memberForm(), width:440, showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const n=(document.getElementById('mN').value||'').trim(); const r=(document.getElementById('mR').value||'').trim(); const e=(document.getElementById('mE').value||'').trim(); if(!n||!e){ Swal.showValidationMessage('กรอกชื่อและอีเมล'); return false; } return {name:n,role:r,email:e}; }
+  }).then(res=>{ if(res.isConfirmed){ CFG.depts[k].members.push(res.value); renderDepts(); renderPreview(); } });
+}
+function delMember(k,i){ CFG.depts[k].members.splice(i,1); renderDepts(); renderPreview(); }
+function addDept(){
+  Swal.fire({ title:'เพิ่มแผนก/ทีม', width:460, html:`<div style="text-align:left;font-size:14px">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อแผนก <span style="color:#c0392b">*</span></label>
+      <input id="dLabel" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น Finance / QA / Supply Chain">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ตัวย่อ (ชิป)</label>
+      <input id="dShort" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="เช่น FIN" maxlength="6">
+      <label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อกลุ่มแชท</label>
+      <input id="dGroup" class="swal2-input" style="margin:0;width:100%" placeholder="เช่น PC • Finance">
+    </div>`,
+    showCancelButton:true, confirmButtonColor:'#2e934a', confirmButtonText:'เพิ่ม', cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const label=(document.getElementById('dLabel').value||'').trim(); if(!label){ Swal.showValidationMessage('กรอกชื่อแผนก'); return false; } const short=(document.getElementById('dShort').value||'').trim()||label.slice(0,3).toUpperCase(); const group=(document.getElementById('dGroup').value||'').trim()||('PC • '+label); return {label,short,group}; }
+  }).then(r=>{ if(!r.isConfirmed) return; let key=r.value.label.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('dept_'+Date.now().toString(36)); if(CFG.depts[key]) key=key+'_'+Date.now().toString(36).slice(-3);
+    CFG.depts[key]={ label:r.value.label, short:r.value.short, icon:'fa-users', group:r.value.group, lineGroup:'LINE: '+r.value.group, members:[] };
+    renderEvents(); renderDepts(); renderPreview();
+    Swal.fire({icon:'success',title:'เพิ่มแผนกแล้ว',html:`“<b>${esc(r.value.label)}</b>” — เลือกเป็นปลายทางของเหตุการຓ์ได้ทันที`,timer:1600,showConfirmButton:false}); });
+}
+function delDept(k){
+  const used=Object.keys(CFG.events).filter(ek=>(CFG.events[ek].depts||[]).includes(k));
+  Swal.fire({icon:'warning',title:'ลบแผนกนี้?',html:`<b>${esc(CFG.depts[k].label)}</b>${used.length?`<br><span style="color:#c0392b;font-size:13px">ถูกใช้ใน ${used.length} เหตุการຓ์ — จะถูกถอดออกจากเหตุการຓ์เหล่านั้น</span>`:''}`,showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'})
+    .then(r=>{ if(!r.isConfirmed) return; delete CFG.depts[k]; Object.values(CFG.events).forEach(ev=>{ if(ev.depts) ev.depts=ev.depts.filter(x=>x!==k); }); renderEvents(); renderDepts(); renderPreview(); });
+}
+
+function save(){
+  localStorage.setItem(KEY, JSON.stringify(CFG));
+  localStorage.setItem('pc_notify_templates', JSON.stringify(TPL));
+  Swal.fire({ icon:'success', title:'บันทึกแล้ว', html:'การตั้งค่าแจ้งเตือนถูกบันทึก — ใช้กับทุกการแจ้งเตือนในระบบ', confirmButtonColor:'#2e934a', confirmButtonText:'ตกลง' });
+}
+
+renderEvents(); renderDepts(); renderLineConfig(); renderPvPick(); renderPreview(); renderLibPick();
+</script>
+
+<style id="pc-clean-headers-iframe">/* หัวเรื่องพื้นโล่ง + ตัวหนังสือเหมือนหน้าฟอร์ม (iframe pages) */
+.topbar,.bv-head,[style*="background:#2e934a;color:#fff"]:not(button):not(.btn){background:transparent!important;color:#1a1d20!important;box-shadow:none!important;border-radius:0!important;border-left:none!important;}
+.topbar h1,.topbar h2,.bv-head h1,.bv-head h2{color:#1a1d20!important;font-size:1.8rem!important;font-weight:800!important;letter-spacing:.2px!important;text-transform:none!important;}
+.topbar h1 i,.bv-head h1 i{color:#2e934a!important;}
+.topbar .sub,.bv-head .sub{color:#8a9099!important;}
+.topbar .role,.topbar .gear,.topbar .back,.topbar .pbtn,.bv-head .back{background:#eafaf1!important;color:#2e934a!important;}
+.topbar .role.on{background:#2e934a!important;color:#fff!important;}
+</style>
+</body>
+</html>

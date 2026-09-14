@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>แจ้งปัญหาปุ่ม — Branch</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:var(--bg); color:var(--pc-black); margin:0; padding-bottom:96px; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* top bar */
+  .topbar{ background:var(--pc-black); color:#fff; padding:16px 18px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:10; }
+  .topbar .back{ width:44px; height:44px; border:0; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; font-size:1.1rem; cursor:pointer; flex:none; }
+  .topbar .back:hover{ background:rgba(255,255,255,.22); }
+  .topbar h1{ font-family:'Montserrat',sans-serif; font-weight:700; font-size:1.15rem; margin:0; }
+  .topbar h1 i{ color:var(--pc-yellow); margin-right:8px; }
+
+  .wrap{ max-width:680px; margin:0 auto; padding:18px 16px 0; }
+
+  /* context */
+  .ctx{ background:#fff; border-radius:16px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid #e7eaee; margin-bottom:18px; }
+  .ctx .nm{ font-size:1.25rem; font-weight:700; line-height:1.25; }
+  .ctx .meta{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .ctx .mtag{ font-size:.82rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:8px; padding:5px 11px; display:inline-flex; align-items:center; gap:6px; }
+  .ctx .mtag i{ color:#9aa1aa; }
+  .ctx .branch{ color:#1d7a4d; background:#eafaf1; }
+  .ctx .branch i{ color:#54b585; }
+
+  /* step */
+  .step{ margin-bottom:22px; }
+  .step-q{ font-size:1.12rem; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+  .step-q .no{ width:30px; height:30px; border-radius:50%; background:var(--pc-yellow); color:#000; font-family:'Montserrat',sans-serif; font-weight:900; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .step-sub{ color:#8a9099; font-size:.88rem; margin:2px 0 12px 40px; }
+
+  /* big tap list (which button) */
+  .pick-list{ display:flex; flex-direction:column; gap:10px; }
+  .pick{ border:2px solid #dde2e7; background:#fff; border-radius:14px; padding:15px 16px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:.12s; min-height:60px; }
+  .pick:hover{ border-color:#b6bcc4; }
+  .pick .ico{ width:42px; height:42px; border-radius:11px; background:#f1f4f7; color:#6b7280; display:inline-flex; align-items:center; justify-content:center; font-size:1.15rem; flex:none; }
+  .pick .txt{ flex:1; }
+  .pick .txt .t1{ font-weight:700; font-size:1.02rem; }
+  .pick .txt .t2{ font-size:.8rem; color:#8a9099; font-family:'JetBrains Mono',monospace; }
+  .pick .chk{ width:26px; height:26px; border-radius:50%; border:2px solid #cfd5db; flex:none; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:.8rem; }
+  .pick.on{ border-color:var(--pc-green); background:#f3fbf6; }
+  .pick.on .ico{ background:var(--pc-green); color:#fff; }
+  .pick.on .chk{ background:var(--pc-green); border-color:var(--pc-green); }
+
+  /* issue tiles */
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .tile{ border:2px solid #dde2e7; background:#fff; border-radius:16px; padding:18px 14px; text-align:center; cursor:pointer; transition:.12s; position:relative; min-height:118px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; }
+  .tile:hover{ border-color:#b6bcc4; }
+  .tile .ti{ width:52px; height:52px; border-radius:14px; background:#f1f4f7; color:#7b8089; display:inline-flex; align-items:center; justify-content:center; font-size:1.5rem; transition:.12s; }
+  .tile .tl{ font-weight:600; font-size:.95rem; line-height:1.25; }
+  .tile .badge-chk{ position:absolute; top:9px; right:9px; width:26px; height:26px; border-radius:50%; background:#c9870a; color:#fff; display:none; align-items:center; justify-content:center; font-size:.82rem; }
+  .tile.on{ border-color:#c9870a; background:#fff8ec; }
+  .tile.on .ti{ background:#c9870a; color:#fff; }
+  .tile.on .badge-chk{ display:inline-flex; }
+
+  /* note */
+  .note{ width:100%; border:2px solid #dde2e7; border-radius:14px; padding:13px 15px; font-family:inherit; font-size:1rem; resize:vertical; min-height:84px; }
+  .note:focus{ outline:none; border-color:var(--pc-green); }
+  .bnote{ margin-top:11px; min-height:62px; font-size:.95rem; }
+
+  /* per-button issue group */
+  .bgrp{ margin-bottom:18px; }
+  .bgrp-hd{ font-weight:700; font-size:1rem; color:#1a1d20; background:#eafaf1; border:1px solid #bfe6cf; border-radius:12px; padding:10px 14px; margin-bottom:11px; display:flex; align-items:center; gap:4px; }
+  .bgrp-hd i{ color:#2e934a; margin-right:6px; }
+  .bgrp-code{ font-family:'JetBrains Mono',monospace; font-size:.78rem; color:#5a8a6e; margin-left:auto; }
+  .hint-empty{ color:#9aa1aa; font-size:.92rem; padding:10px 2px; display:flex; align-items:center; gap:8px; }
+
+  /* detail capture for special issues */
+  .detail-box{ background:#fffdf7; border:1.5px solid #f0e3c0; border-radius:13px; padding:13px 15px; margin-top:11px; }
+  .detail-box.chat{ background:#f4f8ff; border-color:#cfe0fb; }
+  .detail-q{ font-weight:700; font-size:.98rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .detail-q i{ color:#c9870a; }
+  .detail-box.chat .detail-q i{ color:#2f5fb3; }
+  .ok-pos{ font-size:.72rem; font-weight:700; background:#eafaf1; color:#1d7a4d; border:1px solid #bfe6cf; border-radius:7px; padding:2px 8px; }
+  .detail-sub{ font-size:.82rem; color:#8a7a4a; margin:5px 0 10px; line-height:1.4; }
+  .detail-box.chat .detail-sub{ color:#5a6b88; }
+  .quick-row{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:9px; }
+  .ss-tag{ display:inline-flex; align-items:center; gap:7px; font-size:.84rem; font-weight:600; color:#1d7a4d; background:#eafaf1; border:1px solid #bfe6cf; border-radius:9px; padding:6px 11px; margin:8px 0 4px; }
+  .ss-tag i{ color:#54b585; }
+  .ss-tag b{ font-family:'JetBrains Mono',monospace; }
+  .flav-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+  .flav{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; border:1.5px solid #e6d9b3; background:#fff; border-radius:11px; padding:9px 12px; font-family:inherit; cursor:pointer; text-align:left; }
+  .flav .fn{ font-weight:600; font-size:.92rem; color:#1a1d20; }
+  .flav .fc{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#9aa1aa; }
+  .flav.on{ border-color:#c9870a; background:#fff8ec; }
+  .flav.on .fc{ color:#9a6700; }
+  .qchip{ border:1.5px solid #e6d9b3; background:#fff; color:#9a6700; border-radius:999px; padding:5px 12px; font-family:inherit; font-size:.82rem; font-weight:600; cursor:pointer; }
+  .qchip:hover{ background:#eaf4ee; }
+  .detail-input{ width:100%; border:1.5px solid #e2d8bd; border-radius:11px; padding:11px 13px; font-family:inherit; font-size:.96rem; background:#fff; }
+  .detail-box.chat .detail-input{ border-color:#d2e0f6; }
+  .detail-input:focus{ outline:none; border-color:var(--pc-green); }
+  .pf-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:11px; }
+  .pf{ border:1.5px solid #cfe0fb; background:#fff; color:#3a4ba0; border-radius:10px; padding:8px 14px; font-family:inherit; font-weight:600; font-size:.88rem; cursor:pointer; }
+  .pf.on{ background:#2f5fb3; color:#fff; border-color:#2f5fb3; }
+  .pf-prices{ display:flex; gap:10px; }
+  .pi-block{ background:#fff; border:1px solid #d2e0f6; border-radius:11px; padding:10px 12px; margin-top:9px; }
+  .pi-hd{ font-weight:700; font-size:.92rem; color:#2f5fb3; display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+  .pi-hd i{ color:#2f5fb3; }
+  .pf-single{ font-size:.9rem; font-weight:600; color:#2f5fb3; background:#eef4ff; border:1px solid #cfe0fb; border-radius:9px; padding:8px 12px; }
+  .pf-single b{ color:#1a1d20; }
+  .pf-note{ font-size:.84rem; color:#9a6700; background:#fff8ec; border:1px solid #f3d99a; border-radius:9px; padding:8px 12px; margin-bottom:9px; }
+  .pf-note i{ color:#c9870a; margin-right:5px; }
+  .pf-fld{ flex:1; }
+  .pf-fld label{ font-size:.78rem; font-weight:600; color:#5a6b88; display:block; margin-bottom:5px; }
+  /* route banner */
+  .route-wrap{ margin-top:18px; display:flex; flex-direction:column; gap:9px; }
+  .route-head{ font-size:.72rem; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#8a9099; margin-bottom:2px; }
+  .route-line{ background:#fff; border:1px solid #e7eaee; border-left:4px solid var(--lc,#2e934a); border-radius:11px; padding:10px 13px; }
+  .rl-ev{ font-weight:700; font-size:.9rem; }
+  .rl-to{ font-size:.84rem; color:#5a616b; margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .ch{ font-weight:700; border-radius:7px; padding:2px 9px; font-size:.8rem; display:inline-flex; align-items:center; gap:5px; }
+  .ch.chat{ background:#eef4ff; color:#2f5fb3; }
+  .ch.mail{ background:#eaf4ee; color:#9a6700; }
+  .ch.line{ background:#eafaef; color:#06934a; }
+
+  /* sticky submit */
+  .submitbar{ position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid #e2e6ea; padding:14px 16px; box-shadow:0 -4px 20px rgba(0,0,0,.06); z-index:20; }
+  .submitbar .inner{ max-width:680px; margin:0 auto; display:flex; gap:12px; }
+  .btn-send{ flex:1; background:var(--pc-green); color:#fff; border:0; border-radius:14px; padding:16px; font-weight:700; font-size:1.1rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:9px; }
+  .btn-send:hover{ background:#00632f; }
+  .btn-send:disabled{ background:#cfd5db; cursor:not-allowed; }
+
+  .noctx{ background:#fff; border:1px dashed #cfd5db; border-radius:16px; text-align:center; padding:48px 20px; color:#8a9099; }
+  .noctx i{ font-size:2.2rem; display:block; margin-bottom:12px; opacity:.5; }
+  /* gating + prefill */
+  .tile.locked{ opacity:.4; filter:grayscale(.45); cursor:not-allowed; }
+  .tile.locked:hover{ border-color:#dde2e7; }
+  .lock-hint{ display:flex; align-items:center; gap:8px; font-size:.84rem; font-weight:600; color:#9a6700; background:#fff8ec; border:1px solid #f3d99a; border-radius:10px; padding:9px 12px; margin-top:11px; }
+  .lock-hint i{ color:#c9870a; }
+  .lock-hint.flash{ animation:lockflash .55s; }
+  @keyframes lockflash{ 0%,100%{ background:#fff8ec; } 30%{ background:#ffdca0; border-color:#e9b765; } }
+  .fix-cur{ font-size:.78rem; color:#8a7a4a; margin-top:8px; display:flex; align-items:center; gap:6px; line-height:1.35; }
+  .fix-cur i{ color:#c9870a; flex:none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back" onclick="goBack()"><i class="fas fa-arrow-left"></i></button>
+  <h1><i class="fas fa-flag"></i>แจ้งปัญหาเกี่ยวกับปุ่ม</h1>
+</div>
+
+<div class="wrap" id="main"></div>
+
+<div class="submitbar" id="submitbar" style="display:none">
+  <div class="inner">
+    <button class="btn-send" id="btnSend" onclick="submitReport()"><i class="fas fa-paper-plane"></i>ส่งแจ้งปัญหา</button>
+  </div>
+</div>
+
+<script>
+const TK_KEY='pc_branch_tickets';
+const OPEN_BTN_DEF = {k:'OPEN_BTN', label:'ขอเปิดปุ่ม', icon:'fa-toggle-on', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}};
+const DEFAULT_ISSUE_BUTTONS = [
+  OPEN_BTN_DEF,
+  {k:'NO_BTN',     label:'ปุ่มโปรไม่ขึ้นบน POS',  icon:'fa-eye-slash', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'REMOVE',     label:'ขอนำปุ่มออกจาก POS',   icon:'fa-trash-can', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'NO_FLAVOR_BTN', label:'ไม่มีปุ่มผงรสชาติ',  icon:'fa-mortar-pestle', detail:'flavors', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_OPT', label:'ปุ่มตัวเลือกผงไม่ถูกต้อง', icon:'fa-list-check', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_QTY', label:'จำนวนผงไม่ถูกต้อง',      icon:'fa-hashtag', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'FLAVOR_ABBR',label:'ชื่อย่อผงไม่ถูกต้อง',    icon:'fa-spoon', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'KITCHEN',    label:'ชื่อย่อบิลครัวไม่ถูกต้อง', icon:'fa-receipt', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_FULL', label:'ราคาเต็มไม่ถูกต้อง',     icon:'fa-tag', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_DISC', label:'ราคาส่วนลดผิด',         icon:'fa-percent', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+  {k:'PRICE_PLATFORM', label:'ราคาแอปเดลิเวอรีไม่ตรง', icon:'fa-motorcycle', detail:'platform', depts:['marketing'], channels:{email:false,chat:true,line:false}},
+  {k:'NO_DISC',    label:'กดแล้วไม่ลดราคา',       icon:'fa-circle-exclamation', detail:'', depts:['it'], channels:{email:true,chat:false,line:false}},
+];
+function loadIssueButtons(){ let a=null; try{ a=JSON.parse(localStorage.getItem('pc_issue_buttons')); }catch(e){} if(!Array.isArray(a)||!a.length) return DEFAULT_ISSUE_BUTTONS.slice(); if(!a.some(x=>x&&x.k==='OPEN_BTN')) a.unshift(OPEN_BTN_DEF); return a; }
+const ISSUE_TYPES = loadIssueButtons();
+/* ตัวเลือกที่ “ไม่ถูกต้อง/ผิด” → เปิดช่องให้ระบุข้อมูลที่ถูกต้อง (ต่อปุ่ม) — keyed by issue k */
+const CORRECT_FIELDS = {
+  OPEN_BTN: { icon:'fa-toggle-on', q:'เหตุผลที่ขอเปิดปุ่มนี้', sub:'ระบุเหตุผลที่ต้องการให้เปิด/เพิ่มปุ่มนี้บน POS', right:{label:'เหตุผล (จำเป็น)', ph:'เช่น โปรกลับมาขายแล้ว / ลูกค้าสั่งแต่ปุ่มถูกปิด'} },
+  FLAVOR_OPT: { icon:'fa-list-check', q:'ตัวเลือกผงที่ถูกต้อง', sub:'ระบุว่าปุ่มนี้ควรมีตัวเลือกผงอะไรบ้าง', wrong:{label:'ตอนนี้ขึ้น', ph:'เช่น ชีส, ต้มยำ'}, right:{label:'ที่ถูกต้อง', ph:'เช่น ชีส, บาร์บีคิว'} },
+  FLAVOR_QTY: { icon:'fa-hashtag', q:'จำนวนผงที่ถูกต้อง', wrong:{label:'ตอนนี้ได้', ph:'เช่น 1 ช้อน'}, right:{label:'ที่ถูกต้อง', ph:'เช่น 2 ช้อน'} },
+  FLAVOR_ABBR:{ icon:'fa-spoon', q:'ชื่อย่อผงที่ถูกต้อง', wrong:{label:'ตอนนี้ขึ้น', ph:'เช่น CHS'}, right:{label:'ที่ถูกต้อง', ph:'เช่น ชีส'} },
+  KITCHEN:    { icon:'fa-receipt', q:'ชื่อย่อบิลครัวที่ถูกต้อง', wrong:{label:'ตอนนี้ขึ้น', ph:'เช่น FFC'}, right:{label:'ที่ถูกต้อง', ph:'เช่น FF ชีส'} },
+  PRICE_FULL: { icon:'fa-tag', numeric:true, q:'ราคาเต็มที่ถูกต้อง', wrong:{label:'ราคาที่ขึ้นตอนนี้ (฿)', ph:'เช่น 169'}, right:{label:'ราคาที่ถูกต้อง (฿)', ph:'เช่น 159'} },
+  PRICE_DISC: { icon:'fa-percent', numeric:true, q:'ราคาส่วนลดที่ถูกต้อง', wrong:{label:'ราคาที่ขึ้นตอนนี้ (฿)', ph:'เช่น 129'}, right:{label:'ราคาส่วนลดที่ถูกต้อง (฿)', ph:'เช่น 99'} },
+};
+function hasDetailType(set,type){ return ISSUE_TYPES.some(it=>it.detail===type && set.has(it.k)); }
+const FLAVOR_QUICK=['ชีส','บาร์บีคิว','สาหร่าย','ครีมชีส','ต้มยำ','ชีสเข้มข้น'];
+const PLATFORMS=(function(){ try{ const s=JSON.parse(localStorage.getItem('pc_master_lists')); if(s&&Array.isArray(s.platforms)&&s.platforms.length) return s.platforms; }catch(e){} return ['Grab','LINE MAN','ShopeeFood','Robinhood','foodpanda']; })();
+/* Subset ⇒ ผง/รสชาติ (item code) — จริงมาจาก product_formula / subset_flavor */
+const SUBSETS={
+  'SS-FF01':{ code:'SS-FF01', name:'ผงปรุงรสเฟรนช์ฟรายส์', flavors:[
+    {name:'ชีส',code:'103001'},{name:'บาร์บีคิว',code:'103002'},{name:'ซาวครีม',code:'103003'},
+    {name:'สาหร่าย',code:'103004'},{name:'ออริจินัล (เกลือ)',code:'103005'},{name:'ต้มยำ',code:'103006'},
+    {name:'ลาบ',code:'103007'},{name:'ชีสเข้มข้น',code:'103008'} ] },
+};
+const SUBSET_MAP={ '1070455':'SS-FF01', '1070456':'SS-FF01' };
+function getSubset(code){
+  try{ const m=JSON.parse(localStorage.getItem('pc_subset_map')); if(m&&m.subsets&&m.map){ const ss=m.map[String(code||'')]; if(ss&&m.subsets[ss]) return m.subsets[ss]; return null; } }catch(e){}
+  const ss=SUBSET_MAP[String(code||'')]; return ss?SUBSETS[ss]:null;
+}
+const NOTIFY_DEFAULT={
+  depts:{
+    it:{ label:'Information Technology', group:'PC • IT Support', lineGroup:'LINE: PC IT Support' },
+    marketing:{ label:'Marketing', group:'PC • Delivery Price', lineGroup:'LINE: PC Delivery Price' },
+    operation:{ label:'Operation', group:'PC • Operation', lineGroup:'LINE: PC Operation' },
+    npd:{ label:'NPD / R&D', group:'PC • NPD', lineGroup:'LINE: PC NPD' },
+    account:{ label:'Accounting', group:'PC • Accounting', lineGroup:'LINE: PC Accounting' },
+  },
+  events:{
+    report_general:{ label:'แจ้งปัญหาปุ่ม POS (ทั่วไป)', dept:'it', channels:{email:true,chat:false,line:false} },
+    report_price_platform:{ label:'ราคาแพลตฟอร์มเดลิเวอรีไม่ตรง', dept:'marketing', channels:{email:false,chat:true,line:false} },
+  }
+};
+function notifyCfg(){ try{ const s=JSON.parse(localStorage.getItem('pc_notify_settings')); if(s&&s.events&&s.events.report_general) return s; }catch(e){} return NOTIFY_DEFAULT; }
+const baht = n => Number(n).toLocaleString()+'฿';
+function loadTickets(){ try{ return JSON.parse(localStorage.getItem(TK_KEY))||[]; }catch(e){ return []; } }
+function saveTickets(a){ localStorage.setItem(TK_KEY, JSON.stringify(a)); }
+function nextTid(a){ let m=1000; a.forEach(t=>{ const n=parseInt(String(t.id||'').replace(/\D/g,'')); if(n>m) m=n; }); return 'BVT-'+(m+1); }
+
+let CTX=null, tagged=new Set(), issuesByBtn={}, noteByBtn={}, detailByBtn={};
+try{ CTX=JSON.parse(localStorage.getItem('pc_report_ctx')); }catch(e){ CTX=null; }
+function getSettings(){ try{ return JSON.parse(localStorage.getItem('pc_report_settings'))||{}; }catch(e){ return {}; } }
+const AUTH_MODE=(getSettings().authMode)||'cashier'; // 'none' | 'branch' | 'cashier'
+
+function goBack(){
+  var o=null; try{ o=localStorage.getItem('pc_report_origin'); }catch(e){}
+  o=o||'Potato Corner Promotion System.html#Branch_View';
+  var page=''; var m=/#([A-Za-z_]+)/.exec(o); if(m) page=m[1];
+  try{ if(page && window.top && window.top!==window && typeof window.top.loadPage==='function'){ window.top.loadPage(page); return; } }catch(e){}
+  try{ (window.top||window).location.href=o; return; }catch(e){}
+  location.href=o;
+}
+
+function render(){
+  const main=document.getElementById('main');
+  if(!CTX){
+    document.getElementById('submitbar').style.display='none';
+    main.innerHTML=`<div class="noctx"><i class="fas fa-circle-question"></i>ไม่พบโปรโมชั่นที่จะแจ้ง<br><button class="btn btn-dark mt-3" onclick="goBack()">กลับไปหน้าโปรโมชั่น</button></div>`;
+    return;
+  }
+  const btns=CTX.buttons||[];
+  tagged = new Set(btns.length===1 ? [0] : []);
+  let pickHTML='';
+  if(btns.length>1) pickHTML += `<div class="pick" id="pickAll" onclick="toggleAll()"><span class="ico"><i class="fas fa-layer-group"></i></span><span class="txt"><div class="t1">ทุกปุ่ม (ทั้งแคมเปญ)</div></span><span class="chk"><i class="fas fa-check"></i></span></div>`;
+  btns.forEach((b,i)=> pickHTML += pickRow(i, b.sn||'-', b.code||''));
+  const subQ = btns.length>1 ? '<div class="step-sub">แตะปุ่มที่มีปัญหา — เลือกได้หลายปุ่ม</div>' : '';
+  const step1 = `
+    <div class="step">
+      <div class="step-q"><span class="no">1</span>ปุ่มไหนมีปัญหา?</div>
+      ${subQ}
+      <div class="pick-list" id="pickList">${pickHTML}</div>
+    </div>`;
+  const step2 = `
+    <div class="step">
+      <div class="step-q"><span class="no">2</span>เป็นปัญหาแบบไหน?</div>
+      <div class="step-sub">แตะเลือกปัญหา + ใส่รายละเอียดของแต่ละปุ่มได้</div>
+      <div id="issuesArea"></div>
+    </div>`;
+  main.innerHTML = ctxCard() + step1 + step2 + `<div id="routeBanner"></div>`;
+  document.getElementById('submitbar').style.display='block';
+  syncPicks();
+}
+function ctxCard(){
+  return `<div class="ctx">
+    <div class="nm">${CTX.campaign}</div>
+    <div class="meta">
+      <span class="mtag branch"><i class="fas fa-store"></i>${CTX.branch||'สาขาของคุณ'}</span>
+      <span class="mtag"><i class="fas fa-tag"></i>${CTX.promoType||'-'}</span>
+      ${CTX.saleMode?`<span class="mtag"><i class="fas fa-truck"></i>${CTX.saleMode}</span>`:''}
+      ${AUTH_MODE==='cashier'?'<span class="mtag" style="background:#eaf4ee;color:#9a6700"><i class="fas fa-id-badge" style="color:#c9870a"></i>\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e14\u0e49\u0e27\u0e22\u0e23\u0e2b\u0e31\u0e2a\u0e41\u0e04\u0e0a\u0e40\u0e0a\u0e35\u0e22\u0e23์</span>':''}
+    </div>
+  </div>`;
+}
+function pickRow(i,t1,t2){
+  return `<div class="pick" data-i="${i}" onclick="toggleBtn(${i})">
+    <span class="ico"><i class="fas fa-hand-pointer"></i></span>
+    <span class="txt"><div class="t1">${t1}</div>${t2?`<div class="t2">${t2}</div>`:''}</span>
+    <span class="chk"><i class="fas fa-check"></i></span>
+  </div>`;
+}
+function toggleBtn(i){ if(tagged.has(i)) tagged.delete(i); else tagged.add(i); syncPicks(); }
+function toggleAll(){ const n=(CTX.buttons||[]).length; if(tagged.size>=n) tagged.clear(); else tagged=new Set([...Array(n).keys()]); syncPicks(); }
+function syncPicks(){
+  const n=(CTX.buttons||[]).length;
+  document.querySelectorAll('#pickList .pick[data-i]').forEach(p=>p.classList.toggle('on', tagged.has(+p.dataset.i)));
+  const allRow=document.getElementById('pickAll'); if(allRow) allRow.classList.toggle('on', tagged.size===n && n>0);
+  renderIssues();
+}
+function targetIdxList(){
+  const n=(CTX.buttons||[]).length;
+  if(n<=1) return n===1 ? [0] : [];
+  return [...tagged].sort((a,b)=>a-b);
+}
+function renderIssues(){
+  const area=document.getElementById('issuesArea'); if(!area) return;
+  const list=targetIdxList();
+  Object.keys(issuesByBtn).forEach(k=>{ if(!list.includes(+k)) delete issuesByBtn[+k]; });
+  if(!list.length){ area.innerHTML='<div class="hint-empty"><i class="fas fa-arrow-up"></i>เลือกปุ่มที่มีปัญหาก่อน (ขั้นตอนที่ 1)</div>'; updateSend(); return; }
+  Object.keys(noteByBtn).forEach(k=>{ if(!list.includes(+k)) delete noteByBtn[+k]; });
+  Object.keys(detailByBtn).forEach(k=>{ if(!list.includes(+k)) delete detailByBtn[+k]; });
+  const multi=list.length>1;
+  area.innerHTML=list.map(idx=>{
+    const b=(CTX.buttons||[])[idx]||{sn:'-'};
+    const set=issuesByBtn[idx]||(issuesByBtn[idx]=new Set());
+    const incomplete = !detailComplete(idx);
+    const tiles=ISSUE_TYPES.map(it=>{ const on=set.has(it.k); const locked=incomplete&&!on;
+      return `<div class="tile ${on?'on':''} ${locked?'locked':''}" data-k="${it.k}" onclick="toggleIssue(this,${idx},'${it.k}')">
+        <span class="badge-chk"><i class="fas fa-check"></i></span>
+        <span class="ti"><i class="fas ${it.icon}"></i></span>
+        <span class="tl">${it.label}</span>
+      </div>`; }).join('');
+    const lockHint=`<div class="lock-hint" style="display:${incomplete?'flex':'none'}"><i class="fas fa-lock"></i>กรอกข้อมูลของปัญหาที่เลือกไว้ให้ครบก่อน จึงจะเลือกปัญหาถัดไปได้</div>`;
+    const hd=multi?`<div class="bgrp-hd"><i class="fas fa-hand-pointer"></i>${b.sn||'-'}${b.code?`<span class="bgrp-code">${b.code}</span>`:''}</div>`:'';
+    return `<div class="bgrp" data-idx="${idx}">${hd}<div class="tiles">${tiles}</div>${lockHint}${detailPanel(idx)}<textarea class="note bnote" placeholder="รายละเอียดของปุ่มนี้ (ถ้ามี)" oninput="setNote(${idx},this)">${escT(noteByBtn[idx]||'')}</textarea></div>`;
+  }).join('');
+  updateSend(); updateRouteBanner();
+}
+function detailPanel(idx){
+  const set=issuesByBtn[idx]; if(!set) return '';
+  const d=detailByBtn[idx]||(detailByBtn[idx]={});
+  let html='';
+  if(hasDetailType(set,'flavors')){
+    const b=(CTX.buttons||[])[idx]||{}; const ss=getSubset(b.code);
+    if(ss){
+      const chosen=(d.missing||[]).map(x=>x.code);
+      html += `<div class="detail-box">
+        <div class="detail-q"><i class="fas fa-mortar-pestle"></i>ผง/รสชาติที่ “ไม่มีปุ่ม” บน POS</div>
+        <div class="ss-tag"><i class="fas fa-link"></i>ปุ่มนี้ผูกกับ Subset <b>${ss.code}</b> · ${ss.name}</div>
+        <div class="detail-sub">แตะเลือกผงที่หายไป — ระบบจะแนบ <b>item code</b> ของผงไปให้ IT อัตโนมัติ ไม่ต้องค้นเอง</div>
+        <div class="flav-grid">${ss.flavors.map(f=>`<button type="button" class="flav ${chosen.includes(f.code)?'on':''}" onclick="toggleFlavor(${idx},'${f.code}')"><span class="fn">${f.name}${f.abbr?` <small style="color:#9a6700">(${f.abbr})</small>`:''}</span><span class="fc">${f.code}</span></button>`).join('')}</div>
+      </div>`;
+    } else {
+      html += `<div class="detail-box">
+        <div class="detail-q"><i class="fas fa-mortar-pestle"></i>ระบุผง/รสชาติที่ “ไม่มีปุ่ม” บน POS</div>
+        <div class="detail-sub">พิมพ์ชื่อผงที่หายไป เพื่อให้ IT เพิ่มปุ่มได้ทันที</div>
+        <div class="quick-row">${FLAVOR_QUICK.map(f=>`<button type="button" class="qchip" onclick="addFlavorChip(${idx},'${f}')">+ ${f}</button>`).join('')}</div>
+        <input class="detail-input" placeholder="เช่น ชีส, บาร์บีคิว, สาหร่าย (คั่นด้วย ,)" value="${escT(d.flavors||'')}" oninput="setDetail(${idx},'flavors',this.value)">
+      </div>`;
+    }
+  }
+  if(hasDetailType(set,'platform')){
+    const pls=d.platforms||[];
+    html += `<div class="detail-box chat">
+      <div class="detail-q"><i class="fas fa-motorcycle"></i>ราคาบนแอปเดลิเวอรีไม่ตรง <span class="ok-pos"><i class="fas fa-check me-1"></i>POS ตรงแล้ว</span></div>
+      <div class="detail-sub">เลือกแอปที่ราคาผิด แล้วกรอกราคาแยกของแต่ละแอป — เรื่องนี้ไม่ใช่งาน IT จะถูกส่งเข้า Team Chat ของทีมที่ดูแลราคาแพลตฟอร์มโดยตรง</div>
+      <div class="pf-chips">${PLATFORMS.map(p=>`<button type="button" class="pf ${pls.includes(p)?'on':''}" onclick="togglePlatform(${idx},'${p}',this)">${p}</button>`).join('')}</div>
+      ${pls.length ? pls.map(p=>piBlockHTML(idx,p)).join('') : '<div class="pf-note"><i class="fas fa-info-circle"></i>แตะเลือกแอปด้านบน แล้วกรอกราคาที่ถูกต้องของแต่ละแอป</div>'}
+    </div>`;
+  }
+  ISSUE_TYPES.forEach(it=>{
+    const cf=CORRECT_FIELDS[it.k]; if(!cf||!set.has(it.k)) return;
+    d.fix=d.fix||{}; if(!d.fix[it.k]) d.fix[it.k]={wrong:'', right:''};
+    const fx=d.fix[it.k]; const im=cf.numeric?'inputmode="numeric"':'';
+    html += `<div class="detail-box">
+      <div class="detail-q"><i class="fas ${cf.icon}"></i>${cf.q}</div>
+      ${cf.sub?`<div class="detail-sub">${cf.sub}</div>`:''}
+      <div class="pf-fld"><label>${cf.right.label}</label><input class="detail-input" ${im} placeholder="${cf.right.ph}" value="${escT(fx.right||'')}" oninput="setFix(${idx},'${it.k}','right',this.value)"></div>
+    </div>`;
+  });
+  return html;
+}
+function curVal(idx,k){
+  const b=(CTX.buttons||[])[idx]||{}; const ss=getSubset(b.code);
+  if(k==='PRICE_FULL') return (b.priceFull!=null&&b.priceFull!=='')?String(b.priceFull):'';
+  if(k==='PRICE_DISC') return (b.priceDisc!=null&&b.priceDisc!=='')?String(b.priceDisc):'';
+  if(k==='KITCHEN') return b.kitchen||'';
+  if(k==='FLAVOR_QTY') return (b.choose!=null&&b.choose!=='')?String(b.choose):'';
+  if(k==='FLAVOR_ABBR') return ss?ss.flavors.map(f=>f.abbr).filter(Boolean).join(', '):'';
+  if(k==='FLAVOR_OPT') return ss?ss.flavors.map(f=>f.name).filter(Boolean).join(', '):'';
+  return '';
+}
+function issueComplete(idx,k){
+  const d=detailByBtn[idx]||{}; const it=ISSUE_TYPES.find(x=>x.k===k);
+  if(it&&it.detail==='flavors'){ const b=(CTX.buttons||[])[idx]||{}; const ss=getSubset(b.code); return ss?((d.missing||[]).length>0):!!String(d.flavors||'').trim(); }
+  if(it&&it.detail==='platform'){ const pls=d.platforms||[]; if(!pls.length) return false; return pls.every(p=>{ const pi=(d.platformIssues||[]).find(x=>x.platform===p)||{}; return String(pi.correctPrice||'').trim(); }); }
+  if(CORRECT_FIELDS[k]){ const fx=(d.fix&&d.fix[k])||{}; return !!String(fx.right||'').trim(); }
+  return true;
+}
+function detailComplete(idx){ const set=issuesByBtn[idx]; if(!set||!set.size) return true; return [...set].every(k=>issueComplete(idx,k)); }
+function refreshLocks(){
+  document.querySelectorAll('.bgrp[data-idx]').forEach(g=>{ const idx=+g.dataset.idx; const ok=detailComplete(idx); const set=issuesByBtn[idx]||new Set();
+    g.querySelectorAll('.tile[data-k]').forEach(t=>{ const on=set.has(t.dataset.k); t.classList.toggle('locked', !ok && !on); });
+    const h=g.querySelector('.lock-hint'); if(h) h.style.display = ok?'none':'flex';
+  });
+  updateSend();
+}
+function setFix(idx,k,which,val){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); d.fix=d.fix||{}; (d.fix[k]=d.fix[k]||{})[which]=val; refreshLocks(); }
+function toggleIssue(el,idx,k){ const set=issuesByBtn[idx]||(issuesByBtn[idx]=new Set());
+  if(!set.has(k) && !detailComplete(idx)){ const g=el.closest('.bgrp'); const h=g&&g.querySelector('.lock-hint'); if(h){ h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash'); } return; }
+  if(set.has(k)) set.delete(k); else set.add(k); const it=ISSUE_TYPES.find(x=>x.k===k);
+  if((it&&it.detail)||CORRECT_FIELDS[k]) renderIssues(); else { el.classList.toggle('on'); refreshLocks(); updateRouteBanner(); } }
+function setNote(idx,el){ noteByBtn[idx]=el.value; }
+function setDetail(idx,key,val){ (detailByBtn[idx]||(detailByBtn[idx]={}))[key]=val; updateRouteBanner(); }
+function togglePlatform(idx,p,el){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); d.platforms=d.platforms||[]; d.platformIssues=d.platformIssues||[]; const i=d.platforms.indexOf(p); if(i>=0){ d.platforms.splice(i,1); const j=d.platformIssues.findIndex(x=>x.platform===p); if(j>=0) d.platformIssues.splice(j,1); } else { d.platforms.push(p); if(!d.platformIssues.find(x=>x.platform===p)) d.platformIssues.push({platform:p,appPrice:'',correctPrice:''}); } renderIssues(); }
+function platformsForSaleMode(sm){ sm=String(sm||''); const ALL=PLATFORMS.slice();
+  if(/all channel|all delivery|delivery|ทุกช่อง|เดลิเวอรี/i.test(sm)) return ALL;
+  const found=ALL.filter(p=> sm.toLowerCase().includes(p.toLowerCase()) || (p==='LINE MAN' && /line ?man/i.test(sm)) || (p==='foodpanda' && /panda/i.test(sm)));
+  if(found.length) return found;
+  if(/take ?away|หน้าร้าน/i.test(sm)) return [];
+  return ALL;
+}
+function piBlockHTML(idx,plat){ const d=detailByBtn[idx]||{}; const pi=(d.platformIssues||[]).find(x=>x.platform===plat)||{};
+  return `<div class="pi-block"><div class="pi-hd"><i class="fas fa-motorcycle"></i>${plat}</div>
+    <div class="pf-fld"><label>ราคาที่ถูกต้อง (฿)</label><input class="detail-input" inputmode="numeric" value="${escT(pi.correctPrice||'')}" oninput="setPI(${idx},'${plat}','correctPrice',this.value)" placeholder="เช่น 159"></div>
+    </div>`;
+}
+function togglePI(idx,plat){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); d.platformIssues=d.platformIssues||[]; const i=d.platformIssues.findIndex(x=>x.platform===plat); if(i>=0) d.platformIssues.splice(i,1); else d.platformIssues.push({platform:plat,appPrice:'',correctPrice:''}); renderIssues(); }
+function setPI(idx,plat,k,v){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); const pi=(d.platformIssues=d.platformIssues||[]).find(x=>x.platform===plat); if(pi) pi[k]=v; refreshLocks(); }
+function addFlavorChip(idx,f){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); const cur=(d.flavors||'').split(',').map(s=>s.trim()).filter(Boolean); if(!cur.includes(f)) cur.push(f); d.flavors=cur.join(', '); renderIssues(); }
+function toggleFlavor(idx,code){ const b=(CTX.buttons||[])[idx]||{}; const ss=getSubset(b.code); if(!ss) return; const f=ss.flavors.find(x=>x.code===code); if(!f) return; const d=detailByBtn[idx]||(detailByBtn[idx]={}); d.subset={code:ss.code,name:ss.name}; d.missing=d.missing||[]; const i=d.missing.findIndex(x=>x.code===code); if(i>=0) d.missing.splice(i,1); else d.missing.push({name:f.name,abbr:f.abbr||'',code:f.code}); renderIssues(); }
+function cleanDetail(idx){ const set=issuesByBtn[idx]||new Set(); const d=detailByBtn[idx]||{}; const out={};
+  if(hasDetailType(set,'flavors')){ const b=(CTX.buttons||[])[idx]||{}; const ss=getSubset(b.code);
+    if(ss){ if((d.missing||[]).length){ out.subset=d.subset||{code:ss.code,name:ss.name}; out.missing=d.missing.slice(); } }
+    else if((d.flavors||'').trim()) out.flavors=d.flavors.trim();
+  }
+  if(hasDetailType(set,'platform')){ out.platforms=(d.platforms||[]).slice(); const pis=(d.platformIssues||[]).filter(x=>out.platforms.includes(x.platform)).map(x=>({platform:x.platform,appPrice:(x.appPrice||'').trim(),correctPrice:(x.correctPrice||'').trim()})); if(pis.length) out.platformIssues=pis; }
+  const fixOut={};
+  ISSUE_TYPES.forEach(it=>{ if(!CORRECT_FIELDS[it.k]||!set.has(it.k)) return; const fx=(d.fix&&d.fix[it.k])||{}; const w=(fx.wrong||'').trim(), r=(fx.right||'').trim(); if(w||r) fixOut[it.k]={label:it.label, wrong:w, right:r}; });
+  if(Object.keys(fixOut).length) out.fix=fixOut;
+  return out;
+}
+function ticketRoutes(list){
+  const cfg=notifyCfg();
+  const byDept={};
+  list.forEach(idx=>{ const set=issuesByBtn[idx]; if(!set) return;
+    ISSUE_TYPES.filter(it=>set.has(it.k)).forEach(it=>{
+      let depts=(it.depts&&it.depts.length)?it.depts:['it'];
+      const chans=it.channels||{email:true,chat:false,line:false};
+      depts.forEach(dk=>{ const e=byDept[dk]||(byDept[dk]={email:false,chat:false,line:false}); ['email','chat','line'].forEach(c=>{ if(chans[c]) e[c]=true; }); });
+    });
+  });
+  return Object.keys(byDept).map(dk=>{ const d=(cfg.depts&&cfg.depts[dk])||{}; const e=byDept[dk]; if(!e.email&&!e.chat&&!e.line) e.email=true;
+    return { event:'report', label:'แจ้งปัญหาปุ่ม POS', channels:{email:e.email,chat:e.chat,line:e.line}, team:d.label||dk, group:d.group||'', lineGroup:d.lineGroup||d.group||'' };
+  });
+}
+function routeMeta(evKey,cfg){ const ev=cfg.events[evKey]||{}; const ch=ev.channels||{email:(ev.channel==='email'||ev.channel==='both'),chat:(ev.channel==='chat'||ev.channel==='both'),line:false}; let depts=ev.depts||(ev.dept?[ev.dept]:[]); if(!depts.length) depts=[null]; return depts.map(dk=>{ const d=(dk&&cfg.depts&&cfg.depts[dk])||{}; return { event:evKey, label:ev.label||evKey, channels:ch, team:d.label||'', group:d.group||'', lineGroup:d.lineGroup||d.group||'' }; }); }
+function routeLine(r){
+  const on=[]; if(r.channels.email) on.push(['mail','fas fa-envelope','Email','#c9870a']); if(r.channels.chat) on.push(['chat','fas fa-comments','Team Chat','#2f5fb3']); if(r.channels.line) on.push(['line','fab fa-line','LINE','#06c755']);
+  if(!on.length) on.push(['mail','fas fa-envelope','Email','#c9870a']);
+  const chips=on.map(([cls,ic,lb])=>`<span class="ch ${cls}"><i class="${ic}"></i>${lb}</span>`).join('');
+  const dest = (r.channels.chat||r.channels.line) ? `กลุ่ม “${(r.channels.line&&!r.channels.chat)?r.lineGroup:r.group}” · แจ้งเตือน @${r.team}` : `อีเมลทีม ${r.team}`;
+  return `<div class="route-line" style="--lc:${on[0][3]}"><div class="rl-ev">${r.label}</div><div class="rl-to">${chips}<span style="color:#9aa1aa">→</span>${dest}</div></div>`;
+}
+function updateRouteBanner(){
+  const el=document.getElementById('routeBanner'); if(!el) return;
+  const routes=ticketRoutes(targetIdxList());
+  el.innerHTML = routes.length ? `<div class="route-wrap"><div class="route-head">เรื่องนี้จะถูกแจ้งเตือนไปที่</div>${routes.map(routeLine).join('')}</div>` : '';
+}
+function escT(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function totalIssues(){ return targetIdxList().reduce((s,i)=> s+((issuesByBtn[i]&&issuesByBtn[i].size)||0), 0); }
+function updateSend(){ const n=(CTX.buttons||[]).length; const okBtn = n<=1 || tagged.size>0; const list=targetIdxList(); const complete=list.every(detailComplete); document.getElementById('btnSend').disabled = !(okBtn && totalIssues()>0 && complete); }
+
+function submitReport(){
+  const btns=CTX.buttons||[];
+  const list=targetIdxList();
+  if(btns.length>1 && tagged.size===0){ Swal.fire({icon:'warning',title:'เลือกปุ่มที่มีปัญหา',text:'แตะปุ่มที่มีปัญหาอย่างน้อย 1 ปุ่ม',confirmButtonColor:'#2e934a'}); return; }
+  if(totalIssues()===0){ Swal.fire({icon:'warning',title:'เลือกประเภทปัญหา',text:'เลือกปัญหาอย่างน้อย 1 ข้อ',confirmButtonColor:'#2e934a'}); return; }
+  const missing = list.find(idx=> !(issuesByBtn[idx]&&issuesByBtn[idx].size));
+  if(missing!==undefined){ const b=btns[missing]||{}; Swal.fire({icon:'warning',title:'ยังเลือกปัญหาไม่ครบ',html:`ปุ่ม <b>${b.sn||'-'}</b> ยังไม่ได้เลือกปัญหา`,confirmButtonColor:'#2e934a'}); return; }
+  for(const idx of list){ const set=issuesByBtn[idx]; if(!set) continue; const b=btns[idx]||{};
+    if(hasDetailType(set,'flavors')){ const ss=getSubset((btns[idx]||{}).code); const okF = ss ? ((detailByBtn[idx]||{}).missing||[]).length>0 : ((detailByBtn[idx]||{}).flavors||'').trim(); if(!okF){ Swal.fire({icon:'warning',title:'ระบุผงที่ไม่มี',html:`ปุ่ม <b>${b.sn||'-'}</b> เลือก “ไม่มีปุ่มผงรสชาติ” — กรุณาเลือก/ระบุผงที่หายไป`,confirmButtonColor:'#2e934a'}); return; } }
+    if(hasDetailType(set,'platform') && !((detailByBtn[idx]||{}).platforms||[]).length){ Swal.fire({icon:'warning',title:'เลือกแพลตฟอร์ม',html:`ปุ่ม <b>${b.sn||'-'}</b> เลือก “ราคาแอปเดลิเวอรีไม่ตรง” — กรุณาเลือกแอปที่ราคาผิดอย่างน้อย 1 แอป`,confirmButtonColor:'#2e934a'}); return; }
+  }
+  requireAuth(reporter=> finalizeReport(list, reporter));
+}
+const CASHIER_KEY='pc_cashier_users';
+const CASHIER_SEED=[
+  {code:'4821', name:'สมชาย ใจดี',    password:'1234', position:'ผู้จัดการสาขา', branch:'101 · Central World'},
+  {code:'5510', name:'มาลี สดใส',     password:'1234', position:'แคชเชียร์',     branch:'101 · Central World'},
+  {code:'6093', name:'อนุชา รักงาน',  password:'1234', position:'ผู้ช่วยผู้จัดการ', branch:'088 · Mega Bangna'},
+];
+function loadCashiers(){ let a; try{ a=JSON.parse(localStorage.getItem(CASHIER_KEY)); }catch(e){ a=null; }
+  if(!Array.isArray(a)||!a.length){ a=CASHIER_SEED.slice(); localStorage.setItem(CASHIER_KEY, JSON.stringify(a)); } return a; }
+/* ผู้จัดการเขต (Area) / ส่วนกลาง = ดึงชื่อจากบัญชีที่ล็อกอิน (ไม่ต้องกรอกรหัส) · พนักงานสาขา = กรอกเองเหมือนเดิม */
+function pcReporterArea(){
+  try{
+    var role=(localStorage.getItem('pc_role')||'').trim();
+    var name=(localStorage.getItem('pc_userName')||'').trim();
+    // OP = ผู้จัดการเขต (Area) · รวมบทบาทส่วนกลาง = auto-fill (ไม่ต้องกรอกรหัสพนักงาน)
+    // พนักงานหน้าสาขา (ล็อกอินด้วยรหัสแคชเชียร์ / ไม่มี role เหล่านี้) = กรอกเองเหมือนเดิม
+    var AREA_ROLES=['OP','Area','Admin','Admin HQ','MKT','IT','ACC','BD','RD'];
+    if(name && AREA_ROLES.indexOf(role)>=0) return {name:name, role:(role==='OP'?'Area':role)};
+  }catch(e){}
+  return null;
+}
+/* ทะเบียนพนักงานสาขา (รหัส→ชื่อ) สะสมเอง — ยังไม่มี API ฐานข้อมูลพนักงาน · ซิงค์ผ่าน cloud (pc_branch_staff_roster) */
+function pcRosterLoad(){ try{ return JSON.parse(localStorage.getItem('pc_branch_staff_roster'))||{}; }catch(e){ return {}; } }
+function pcRosterSave(code,name){ code=(code||'').trim(); if(!code||!name) return; var r=pcRosterLoad(); r[code]={ name:name, last:new Date().toISOString(), count:((r[code]&&r[code].count)||0)+1 }; try{ localStorage.setItem('pc_branch_staff_roster', JSON.stringify(r)); }catch(e){} }
+function pcRosterLookup(emp){ var c=(emp.value||'').trim(); var nm=document.getElementById('swName'), hint=document.getElementById('swHint'); var roster=pcRosterLoad(); var hit=(c.length>=3)?roster[c]:null; if(hit){ if(nm && (!nm.value.trim() || nm.value===emp.dataset.sug)){ nm.value=hit.name; emp.dataset.sug=hit.name; } if(hint){ hint.textContent='↳ เคยแจ้งด้วยรหัสนี้: '+hit.name+' — เติมชื่อให้แล้ว (แก้ได้)'; hint.style.display='block'; } } else if(hint){ hint.style.display='none'; } }
+function requireAuth(cb){
+  // พนักงานสาขา = บังคับกรอกรหัสพนักงาน + ชื่อ-นามสกุล ทุกครั้ง · Area = auto-fill
+  const _area=pcReporterArea();
+  if(_area){
+    Swal.fire({ title:'ยืนยันการแจ้ง',
+      html:`<div style="text-align:left;font-size:14px">
+        <div style="background:#eafaf0;border:1px solid #b6e6c7;border-radius:8px;padding:10px 12px">
+          <div style="font-size:12px;color:#6b7280;margin-bottom:2px">แจ้งในนาม (จากบัญชีที่ล็อกอิน — ไม่ต้องกรอกรหัสพนักงาน)</div>
+          <b style="font-size:15px">${escT(_area.name)}</b> <span style="color:#2e934a;font-weight:700">· ${escT(_area.role)}</span>
+        </div></div>`,
+      confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน + ส่ง', showCancelButton:true, cancelButtonText:'ยกเลิก'
+    }).then(r=>{ if(r.isConfirmed) cb(`${_area.name} (${_area.role})`); });
+    return;
+  }
+  Swal.fire({ title:'ยืนยันผู้แจ้ง',
+    html:`<div style="text-align:left;font-size:14px"><label style="font-weight:600;display:block;margin:2px 0 4px">รหัสพนักงาน <span style="color:#c0392b">*</span></label><input id="swEmp" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="PCxxxx" oninput="pcRosterLookup(this)"><div id="swHint" style="display:none;font-size:12px;color:#2e934a;margin:-8px 0 10px 2px"></div><label style="font-weight:600;display:block;margin:2px 0 4px">ชื่อ-นามสกุล <span style="color:#c0392b">*</span></label><input id="swName" class="swal2-input" style="margin:0;width:100%" placeholder="ชื่อ นามสกุล"></div>`,
+    confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน + ส่ง', showCancelButton:true, cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const emp=(document.getElementById('swEmp').value||'').trim(); const nm=(document.getElementById('swName').value||'').trim().replace(/\s+/g,' '); if(!emp){ Swal.showValidationMessage('กรอกรหัสพนักงาน'); return false; } if(!/^[A-Za-z\u0E00-\u0E7F.]+(?:\s[A-Za-z\u0E00-\u0E7F.]+)+$/.test(nm)){ Swal.showValidationMessage('กรอกชื่อ-นามสกุลให้ครบ (ชื่อจริงและนามสกุล ตัวอักษรเท่านั้น เว้นวรรคระหว่างชื่อกับสกุล)'); return false; } const _reg=pcRosterLoad()[emp]; if(_reg && _reg.name && _reg.name!==nm){ Swal.showValidationMessage('รหัส '+emp+' ลงทะเบียนกับ "'+_reg.name+'" แล้ว — รหัสพนักงานห้ามซ้ำ (ใช้รหัสของตัวเอง หรือแก้ชื่อให้ตรง)'); return false; } pcRosterSave(emp,nm); return `${nm} (${emp})`; }
+  }).then(r=>{ if(r.isConfirmed) cb(r.value); }); return;
+  if(AUTH_MODE==='none'){ cb('— ไม่ระบุผู้แจ้ง —'); return; }
+  if(AUTH_MODE==='branch'){
+    Swal.fire({ title:'Login อีเมลสาขา',
+      html:`<div style="text-align:left;font-size:14px">
+        <label style="font-weight:600;display:block;margin:2px 0 4px">อีเมล Outlook ของสาขา <span style="color:#c0392b">*</span></label>
+        <input id="swEmail" class="swal2-input" style="margin:0 0 12px;width:100%" placeholder="central.world@potatocornerth.com">
+        <label style="font-weight:600;display:block;margin:2px 0 4px">รหัสผ่าน <span style="color:#c0392b">*</span></label>
+        <input id="swPw" type="password" class="swal2-input" style="margin:0;width:100%" placeholder="••••••">
+      </div>`,
+      confirmButtonColor:'#2e934a', confirmButtonText:'Login + ส่ง', showCancelButton:true, cancelButtonText:'ยกเลิก',
+      preConfirm:()=>{ const e=(document.getElementById('swEmail').value||'').trim().toLowerCase(); const p=(document.getElementById('swPw').value||'').trim(); if(!e||!p){ Swal.showValidationMessage('กรอกอีเมลและรหัสผ่าน'); return false; } if(!e.endsWith('@potatocornerth.com')){ Swal.showValidationMessage('ต้องเป็นอีเมล @potatocornerth.com เท่านั้น'); return false; } return e; }
+    }).then(r=>{ if(r.isConfirmed) cb(r.value); });
+    return;
+  }
+  Swal.fire({ title:'ยืนยันแคชเชียร์',
+    html:`<input id="swC" class="swal2-input" placeholder="รหัสแคชเชียร์ (User Code)" inputmode="numeric"><input id="swP" type="password" class="swal2-input" placeholder="รหัสผ่าน">`,
+    confirmButtonColor:'#2e934a', confirmButtonText:'ยืนยัน', showCancelButton:true, cancelButtonText:'ยกเลิก',
+    preConfirm:()=>{ const c=(document.getElementById('swC').value||'').trim(); const p=(document.getElementById('swP').value||'').trim(); if(!c||!p){ Swal.showValidationMessage('กรอกรหัสแคชเชียร์และรหัสผ่าน'); return false; } const u=loadCashiers().find(x=>String(x.code)===c); if(!u){ Swal.showValidationMessage('ไม่พบรหัสแคชเชียร์นี้ในระบบ'); return false; } if(String(u.password)!==p){ Swal.showValidationMessage('รหัสผ่านไม่ถูกต้อง'); return false; } return u; }
+  }).then(r=>{ if(r.isConfirmed){ const u=r.value; cb(`${u.name} (${u.code})${u.branch?' · '+u.branch:''}`); } });
+}
+function finalizeReport(list, reporter){
+  const btns=CTX.buttons||[];
+  const buttons = list.map(idx=>{
+    const b=btns[idx]||{};
+    const labels=ISSUE_TYPES.filter(it=>issuesByBtn[idx].has(it.k)).map(it=>it.label);
+    return { sn:b.sn||'', code:b.code||'', issues:labels, note:(noteByBtn[idx]||'').trim(), detail:cleanDetail(idx) };
+  });
+  const routes=ticketRoutes(list);
+  const all=loadTickets();
+  const id=nextTid(all);
+  const now=Date.now();
+  var _az={}; try{ _az=JSON.parse(localStorage.getItem('pc_area_zones'))||{}; }catch(e){}
+  var _code=(CTX.branchCode||'').trim(); var _azr=_az[_code]; if(!_azr){ var _m=/PC\d+/i.exec((CTX.branch||'')+' '+_code); if(_m) _azr=_az[_m[0].toUpperCase()]; } _azr=_azr||{};
+  var _area=String(_azr.area||''), _zone=String(_azr.zone||'');
+  all.unshift({ id, branchCode:CTX.branchCode||'', branch:CTX.branch||'', area:_area, zone:_zone, campaign:CTX.campaign, promoType:CTX.promoType||'',
+    buttons, reporter, routes, status:'OPEN', createdAt:now, log:[{status:'OPEN', at:now, by:'สาขา', note:''}] });
+  saveTickets(all);
+  // ⭐ ยิงเข้าระบบแจ้งเตือนกลาง (กระดิ่ง/log/ซิงค์) — ใช้ routing จาก Report Buttons (per-ปัญหา → แผนก/ช่องทาง) เป็นแหล่งเดียว
+  try{
+    var nlog=JSON.parse(localStorage.getItem('pc_notify_log')||'[]'); if(!Array.isArray(nlog)) nlog=[];
+    var chAny={ email:routes.some(function(r){return r.channels.email;}), chat:routes.some(function(r){return r.channels.chat;}), line:routes.some(function(r){return r.channels.line;}) };
+    var issueSum=[]; buttons.forEach(function(b){ (b.issues||[]).forEach(function(x){ if(issueSum.indexOf(x)<0) issueSum.push(x); }); });
+    nlog.unshift({ id:'N'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      key:'report_general', label:'แจ้งปัญหาปุ่ม POS',
+      text:(_area?'['+_area+(_zone?' · โซน '+_zone:'')+'] ':'')+'สาขา '+(CTX.branch||CTX.branchCode||'-')+' แจ้ง '+buttons.length+' ปุ่ม'+(issueSum.length?(' — '+issueSum.slice(0,3).join(', ')):'')+(CTX.campaign?(' · '+CTX.campaign):''),
+      at:new Date().toISOString(), by:reporter||'สาขา',
+      channels:chAny, teams:routes.map(function(r){return r.team;}).concat(['operation']), area:_area, zone:_zone, read:false });
+    localStorage.setItem('pc_notify_log', JSON.stringify(nlog.slice(0,200)));
+  }catch(e){}
+  localStorage.removeItem('pc_report_ctx');
+  const routeHTML = routes.map(r=>{ const parts=[]; if(r.channels.email) parts.push('<i class="fas fa-envelope" style="color:#c9870a"></i> อีเมลทีม '+r.team); if(r.channels.chat) parts.push('<i class="fas fa-comments" style="color:#2f5fb3"></i> กลุ่มแชท “'+r.group+'”'); if(r.channels.line) parts.push('<i class="fab fa-line" style="color:#06c755"></i> กลุ่ม LINE “'+r.lineGroup+'”'); if(!parts.length) parts.push('<i class="fas fa-envelope" style="color:#c9870a"></i> อีเมลทีม '+r.team); return '<div style="margin-top:6px">'+parts.join('<br>')+'</div>'; }).join('');
+  Swal.fire({ icon:'success', title:'ส่งแจ้งปัญหาแล้ว',
+    html:`เลขที่ <b>${id}</b> · ${buttons.length} ปุ่ม<br><span style="font-size:13px;color:#6b7280">แจ้งเตือนถูกส่งไปที่:</span>${routeHTML}`,
+    confirmButtonColor:'#2e934a', confirmButtonText:'<i class="fas fa-clipboard-list me-1"></i> ดูสถานะที่แจ้ง', allowOutsideClick:false
+  }).then(()=> location.href='Branch Tickets.html');
+}
+render();
+</script>
+</body>
+</html>

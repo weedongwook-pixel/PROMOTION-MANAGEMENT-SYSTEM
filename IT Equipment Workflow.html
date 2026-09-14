@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT · อุปกรณ์ — Workflow & Roadmap</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{ --green:#1D8348; --yellow:#F4D03F; --dark:#1A1A1A; --soft:#f8fafc; --mut:#64748b; --line:#e2e8f0; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Kanit',sans-serif; background:#eef1f5; color:#1a1d20; margin:0; padding:28px 18px 80px; }
+  .doc{ max-width:980px; margin:0 auto; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+
+  .head{ background:var(--yellow); border-bottom:6px solid var(--green); border-radius:22px 22px 0 0; padding:34px 38px; }
+  .head h1{ margin:0; font-size:1.7rem; font-weight:800; color:var(--dark); }
+  .head .sub{ margin-top:6px; color:#5a4a00; font-weight:500; }
+  .head .meta{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+  .head .chip{ background:rgba(29,131,72,.14); color:#176b3a; font-weight:700; font-size:.8rem; padding:5px 13px; border-radius:999px; }
+
+  .body{ background:#fff; border-radius:0 0 22px 22px; padding:34px 38px 44px; box-shadow:0 16px 44px rgba(0,0,0,.08); }
+  h2{ font-size:1.15rem; font-weight:800; color:var(--green); margin:34px 0 14px; display:flex; align-items:center; gap:10px; padding-bottom:9px; border-bottom:2px solid var(--line); }
+  h2:first-child{ margin-top:0; }
+  h2 .n{ background:var(--green); color:#fff; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:.9rem; }
+  p{ line-height:1.65; color:#33373d; }
+
+  /* flow diagram */
+  .flow{ display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin:6px 0 4px; }
+  .fstep{ flex:1; min-width:150px; background:var(--soft); border:1.5px solid var(--line); border-radius:14px; padding:15px 14px; text-align:center; position:relative; }
+  .fstep .ic{ width:42px; height:42px; border-radius:11px; background:#eafaf1; color:var(--green); display:flex; align-items:center; justify-content:center; font-size:1.15rem; margin:0 auto 9px; }
+  .fstep .t{ font-weight:700; font-size:.92rem; line-height:1.25; }
+  .fstep .s{ font-size:.74rem; color:var(--mut); margin-top:4px; }
+  .farrow{ display:flex; align-items:center; color:var(--green); font-size:1.2rem; padding:0 6px; }
+  @media(max-width:720px){ .farrow{ transform:rotate(90deg); padding:8px 0; width:100%; justify-content:center; } .fstep{ flex:1 1 100%; } }
+
+  table{ width:100%; border-collapse:collapse; margin:6px 0; font-size:.9rem; }
+  th{ background:var(--dark); color:#fff; text-align:left; padding:11px 13px; font-weight:700; font-size:.8rem; }
+  th:first-child{ border-radius:10px 0 0 0; } th:last-child{ border-radius:0 10px 0 0; }
+  td{ padding:11px 13px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td{ background:#fafbfc; }
+  .pill{ font-size:.72rem; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; display:inline-block; }
+  .pill.done{ background:#e7f6ee; color:#1d7a4d; }
+  .pill.mock{ background:#fff4e0; color:#9a6700; }
+  .pill.todo{ background:#fdecea; color:#c0392b; }
+  code{ font-family:'JetBrains Mono',monospace; background:#f1f4f7; border:1px solid #e3e7ec; border-radius:6px; padding:1px 6px; font-size:.82rem; color:#2a3038; }
+
+  .check{ list-style:none; padding:0; margin:6px 0; }
+  .check li{ display:flex; gap:11px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line); line-height:1.5; }
+  .check li i{ margin-top:3px; flex:none; }
+  .check li i.ok{ color:var(--green); } .check li i.todo{ color:#c0392b; }
+  .check li .tag{ font-size:.7rem; font-weight:700; color:var(--mut); background:#f1f4f7; border-radius:6px; padding:1px 7px; margin-left:6px; }
+
+  .note{ background:#fffbe9; border:1px solid #f4e2a0; border-left:5px solid var(--yellow); border-radius:10px; padding:14px 16px; margin:14px 0; font-size:.9rem; line-height:1.6; }
+  .note b{ color:#8a6d00; }
+  .cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:720px){ .cols{ grid-template-columns:1fr; } .head,.body{ padding-left:20px; padding-right:20px; } }
+  .kv{ background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .kv h4{ margin:0 0 8px; font-size:.92rem; color:var(--dark); }
+  .kv div{ font-size:.84rem; color:#444; padding:4px 0; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="head">
+    <h1><i class="fas fa-screwdriver-wrench"></i> งาน IT · อุปกรณ์ — Workflow &amp; Roadmap</h1>
+    <div class="sub">สรุปสถานะระบบจัดการทรัพย์สิน/อุปกรณ์ POS ของ Rocks PC · สิ่งที่ทำแล้ว และสิ่งที่ต้องทำต่อ</div>
+    <div class="meta">
+      <span class="chip"><i class="fas fa-circle-check"></i> ต่อเข้าระบบจริงแล้ว (shell + Form IT + สิทธิ์)</span>
+      <span class="chip"><i class="fas fa-database"></i> ยังเป็น mock data (localStorage)</span>
+      <span class="chip"><i class="fas fa-crown"></i> Shop Master = ตัวหลัก ขับทะเบียน</span>
+      <span class="chip">อัปเดต มิ.ย. 2026 · รอบ 2</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <h2><span class="n">1</span> ภาพรวม Loop การทำงาน</h2>
+    <p>วงจรหลักของงานอุปกรณ์ — เชื่อมฟอร์มแจ้งจากสาขา เข้ากับทะเบียนเครื่องกลาง (<code>store.assets</code> 319 เครื่อง):</p>
+    <div class="flow">
+      <div class="fstep"><div class="ic"><i class="fas fa-triangle-exclamation"></i></div><div class="t">สาขาแจ้งเปลี่ยนเครื่อง</div><div class="s">DeviceSwap (ชำรุด/สูญหาย)</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-list-check"></i></div><div class="t">IT เห็นคิวงาน</div><div class="s">Dashboard · Pending Tickets</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-truck-fast"></i></div><div class="t">จ่ายเครื่อง + ส่ง</div><div class="s">Stock Out · KEX/Lala/Office</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-database"></i></div><div class="t">อัปเดตทะเบียน</div><div class="s">Asset Register</div></div>
+    </div>
+    <p style="margin-top:14px;"><b>เสริม:</b> <i class="fas fa-warehouse" style="color:var(--green)"></i> Stock In เติมเครื่องสำรอง · <i class="fas fa-id-card" style="color:var(--green)"></i> Asset ID Card ค้นว่าใครถือ Serial ไหน · <i class="fas fa-clipboard-check" style="color:var(--green)"></i> CMPOS Form บันทึกเครื่องติดตั้งใหม่เข้าทะเบียน</p>
+
+    <div class="note" style="background:#eef7f1;border-color:#bfe3cd;border-left-color:var(--green)">
+      <b style="color:#176b3a">อัปเดตรอบ 2 (มิ.ย. 2026):</b> ตอนนี้ <b>Shop Master = ตัวหลัก</b> — ทุกการเปิด/ปิด/เปลี่ยนเครื่อง/ย้าย/recode ที่ Shop Master จะไหลไปอัปเดตทะเบียนเครื่องอัตโนมัติ (ผ่าน drift engine) · ดูรายละเอียดข้อ 6–7 ด้านล่าง</div>
+
+    <h2><span class="n">2</span> หน้าทั้งหมดในโมดูล (ปัจจุบัน)</h2>
+    <table>
+      <thead><tr><th>หน้า / ไฟล์</th><th>หน้าที่</th><th>แหล่งข้อมูล</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td><b>ITForms</b><br><span class="mono" style="font-size:.76rem">pages/ITForms.html</span></td><td>หน้าเลือกฟอร์ม IT (chooser) — กรองตามสิทธิ์</td><td>—</td><td><span class="pill done">ใช้งานได้</span></td></tr>
+        <tr><td><b>CmposForm</b><br><span class="mono" style="font-size:.76rem">pages/CmposForm.html</span></td><td>ฟอร์มส่ง/ติดตั้งเครื่อง CMPOS → เขียนเข้าทะเบียน Asset</td><td><code>processInstallation</code> · <code>store.assets</code></td><td><span class="pill done">wire จริง (mock-backend)</span></td></tr>
+        <tr><td><b>Maintenance</b><br><span class="mono" style="font-size:.76rem">pages/Maintenance.html</span></td><td>แจ้งซ่อม / Audit หน้างาน</td><td>mock</td><td><span class="pill mock">mock</span></td></tr>
+        <tr><td><b>DeviceSwap</b> <span style="color:var(--green)">★ใหม่</span><br><span class="mono" style="font-size:.76rem">pages/DeviceSwap.html</span></td><td>สาขาแจ้งขอเปลี่ยนเครื่อง (ชำรุด/สูญหาย) + แนบรูป</td><td><code>pc_device_swap_requests</code> (localStorage)</td><td><span class="pill mock">mock · เก็บ localStorage</span></td></tr>
+        <tr><td><b>AssetLogistics</b> <span style="color:var(--green)">★ใหม่</span><br><span class="mono" style="font-size:.76rem">pages/AssetLogistics.html</span></td><td>Dashboard + Stock In/Out + จ่ายเครื่อง + ฉลากส่ง + Asset ID Card</td><td>อ่าน <code>getAssetInventory()</code> จริง · เขียน <code>pc_asset_stock</code> / <code>pc_asset_dispatch</code></td><td><span class="pill mock">mock · scaffold</span></td></tr>
+        <tr><td><b>Asset</b><br><span class="mono" style="font-size:.76rem">pages/Asset.html</span></td><td>ทะเบียนเครื่อง + ตาราง MA + drift engine</td><td><code>getAssetInventory</code> · <code>getAssetDrift</code> · <code>store.assets</code></td><td><span class="pill done">wire จริง (mock-backend)</span></td></tr>
+        <tr><td><b>Plan2026 / ITPlan</b></td><td>แผนงาน/งบ IT ปี 2026</td><td><code>plan2026</code></td><td><span class="pill todo">จะรื้อทำใหม่ (Excel-like) · ดูข้อ 7</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2><span class="n">3</span> สถานะ — ทำแล้ว vs ต้องทำต่อ</h2>
+    <div class="cols">
+      <div>
+        <h4 style="color:var(--green);margin:0 0 8px;"><i class="fas fa-circle-check"></i> ทำแล้ว</h4>
+        <ul class="check">
+          <li><i class="fas fa-check ok"></i> หน้า DeviceSwap + AssetLogistics ต่อเข้า shell, Form IT, สิทธิ์ Admin/IT</li>
+          <li><i class="fas fa-check ok"></i> Loop ครบ: ฟอร์มแจ้ง → คิว Dashboard → Stock Out → ตัดสต๊อก/ปิด ticket</li>
+          <li><i class="fas fa-check ok"></i> ดึงทะเบียนจริง <code>getAssetInventory()</code> (319 เครื่อง) มาโชว์ Dashboard</li>
+          <li><i class="fas fa-check ok"></i> สาขาจริง 226 จาก <code>PC_BRANCH_MASTER</code></li>
+          <li><i class="fas fa-check ok"></i> ฉลากส่ง KEX/Lalamove + ใบส่งภายใน (Office) + พิมพ์</li>
+          <li><i class="fas fa-check ok"></i> ทุกฟอร์ม IT responsive (มือถือ/แท็บเล็ต/เดสก์ท็อป)</li>
+          <li><i class="fas fa-check ok"></i> <b>RD เคสสติ๊กเกอร์ v2</b> — recode / เปลี่ยนเครื่อง / ย้ายข้ามสาขา / ปิด · จัดกลุ่มตามผลต่อสติ๊กเกอร์</li>
+          <li><i class="fas fa-check ok"></i> <b>Shop Master ขับทะเบียน</b> — drift rule <code>CLOSED</code> (ปิด→retire) + กัน NEW/SWAP สาขาปิด</li>
+          <li><i class="fas fa-check ok"></i> เครื่องพิมพ์ (EPSON แคชเชียร์ / VPOS ครัว) ใน Shop Master + ดึงจากทะเบียนอัตโนมัติ</li>
+          <li><i class="fas fa-check ok"></i> Reconcile Excel — เทียบทะเบียน↔Shop Master + Forecast Plan</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:#c0392b;margin:0 0 8px;"><i class="fas fa-list-check"></i> ต้องทำต่อ (เมื่อกลับมา)</h4>
+        <ul class="check">
+          <li><i class="fas fa-circle-dot todo"></i> เพิ่ม backend จริง (Apps Script) แทน localStorage <span class="tag">สำคัญ</span></li>
+          <li><i class="fas fa-circle-dot todo"></i> Stock Out → เขียนกลับ <code>store.assets</code> (set shopCode/owner/status + ประวัติ <code>device_rd_history</code>)</li>
+          <li><i class="fas fa-circle-dot todo"></i> Stock In → สร้างแถวเครื่องสำรองในทะเบียน (status=Available)</li>
+          <li><i class="fas fa-circle-dot todo"></i> ส่งอีเมลแจ้งผล/HR + เลข Ticket จริง</li>
+          <li><i class="fas fa-circle-dot todo"></i> Maintenance form ต่อ backend</li>
+          <li><i class="fas fa-circle-dot todo"></i> ยืนยันแหล่งข้อมูล "แผนก (Department)" จริง (ตอนนี้ list ตั้งต้น)</li>
+          <li><i class="fas fa-circle-dot todo"></i> i18n EN ของหน้าใหม่ (ถ้าต้องการ)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2><span class="n">4</span> Data model — จุดเชื่อม backend</h2>
+    <div class="cols">
+      <div class="kv">
+        <h4><i class="fas fa-database"></i> ของจริงอยู่แล้ว (mock-backend)</h4>
+        <div><code>store.assets</code> — ทะเบียนเครื่อง 1 แถว/เครื่อง (serial=ตัวตน)</div>
+        <div><code>getAssetInventory()</code> — rows สำหรับตาราง</div>
+        <div><code>processInstallation()</code> — CMPOS ติดตั้ง→ทะเบียน</div>
+        <div><code>getAssetDrift / applyAssetDrift</code> — sync fleet</div>
+        <div><code>device_rd_history</code> — ประวัติเปลี่ยนเครื่อง</div>
+        <div><code>PC_BRANCH_MASTER</code> — สาขา 226 + hardware</div>
+      </div>
+      <div class="kv">
+        <h4><i class="fas fa-flask"></i> mock ชั่วคราว (localStorage) — รอแทน</h4>
+        <div><code>pc_device_swap_requests</code> — คำขอเปลี่ยนเครื่องจากสาขา (= Pending Tickets)</div>
+        <div><code>pc_asset_stock</code> — คลังเครื่องสำรองพร้อมจ่าย (Stock In)</div>
+        <div><code>pc_asset_dispatch</code> — ประวัติการจ่าย/จัดส่ง (Stock Out)</div>
+        <div style="margin-top:8px;color:var(--mut)">→ ตอนต่อ backend: map 3 ตัวนี้เข้า sheet/DB จริง แล้วให้ Stock Out เขียนลง <code>store.assets</code> + <code>device_rd_history</code></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>หมายเหตุการต่อ backend:</b> ฟังก์ชันฝั่งหน้าทั้งหมดเรียกผ่าน <code>google.script.run.&lt;fn&gt;</code> หรืออ่าน localStorage โดยตรง — จุดที่ต้องเปลี่ยนคือ
+      <code>alConfirmOut()</code> / <code>alStockInManual()</code> / <code>dsSubmit()</code> ให้ยิงไป Apps Script จริง (เช่น <code>processStockOut</code>, <code>processStockIn</code>, <code>processWebSubmit</code>) ตามชื่อในโค้ดต้นฉบับที่ส่งมา · UX/UI คงเดิมได้
+    </div>
+
+    <h2><span class="n">5</span> เส้นทางเข้าใช้งาน</h2>
+    <p>Sidebar → <b>งาน IT · อุปกรณ์</b> → <b>IT Forms</b> → เลือกการ์ด:
+      <span class="pill done" style="margin:2px">ฟอร์มส่งเครื่อง CMPOS</span>
+      <span class="pill done" style="margin:2px">แจ้งซ่อม / Audit</span>
+      <span class="pill done" style="margin:2px">แจ้งขอเปลี่ยนเครื่อง</span>
+      <span class="pill done" style="margin:2px">คลังอุปกรณ์ &amp; จัดส่ง</span>
+    </p>
+    <p style="color:var(--mut);font-size:.86rem;">สิทธิ์: Admin + IT (เพิ่มใน permission matrix แล้ว) · ทุกหน้าเปิดผ่าน <code>loadPage()</code> ของ shell</p>
+
+    <h2><span class="n">6</span> Shop Master = ตัวหลัก → ขับทะเบียนเครื่อง (RD cases v2)</h2>
+    <p>ทุกการเปลี่ยนแปลงอุปกรณ์เริ่มที่ <b>Shop Master</b> (หน้าแก้ไขร้าน → “เปิดเคสสติ๊กเกอร์”) — จากนั้นข้อมูลไหลไปอัปเดตทะเบียนเครื่องเอง:</p>
+    <div class="flow">
+      <div class="fstep"><div class="ic"><i class="fas fa-store"></i></div><div class="t">Shop Master</div><div class="s">เปิดเคส (เปิด/ปิด/เปลี่ยนเครื่อง/recode)</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-receipt"></i></div><div class="t">RD trigger / case</div><div class="s">ยกเลิก/จดใหม่ (ถ้ากระทบสติ๊กเกอร์)</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-robot"></i></div><div class="t">Asset Drift</div><div class="s">NEW·SWAP·CLOSED·CASE·ORPHAN</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-database"></i></div><div class="t">ทะเบียนอัปเดต</div><div class="s">IT กด Apply / Apply All</div></div>
+    </div>
+    <p style="margin-top:14px"><b>กฎเคสสติ๊กเกอร์ (อิงกรมสรรพากร):</b> เปลี่ยนสติ๊กเกอร์เมื่อ <b>① เปลี่ยนเครื่อง</b> หรือ <b>② เปลี่ยนบริษัท</b> · สติ๊กเกอร์ไม่เดินทางตามเครื่อง (ย้ายเครื่องข้ามสาขา = ปลายทาง“รอเลขใหม่”เสมอ)</p>
+    <div class="cols">
+      <div class="kv"><h4><i class="fas fa-circle-check" style="color:var(--green)"></i> 🟢 ไม่เปลี่ยนสติ๊กเกอร์</h4><div>recode (เปลี่ยนรหัส—บริษัทเดิม, ยกข้อมูลทั้งหมด)</div><div>Renovate / Relocate ในที่ตั้งเดิม (ใช้เครื่องเดิม)</div></div>
+      <div class="kv"><h4><i class="fas fa-triangle-exclamation" style="color:#c0392b"></i> 🔴 เปลี่ยนสติ๊กเกอร์ (ยกเลิก+ขอใหม่)</h4><div>เครื่องชำรุด · Renovate เปลี่ยนเครื่อง · ย้ายออกที่ตั้ง</div><div>รับเครื่องย้ายข้ามสาขา · โอนเปลี่ยนบริษัท (Transfer)</div></div>
+    </div>
+    <div class="note"><b>Reconcile Excel ออกให้แล้ว</b> (<code>exports/Asset_StoreMaster_Reconcile.xlsx</code>) — เทียบทะเบียน↔Shop Master + Forecast · พบ: <b>46</b> สาขาเปิดแล้วยังไม่มีเครื่องในทะเบียน (14 อยู่ในแผน Forecast) · <b>10</b> สาขาปิดแต่เครื่องยัง Active · <b>4</b> ORPHAN · <b>111</b> สาขาข้อมูลไม่ครบ</div>
+
+    <h2><span class="n">7</span> แผนใหม่: หน้า Plan แบบ Excel <span class="pill" style="background:#e8eefb;color:#2c4a82;margin-left:8px"><i class="fas fa-lightbulb"></i> ไอเดีย · รอ confirm ข้อมูล</span></h2>
+    <p>รื้อหน้า Plan เดิมทิ้ง → ทำใหม่เป็น <b>ตาราง Excel-like</b> ตามไฟล์ forecast ตัวอย่าง — ให้หน้านี้เป็น <b>จุดยืนยันการเปิดสาขาใหม่ / Renovate</b> แล้วไหลต่อไปทั้งระบบ:</p>
+    <div class="flow">
+      <div class="fstep"><div class="ic"><i class="fas fa-table-cells"></i></div><div class="t">Plan (Excel-like)</div><div class="s">ยืนยันเปิดสาขา/Renovate</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-paper-plane"></i></div><div class="t">แจ้งขอ License CMPOS</div><div class="s">ข้อมูลสาขา + อุปกรณ์ที่ต้องซื้อ/ใช้ของเดิม</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-check-double"></i></div><div class="t">IT กดยืนยัน</div><div class="s">→ อัปเดต Shop Master</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-bell"></i></div><div class="t">ใกล้วันเปิด</div><div class="s">แจ้งเตือน CMPOS กรอกใบส่งของ</div></div>
+    </div>
+    <div class="cols" style="margin-top:14px">
+      <div class="kv"><h4><i class="fas fa-recycle" style="color:var(--green)"></i> ฟอร์มเดิมที่เอามาใช้ต่อได้</h4>
+        <div><code>CmposForm</code> — ใบส่งของ/ติดตั้ง → ใช้เป็นฟอร์ม“วันเปิด” (CMPOS กรอก)</div>
+        <div><code>AssetLogistics</code> — Stock Out/ฉลากส่ง → จ่ายอุปกรณ์ซื้อใหม่ไปสาขา</div>
+        <div>RD เคสสติ๊กเกอร์ — Renovate เปลี่ยนเครื่อง→ยกเลิก+ขอใหม่</div></div>
+      <div class="kv"><h4><i class="fas fa-link" style="color:var(--mut)"></i> งานเดิมที่ยังเก็บไว้</h4>
+        <div>ลิงก์ส่ง CMPOS แบบเดิม — เก็บไว้ใช้กับ <b>งานแจ้งซ่อม</b> (ค่อยตัดสินใจอีกที)</div>
+        <div style="color:var(--mut);margin-top:6px">⚠️ ยังต้องไปขอข้อมูลจริง (รายการอุปกรณ์/ราคา/ฟิลด์ใบ License) — <b>ไฟล์นี้จะกลับมา confirm อีกที</b></div></div>
+    </div>
+
+    <h2><span class="n">8</span> งานชนกัน (Cross-module) + หน้าแจ้งเปลี่ยนอุปกรณ์ IT (OP) <span class="pill" style="background:#e8eefb;color:#2c4a82;margin-left:8px"><i class="fas fa-lightbulb"></i> วางแผน · ยังไม่สร้าง</span></h2>
+    <p>หน้าใหม่ <b>“แจ้งเปลี่ยนอุปกรณ์ไอที”</b> (ส่วนใหญ่ <b>OP</b> เป็นผู้แจ้ง) — ต่อยอดจาก <code>DeviceSwap</code> ให้ครอบคลุมอุปกรณ์ทุกชนิด · จุดเด่น = แจ้งจากที่เดียว แล้ว <b>workflow “ชน” งานเข้าทุกระบบให้อัตโนมัติ</b>:</p>
+    <div class="flow">
+      <div class="fstep"><div class="ic"><i class="fas fa-clipboard-list"></i></div><div class="t">OP แจ้งเปลี่ยนอุปกรณ์</div><div class="s">เลือกสาขา · อุปกรณ์ · เหตุผล</div></div>
+      <div class="farrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-database"></i></div><div class="t">① ทะเบียนเครื่อง</div><div class="s">retire เก่า + เพิ่มใหม่</div></div>
+      <div class="farrow"><i class="fas fa-plus"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-receipt"></i></div><div class="t">② งานสติ๊กเกอร์</div><div class="s">เปลี่ยนเครื่อง POS → เปิดเคส RD อัตโนมัติ</div></div>
+      <div class="farrow"><i class="fas fa-plus"></i></div>
+      <div class="fstep"><div class="ic"><i class="fas fa-store"></i></div><div class="t">③ Shop Master</div><div class="s">อัปเดต field เครื่อง</div></div>
+    </div>
+    <div class="note">
+      <b>จุดที่ต้องต่อ (TODO — กลับมาทำ):</b>
+      <ul class="check" style="margin-top:6px">
+        <li><i class="fas fa-circle-dot todo"></i> สร้างหน้า <code>pages/OpDeviceChange.html</code> (OP แจ้ง) — reuse UI/แนบรูปจาก <code>DeviceSwap</code> · เพิ่มชนิดอุปกรณ์ (POS / พิมพ์แคชเชียร์ EPSON / พิมพ์ครัว VPOS / อื่น ๆ)</li>
+        <li><i class="fas fa-circle-dot todo"></i> เชื่อมคำขอ → <code>applyAssetDrift</code> (retire เครื่องเก่า + เพิ่มเครื่องใหม่ + <code>device_rd_history</code>)</li>
+        <li><i class="fas fa-circle-dot todo"></i> ถ้าเปลี่ยน <b>เครื่อง POS ที่มีเลขสรรพากร</b> → ยิง <code>RD.addTrigger(kind:'broken')</code> เปิดเคสยกเลิก+ขอใหม่ให้อัตโนมัติ (สถานะ “รอเลขใหม่”)</li>
+        <li><i class="fas fa-circle-dot todo"></i> เขียนกลับ field เครื่องใน Shop Master (<code>pc_master_lists</code>) ให้ตรง — Shop Master = ตัวหลัก</li>
+        <li><i class="fas fa-circle-dot todo"></i> backend จริง (Apps Script) แทน localStorage ทั้งหมด <span class="tag">สำคัญ</span></li>
+      </ul>
+    </div>
+    <div class="note" style="background:#f4f6fa;border-color:#d6deea;border-left-color:#2c4a82">
+      <b style="color:#2c4a82">โน้ตงานข้างเคียง (อยู่นอกโมดูลนี้ — จดไว้กันลืม):</b> กำลังจะกลับไปที่ <b>งานสติ๊กเกอร์</b> (RD Cancel / Workflow Settings) → <b>งานส่วนลด</b> (<code>StaffDiscount</code> — ดึง FRC company admin) → <b>หน้า Voucher / Comp Code</b>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

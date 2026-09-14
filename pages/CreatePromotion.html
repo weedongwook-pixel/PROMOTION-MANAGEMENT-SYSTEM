@@ -1,0 +1,94 @@
+<!-- CREATE PROMOTION — รวมฟอร์มแจ้งโปรโมชั่นในหน้าเดียว + left-rail แบบ ITWork -->
+<style>
+  #cp2-page{ padding:0; }
+  #cp2-page .cp2-head{ background:linear-gradient(100deg,#2e934a,#00632f); color:#fff; border-radius:0 0 16px 16px; padding:18px 24px; display:flex; align-items:center; gap:14px; }
+  #cp2-page .cp2-head .ic{ width:46px; height:46px; border-radius:12px; background:var(--pc-yellow,#2e934a); color:#1a1d20; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex:0 0 auto; }
+  #cp2-page .cp2-head h2{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.3rem; margin:0; text-transform:uppercase; letter-spacing:.3px; }
+  #cp2-page .cp2-crumb{ font-size:.82rem; color:rgba(255,255,255,.65); font-weight:600; }
+  #cp2-page .cp2-crumb b{ color:#ffffff; }
+  #cp2-page .pm-layout{ display:flex; gap:18px; align-items:flex-start; margin:18px; }
+  #cp2-page .pm-rail{ width:230px; flex:0 0 auto; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:14px; }
+  #cp2-page .pm-rail-grp{ font-size:.66rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#9aa1aa; padding:11px 12px 6px; }
+  #cp2-page .pm-rail-item{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font-weight:600; font-size:.9rem; color:#3a4150; cursor:pointer; }
+  #cp2-page .pm-rail-item i{ width:18px; text-align:center; color:#9aa1aa; }
+  #cp2-page .pm-rail-item:hover{ background:#f4f6f9; }
+  #cp2-page .pm-rail-item.on{ background:#2e934a; color:#fff; }
+  #cp2-page .pm-rail-item.on i{ color:#ffffff; }
+  #cp2-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; position:relative; min-height:82vh; }
+</style>
+
+<div id="cp2-page">
+  <div class="cp2-head">
+    <div class="ic"><i class="fas fa-bullhorn"></i></div>
+    <div>
+      <h2 data-en="CREATE PROMOTION" data-th="แจ้งโปรโมชั่น">แจ้งโปรโมชั่น</h2>
+      <div class="cp2-crumb" id="cp2Crumb">เลือกประเภทโปรโมชั่นจากเมนูด้านซ้าย</div>
+    </div>
+  </div>
+  <div class="pm-layout">
+    <aside class="pm-rail" id="cp2Rail"></aside>
+    <div class="pm-main" id="cp2Main">
+      <div class="p-5 text-center text-muted"><div class="spinner-border text-success" role="status"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ITEMS = [
+    { pg:'Proposal',             icon:'fa-file-invoice',  en:'Item Set Proposal',      th:'เสนอ Item Set' },
+    { pg:'Coupon',               icon:'fa-ticket-alt',    en:'Coupon Proposal',         th:'เสนอคูปอง' },
+    { pg:'BillDiscountProposal', icon:'fa-calculator',    en:'Bill Discount Proposal',  th:'เสนอ Bill Discount' },
+    { pg:'VoucherProposal',      icon:'fa-gift',          en:'Voucher Proposal',        th:'เสนอ Voucher' },
+    { pg:'Memo',                 icon:'fa-file-lines',    en:'Create Memo',             th:'สร้าง MEMO' },
+  ];
+  function allowed(pg) {
+    var role = localStorage.getItem('pc_role') || 'Admin';
+    var perms = (typeof window.PC_getPermissions === 'function') ? window.PC_getPermissions() : null;
+    var a = perms ? (perms[role] || perms.Admin || []) : null;
+    return !a || a.indexOf(pg) !== -1;
+  }
+  function lang() { try { return localStorage.getItem('pc_lang') === 'en' ? 'en' : 'th'; } catch (e) { return 'th'; } }
+  var curSub = null;
+
+  function renderRail() {
+    var L = lang();
+    document.getElementById('cp2Rail').innerHTML =
+      '<div class="pm-rail-grp" data-en="PROMOTION" data-th="โปรโมชั่น">โปรโมชั่น</div>' +
+      ITEMS.filter(function(it){ return allowed(it.pg); }).map(function (it) {
+        return '<div class="pm-rail-item ' + (it.pg === curSub ? 'on' : '') + '" onclick="window.cp2Go(\'' + it.pg + '\')">' +
+          '<i class="fas ' + it.icon + '"></i>' +
+          '<span class="navlbl" data-en="' + it.en + '" data-th="' + it.th + '">' + (L === 'en' ? it.en : it.th) + '</span></div>';
+      }).join('');
+    var cur = ITEMS.find(function (x) { return x.pg === curSub; });
+    var cr = document.getElementById('cp2Crumb');
+    if (cr && cur) cr.innerHTML = 'แจ้งโปรโมชั่น » <b>' + (lang() === 'en' ? cur.en : cur.th) + '</b>';
+    else if (cr) cr.textContent = 'เลือกประเภทโปรโมชั่นจากเมนูด้านซ้าย';
+  }
+
+  window.cp2Go = function (pg) {
+    if (pg === curSub) return;
+    curSub = pg;
+    try { localStorage.setItem('pc_createpromo_sub', pg); } catch (e) {}
+    renderRail();
+    var main = document.getElementById('cp2Main');
+    if (window.pcLoadSub) window.pcLoadSub(main, pg);
+    else main.innerHTML = '<div class="p-4 text-danger">loader missing</div>';
+  };
+
+  window.disposeCreatePromotion = function () { curSub = null; };
+
+  window.initCreatePromotion = function () {
+    try { var saved = localStorage.getItem('pc_createpromo_sub'); if (saved) curSub = saved; } catch (e) {}
+    renderRail();
+    if (curSub) {
+      var main = document.getElementById('cp2Main');
+      if (window.pcLoadSub) window.pcLoadSub(main, curSub);
+    } else {
+      var first = ITEMS.find(function(it){ return allowed(it.pg); });
+      if (first) window.cp2Go(first.pg);
+    }
+    if (typeof window.applyLang === 'function') window.applyLang();
+  };
+})();
+</script>

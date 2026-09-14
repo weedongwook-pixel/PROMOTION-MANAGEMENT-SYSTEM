@@ -1,0 +1,422 @@
+<!-- @dsCard group="Components" -->
+<style>
+  .cc-scope { background:#eef1f4; min-height:100vh; }
+  .cc-scope .cc-head { background:var(--pc-dark,#1a1d20); border-left:10px solid #2e934a; }
+  .cc-scope .cc-card { background:#fff; border:1px solid #e3e7ec; border-radius:14px; }
+  .cc-scope .mono, .cc-scope .cc-next { font-family:'JetBrains Mono','Kanit',monospace; }
+  .cc-scope .cc-typecard { border:1px solid #e3e7ec; border-radius:14px; background:#fff; overflow:hidden; transition:box-shadow .15s; }
+  .cc-scope .cc-typecard:hover { box-shadow:0 6px 22px rgba(0,0,0,.07); }
+  .cc-scope .cc-typecard .top { background:var(--pc-dark,#1a1d20); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:9px; }
+  .cc-scope .cc-typecard .top i { color:#ffffff; }
+  .cc-scope .cc-next { font-size:1.7rem; font-weight:800; color:#2e934a; letter-spacing:.5px; }
+  .cc-scope .cc-kv { display:flex; justify-content:space-between; font-size:.78rem; padding:3px 0; border-bottom:1px dashed #eceff2; }
+  .cc-scope .cc-kv:last-child { border-bottom:0; }
+  .cc-scope .cc-kv b { font-family:'JetBrains Mono',monospace; }
+  .cc-scope .cc-tbl { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .cc-scope .cc-tbl th { background:var(--pc-dark,#1a1d20); color:#cfd6de; text-align:left; padding:9px 11px; font-size:.68rem; text-transform:uppercase; letter-spacing:.4px; position:sticky; top:0; }
+  .cc-scope .cc-tbl td { padding:8px 11px; border-bottom:1px solid #eef1f4; vertical-align:middle; }
+  .cc-scope .cc-tbl tr:hover td { background:#fafbfc; }
+  .cc-scope .cc-stp { display:inline-flex; align-items:center; gap:5px; font-size:.7rem; font-weight:700; padding:2px 9px; border-radius:999px; }
+  .cc-scope .cc-stp.RESERVED  { background:#fff7e6; border:1px solid #f3d98b; color:#9a6700; }
+  .cc-scope .cc-stp.CONFIRMED { background:#eafaf1; border:1px solid #bfe6cf; color:#1d7a4d; }
+  .cc-scope .cc-stp.RELEASED  { background:#f1f3f5; border:1px solid #d6dbe0; color:#6c757d; }
+  .cc-scope .cc-fbtn { border:1px solid #d6dbe0; background:#fff; color:#444; font-size:.74rem; font-weight:700; padding:4px 12px; border-radius:999px; cursor:pointer; }
+  .cc-scope .cc-fbtn.on { background:var(--pc-dark,#1a1d20); color:#fff; border-color:#1a1d20; }
+  .cc-scope .cc-mini { font-size:.72rem; padding:3px 9px; border-radius:7px; border:1px solid; cursor:pointer; font-weight:700; }
+  .cc-scope .cc-flow b { font-family:'JetBrains Mono',monospace; }
+</style>
+
+<div class="p-4 cc-scope">
+  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow cc-head">
+    <div>
+      <h3 class="fw-bold m-0 text-white" style="text-transform:uppercase;"><i class="fas fa-hashtag me-2" style="color:#ffffff;"></i> ระบบเลขโค้ดกลาง · Code Counter</h3>
+      <p class="small m-0" style="color:rgba(255,255,255,.7);">ตัวนับเดียวสำหรับทุกชนิดโค้ด — เดินหน้าอย่างเดียว ไม่ย้อนอุด · จองเลขกันชนข้ามแผนก</p>
+    </div>
+    <div class="text-end">
+      <button class="btn btn-sm btn-outline-light me-2" onclick="ccConfirmUsed()"><i class="fas fa-circle-check me-1"></i>ยืนยันเลขที่ใช้แล้ว</button>
+      <button class="btn btn-sm btn-outline-light me-2" onclick="ccReturnOrphans()"><i class="fas fa-broom me-1"></i>คืนโค้ดที่ค้าง</button>
+      <button class="btn btn-sm btn-outline-light" onclick="ccReset()"><i class="fas fa-rotate-left me-1"></i>รีเซ็ตตัวนับ</button>
+    </div>
+  </div>
+
+  <!-- lifecycle explainer -->
+  <div class="cc-card p-3 mb-3 cc-flow">
+    <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.84rem;">
+      <span class="cc-stp RESERVED"><i class="fas fa-hourglass-half"></i>RESERVED</span>
+      <span class="text-muted">จองตอน IT ถึงช่องกรอก — counter เดินทันที</span>
+      <i class="fas fa-arrow-right text-muted mx-1"></i>
+      <span class="cc-stp CONFIRMED"><i class="fas fa-circle-check"></i>CONFIRMED</span>
+      <span class="text-muted">IT กดบันทึก</span>
+      <i class="fas fa-arrow-right text-muted mx-1"></i>
+      <span class="cc-stp RELEASED"><i class="fas fa-rotate-left"></i>RELEASED</span>
+      <span class="text-muted">ยกเลิก — เลือกได้: <b>คืนเลข</b> (ยังไม่ใช้ · ใช้ซ้ำได้) หรือ <b>เผาทิ้ง</b> (ใช้แล้ว · ปล่อย gap)</span>
+    </div>
+    <div class="mt-2 small text-muted" style="border-top:1px dashed #e3e7ec; padding-top:8px;">
+      <i class="fas fa-cloud me-1" style="color:#f38020;"></i> <b>Cloudflare-ready:</b> ตัวเก็บข้อมูลอยู่ที่ <code>CounterStore</code> จุดเดียวใน <code>js/code-counter.js</code> — ขึ้นจริงเปลี่ยนแค่ read/write ให้ชี้ KV/D1
+    </div>
+  </div>
+
+  <!-- per-type counters -->
+  <div class="mb-2 fw-bold text-uppercase text-muted small"><i class="fas fa-layer-group me-1"></i>ตัวนับแยกชนิด — Baseline จากเลขสูงสุดจริงในไฟล์</div>
+  <div id="ccTypeGrid" class="row g-3 mb-4"></div>
+
+  <!-- per-category item code tester -->
+  <div class="cc-card p-3 mb-4">
+    <div class="fw-bold text-uppercase small mb-1"><i class="fas fa-box me-1"></i>รหัสสินค้าแยกหมวด — Item Code = cateCode + running (ต่อจากเลขจริงในแต่ละหมวด)</div>
+    <div class="text-muted small mb-2">เลือกหมวด → ระบบออกเลขถัดไปในหมวดนั้น (ขยายหลักอัตโนมัติเมื่อเต็ม เช่น 103 → 1031292)</div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <select id="ccCatSel" class="form-select form-select-sm" style="max-width:280px;"></select>
+      <span class="text-muted small">เลขถัดไป:</span>
+      <b id="ccCatNext" class="mono" style="font-size:1.1rem;color:#2e934a;">—</b>
+      <input id="ccCatWhere" class="form-control form-control-sm" style="max-width:180px;" placeholder="งาน (where)…">
+      <button class="btn btn-sm btn-success fw-bold" onclick="ccReserveCat()"><i class="fas fa-bookmark me-1"></i>จองรหัสนี้</button>
+    </div>
+  </div>
+
+  <!-- reservation ledger -->
+  <div class="cc-card mb-4">
+    <div class="d-flex flex-wrap align-items-center gap-2 p-3" style="border-bottom:1px solid #eef1f4;">
+      <div class="fw-bold text-uppercase"><i class="fas fa-clipboard-list me-2"></i>ทะเบียนจองเลข <span id="ccCount" class="text-muted fw-normal"></span></div>
+      <div class="ms-auto d-flex gap-2" id="ccFilters">
+        <button class="cc-fbtn on" data-st="ALL" onclick="ccFilter('ALL')">ทั้งหมด</button>
+        <button class="cc-fbtn" data-st="RESERVED" onclick="ccFilter('RESERVED')">🔖 จองอยู่</button>
+        <button class="cc-fbtn" data-st="CONFIRMED" onclick="ccFilter('CONFIRMED')">✅ ยืนยัน</button>
+        <button class="cc-fbtn" data-st="RELEASED" onclick="ccFilter('RELEASED')">♻️ ยกเลิก</button>
+      </div>
+    </div>
+    <div style="max-height:360px; overflow:auto;">
+      <table class="cc-tbl">
+        <thead><tr><th>โค้ด</th><th>ชนิด</th><th>สถานะ</th><th>งาน / Where</th><th>โดย</th><th>เวลา</th><th style="text-align:right;">จัดการ</th></tr></thead>
+        <tbody id="ccLedger"></tbody>
+      </table>
+    </div>
+    <div id="ccLedgerEmpty" class="text-center text-muted p-4 small" style="display:none;"><i class="fas fa-inbox me-1"></i>ยังไม่มีการจองเลข — กด “จองเลขถัดไป” ที่การ์ดด้านบนเพื่อทดสอบ</div>
+  </div>
+
+  <!-- consumer badge demo -->
+  <div class="cc-card p-3 mb-4">
+    <div class="fw-bold text-uppercase small mb-2"><i class="fas fa-eye me-1"></i>มุมมองแผนกอื่น (Consumer) — เห็นเลขแต่ยังทำขั้นสุดท้ายไม่ได้จนกว่าจะ CONFIRMED</div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input id="ccBadgeInput" class="form-control form-control-sm mono" style="max-width:200px;" placeholder="พิมพ์โค้ดที่จองไว้…">
+      <button class="btn btn-sm btn-dark" onclick="ccCheckBadge()"><i class="fas fa-magnifying-glass me-1"></i>ตรวจสถานะ</button>
+      <div id="ccBadgeOut" class="ms-2"></div>
+    </div>
+  </div>
+
+  <!-- activity log -->
+  <div class="cc-card p-3">
+    <div class="fw-bold text-uppercase small mb-2"><i class="fas fa-list-ul me-1"></i>บันทึกกิจกรรม (ล่าสุด)</div>
+    <div id="ccLog" style="font-family:'JetBrains Mono',monospace; font-size:.74rem; max-height:200px; overflow:auto;"></div>
+  </div>
+</div>
+
+<script>
+window.initCodeCounter = function () {
+  var C = window.PC_COUNTER;
+  var filterSt = 'ALL';
+  if (!C) { document.getElementById('ccTypeGrid').innerHTML = '<div class="text-danger p-3">PC_COUNTER ยังไม่โหลด</div>'; return; }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function ttime(iso){ if(!iso) return '—'; try{ var d=new Date(iso); return d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }catch(e){ return iso; } }
+
+  function renderTypes(){
+    var grid = document.getElementById('ccTypeGrid'); if(!grid) return;
+    var html = '';
+    Object.keys(C.TYPES).forEach(function(type){
+      var cfg = C.TYPES[type];
+      if(cfg.hideCard) return; // item codes are per-category — shown in the tester below
+      var base = C.baseline(type), cur = C.cursor(type), next = C.peek(type);
+      var curFmt = cur > 0 ? C.peek(type, -1) : '–';
+      var rsv = C.list({type:type, status:'RESERVED'}).length;
+      // สำหรับประเภทโปรโมชัน (BD/IC/VC) — แสดงจำนวน Active จาก PC_PROMO_CODES แทน baseline
+      var promoKindMap = { bill:'Bill discount online', coupon:'Item coupon online', voucher:'Voucher online' };
+      var activeCount = null;
+      if(promoKindMap[type] && window.PC_PROMO_CODES){
+        var kind = promoKindMap[type];
+        activeCount = PC_PROMO_CODES.filter(function(c){ return c.kind === kind; }).length;
+      }
+      var baseLabel = activeCount !== null ? 'โปรโมชั่นออนไลน์ในระบบหน้าสาขา' : 'เลขสูงสุดในระบบ';
+      var baseVal   = activeCount !== null ? activeCount : base;
+      html += ''+
+        '<div class="col-md-4 col-xl-4">'+
+          '<div class="cc-typecard h-100">'+
+            '<div class="top"><i class="fas '+cfg.icon+'"></i><b>'+esc(cfg.label)+'</b><span class="ms-auto badge" style="background:var(--pc-yellow,#2e934a);color:#1a1d20;">'+esc(cfg.short)+'</span></div>'+
+            '<div class="p-3">'+
+              (cfg.note ? '<div style="font-size:.7rem;color:#8a9099;background:#f6f7f9;border-radius:7px;padding:6px 9px;margin-bottom:9px;line-height:1.5"><i class="fas fa-link me-1" style="color:#ffffff"></i>'+esc(cfg.note)+'</div>' : '')+
+              '<div class="text-muted" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.4px;">เลขถัดไป (peek)</div>'+
+              '<div class="cc-next mb-2">'+esc(next)+'</div>'+
+              '<div class="cc-kv"><span class="text-muted">'+esc(baseLabel)+'</span><b>'+esc(baseVal)+'</b></div>'+
+              '<div class="cc-kv"><span class="text-muted">เลขก่อนหน้า</span><b>'+esc(curFmt)+'</b></div>'+
+              '<div class="cc-kv"><span class="text-muted">จองค้างอยู่</span><b>'+rsv+'</b></div>'+
+              '<div class="input-group input-group-sm mt-3">'+
+                '<input class="form-control form-control-sm" id="ccwhere-'+type+'" placeholder="งาน/แคมเปญ (where)…">'+
+                '<button class="btn btn-sm btn-success fw-bold" onclick="ccReserve(\''+type+'\')"><i class="fas fa-bookmark me-1"></i>จองเลขถัดไป</button>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  function renderLedger(){
+    var body = document.getElementById('ccLedger'); if(!body) return;
+    var rows = C.list(filterSt==='ALL'?{}:{status:filterSt});
+    var cnt = document.getElementById('ccCount'); if(cnt) cnt.textContent = '· '+rows.length+' รายการ';
+    var emp = document.getElementById('ccLedgerEmpty'); if(emp) emp.style.display = rows.length?'none':'block';
+    body.innerHTML = rows.map(function(e){
+      var cfg = C.TYPES[e.type] || {short:e.type};
+      var act = '';
+      if(e.status==='RESERVED'){
+        act = '<button class="cc-mini" style="border-color:#bfe6cf;background:#eafaf1;color:#1d7a4d;" onclick="ccConfirm(\''+esc(e.code)+'\',\''+e.type+'\')"><i class="fas fa-check"></i> ยืนยัน</button>'+
+              ' <button class="cc-mini" style="border-color:#f3c6c0;background:#fdecea;color:#c0392b;" onclick="ccRelease(\''+esc(e.code)+'\',\''+e.type+'\')"><i class="fas fa-xmark"></i> ยกเลิก</button>';
+      } else if(e.status==='CONFIRMED'){
+        act = '<button class="cc-mini" style="border-color:#f3c6c0;background:#fdecea;color:#c0392b;" onclick="ccRelease(\''+esc(e.code)+'\',\''+e.type+'\')"><i class="fas fa-rotate-left"></i> ปล่อยคืน</button>';
+      } else { act = '<span class="text-muted small">—</span>'; }
+      return '<tr>'+
+        '<td><b class="mono">'+esc(e.code)+'</b></td>'+
+        '<td><span class="badge" style="background:#eef1f4;color:#444;">'+esc(cfg.short)+'</span></td>'+
+        '<td><span class="cc-stp '+e.status+'"><i class="fas '+(e.status==='RESERVED'?'fa-hourglass-half':e.status==='CONFIRMED'?'fa-circle-check':'fa-rotate-left')+'"></i>'+e.status+'</span></td>'+
+        '<td>'+(esc(e.where)||'<span class="text-muted">—</span>')+'</td>'+
+        '<td class="text-muted">'+esc(e.by)+'</td>'+
+        '<td class="text-muted" style="white-space:nowrap;">'+ttime(e.at)+'</td>'+
+        '<td style="text-align:right;white-space:nowrap;">'+act+'</td>'+
+      '</tr>';
+    }).join('');
+  }
+
+  function renderLog(){
+    var box = document.getElementById('ccLog'); if(!box) return;
+    var log = C.state().log || [];
+    if(!log.length){ box.innerHTML = '<span class="text-muted">— ยังไม่มีกิจกรรม —</span>'; return; }
+    var col = {RESERVE:'#9a6700',CONFIRM:'#1d7a4d',RELEASE:'#c0392b',RETURN:'#2e934a',KEEP:'#5a6470'};
+    var lbl = {RESERVE:'จองเลข',CONFIRM:'ยืนยัน',RELEASE:'ยกเลิก·เผาเลข',RETURN:'คืนเลข',KEEP:'ลบงาน·เก็บเลข'};
+    box.innerHTML = log.slice(0,60).map(function(l){
+      var from = l.from ? ' <span style="color:#2c4a82;font-weight:600">⟵ '+esc(l.from)+'</span>' : '';
+      return '<div style="padding:2px 0;border-bottom:1px solid #f4f4f4;">'+
+        '<span class="text-muted">'+ttime(l.t)+'</span> '+
+        '<b style="color:'+(col[l.act]||'#444')+'">'+esc(lbl[l.act]||l.act)+'</b> '+
+        '<b>'+esc(l.code)+'</b> <span class="text-muted">['+esc(l.type)+']</span> '+
+        (l.where?'· '+esc(l.where)+' ':'')+'<span class="text-muted">· '+esc(l.by)+'</span>'+from+'</div>';
+    }).join('');
+  }
+
+  function mounted(){ return !!document.getElementById('ccTypeGrid'); }
+  function renderAll(){ if(!mounted()){ if(window.__ccUnsub){ try{ window.__ccUnsub(); }catch(e){} window.__ccUnsub=null; } return; } renderTypes(); renderLedger(); renderLog(); }
+
+  window.ccReserve = function(type){
+    var w = (document.getElementById('ccwhere-'+type)||{}).value || '';
+    var e = C.reserve(type, { where:w.trim() });
+    if(e && window.Swal) Swal.fire({icon:'success',title:'จองเลขแล้ว',html:'<b class="mono" style="font-size:1.3rem;color:#2e934a">'+esc(e.code)+'</b><br><span class="text-muted small">สถานะ RESERVED · counter เดินแล้ว</span>',timer:1400,showConfirmButton:false});
+  };
+  // map a counter type → the proposal page that owns its full form
+  var CC_FORM_PAGE = { coupon:'Coupon', bill:'BillDiscountProposal', voucher:'VoucherProposal', itemset:'Proposal', item:'Proposal' };
+  window.ccConfirmGoForm = function(code, type, camp){
+    // confirm + tag, stash a prefill, then jump to that type's full form
+    C.confirm(code, type, { campaign:camp||'', channel:'ฟอร์มในระบบ' });
+    try{ localStorage.setItem('pc_codecounter_prefill', JSON.stringify({ type:type, code:code, campaign:camp||'', at:Date.now() })); }catch(e){}
+    var page = CC_FORM_PAGE[type] || 'Coupon';
+    if(typeof window.loadPage==='function') window.loadPage(page);
+  };
+  window.ccConfirmShort = function(code, type){
+    var e = C.entryOf(code, type);
+    var presetCamp = (e && (e.campaign||e.where)) ? (e.campaign||e.where) : '';
+    var chans = ['Email','LINE','ฟอร์มในระบบ','โทร/วาจา','อื่นๆ'];
+    Swal.fire({
+      title:'กรอกแบบสั้น',
+      width:520,
+      html:'<div style="text-align:left;font-size:.9rem">'+
+        '<div class="mono" style="font-size:1.2rem;color:#1a1d20;margin-bottom:4px"><i class="fas fa-hashtag" style="color:#ffffff"></i> '+esc(code)+'</div>'+
+        '<div style="font-size:.76rem;color:#8a9099;margin-bottom:12px">กรอกครั้งเดียว ไม่มีตารางสินค้า — แต่ครบพอให้สาขาเห็นข้อมูลเต็มตอนค้นโค้ด</div>'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">ชื่อแคมเปญ *</label>'+
+        '<input id="ccfCamp" class="swal2-input" style="margin:4px 0 10px;width:100%" placeholder="เช่น Payday กรกฎาคม" value="'+esc(presetCamp)+'">'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">ชื่อปุ่ม / Short Name (POS)</label>'+
+        '<input id="ccfBtn" class="swal2-input" style="margin:4px 0 10px;width:100%" placeholder="ชื่อปุ่มที่สาขาเห็นบนเครื่อง POS">'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">สิทธิ์ / ส่วนลดที่ลูกค้าได้</label>'+
+        '<input id="ccfDetail" class="swal2-input" style="margin:4px 0 10px;width:100%" placeholder="เช่น ลด 50.- / แถม Large Fries">'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">เงื่อนไข</label>'+
+        '<input id="ccfCond" class="swal2-input" style="margin:4px 0 10px;width:100%" placeholder="เช่น เมื่อซื้อ Mega Fries / ขั้นต่ำ 100.-">'+
+        '<div style="display:flex;gap:10px">'+
+          '<div style="flex:1"><label style="font-weight:700;font-size:.8rem;color:#5a6470">วันเริ่ม</label><input type="date" id="ccfStart" class="swal2-input" style="margin:4px 0 10px;width:100%"></div>'+
+          '<div style="flex:1"><label style="font-weight:700;font-size:.8rem;color:#5a6470">วันจบ</label><input type="date" id="ccfEnd" class="swal2-input" style="margin:4px 0 10px;width:100%"></div>'+
+        '</div>'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">ช่องทางที่ MKT แจ้ง (ภายใน IT)</label>'+
+        '<select id="ccfChan" class="swal2-select" style="margin:4px 0 10px;width:100%;display:block">'+
+          chans.map(function(o){return '<option>'+o+'</option>';}).join('')+'</select>'+
+        '<label style="font-weight:700;font-size:.8rem;color:#5a6470">Remark (ภายใน IT)</label>'+
+        '<textarea id="ccfRemark" class="swal2-textarea" style="margin:4px 0 0;width:100%" placeholder="เช่น แจ้งผ่านเมล MKT · อ้างอิงเลขเมล/วันที่"></textarea>'+
+      '</div>',
+      showCancelButton:true, confirmButtonText:'<i class="fas fa-check"></i> ยืนยัน + บันทึก', confirmButtonColor:'#2e934a', cancelButtonText:'ย้อนกลับ',
+      preConfirm:function(){
+        var c=(document.getElementById('ccfCamp')||{}).value||'';
+        if(!c.trim()){ Swal.showValidationMessage('กรุณากรอกชื่อแคมเปญ'); return false; }
+        return { campaign:c, button:(document.getElementById('ccfBtn')||{}).value||'', detail:(document.getElementById('ccfDetail')||{}).value||'', condition:(document.getElementById('ccfCond')||{}).value||'', start:(document.getElementById('ccfStart')||{}).value||'', end:(document.getElementById('ccfEnd')||{}).value||'', channel:(document.getElementById('ccfChan')||{}).value||'', remark:(document.getElementById('ccfRemark')||{}).value||'' };
+      }
+    }).then(function(r){
+      if(r.isConfirmed){ C.confirm(code,type,r.value); }
+      else if(r.dismiss==='cancel'){ window.ccConfirm(code,type); }   // ย้อนกลับไปเมนูเลือก
+    });
+  };
+  window.ccConfirm = function(code,type){
+    if(!window.Swal){ C.confirm(code,type); return; }
+    var optBtn = 'display:block;width:100%;text-align:left;border:1.5px solid #e3e7ec;border-radius:10px;padding:11px 14px;margin-bottom:9px;background:#fff;cursor:pointer;font-family:inherit;font-size:.9rem;color:#1a1d20';
+    Swal.fire({
+      title:'ยืนยันใช้งานโค้ด',
+      width:480,
+      html:'<div style="text-align:left">'+
+        '<div class="mono" style="font-size:1.3rem;color:#1a1d20;margin-bottom:12px"><i class="fas fa-hashtag" style="color:#ffffff"></i> '+esc(code)+'</div>'+
+        '<button style="'+optBtn+'" onmouseover="this.style.borderColor=\'#2e934a\'" onmouseout="this.style.borderColor=\'#e3e7ec\'" onclick="window.__ccPick(\'full\')"><b style="color:#2e934a"><i class="fas fa-diagram-project me-1"></i>ตาม Workflow — กรอกฟอร์มเต็ม</b><br><span style="font-size:.8rem;color:#8a9099">เข้าสาย MKT → OP ตรวจ/ติดตาม · โค้ดเด้งเข้าฟอร์มให้อัตโนมัติ</span></button>'+
+        '<button style="'+optBtn+'" onmouseover="this.style.borderColor=\'#2c4a82\'" onmouseout="this.style.borderColor=\'#e3e7ec\'" onclick="window.__ccPick(\'short\')"><b style="color:#2c4a82"><i class="fas fa-bolt me-1"></i>บันทึกเท่านั้น — กรอกสั้น</b><br><span style="font-size:.8rem;color:#8a9099">เก็บ แคมเปญ/ปุ่ม/สิทธิ์/เงื่อนไข/วันที่ ให้สาขาเห็น (ไม่เข้า workflow)</span></button>'+
+        '<button style="'+optBtn+'" onmouseover="this.style.borderColor=\'#9aa1aa\'" onmouseout="this.style.borderColor=\'#e3e7ec\'" onclick="window.__ccPick(\'used\')"><b style="color:#5a6470"><i class="fas fa-bolt-lightning me-1"></i>รันเลขใช้เลย — ไม่กรอก</b><br><span style="font-size:.8rem;color:#8a9099">แค่เอาเลขไปใช้ เช่น สร้างปุ่มผูกโปร (ไม่บันทึกรายละเอียด)</span></button>'+
+      '</div>',
+      showConfirmButton:false, showCancelButton:true, cancelButtonText:'ปิด'
+    });
+    window.__ccPick = function(mode){
+      Swal.close();
+      if(mode==='full'){ window.ccConfirmGoForm(code,type,''); }
+      else if(mode==='short'){ window.ccConfirmShort(code,type); }
+      else { C.confirm(code,type); }
+    };
+  };
+  window.ccRelease = function(code,type){
+    var e = C.entryOf(code, type);
+    var status = e ? e.status : null;
+    if(!window.Swal){ C.release(code,type); return; }
+    if(status === 'RESERVED'){
+      Swal.fire({
+        title:'ยกเลิกเลขนี้',
+        html:'<div style="text-align:left;line-height:1.7">เลข <b class="mono" style="font-size:1.15rem;color:#1a1d20">'+esc(code)+'</b> <b>ถูกใช้งานในระบบแล้วหรือยัง?</b>'+
+             '<div style="margin-top:8px;font-size:.84rem;color:#6c757d">• <b>ยังไม่ใช้</b> = แค่จองค้างไว้ ยังไม่ดึงเข้า POS/Backoffice → คืนเลขเข้าคิว ใช้ซ้ำได้<br>• <b>ใช้ไปแล้ว</b> = ดึงเข้าระบบ/ออกสื่อแล้ว → เผาทิ้ง ปล่อย gap ไม่ดึงกลับ</div></div>',
+        icon:'question', showCancelButton:true, showDenyButton:true,
+        confirmButtonText:'<i class="fas fa-rotate-left"></i> ยังไม่ใช้ — คืนเลข', confirmButtonColor:'#2e934a',
+        denyButtonText:'<i class="fas fa-fire"></i> ใช้ไปแล้ว — เผาทิ้ง', denyButtonColor:'#c0392b',
+        cancelButtonText:'ปิด'
+      }).then(function(r){
+        if(r.isConfirmed){ C.returnCode(code,type,'หน้า Code Counter'); Swal.fire({icon:'success',title:'คืนเลขแล้ว',html:'เลข <b class="mono">'+esc(code)+'</b> กลับเข้าคิว — จะถูกหยิบไปใช้รายการถัดไป',timer:1600,showConfirmButton:false}); }
+        else if(r.isDenied){ C.release(code,type,'หน้า Code Counter'); }
+      });
+      return;
+    }
+    // CONFIRMED (or anything already used) → burn only, never reuse
+    Swal.fire({
+      title:'ยกเลิก (เผาเลขทิ้ง)',
+      html:'เลข <b class="mono">'+esc(code)+'</b> เคยยืนยัน/ใช้ในระบบแล้ว<br><span style="font-size:.85rem;color:#6c757d">เผาทิ้ง ปล่อย gap — ไม่ดึงกลับมาใช้ซ้ำ (กันชนกับประวัติ/รายงาน)</span>',
+      icon:'warning', showCancelButton:true, confirmButtonText:'เผาทิ้ง', confirmButtonColor:'#c0392b', cancelButtonText:'ปิด'
+    }).then(function(r){ if(r.isConfirmed) C.release(code,type,'หน้า Code Counter'); });
+  };
+  window.ccFilter = function(st){
+    filterSt = st;
+    document.querySelectorAll('#ccFilters .cc-fbtn').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-st')===st); });
+    renderLedger();
+  };
+  /* ยืนยันเลขจอง (RESERVED) ที่ตรวจพบว่าถูกใช้จริงในระบบ/ตาราง MKT (getInUseCodes) → CONFIRMED */
+  window.ccConfirmUsed = function(){
+    var inUse = (window.PC_API && PC_API.getInUseCodes) ? (PC_API.getInUseCodes()||[]) : [];
+    var keep = {}; inUse.forEach(function(c){ keep[String(c).toUpperCase()]=1; });
+    var used = C.list({status:'RESERVED'}).filter(function(e){ return keep[String(e.code).toUpperCase()]; });
+    if(!used.length){ Swal.fire({icon:'success',title:'ไม่มีเลขจองที่ใช้แล้ว',text:'เลขจอง (RESERVED) ทุกตัวยังไม่ถูกใช้ในระบบ/ตาราง MKT'}); return; }
+    var byType={}; used.forEach(function(e){ byType[e.type]=(byType[e.type]||0)+1; });
+    var summary = Object.keys(byType).map(function(t){ return '<span class="badge bg-light text-dark border me-1 mb-1">'+esc(t)+' · '+byType[t]+'</span>'; }).join('');
+    var sample = used.slice(0,12).map(function(e){ return '<span class="mono" style="font-size:.8rem">'+esc(e.code)+'</span>'; }).join(', ');
+    Swal.fire({
+      icon:'question', title:'ยืนยันเลขที่ใช้แล้ว ('+used.length+' เลข)?',
+      html:'<div style="text-align:left;font-size:.88rem">'+
+        '<div class="mb-2">เลข <b>RESERVED</b> ที่ตรวจพบว่าถูกใช้จริงแล้วใน <b>ตาราง MKT / งานจริง</b> → จะเปลี่ยนเป็น <b>CONFIRMED</b> (ล็อกเลขถาวร ไม่แจกซ้ำ):</div>'+
+        '<div class="mb-2">'+summary+'</div>'+
+        '<div class="text-muted" style="font-size:.8rem">ตัวอย่าง: '+sample+(used.length>12?' …':'')+'</div>'+
+        '</div>',
+      showCancelButton:true, confirmButtonColor:'#1d7a4d', confirmButtonText:'<i class="fas fa-check"></i> ยืนยันทั้งหมด', cancelButtonText:'ยกเลิก'
+    }).then(function(r){
+      if(!r.isConfirmed) return;
+      var n=0; used.forEach(function(e){ var res=C.confirm(e.code, e.type, { campaign:e.where||'', channel:'ตรวจพบใช้แล้วในระบบ/ตาราง MKT' }); if(res) n++; });
+      Swal.fire({icon:'success', title:'ยืนยันแล้ว', html:'ยืนยัน <b>'+n+'</b> เลขที่ตรวจพบว่าใช้แล้ว (CONFIRMED)'});
+      renderAll();
+    });
+  };
+  window.ccReturnOrphans = function(){
+    // โค้ดที่งานจริงยังอ้างถึง (campaigns + NPD + flavor + member coupons)
+    var inUse = (window.PC_API && PC_API.getInUseCodes) ? (PC_API.getInUseCodes()||[]) : [];
+    var keep = {}; inUse.forEach(function(c){ keep[String(c).toUpperCase()]=1; });
+    // พรีวิว: โค้ด RESERVED ที่ไม่อยู่ในงานจริง = orphan (จะถูกคืน)
+    var orphans = C.list({status:'RESERVED'}).filter(function(e){ return !keep[String(e.code).toUpperCase()]; });
+    if(!orphans.length){ Swal.fire({icon:'success',title:'ไม่มีโค้ดค้าง',text:'ทุกโค้ดที่จองอยู่ผูกกับงานจริงทั้งหมด'}); return; }
+    var byType={}; orphans.forEach(function(e){ byType[e.type]=(byType[e.type]||0)+1; });
+    var summary = Object.keys(byType).map(function(t){ return '<span class="badge bg-light text-dark border me-1 mb-1">'+esc(t)+' · '+byType[t]+'</span>'; }).join('');
+    var sample = orphans.slice(0,12).map(function(e){ return '<span class="mono" style="font-size:.8rem">'+esc(e.code)+'</span>'; }).join(', ');
+    Swal.fire({
+      icon:'warning', title:'คืนโค้ดที่ค้าง ('+orphans.length+' เลข)?',
+      html:'<div style="text-align:left;font-size:.88rem">'+
+        '<div class="mb-2">โค้ด <b>RESERVED</b> ที่ไม่ผูกกับงานจริงแล้ว (งานถูกลบ/ฟอร์มถูกทิ้ง) จะถูกคืนกลับตัวนับ:</div>'+
+        '<div class="mb-2">'+summary+'</div>'+
+        '<div class="text-muted" style="font-size:.8rem">ตัวอย่าง: '+sample+(orphans.length>12?' …':'')+'</div>'+
+        '<div class="mt-2 small" style="color:#1d7a4d"><i class="fas fa-shield-halved me-1"></i>โค้ดที่ <b>ยืนยันแล้ว (CONFIRMED)</b> และที่ยังผูกกับงานจริง จะไม่ถูกแตะ</div>'+
+        '</div>',
+      showCancelButton:true, confirmButtonColor:'#c0392b', confirmButtonText:'คืนโค้ดที่ค้าง', cancelButtonText:'ยกเลิก'
+    }).then(function(r){
+      if(!r.isConfirmed) return;
+      var res = C.returnOrphans(inUse, {src:'หน้า Code Counter — คืนโค้ดที่ค้าง'});
+      Swal.fire({icon:'success', title:'คืนโค้ดแล้ว', html:'คืน <b>'+res.freedCount+'</b> เลขกลับตัวนับ'+(res.kept.length?(' · คงไว้ '+res.kept.length+' เลข'):'')});
+      renderAll();
+    });
+  };
+  window.ccReset = function(){
+    if(!window.Swal){ C.reset(); return; }
+    Swal.fire({icon:'warning',title:'รีเซ็ตตัวนับทั้งหมด?',text:'ลบการจองทั้งหมดและ seed baseline ใหม่จากไฟล์',showCancelButton:true,confirmButtonColor:'#c0392b',confirmButtonText:'รีเซ็ต',cancelButtonText:'ยกเลิก'})
+      .then(function(r){ if(r.isConfirmed){ C.reset(); } });
+  };
+  window.ccCheckBadge = function(){
+    var v = (document.getElementById('ccBadgeInput').value||'').trim();
+    var out = document.getElementById('ccBadgeOut');
+    if(!v){ out.innerHTML=''; return; }
+    var h = C.badgeHTML(v);
+    out.innerHTML = h || '<span class="text-muted small">ไม่พบโค้ดนี้ในทะเบียนจอง</span>';
+  };
+
+  // per-category item code tester
+  function buildCatSel(){
+    var sel = document.getElementById('ccCatSel'); if(!sel) return;
+    var seen={}, opts=[];
+    (window.PC_ITEM_MASTER||[]).forEach(function(it){
+      var cc=String(it.cateCode||'').trim(); if(!cc||seen[cc]) return; seen[cc]=1;
+      opts.push({cc:cc, name:it.category||''});
+    });
+    opts.sort(function(a,b){ return a.cc.localeCompare(b.cc); });
+    sel.innerHTML = opts.length
+      ? opts.map(function(o){ return '<option value="'+esc(o.cc)+'">'+esc(o.cc+' · '+o.name)+'</option>'; }).join('')
+      : '<option value="">— ยังไม่มีข้อมูลสินค้า —</option>';
+    updateCatNext();
+  }
+  function updateCatNext(){
+    var sel=document.getElementById('ccCatSel'), out=document.getElementById('ccCatNext'); if(!sel||!out) return;
+    var cc=sel.value; out.textContent = cc ? C.peekCat(cc) : '—';
+  }
+  window.ccReserveCat = function(){
+    var sel=document.getElementById('ccCatSel'); var cc=sel?sel.value:''; if(!cc) return;
+    var w=(document.getElementById('ccCatWhere')||{}).value||'';
+    var e=C.reserveCat(cc,{where:w.trim()});
+    if(e && window.Swal) Swal.fire({icon:'success',title:'จองรหัสสินค้าแล้ว',html:'<b class="mono" style="font-size:1.3rem;color:#2e934a">'+esc(e.code)+'</b><br><span class="text-muted small">หมวด '+esc(cc)+' · RESERVED</span>',timer:1400,showConfirmButton:false});
+    updateCatNext();
+  };
+  var _catSelEl=document.getElementById('ccCatSel'); if(_catSelEl) _catSelEl.addEventListener('change', updateCatNext);
+
+  // live updates
+  if(window.__ccUnsub) { try{ window.__ccUnsub(); }catch(e){} }
+  window.__ccUnsub = C.onChange(function(){ renderAll(); updateCatNext(); });
+  buildCatSel();
+  /* ── คืนโค้ดอัตโนมัติ: RESERVED ที่ไม่ได้ถูกบันทึก (ยังไม่ CONFIRMED) และหลุดจากงานจริง (getInUseCodes)
+     → คืนกลับตัวนับเอง เมื่อเปิดหน้านี้ · เว้นระยะปลอดภัย 30 นาที (กันคืนเลขที่ IT เพิ่งจอง/กำลังกรอก) */
+  (function ccAutoSweep(){
+    try{
+      if(!C.returnOrphans) return;
+      var inUse = (window.PC_API && PC_API.getInUseCodes) ? (PC_API.getInUseCodes()||[]) : [];
+      var res = C.returnOrphans(inUse, { minAgeMs: 30*60*1000, src:'คืนอัตโนมัติ — โค้ดค้างที่หลุดจากงาน (ยังไม่บันทึก)' });
+      if(res && res.freedCount && window.Swal){
+        Swal.fire({ toast:true, position:'top-end', icon:'info', timer:4200, timerProgressBar:true, showConfirmButton:false,
+          title:'คืนโค้ดค้างอัตโนมัติ '+res.freedCount+' เลข', html:'<div style="font-size:.78rem;color:#555">โค้ดที่ยังไม่บันทึกและหลุดจากงานจริง ถูกคืนกลับตัวนับแล้ว</div>' });
+      }
+    }catch(e){}
+  })();
+  renderAll();
+};
+window.disposeCodeCounter = function(){ if(window.__ccUnsub){ try{ window.__ccUnsub(); }catch(e){} window.__ccUnsub=null; } };
+</script>

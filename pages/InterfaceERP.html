@@ -1,0 +1,144 @@
+<!-- ============================================================
+     pages/InterfaceERP.html — Interface ERP (IT ยืนยันเชื่อมระบบ ERP ภายนอก)
+     entry: initInterfaceERP()
+     โค้ด + ชื่อปุ่มของ Co-Promotion ไหลมาที่นี่ → IT ใช้ตั้งค่า ERP ข้างนอก
+     กด "ยืนยัน Interface" → confirmErpInterface → Sales interface setup = YES
+       + ยิงเมล/แจ้งเตือน ACC · MKT · IT (event copro_interfaced)
+     ============================================================ -->
+<style>
+  .ie-scope { background:#f4f6f9; min-height:100vh; padding:24px 26px 60px; font-family:'Kanit',sans-serif; color:#3b4753; }
+  .ie-scope .ie-head { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .ie-scope .ie-head .ic { width:52px; height:52px; border-radius:14px; background:#e8f0fe; color:#2c5cc5; display:grid; place-items:center; font-size:1.35rem; flex:none; }
+  .ie-scope .ie-head h1 { font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.8rem; color:#1a1d20; margin:0; line-height:1.1; }
+  .ie-scope .ie-head .sub { font-size:.9rem; color:#6c757d; font-weight:600; margin-top:3px; max-width:640px; line-height:1.4; }
+
+  .ie-scope .seg { display:inline-flex; background:#eef1f4; border-radius:11px; padding:3px; gap:2px; margin-bottom:18px; }
+  .ie-scope .seg button { border:0; background:transparent; padding:8px 16px; border-radius:9px; font-family:inherit; font-weight:700; font-size:.86rem; color:#5a616b; cursor:pointer; }
+  .ie-scope .seg button.on { background:#fff; color:#2c5cc5; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .ie-scope .seg button .cnt { background:#dfe7f5; color:#2c4a82; border-radius:20px; padding:0 7px; font-size:.72rem; margin-left:5px; }
+
+  .ie-scope .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:16px; }
+  .ie-scope .card { background:#fff; border:1px solid #e6eaef; border-radius:16px; padding:0; box-shadow:0 1px 2px rgba(20,32,43,.05),0 6px 18px rgba(20,32,43,.04); overflow:hidden; display:flex; flex-direction:column; }
+  .ie-scope .card .ch { padding:14px 17px; border-bottom:1px solid #eef1f4; display:flex; align-items:flex-start; gap:10px; }
+  .ie-scope .card .ch .codes { display:flex; flex-direction:column; gap:4px; }
+  .ie-scope .code { font-family:'JetBrains Mono',monospace; font-weight:700; color:#15623c; background:#eafaf1; padding:2px 9px; border-radius:7px; font-size:.92rem; display:inline-block; }
+  .ie-scope .code.set { color:#6d3bd1; background:#f3eefe; font-size:.82rem; }
+  .ie-scope .card .ch .st { margin-left:auto; font-size:.66rem; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+  .ie-scope .st.wait { background:rgba(201,138,30,.16); color:#a06d13; } .ie-scope .st.done { background:rgba(31,138,78,.16); color:#1f8a4e; }
+  .ie-scope .card .cb { padding:14px 17px; flex:1; }
+  .ie-scope .card .nm { font-weight:700; font-size:1.02rem; color:#14202b; line-height:1.3; margin-bottom:2px; }
+  .ie-scope .card .camp { font-size:.76rem; color:#9aa5b1; margin-bottom:10px; }
+  .ie-scope .kv { display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:.82rem; }
+  .ie-scope .kv .k { color:#8a9099; font-weight:600; white-space:nowrap; }
+  .ie-scope .kv .v { color:#2b333c; font-weight:600; }
+  .ie-scope .chip { display:inline-block; font-size:.66rem; font-weight:800; padding:2px 8px; border-radius:20px; background:#eef4ff; color:#2c4a82; }
+  .ie-scope .card .cf { padding:13px 17px; border-top:1px solid #eef1f4; background:#fbfcfd; }
+  .ie-scope .btnc { width:100%; background:#2c5cc5; color:#fff; border:0; border-radius:11px; padding:11px; font-weight:800; font-size:.92rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .ie-scope .btnc:hover { background:#1f47a0; }
+  .ie-scope .done-note { font-size:.8rem; color:#1f8a4e; font-weight:700; display:flex; align-items:center; gap:7px; }
+  .ie-scope .done-note .muted { color:#9aa5b1; font-weight:500; }
+  .ie-scope .empty { grid-column:1/-1; padding:56px; text-align:center; color:#9aa5b1; font-weight:600; background:#fff; border:1px dashed #d8dee5; border-radius:16px; }
+  @media(max-width:640px){ .ie-scope{ padding:16px 12px 50px; } .ie-scope .grid{ grid-template-columns:1fr; } .ie-scope .seg{ width:100%; } .ie-scope .seg button{ flex:1; } }
+</style>
+
+<div class="ie-scope">
+  <div class="ie-head">
+    <div class="ic"><i class="fas fa-plug"></i></div>
+    <div>
+      <h1>Interface ERP</h1>
+      <div class="sub">โค้ด + ชื่อปุ่มของโปร Co-Promotion ไหลมาที่นี่ — IT ใช้ข้อมูลตั้งค่าเชื่อม ERP ภายนอก แล้วกด "ยืนยัน Interface" เพื่อบันทึกสถานะและแจ้งทีมบัญชี (ACC)</div>
+    </div>
+  </div>
+
+  <div class="seg" id="ieSeg">
+    <button class="on" data-f="WAIT" onclick="ieSetFilter(this,'WAIT')">รอทำ <span class="cnt" id="ieCWait">0</span></button>
+    <button data-f="DONE" onclick="ieSetFilter(this,'DONE')">เชื่อมแล้ว <span class="cnt" id="ieCDone">0</span></button>
+    <button data-f="ALL" onclick="ieSetFilter(this,'ALL')">ทั้งหมด <span class="cnt" id="ieCAll">0</span></button>
+  </div>
+
+  <div class="grid" id="ieGrid"></div>
+</div>
+
+<script>
+(function () {
+  var FILTER = 'WAIT', ROWS = [];
+  function uname() { try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || 'IT'; } catch (e) { return 'IT'; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function run(fn, arg) { return new Promise(function (res, rej) { try { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](arg); } catch (e) { rej(e); } }); }
+
+  window.ieSetFilter = function (btn, f) {
+    FILTER = f;
+    document.querySelectorAll('#ieSeg button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    ieRender();
+  };
+
+  window.ieLoad = function () {
+    run('getCoPromotions').then(function (rows) { ROWS = rows || []; ieRender(); }).catch(function () { ROWS = []; ieRender(); });
+  };
+
+  function ieRender() {
+    var _ieToday = new Date().toISOString().slice(0, 10);
+    var VIS = ROWS.filter(function (r) { var en = String(r.end || '').trim(); return !(/^\d{4}-\d{2}-\d{2}/.test(en) && en < _ieToday); }); // โปรหมดเขต → ตัดออกจากหน้า Interface IT
+    var wait = VIS.filter(function (r) { return !r.interfaceSetup; }).length;
+    document.getElementById('ieCWait').textContent = wait;
+    document.getElementById('ieCDone').textContent = VIS.length - wait;
+    document.getElementById('ieCAll').textContent = VIS.length;
+    var list = VIS.filter(function (r) {
+      if (FILTER === 'WAIT') return !r.interfaceSetup;
+      if (FILTER === 'DONE') return !!r.interfaceSetup;
+      return true;
+    });
+    var grid = document.getElementById('ieGrid');
+    if (!list.length) { grid.innerHTML = '<div class="empty"><i class="fas fa-plug fa-2x d-block mb-2" style="opacity:.4"></i>' + (FILTER === 'WAIT' ? 'ไม่มีงานรอเชื่อม ERP' : 'ไม่มีรายการ') + '</div>'; return; }
+    grid.innerHTML = list.map(function (r) {
+      var codes = (r.codePromotion ? '<span class="code">' + esc(r.codePromotion) + '</span>' : '') +
+        (r.codeItemSet ? '<span class="code set">' + esc(r.codeItemSet) + '</span>' : '');
+      if (!codes) codes = '<span class="code" style="background:#f1f3f5;color:#8a9099">ไม่มีโค้ด</span>';
+      var st = r.interfaceSetup ? '<span class="st done"><i class="fas fa-check"></i> เชื่อมแล้ว</span>' : '<span class="st wait"><i class="fas fa-hourglass-half"></i> รอเชื่อม</span>';
+      var types = String(r.type || '').split(',').map(function (t) { return '<span class="chip">' + esc(t.trim()) + '</span>'; }).join(' ');
+      var kv = '<div class="kv">' +
+        '<div class="k">Brand</div><div class="v">' + esc(r.brand || '-') + '</div>' +
+        '<div class="k">เรียกเก็บในนาม</div><div class="v">' + esc(r.billingEntity || '-') + '</div>' +
+        '<div class="k">Payment</div><div class="v">' + esc(r.paymentType || '-') + (r.paymentCondition ? ' · ' + esc(r.paymentCondition) : '') + '</div>' +
+        '<div class="k">ราคา Exc. VAT</div><div class="v">' + (r.priceExcVat ? esc(Number(r.priceExcVat).toFixed(2)) + ' ฿' : (r.priceIncVat ? '(Inc ' + esc(r.priceIncVat) + ')' : '-')) + '</div>' +
+        '<div class="k">SO / Quota</div><div class="v">' + esc([r.soNo, r.quota].filter(Boolean).join(' / ') || '-') + '</div>' +
+        '<div class="k">ช่วงเวลา</div><div class="v">' + esc(r.periodText || ((r.start || '') + ' → ' + (r.end || ''))) + '</div>' +
+        '</div>';
+      var foot = r.interfaceSetup
+        ? '<div class="cf"><div class="done-note"><i class="fas fa-circle-check"></i> Interface แล้ว <span class="muted">· ' + esc(r.interfaceBy || '') + (r.interfaceAt ? ' · ' + esc(String(r.interfaceAt).slice(0, 10)) : '') + '</span></div></div>'
+        : '<div class="cf"><button class="btnc" onclick="ieConfirm(\'' + r.id + '\')"><i class="fas fa-plug"></i> ยืนยัน Interface ERP</button></div>';
+      return '<div class="card">' +
+        '<div class="ch"><div class="codes">' + codes + '</div>' + st + '</div>' +
+        '<div class="cb"><div class="nm">' + esc(r.cmposName || r.buttonName || '-') + '</div>' +
+        '<div class="camp">' + esc(r.campaign || '') + '</div>' +
+        '<div style="margin-bottom:9px">' + types + '</div>' + kv +
+        (r.detail ? '<div style="margin-top:10px;font-size:.8rem;color:#5a616b;line-height:1.45;border-top:1px dashed #eceff2;padding-top:9px">' + esc(r.detail) + '</div>' : '') +
+        '</div>' + foot + '</div>';
+    }).join('');
+  }
+
+  window.ieConfirm = function (id) {
+    var r = ROWS.find(function (x) { return x.id === id; });
+    if (!r) return;
+    Swal.fire({
+      icon: 'question', title: 'ยืนยัน Interface ERP?',
+      html: '<div style="text-align:left;font-size:.86rem;line-height:1.6">โค้ด <b>' + esc([r.codePromotion, r.codeItemSet].filter(Boolean).join(' / ') || '-') + '</b><br>' +
+        '<b>' + esc(r.cmposName || r.buttonName || '') + '</b> · Brand ' + esc(r.brand || '-') + '<br>' +
+        '<span style="color:#6c757d">เมื่อยืนยัน: ตั้งสถานะ Sales interface setup = YES และแจ้งทีมบัญชี (ACC) · MKT · IT ทางอีเมล + ช่องทางที่ตั้งค่าไว้</span></div>',
+      showCancelButton: true, confirmButtonText: '<i class="fas fa-paper-plane"></i> ยืนยัน & แจ้ง ACC',
+      confirmButtonColor: '#2c5cc5', cancelButtonText: 'ยกเลิก'
+    }).then(function (res) {
+      if (!res.isConfirmed) return;
+      run2('confirmErpInterface', id, uname()).catch(function () {}).finally(function () {
+        Swal.fire({ icon: 'success', title: 'ยืนยัน Interface แล้ว', html: 'แจ้งทีมบัญชี (ACC) เรียบร้อย', timer: 2000, showConfirmButton: false });
+        ieLoad();
+      });
+    });
+  };
+  // helper: เรียก backend แบบ 2 อาร์กิวเมนต์
+  function run2(fn, a, b) { return new Promise(function (res, rej) { try { google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](a, b); } catch (e) { rej(e); } }); }
+
+  window.initInterfaceERP = function () { ieLoad(); };
+  if (document.getElementById('ieGrid') && typeof google !== 'undefined') { try { window.initInterfaceERP(); } catch (e) {} }
+})();
+</script>

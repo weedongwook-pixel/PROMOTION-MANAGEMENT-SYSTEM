@@ -1,0 +1,999 @@
+<style>
+  .bv-scope{ font-family:'Kanit',sans-serif;
+    --pc-black:#1a1d20; --pc-yellow:#F4D03F; --pc-green:#1D8348;
+    --live:#2e934a; --ending:#c9870a; --ended:#6b7280; --upcoming:#2f5fb3; --cancel:#4b5054; --now:#e8590c; }
+  .bv-scope .mono{ font-family:'JetBrains Mono',monospace; }
+
+  /* header */
+  .bv-scope .bv-head{ background:var(--pc-yellow); color:#1A1A1A; border-bottom:5px solid var(--pc-green); border-radius:16px; padding:20px 24px; display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap; }
+  .bv-scope .bv-head h3{ font-weight:700; margin:0; }
+  .bv-scope .bv-head h3 i{ color:var(--pc-green); }
+  .bv-scope .bv-head .sub{ opacity:.85; font-size:.9rem; margin-top:2px; }
+  .bv-scope .head-right{ display:flex; align-items:center; gap:12px; }
+  .bv-scope .ticket-link{ display:inline-flex; align-items:center; gap:8px; background:rgba(29,131,72,.14); color:#176b3a; text-decoration:none; font-weight:600; font-size:.86rem; border-radius:11px; padding:9px 14px; transition:.13s; white-space:nowrap; cursor:pointer; }
+  .bv-scope .ticket-link:hover{ background:rgba(29,131,72,.24); color:#0f5128; }
+  .bv-scope .ticket-link i{ color:var(--pc-green); }
+  .bv-scope .tk-badge{ font-family:'JetBrains Mono',monospace; font-weight:700; background:var(--pc-green); color:#fff; border-radius:999px; min-width:22px; text-align:center; padding:1px 7px; font-size:.76rem; }
+  .bv-scope .tk-badge.zero{ background:rgba(0,0,0,.14); color:#555; }
+  .bv-scope .today-pill{ background:var(--pc-green); color:#fff; font-weight:700; border-radius:11px; padding:8px 14px; text-align:center; line-height:1.1; white-space:nowrap; }
+  .bv-scope .today-pill small{ display:block; font-size:.6rem; letter-spacing:1.4px; opacity:.7; font-weight:600; }
+  .bv-scope .today-pill b{ font-size:1.05rem; }
+
+  /* code lookup card */
+  .bv-scope .ccard{ background:#fff; border:1px solid #e7eaee; border-left:5px solid var(--pc-green); border-radius:16px; padding:18px 20px; margin-bottom:22px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .bv-scope .cc-top{ display:flex; align-items:flex-start; gap:13px; margin-bottom:15px; }
+  .bv-scope .cc-ic{ width:46px; height:46px; border-radius:13px; background:#eafaf1; color:var(--pc-green); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex:none; }
+  .bv-scope .cc-ttl{ font-weight:700; font-size:1.08rem; line-height:1.2; }
+  .bv-scope .cc-sub{ font-size:.85rem; color:#7a818a; margin-top:3px; line-height:1.45; }
+  .bv-scope .cc-search{ display:flex; gap:10px; align-items:stretch; }
+  .bv-scope .cc-input{ flex:1; position:relative; }
+  .bv-scope .cc-input > i{ position:absolute; left:16px; top:50%; transform:translateY(-50%); color:#aab0b8; font-size:1rem; pointer-events:none; }
+  .bv-scope .cc-input input{ width:100%; border:2px solid #e3e7eb; border-radius:13px; padding:14px 16px 14px 44px; font-family:inherit; font-size:1.02rem; font-weight:600; transition:.13s; }
+  .bv-scope .cc-input input::placeholder{ font-weight:400; color:#aab0b8; }
+  .bv-scope .cc-input input:focus{ outline:none; border-color:var(--pc-green); box-shadow:0 0 0 4px rgba(46,147,74,.1); }
+  /* searchable branch combobox */
+  .bv-scope .bv-brsel{ position:relative; }
+  .bv-scope .bv-brmenu{ display:none; position:absolute; left:0; top:calc(100% + 4px); z-index:60; width:100%; min-width:280px; max-height:340px; overflow:auto; background:#fff; border:1px solid #e2e6ea; border-radius:12px; box-shadow:0 14px 32px rgba(0,0,0,.16); padding:4px; }
+  .bv-scope .bv-brmenu.show{ display:block; }
+  .bv-scope .bv-britem{ padding:9px 12px; border-radius:8px; font-size:.9rem; font-weight:600; color:#1a1d20; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bv-scope .bv-britem:hover{ background:#eaf6ef; }
+  .bv-scope .bv-britem.on{ background:#2e934a; color:#fff; }
+  .bv-scope .bv-britem.empty{ color:#9aa1aa; cursor:default; font-weight:500; }
+  .bv-scope .cc-btn{ background:var(--pc-green); color:#fff; border:0; border-radius:13px; padding:0 26px; font-weight:700; font-size:1rem; cursor:pointer; display:inline-flex; align-items:center; gap:9px; transition:.13s; white-space:nowrap; }
+  .bv-scope .cc-btn:hover{ background:#176b3a; }
+  .bv-scope .cc-scan{ background:#eafaf1; color:#176b3a; border:2px solid #bfe6cd; border-radius:13px; padding:0 20px; font-weight:700; font-size:1rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; transition:.13s; }
+  .bv-scope .cc-scan:hover{ background:#d7f2e0; border-color:#9fd8b3; }
+  .bv-scope .cc-scan i{ font-size:1.05rem; }
+  .bv-scope .cc-try{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:13px; }
+  .bv-scope .cc-try .lbl{ font-size:.82rem; color:#9aa1aa; display:inline-flex; align-items:center; gap:6px; }
+  .bv-scope .cc-chip{ display:inline-flex; align-items:center; gap:7px; border:1.5px solid #dde2e7; background:#fff; border-radius:999px; padding:6px 14px; font-size:.84rem; font-weight:600; color:#5a616b; cursor:pointer; transition:.12s; }
+  .bv-scope .cc-chip:hover{ border-color:#b6bcc4; background:#fafbfc; }
+  .bv-scope .cc-chip.ok i{ color:#1d7a4d; } .bv-scope .cc-chip.no i{ color:#c0392b; } .bv-scope .cc-chip.used i{ color:#c9870a; }
+  @media(max-width:560px){ .bv-scope .cc-search{ flex-direction:column; } .bv-scope .cc-btn{ padding:13px; justify-content:center; } .bv-scope .cc-scan{ padding:13px; justify-content:center; } }
+  /* QR / barcode camera scanner overlay */
+  #bvScanOv{ position:fixed; inset:0; background:rgba(12,15,17,.94); z-index:99999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:18px; }
+  #bvScanOv.show{ display:flex; }
+  #bvScanOv .box{ width:100%; max-width:420px; background:#0e1113; border-radius:20px; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.55); }
+  #bvScanOv .hd{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:15px 18px; color:#fff; font-weight:700; font-size:1.02rem; font-family:'Kanit',sans-serif; }
+  #bvScanOv .hd i.lead{ color:#5ee08b; margin-right:8px; }
+  #bvScanOv .hd .x{ background:rgba(255,255,255,.14); color:#fff; border:0; width:38px; height:38px; border-radius:11px; cursor:pointer; font-size:1.05rem; flex:none; }
+  #bvScanOv .hd .x:hover{ background:rgba(255,255,255,.26); }
+  #bvQrReader{ width:100%; background:#000; min-height:260px; }
+  #bvQrReader video{ width:100% !important; display:block; }
+  #bvScanOv .hint{ color:#cfd4d8; font-size:.88rem; text-align:center; padding:14px 18px 20px; font-family:'Kanit',sans-serif; line-height:1.5; }
+
+  /* view toggle */
+  .bv-scope .view-toggle{ display:inline-flex; background:#eef1f4; border-radius:10px; padding:3px; gap:2px; }
+  .bv-scope .view-toggle button{ border:0; background:transparent; font-family:inherit; font-weight:600; font-size:.84rem; padding:7px 15px; border-radius:8px; color:#6b7280; display:flex; align-items:center; gap:7px; cursor:pointer; }
+  .bv-scope .view-toggle button.active{ background:#fff; color:var(--pc-black); box-shadow:0 1px 2px rgba(0,0,0,.12); }
+
+  /* status chips */
+  .bv-scope .statbar{ display:flex; flex-wrap:wrap; gap:9px; margin:6px 0 4px; }
+  /* ===== Type Promotion tabs ===== */
+  .bv-scope .typebar{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 10px; border-bottom:2px solid #e7eaee; padding-bottom:0; }
+  .bv-scope .typetab{ border:0; background:none; font-family:inherit; font-weight:700; font-size:.92rem; color:#6b7280; cursor:pointer; padding:9px 16px 11px; border-bottom:3px solid transparent; margin-bottom:-2px; display:flex; align-items:center; gap:9px; transition:.13s; }
+  .bv-scope .typetab:hover{ color:#1a1d20; }
+  .bv-scope .typetab.on{ color:var(--pc-green); border-bottom-color:var(--pc-green); }
+  .bv-scope .typetab .n{ font-family:'JetBrains Mono',monospace; background:#eef1f4; border-radius:999px; padding:1px 9px; font-size:.74rem; color:#3a3f45; font-weight:700; }
+  .bv-scope .typetab.on .n{ background:var(--pc-green); color:#fff; }
+  /* ===== e-Voucher brand filter ===== */
+  .bv-scope #bvBrandBar{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-bottom:none; margin:2px 0 10px; }
+  .bv-scope .bv-brandlbl{ font-size:.82rem; font-weight:700; color:#9aa1aa; display:inline-flex; align-items:center; gap:6px; margin-right:2px; }
+  .bv-scope .brandchip{ border:1.5px solid #dde2e7; background:#fff; border-radius:999px; padding:6px 13px; font-size:.84rem; font-weight:700; color:#5a616b; cursor:pointer; display:inline-flex; align-items:center; gap:7px; font-family:inherit; }
+  .bv-scope .brandchip:hover{ border-color:#b6bcc4; }
+  .bv-scope .brandchip.on{ background:#6d3bd1; color:#fff; border-color:transparent; }
+  .bv-scope .brandchip .n{ font-family:'JetBrains Mono',monospace; background:#eef1f4; border-radius:999px; padding:1px 8px; font-size:.74rem; color:#3a3f45; }
+  .bv-scope .brandchip.on .n{ background:rgba(255,255,255,.25); color:#fff; }
+  /* ===== labeled filter rows ===== */
+  .bv-scope .bv-frow{ display:flex; align-items:center; gap:14px; margin:6px 0; }
+  .bv-scope .bv-frlbl{ flex:0 0 140px; font-size:.8rem; font-weight:700; color:#8a9099; display:inline-flex; align-items:center; gap:7px; }
+  .bv-scope .bv-frlbl i{ opacity:.6; font-size:.82rem; }
+  .bv-scope .bv-frbar{ flex:1 1 auto; display:flex; flex-wrap:wrap; gap:8px; border-bottom:none !important; margin:0 !important; padding:0 !important; }
+  @media(max-width:640px){ .bv-scope .bv-frow{ flex-direction:column; align-items:flex-start; gap:5px; } .bv-scope .bv-frlbl{ flex:none; } }
+  .bv-scope .statchip{ border:1.5px solid #d8dde2; background:#fff; border-radius:999px; padding:7px 14px 7px 12px; font-size:.85rem; font-weight:600; color:#5a616b; cursor:pointer; display:flex; align-items:center; gap:8px; transition:.13s; }
+  .bv-scope .statchip .dot{ width:9px; height:9px; border-radius:50%; }
+  .bv-scope .statchip .n{ font-family:'JetBrains Mono',monospace; background:#eef1f4; border-radius:6px; padding:1px 7px; font-size:.76rem; color:#3a3f45; }
+  .bv-scope .statchip:hover{ border-color:#b6bcc4; }
+  .bv-scope .statchip.on{ color:#fff; border-color:transparent; }
+  .bv-scope .statchip.on .n{ background:rgba(255,255,255,.25); color:#fff; }
+  .bv-scope .statchip.on .dot{ background:#fff !important; }
+
+  /* ===== CARD VIEW ===== */
+  .bv-scope #bvList.cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:18px; }
+  .bv-scope #bvList.cards{ --bsgap:0; }
+  .bv-scope .pcard{ background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid #e7eaee; display:flex; flex-direction:column; transition:transform .14s, box-shadow .14s; }
+  .bv-scope .pcard:hover{ transform:translateY(-3px); box-shadow:0 .8rem 1.6rem rgba(0,0,0,.1); }
+  .bv-scope .pcard.dim{ opacity:.58; }
+  .bv-scope .pc-strip{ padding:9px 15px; display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:700; font-size:.88rem; gap:10px; }
+  .bv-scope .pc-strip .cd{ font-weight:600; font-size:.8rem; background:rgba(255,255,255,.2); border-radius:8px; padding:2px 10px; white-space:nowrap; }
+  .bv-scope .pc-body{ padding:15px 16px 16px; flex:1; display:flex; flex-direction:column; }
+  .bv-scope .pc-name{ font-size:1.16rem; font-weight:700; line-height:1.25; }
+  .bv-scope .pc-detail{ margin:11px 0 4px; display:flex; flex-direction:column; gap:7px; }
+  .bv-scope .drow{ font-size:.9rem; color:#3a3f45; display:flex; align-items:center; gap:10px; line-height:1.25; }
+  .bv-scope .drow > i{ color:var(--pc-green); font-size:.95rem; width:18px; text-align:center; flex:none; }
+  .bv-scope .drow b{ font-weight:700; color:var(--pc-black); }
+  .bv-scope .sect-lbl{ font-size:.66rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:#aab0b8; margin:14px 0 7px; display:flex; align-items:center; gap:6px; }
+  .bv-scope .posbtn{ border:1.5px solid var(--pc-black); border-radius:10px; padding:9px 12px; margin-bottom:8px; background:#fff; }
+  /* in-card button pager (5 ปุ่ม/หน้า) */
+  .bv-scope .bv-btnpager{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; flex-wrap:wrap; }
+  .bv-scope .bv-btnpager .pinfo{ font-size:.72rem; color:#9aa1aa; font-weight:600; }
+  .bv-scope .bv-btnpager .pnums{ display:flex; gap:4px; flex-wrap:wrap; }
+  .bv-scope .bv-btnpager button{ border:1.3px solid #dde2e7; background:#fff; color:#3a3f45; font-family:inherit; font-weight:700; font-size:.78rem; min-width:28px; height:28px; padding:0 7px; border-radius:7px; cursor:pointer; line-height:1; }
+  .bv-scope .bv-btnpager button:hover:not(:disabled){ border-color:var(--pc-green); color:var(--pc-green); }
+  .bv-scope .bv-btnpager button.on{ background:var(--pc-green); border-color:var(--pc-green); color:#fff; }
+  .bv-scope .bv-btnpager button:disabled{ opacity:.4; cursor:default; }
+  .bv-scope .posbtn .top{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .bv-scope .posbtn .sn{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); font-size:.9rem; }
+  .bv-scope .posbtn .code{ font-family:'JetBrains Mono',monospace; font-size:.72rem; background:#f1f4f7; border:1px solid #e0e4e8; border-radius:6px; padding:1px 7px; color:#444; white-space:nowrap; }
+  .bv-scope .posbtn .row2{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:6px; font-size:.8rem; color:#6b7280; }
+  .bv-scope .posbtn .btncat{ display:inline-flex; align-items:center; margin-top:5px; font-size:.7rem; font-weight:700; color:#7a5c00; background:#fff7e0; border:1px solid #f0dca0; border-radius:6px; padding:1px 8px; }
+  .bv-scope .price-promo{ font-weight:700; color:var(--pc-green); font-size:1rem; }
+  .bv-scope .price-old{ text-decoration:line-through; color:#aab0b8; font-size:.82rem; }
+  .bv-scope .offer{ display:flex; align-items:baseline; gap:10px; margin:4px 0 2px; }
+  .bv-scope .offer .big{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.9rem; line-height:1; }
+  .bv-scope .offer .unit{ font-weight:700; font-size:.95rem; color:#6b7280; }
+  .bv-scope .cond{ font-size:.82rem; color:#6b7280; margin-top:6px; line-height:1.4; }
+  .bv-scope .cond b{ color:var(--pc-black); }
+  .bv-scope .pc-foot{ display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; padding-top:14px; }
+  .bv-scope .pc-foot .btn{ font-weight:600; border-radius:9px; font-size:.84rem; }
+  .bv-scope .btn-report{ border:1.5px solid #e0a106; color:#a5740a; background:#fff; font-weight:600; }
+  .bv-scope .btn-report:hover{ background:#fff7e0; color:#7a5a00; }
+  .bv-scope .btn-pos{ border:1.5px solid #2f6dba; color:#2f6dba; background:#fff; font-weight:600; }
+  .bv-scope .btn-pos:hover{ background:#eaf2fb; color:#1f5aa3; }
+
+  /* ===== LIST VIEW ===== */
+  .bv-scope #bvList.rows{ display:flex; flex-direction:column; gap:10px; }
+  .bv-scope .lrow{ background:#fff; border-radius:13px; border:1px solid #e7eaee; box-shadow:0 1px 2px rgba(0,0,0,.04); display:grid; grid-template-columns:180px 1fr auto; align-items:center; gap:18px; padding:14px 18px; position:relative; overflow:hidden; }
+  .bv-scope .lrow::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--c); }
+  .bv-scope .lrow.dim{ opacity:.58; }
+  .bv-scope .lr-pill{ display:inline-flex; align-items:center; gap:7px; font-weight:700; font-size:.84rem; color:var(--c); padding-left:6px; }
+  .bv-scope .lr-pill .dot{ width:9px; height:9px; border-radius:50%; background:var(--c); }
+  .bv-scope .lr-cd{ font-size:.74rem; color:#8a9099; font-weight:500; margin-top:3px; padding-left:16px; }
+  .bv-scope .lr-main .nm{ font-size:1.02rem; font-weight:700; line-height:1.2; }
+  .bv-scope .lr-main .meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .bv-scope .mtag{ font-size:.72rem; font-weight:600; color:#5a616b; background:#f1f4f7; border-radius:7px; padding:3px 9px; display:inline-flex; align-items:center; gap:5px; }
+  .bv-scope .mtag i{ color:#9aa1aa; font-size:.7rem; }
+  .bv-scope .lr-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .bv-scope .lr-bchip{ display:inline-flex; align-items:center; gap:7px; border:1.5px solid var(--pc-black); border-radius:8px; padding:4px 10px; font-size:.8rem; }
+  .bv-scope .lr-bchip .sn{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--pc-green); }
+  .bv-scope .lr-bchip .lr-code{ font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#888; }
+  .bv-scope .lr-bchip .pr{ font-weight:700; color:var(--pc-green); }
+  .bv-scope .lr-bchip .po{ text-decoration:line-through; color:#aab0b8; font-size:.74rem; }
+  .bv-scope .lr-right{ display:flex; gap:6px; }
+  .bv-scope .lr-right .btn{ border-radius:8px; font-size:.8rem; font-weight:600; }
+
+  @media(max-width:720px){
+    .bv-scope .lrow{ grid-template-columns:1fr; gap:10px; }
+    .bv-scope .head-right{ width:100%; justify-content:space-between; }
+  }
+  @media(max-width:560px){
+    .bv-scope #bvList.cards{ grid-template-columns:1fr; gap:14px; }
+    .bv-scope .bv-head{ padding:15px 16px; gap:12px; }
+    .bv-scope .bv-head h3{ font-size:1.2rem; }
+    .bv-scope .bv-head .sub{ font-size:.88rem; }
+    .bv-scope .ccard{ padding:15px; }
+    .bv-scope .cc-top{ gap:11px; margin-bottom:13px; }
+    .bv-scope .cc-ttl{ font-size:1.02rem; }
+    .bv-scope .cc-input input{ font-size:1rem; padding:13px 15px 13px 42px; }
+    .bv-scope .typebar{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+    .bv-scope .typetab{ font-size:.88rem; padding:8px 13px 10px; white-space:nowrap; flex:none; }
+    .bv-scope .bv-frow{ align-items:flex-start; }
+    .bv-scope .statchip{ font-size:.84rem; padding:7px 12px; }
+    .bv-scope .view-toggle button{ font-size:.84rem; padding:8px 13px; }
+    .bv-scope .today-pill b{ font-size:1rem; }
+  }
+</style>
+
+<div class="p-4 bv-scope" style="background-color:#f8fafc; min-height:100vh;">
+
+  <div class="bv-head mb-4 shadow p-4 rounded-3" style="background:#2e934a;color:#fff;">
+    <div>
+      <h3 class="fw-bold m-0"><i class="fas fa-store me-2 text-warning"></i> BRANCH VIEW — โปรโมชั่นสาขา</h3>
+      <p class="sub m-0" style="opacity:.85;">ปุ่มกดขายและโปรโมชั่นที่ใช้ได้ที่สาขาของคุณ — เช็กก่อนเปิดร้านทุกวัน</p>
+    </div>
+    <div class="head-right">
+      <a class="ticket-link" onclick="window.bvGoTickets()"><i class="fas fa-clipboard-list"></i>ปัญหาที่แจ้ง <span class="tk-badge zero" id="bvTkBadge">0</span></a>
+      <div class="today-pill"><small>วันนี้</small><b id="bvToday">—</b></div>
+    </div>
+  </div>
+
+  <div class="ccard">
+    <div class="cc-top">
+      <div class="cc-ic"><i class="fas fa-magnifying-glass"></i></div>
+      <div>
+        <div class="cc-ttl">ตวรจสอบโค๊ดโปรโมชั่นมีปัญหาที่นี่เพื่อแจ้งปัญหา</div>
+        <div class="cc-sub">กรอกโค้ดฝั่งลูกค้าเพื่อตรวจสอบเพื่อเช็คว่ามีอยู่ในระบบ เพื่อกดแจ้งปัญหาให้ทางระบบ POS ตรวจสอบ  ***กรณีหน้าจอ POS แจ้งมีการใช้โค๊ดในระบบแล้วต้องยึดทาง POS เป็นหลักเท่านั้น<br>ระบบนี้ไม่สามารถตรวจสอบเรื่องการใช้งานโค๊ดแล้วหรือไม่   ใช้สำหรับให้สาขาตรวจสอบเบื้องต้นเพื่อเปิดเคสแจ้งปัญหา</div>
+      </div>
+    </div>
+    <div class="cc-search">
+      <div class="cc-input"><i class="fas fa-barcode"></i><input id="bvCodeInp" data-code-only inputmode="latin" placeholder="กรอก / วางโค้ดจากลูกค้า" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase()" onkeydown="if(event.key==='Enter')window.bvCodeSearch()"></div>
+      <button class="cc-scan" onclick="window.bvOpenScanner()" title="เปิดกล้องมือถือสแกน QR / บาร์โค้ด"><i class="fas fa-camera"></i>สแกน QR</button>
+      <button class="cc-btn" onclick="window.bvCodeSearch()"><i class="fas fa-magnifying-glass"></i>ค้นหา</button>
+    </div>
+    <div id="bvCodeResult" class="mt-3"></div>
+  </div>
+
+  <div class="bg-white p-3 rounded-3 shadow-sm border mb-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-4 col-md-6">
+        <label class="small fw-bold text-uppercase text-muted mb-1">เลือกสาขาของคุณ</label>
+        <div class="bv-brsel">
+          <input id="bvBranchInput" type="text" autocomplete="off" class="form-control border-dark fw-bold" placeholder="ทุกสาขา (ภาพรวม) — พิมพ์ค้นหา รหัส/ชื่อไทย/อังกฤษ" onfocus="window.bvBranchOpen()" oninput="window.bvBranchFilter()" onblur="setTimeout(window.bvBranchClose,180)">
+          <input type="hidden" id="bvBranch" value="ALL">
+          <div class="bv-brmenu" id="bvBranchMenu"></div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label class="small fw-bold text-uppercase text-muted mb-1">เดือน</label>
+        <input type="month" id="bvMonth" class="form-control border-dark fw-bold" onchange="window.bvRender()">
+      </div>
+      <div class="col-lg-3 col-md-8">
+        <label class="small fw-bold text-uppercase text-muted mb-1">ค้นหาโปรโมชั่น</label>
+        <input type="text" id="bvSearch" class="form-control border-dark" placeholder="พิมพ์ชื่อแคมเปญ / ปุ่ม..." oninput="window.bvRender()">
+      </div>
+      <div class="col-lg-2 col-md-4 text-lg-end">
+        <label class="small fw-bold text-uppercase text-muted mb-1">มุมมอง</label>
+        <div class="view-toggle">
+          <button id="bvVCards" class="active" onclick="window.bvSetView('cards')"><i class="fas fa-table-cells-large"></i>การ์ด</button>
+          <button id="bvVRows" onclick="window.bvSetView('rows')"><i class="fas fa-list"></i>ลิสต์</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bv-frow"><span class="bv-frlbl"><i class="fas fa-bullhorn"></i>ประเภทโปรโมชั่น</span><div class="typebar bv-frbar" id="bvTypeBar"></div></div>
+  <div class="bv-frow" id="bvBrandRow" style="display:none"><span class="bv-frlbl"><i class="fas fa-ticket"></i>ประเภท e-Voucher</span><div class="bv-frbar" id="bvBrandBar"></div></div>
+  <div class="bv-frow"><span class="bv-frlbl"><i class="fas fa-truck"></i>ช่องทางการขาย</span><div class="typebar bv-frbar" id="bvChannelBar"></div></div>
+  <div class="bv-frow"><span class="bv-frlbl"><i class="fas fa-user-tag"></i>ประเภทลูกค้า</span><div class="typebar bv-frbar" id="bvCustBar"></div></div>
+  <div class="statbar" id="bvStatbar"></div>
+  <div id="bvCount" class="my-3 fw-bold text-muted small"></div>
+  <div id="bvLoading" class="text-center p-5"><div class="spinner-border text-success"></div></div>
+  <div id="bvList" class="cards"></div>
+</div>
+
+<script>
+  var bvData = [];
+  var bvItemMap = {};
+  // ชื่อบิลครัวของปุ่ม = kitchen ถ้ามี, ไม่งั้นดึง NameEN จาก item master (itemCode แรก)
+  function bvKitchen(b){ if(b && b.kitchen) return b.kitchen; var codes=(b&&b.itemCodes)||[]; for(var i=0;i<codes.length;i++){ var m=bvItemMap[String(codes[i])]; if(m&&m.en) return m.en; } return ''; }
+  // หมวดหมู่ของปุ่ม = จับจาก itemCode สินค้าจริง → ตารางสินค้า (item master)
+  // ข้ามรหัสคูปอง/วอเชอร์ (IC/BD/VC/SS) ที่ไม่ใช่รหัสสินค้า แล้วไปหารหัสสินค้าจริงในชุด
+  function bvBtnCat(b){
+    if(!b) return '';
+    var codes=[];
+    [b.itemCode, b.linkedItem, b.productCode, b.refItem].forEach(function(c){ if(c) codes.push(c); });
+    codes = codes.concat(b.itemCodes||[]);
+    for(var i=0;i<codes.length;i++){
+      var c=String(codes[i]||'').trim();
+      if(!c || /^(IC|BD|VC|SS)\d/i.test(c)) continue;   // รหัสคูปอง/subset — ไม่ใช่สินค้า ข้าม
+      var m=bvItemMap[c]; if(m&&m.cat) return m.cat;
+    }
+    return '';
+  }
+  var bvBillClose = {};
+  var bvBranches = [];
+  var bvView = 'cards';
+  var bvFilterStatus = 'ALL';
+  var bvFilterType = 'ALL';
+  var bvFilterChannel = 'ALL';
+  var bvFilterBrand = 'ALL';
+  var bvFilterCust = 'ALL';
+  // e-Voucher source (แบรนด์) จากชื่อแคมเปญ
+  function bvBrand(c){ var s=String(c&&c.campaign||'').toLowerCase(); if(s.indexOf('lazada')>-1) return 'Lazada'; if(s.indexOf('shopee')>-1) return 'Shopee'; if(s.indexOf('linegift')>-1||s.indexOf('line gift')>-1) return 'Linegift'; return ''; }
+  // ช่องทางขาย (Sale mode) สำหรับสาขาเลือกดู
+  var BV_CHANNELS_SEED = ['Take Away','Grab','LINE MAN','ShopeeFood','foodpanda','Robinhood','Gokoo'];
+  // ช่องทางที่ Active จาก Sale mode master (pc_salemode_master) — ปิดช่องไหน หน้าสาขาไม่โชว์ช่องนั้น
+  function bvChannels(){
+    var m=null; try{ m=JSON.parse(localStorage.getItem('pc_salemode_master')||'null'); }catch(e){}
+    if(!Array.isArray(m)||!m.length) return BV_CHANNELS_SEED.slice();
+    var out=[]; m.forEach(function(x){ if(!x||x.active===0||!x.name) return; var lo=String(x.name).trim().toLowerCase(); if(lo==='delivery'||lo==='all delivery'||lo==='all channel'||lo==='online') return; out.push(String(x.name).trim()); });
+    return out.length?out:BV_CHANNELS_SEED.slice();
+  }
+  function bvNormCh(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+  var BV_CH_ALIAS = { takeaway:['takeaway','ta','dinein'], grab:['grab'], lineman:['lineman'], shopeefood:['shopeefood','shopee'], foodpanda:['foodpanda','panda'], robinhood:['robinhood'], gokoo:['gokoo','gookoo'] };
+  function bvChannelMatch(saleModeStr, ch){
+    var s=String(saleModeStr==null?'':saleModeStr).toLowerCase().trim();
+    if(!s) return true;
+    if(s.indexOf('all channel')>-1 || s==='all' || s==='online') return true;
+    var deliv = bvNormCh(ch)!=='takeaway';
+    if(s.indexOf('all delivery')>-1) return deliv;
+    var sn=bvNormCh(s), keys=BV_CH_ALIAS[bvNormCh(ch)]||[bvNormCh(ch)];
+    if(keys.some(function(k){ return sn.indexOf(k)>-1; })) return true;
+    if(deliv && sn.indexOf('delivery')>-1) return true;
+    return false;
+  }
+  // จัดกลุ่ม Type Promotion → ป้ายแท็บ
+  function bvTypeGroup(pt){
+    var t=String(pt||'').toLowerCase();
+    if(t.indexOf('bill discount')>-1) return 'Bill Discount';
+    if(t.indexOf('voucher')>-1) return 'Voucher';
+    if(t.indexOf('coupon')>-1) return 'Item Coupon';
+    if(t.indexOf('member')>-1) return 'Member Card';
+    if(t.indexOf('price')>-1) return 'Price Promotion';
+    if(t.indexOf('item set')>-1||t.indexOf('itemset')>-1) return 'Item Set';
+    return pt ? pt : 'อื่นๆ';
+  }
+  // E-Coupon = Voucher Proposal ที่ MKT เลือกชนิด "ecoupon" → ป้ายหน้าสาขาแสดงเป็น e-Coupon (e)
+  function bvIsECoupon(c){ return c && String(c.proposalKind||'').toLowerCase()==='ecoupon'; }
+  function bvProposalLabel(c){
+    var pt = (c&&(c.promoType||c.promoTypeFull))||'-';
+    if(bvIsECoupon(c)) return String(pt).replace(/voucher/ig,'e-Coupon');
+    return pt;
+  }
+  function bvTypeGroupC(c){ return bvIsECoupon(c) ? 'e-Coupon' : bvTypeGroup(c&&c.promoType); }
+  var BV_TYPE_ORDER = ['Price Promotion','Item Coupon','Voucher','e-Coupon','Bill Discount','Member Card','Item Set'];
+
+  /* ===== date / status engine (ported from Branch View Mockup) ===== */
+  var BV_TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function bvToday(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function bvPd(s){ if(!s) return null; var p=String(s).split('-').map(Number); if(p.length<3||!p[0]) return null; return new Date(p[0],p[1]-1,p[2]); }
+  /* FX-P52 — เดิมตัดปีทิ้งเสมอ → โปรข้ามปี (เช่น 3 ก.ค. 2026 – 31 ก.ค. 2050) อ่านเป็น "3 ก.ค. – 31 ก.ค." เหมือนหมดอายุไปแล้ว
+     ตอนนี้: ปีไหนไม่ใช่ปีปัจจุบัน ให้ต่อท้ายปีไว้ด้วย */
+  function bvFmtShort(s){ var d=bvPd(s); if(!d) return (s||'-');
+    var txt=d.getDate()+' '+BV_TH_M[d.getMonth()];
+    return d.getFullYear()!==new Date().getFullYear() ? txt+' '+d.getFullYear() : txt; }
+  function bvFmt(s){ var d=bvPd(s); return d? d.getDate()+' '+BV_TH_M[d.getMonth()]+' '+d.getFullYear() : (s||'-'); }
+  function bvDayDiff(a,b){ return Math.round((a-b)/86400000); }
+
+  var BV_STATUS = {
+    NOW:      { key:'NOW',      label:'เริ่มขายวันนี้',  color:'#e8590c', icon:'fa-bolt' },
+    LIVE:     { key:'LIVE',     label:'กำลังขายอยู่',    color:'#2e934a', icon:'fa-circle-check' },
+    EXTENDED: { key:'EXTENDED', label:'ขยายเวลา',       color:'#2f7fb3', icon:'fa-calendar-plus' },
+    ENDING:   { key:'ENDING',   label:'ใกล้หมดเขต',     color:'#c9870a', icon:'fa-clock' },
+    REDUCED:  { key:'REDUCED',  label:'ลดเวลา',         color:'#b96a00', icon:'fa-calendar-minus' },
+    NEW:      { key:'NEW',      label:'ยังไม่เริ่ม',     color:'#2f5fb3', icon:'fa-star' },
+    ENDED:    { key:'ENDED',    label:'หมดเขตแล้ว',     color:'#6b7280', icon:'fa-ban' },
+    CANCELLED:{ key:'CANCELLED',label:'ยกเลิกแล้ว',     color:'#4b5054', icon:'fa-circle-xmark' },
+    DROPPED:  { key:'DROPPED',  label:'โปรหลุด · IT เปิดให้จบบิล', color:'#e8590c', icon:'fa-triangle-exclamation' },
+  };
+  // max IT bill-close end for a campaign's buttons (for selected branch)
+  function bvCalcExt(c, branch){ var bc=bvBillClose||{}; var best='';
+    function chk(cd){ cd=String(cd||''); if(!cd) return; var m=bc[cd]; if(!m) return; Object.keys(m).forEach(function(bid){ if(branch!=='ALL'&&bid!==branch) return; var e=m[bid]; if(e&&e>best) best=e; }); }
+    (c.buttons||[]).forEach(function(b){ [b.code,b.codeItemSet,b.codePromotion,b.promoCode,b.itemSetCode,b.itemCode].forEach(chk); (b.itemCodes||[]).forEach(chk); });
+    return best;
+  }
+  function bvTodayStr(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function bvStatusOf(c){
+    if(c._dropped) return BV_STATUS.DROPPED;
+    // ป้าย ขยาย/ลด/ยกเลิก จะขึ้นก็ต่อเมื่อ OP ยืนยันการเปลี่ยนแล้ว (opStatus CONFIRMED) เท่านั้น
+    // ระหว่างรอ OP ตรวจ (opStatus WAITING) → โชว์เป็นโปรปกติ (ปุ่มไม่หาย · ยังไม่ขึ้นป้าย/ยังไม่ inactive)
+    var cs=(String(c.opStatus||'').toUpperCase()==='CONFIRMED') ? (c.changeStatus||'').toUpperCase() : '';
+    if(cs==='CANCELLED') return BV_STATUS.CANCELLED;
+    var s=bvPd(c.start), e=bvPd(c.end), T=bvToday();
+    if(!s||!e) return BV_STATUS.LIVE;
+    if(bvDayDiff(s,T) > 0) return BV_STATUS.NEW;
+    if(bvDayDiff(s,T) === 0) return BV_STATUS.NOW;
+    if(T > e) return BV_STATUS.ENDED;
+    if(cs==='EXTENDED') return BV_STATUS.EXTENDED;
+    if(cs==='REDUCED')  return BV_STATUS.REDUCED;
+    return bvDayDiff(e,T) <= 5 ? BV_STATUS.ENDING : BV_STATUS.LIVE;
+  }
+  function bvCountdown(c,st){
+    var s=bvPd(c.start), e=bvPd(c.end), T=bvToday();
+    if(st.key==='NEW' && s) return 'เริ่มอีก '+bvDayDiff(s,T)+' วัน';
+    if(st.key==='NOW') return 'เริ่มวันนี้';
+    if(st.key==='ENDED') return 'หมดเมื่อ '+bvFmtShort(c.end);
+    if(st.key==='CANCELLED') return 'ยกเลิก';
+    if(!e) return '';
+    var n=bvDayDiff(e,T);
+    return n===0?'วันสุดท้ายวันนี้':'เหลืออีก '+n+' วัน';
+  }
+
+  var bvBaht = function(n){ return Number(n).toLocaleString()+'฿'; };
+  function bvHasNum(v){ return v!==undefined && v!=='' && Number(v)>0; }
+  function bvIsDiscount(pt){ var t=(pt||'').toLowerCase(); return t.indexOf('bill')>-1||t.indexOf('voucher')>-1||t.indexOf('coupon')>-1||t.indexOf('member')>-1; }
+
+  window.disposeBranch_View = function () { try { window.bvCloseScanner && window.bvCloseScanner(); } catch (e) {} };
+  window.initBranch_View = function () {
+    document.getElementById('bvToday').textContent = (function(){ var d=bvToday(); return d.getDate()+' '+BV_TH_M[d.getMonth()]+' '+d.getFullYear(); })();
+    google.script.run.withSuccessHandler(function (md) {
+      bvBranches = md.branches || [];
+      try{ var _ml=JSON.parse(localStorage.getItem('pc_master_lists')||'null'); if(_ml&&Array.isArray(_ml.branches)){ var _seen={}; bvBranches.forEach(function(b){_seen[String(b.id)]=1;}); _ml.branches.forEach(function(b){ if(b&&b.id&&!_seen[String(b.id)]){ bvBranches.push({id:b.id,name:b.name,nameTH:b.nameTH,type:b.type,group:b.group,class:b.class}); _seen[String(b.id)]=1; } }); } }catch(e){}
+      // item master → ดึงชื่อบิลครัว (NameEN) ตาม itemCode สำหรับปุ่มในการ์ด
+      (md.items || []).forEach(function(it){ bvItemMap[String(it.itemCode)] = { en:(it.itemNameEN||''), th:(it.itemNameTH||''), cat:(it.category||it.cateName||it.categoryName||'') }; });
+      var saved = localStorage.getItem('pc_bv_branch') || 'ALL';
+      var hid = document.getElementById('bvBranch'); if (hid) hid.value = saved;
+      bvBranchSyncInput();
+    }).getMasterDataExtended();
+    window.bvLoad();
+  };
+
+  window.bvLoad = function () {
+    google.script.run.withSuccessHandler(function (bc) { bvBillClose = bc || {};
+      google.script.run.withSuccessHandler(function (data) {
+        bvData = data || [];
+        document.getElementById('bvLoading').style.display = 'none';
+        window.bvRender();
+      }).getMemoCampaigns('ALL');
+    }).withFailureHandler(function () { bvBillClose = {};
+      google.script.run.withSuccessHandler(function (data) { bvData = data || []; document.getElementById('bvLoading').style.display = 'none'; window.bvRender(); }).getMemoCampaigns('ALL');
+    }).getBillClose();
+  };
+
+  window.bvSetView = function (v) {
+    bvView = v;
+    document.getElementById('bvVCards').classList.toggle('active', v==='cards');
+    document.getElementById('bvVRows').classList.toggle('active', v==='rows');
+    window.bvRender();
+  };
+
+  function bvInStore(storeStr, branch){
+    var s = String(storeStr || '').trim();
+    if (s === '' || /(^|,)\s*ALL\s*(,|$)/i.test(s)) return true;
+    var set = {};
+    s.split(',').map(function(x){return x.trim();}).filter(Boolean).forEach(function(tok){
+      if (/^G:/i.test(tok)) bvBranches.filter(function(b){return String(b.group)===tok.slice(2);}).forEach(function(b){set[b.id]=1;});
+      else if (/^C:/i.test(tok)) bvBranches.filter(function(b){return String(b.class)===tok.slice(2);}).forEach(function(b){set[b.id]=1;});
+      else if (/^T:/i.test(tok)) bvBranches.filter(function(b){return String(b.type)===tok.slice(2);}).forEach(function(b){set[b.id]=1;});
+      else set[tok]=1;
+    });
+    return !!set[branch];
+  }
+
+  function bvFiltered(){
+    var branch = (document.getElementById('bvBranch') && document.getElementById('bvBranch').value) || 'ALL';
+    var month = (document.getElementById('bvMonth') && document.getElementById('bvMonth').value) || '';
+    var search = ((document.getElementById('bvSearch') && document.getElementById('bvSearch').value) || '').toLowerCase();
+    var rows = bvData.filter(function(c){ return (c.opStatus||'') === 'CONFIRMED'; });
+    if (branch !== 'ALL') rows = rows.filter(function(c){ return bvInStore(c.stores, branch); });
+    if (month) rows = rows.filter(function(c){ return c.month === month; });
+    if (search) rows = rows.filter(function(c){ return (c.campaign||'').toLowerCase().indexOf(search)>-1 || (c.buttons||[]).some(function(b){ return (b.shortName||'').toLowerCase().indexOf(search)>-1; }); });
+    return rows;
+  }
+
+  // ===== searchable branch combobox (รหัส/ชื่อไทย/อังกฤษ) =====
+  function bvBranchLabel(code){
+    code=String(code||'');
+    if(!code || code==='ALL') return 'ทุกสาขา (ภาพรวม)';
+    var b=bvBranches.filter(function(x){return String(x.id)===code;})[0];
+    if(!b) return code;
+    return b.id+' · '+(b.name||'')+(b.nameTH?' ('+b.nameTH+')':'');
+  }
+  function bvCurBranch(){ var h=document.getElementById('bvBranch'); return h?(h.value||'ALL'):'ALL'; }
+  function bvBranchMenuHTML(filter){
+    filter=String(filter||'').toLowerCase().trim();
+    var cur=bvCurBranch();
+    var head='<div class="bv-britem'+(cur==='ALL'?' on':'')+'" onclick="window.bvBranchPick(\'ALL\')">— ทุกสาขา (ภาพรวม) —</div>';
+    var rows=bvBranches.filter(function(b){ return !filter || (b.id+' '+(b.name||'')+' '+(b.nameTH||'')).toLowerCase().indexOf(filter)>=0; })
+      .map(function(b){ return '<div class="bv-britem'+(cur===String(b.id)?' on':'')+'" onclick="window.bvBranchPick(\''+bvEscQ(String(b.id))+'\')">'+bvEsc(b.id)+' · '+bvEsc(b.name||'')+(b.nameTH?' ('+bvEsc(b.nameTH)+')':'')+'</div>'; }).join('');
+    if(filter && !rows) rows='<div class="bv-britem empty">ไม่พบสาขา “'+bvEsc(filter)+'”</div>';
+    return head+rows;
+  }
+  function bvBranchSyncInput(){ var inp=document.getElementById('bvBranchInput'); if(inp) inp.value=bvBranchLabel(bvCurBranch()); }
+  window.bvBranchOpen=function(){ var m=document.getElementById('bvBranchMenu'), inp=document.getElementById('bvBranchInput'); if(!m) return; if(inp){ inp.setAttribute('placeholder', bvBranchLabel(bvCurBranch())); inp.value=''; } m.innerHTML=bvBranchMenuHTML(''); m.classList.add('show'); };
+  window.bvBranchFilter=function(){ var m=document.getElementById('bvBranchMenu'), inp=document.getElementById('bvBranchInput'); if(!m) return; m.innerHTML=bvBranchMenuHTML(inp?inp.value:''); m.classList.add('show'); };
+  window.bvBranchClose=function(){ var m=document.getElementById('bvBranchMenu'); if(m) m.classList.remove('show'); bvBranchSyncInput(); };
+  window.bvBranchPick=function(code){ var h=document.getElementById('bvBranch'); if(h) h.value=code||'ALL'; var m=document.getElementById('bvBranchMenu'); if(m) m.classList.remove('show'); bvBranchSyncInput(); window.bvRender(); };
+  window.bvRender = function () {
+    var sel = document.getElementById('bvBranch');
+    if (sel) localStorage.setItem('pc_bv_branch', sel.value);
+    var base = bvFiltered();
+    // annotate IT bill-close extension (โปรหลุด → IT ต่ออายุ): shift end date + mark dropped
+    var _branchSel = (document.getElementById('bvBranch')||{}).value || 'ALL';
+    var _ts = bvTodayStr();
+    base.forEach(function(c){
+      var baseEnd = c._origEnd || c.end;
+      var ext = bvCalcExt(c, _branchSel);
+      if(ext && ext>=_ts && (!baseEnd || ext>baseEnd)){ c._origEnd = baseEnd; c.end = ext; c._dropped = true; }
+      else { if(c._origEnd){ c.end = c._origEnd; } c._dropped = false; }
+    });
+
+    // ===== Type Promotion tabs (นับจาก base ก่อนกรองสถานะ) =====
+    var typeCounts = {}; base.forEach(function(c){ var g=bvTypeGroupC(c); typeCounts[g]=(typeCounts[g]||0)+1; });
+    var typeKeys = BV_TYPE_ORDER.filter(function(g){ return typeCounts[g]; })
+      .concat(Object.keys(typeCounts).filter(function(g){ return BV_TYPE_ORDER.indexOf(g)<0; }).sort());
+    if(bvFilterType!=='ALL' && !typeCounts[bvFilterType]) bvFilterType='ALL';
+    var tb=document.getElementById('bvTypeBar');
+    if(tb){
+      tb.innerHTML = [['ALL','ทั้งหมด',base.length]].concat(typeKeys.map(function(g){ return [g,g,typeCounts[g]]; }))
+        .map(function(t){ var on=bvFilterType===t[0];
+          return '<button class="typetab'+(on?' on':'')+'" onclick="window.bvSetType(\''+String(t[0]).replace(/'/g,"\\'")+'\')">'+t[1]+' <span class="n">'+t[2]+'</span></button>'; }).join('');
+    }
+    if(bvFilterType!=='ALL') base = base.filter(function(c){ return bvTypeGroupC(c)===bvFilterType; });
+
+    // ===== Sale mode (ช่องทางขาย) tabs =====
+    var _chans=bvChannels();
+    var chCounts = {}; _chans.forEach(function(ch){ chCounts[ch]=base.filter(function(c){ return bvChannelMatch(c.saleMode, ch); }).length; });
+    if(bvFilterChannel!=='ALL' && !chCounts[bvFilterChannel]) bvFilterChannel='ALL';
+    var cb=document.getElementById('bvChannelBar');
+    if(cb){
+      cb.innerHTML = [['ALL','ทุกช่องทาง',base.length]].concat(_chans.filter(function(ch){return chCounts[ch];}).map(function(ch){ return [ch,ch,chCounts[ch]]; }))
+        .map(function(t){ var on=bvFilterChannel===t[0];
+          return '<button class="typetab'+(on?' on':'')+'" onclick="window.bvSetChannel(\''+String(t[0]).replace(/'/g,"\\'")+'\')"><i class="fas fa-truck" style="font-size:.78rem;opacity:.6"></i>'+t[1]+' <span class="n">'+t[2]+'</span></button>'; }).join('');
+    }
+    if(bvFilterChannel!=='ALL') base = base.filter(function(c){ return bvChannelMatch(c.saleMode, bvFilterChannel); });
+
+    // ===== e-Voucher brand (source) filter — ป้ายกรอง Lazada / Shopee / Linegift =====
+    var BV_BRANDS = ['Lazada','Shopee','Linegift'];
+    var brandCounts = {}; base.forEach(function(c){ var br=bvBrand(c); if(br) brandCounts[br]=(brandCounts[br]||0)+1; });
+    if(bvFilterBrand!=='ALL' && !brandCounts[bvFilterBrand]) bvFilterBrand='ALL';
+    var bbar=document.getElementById('bvBrandBar');
+    var brow=document.getElementById('bvBrandRow');
+    if(bbar){
+      var brandsHere = BV_BRANDS.filter(function(br){ return brandCounts[br]; });
+      if(!brandsHere.length){ if(brow) brow.style.display='none'; bbar.innerHTML=''; }
+      else {
+        if(brow) brow.style.display='flex';
+        bbar.innerHTML = [['ALL','ทั้งหมด',base.length]].concat(brandsHere.map(function(br){ return [br,br,brandCounts[br]]; }))
+          .map(function(t){ var on=bvFilterBrand===t[0];
+            return '<button class="brandchip'+(on?' on':'')+'" onclick="window.bvSetBrand(\''+t[0]+'\')"><i class="fas fa-tag" style="font-size:.74rem;opacity:.6"></i>'+t[1]+' <span class="n">'+t[2]+'</span></button>'; }).join('');
+      }
+    }
+    if(bvFilterBrand!=='ALL') base = base.filter(function(c){ return bvBrand(c)===bvFilterBrand; });
+
+    // ===== ประเภทลูกค้า (customer group) filter =====
+    var CUST_DEFS=[['normal','ลูกค้าทั่วไป','fa-users'],['crm','ลูกค้า CRM','fa-user-check'],['koi','ลูกค้า KOC','fa-mug-hot']];
+    function bvCustKey(c){ var g=String(c&&c.customerGroup||'').toLowerCase(); return (g==='crm'||g==='koi')?g:'normal'; }
+    var custCounts={}; base.forEach(function(c){ var g=bvCustKey(c); custCounts[g]=(custCounts[g]||0)+1; });
+    if(bvFilterCust!=='ALL' && !custCounts[bvFilterCust]) bvFilterCust='ALL';
+    var custBar=document.getElementById('bvCustBar');
+    if(custBar){
+      custBar.innerHTML = [['ALL','ทั้งหมด','fa-layer-group',base.length]].concat(CUST_DEFS.filter(function(d){return custCounts[d[0]];}).map(function(d){ return [d[0],d[1],d[2],custCounts[d[0]]]; }))
+        .map(function(t){ var on=bvFilterCust===t[0];
+          return '<button class="typetab'+(on?' on':'')+'" onclick="window.bvSetCust(\''+t[0]+'\')"><i class="fas '+t[2]+'" style="font-size:.78rem;opacity:.6"></i>'+t[1]+' <span class="n">'+t[3]+'</span></button>'; }).join('');
+    }
+    if(bvFilterCust!=='ALL') base = base.filter(function(c){ return bvCustKey(c)===bvFilterCust; });
+
+    // status counts
+    var counts = { ALL: base.length };
+    base.forEach(function(c){ var k=bvStatusOf(c).key; counts[k]=(counts[k]||0)+1; });
+    var order = ['ALL','DROPPED','NOW','LIVE','EXTENDED','ENDING','REDUCED','NEW','ENDED','CANCELLED'];
+    var lbl = { ALL:'ทั้งหมด' }; Object.keys(BV_STATUS).forEach(function(k){ lbl[k]=BV_STATUS[k].label; });
+    var col = function(k){ return k==='ALL' ? '#1a1d20' : BV_STATUS[k].color; };
+    document.getElementById('bvStatbar').innerHTML = order.filter(function(k){ return k==='ALL'||counts[k]; }).map(function(k){
+      var on = bvFilterStatus===k;
+      return '<div class="statchip '+(on?'on':'')+'" '+(on?'style="background:'+col(k)+'"':'')+' onclick="window.bvSetStatus(\''+k+'\')">'+
+        '<span class="dot" style="background:'+col(k)+'"></span>'+lbl[k]+' <span class="n">'+(counts[k]||0)+'</span></div>';
+    }).join('');
+
+    var rows = bvFilterStatus==='ALL' ? base : base.filter(function(c){ return bvStatusOf(c).key===bvFilterStatus; });
+    // เรียงโปรใหม่ขึ้นบนสุด: วันที่ล่าสุด → เก่า (ใช้วันที่แจ้ง/สร้าง · fallback วันเริ่ม)
+    // DROPPED (เตือนต้องนำออก) ยังอยู่บนสุด · ENDED/CANCELLED ลงล่างสุด
+    function bvRecency(c){ return String(c.submittedDate||c.timestamp||c.updatedDate||c.start||''); }
+    var bvDead = { ENDED:1, CANCELLED:1 };
+    rows.sort(function(a,b){
+      var ka=bvStatusOf(a).key, kb=bvStatusOf(b).key;
+      var pa = ka==='DROPPED'?0 : (bvDead[ka]?2:1);
+      var pb = kb==='DROPPED'?0 : (bvDead[kb]?2:1);
+      if(pa!==pb) return pa-pb;
+      return bvRecency(b).localeCompare(bvRecency(a));   // มากไปน้อย (ใหม่สุดก่อน)
+    });
+
+    var branchTxt = bvBranchLabel(sel ? sel.value : '');
+    document.getElementById('bvCount').innerHTML = 'พบ <b>'+rows.length+'</b> โปรโมชั่นที่พร้อมใช้งาน · สาขา <b>'+branchTxt+'</b>';
+    window.bvUpdateTicketBadge();
+
+    var list = document.getElementById('bvList');
+    list.className = bvView;
+    if (!rows.length) {
+      list.className = '';
+      list.innerHTML = '<div class="text-center text-muted py-5 bg-white rounded-3 border"><i class="fas fa-circle-info fa-2x mb-2 d-block opacity-50"></i> ยังไม่มีโปรโมชั่นที่ตรวจสอบแล้วสำหรับเงื่อนไขนี้</div>';
+      return;
+    }
+    list.innerHTML = rows.map(bvView==='cards' ? bvCardHTML : bvRowHTML).join('');
+  };
+
+  window.bvSetStatus = function (k) { bvFilterStatus = k; window.bvRender(); };
+  window.bvSetType = function (t) { bvFilterType = t; bvFilterStatus = 'ALL'; window.bvRender(); };
+  window.bvSetChannel = function (ch) { bvFilterChannel = ch; bvFilterStatus = 'ALL'; window.bvRender(); };
+  window.bvSetBrand = function (br) { bvFilterBrand = br; bvFilterStatus = 'ALL'; window.bvRender(); };
+  window.bvSetCust = function (g) { bvFilterCust = g; bvFilterStatus = 'ALL'; window.bvRender(); };
+
+  function bvPriceCard(b){
+    if (bvHasNum(b.net)) return '<span>'+(bvHasNum(b.gross)?'<span class="price-old me-2">'+bvBaht(b.gross)+'</span>':'')+'<span class="price-promo">'+bvBaht(b.net)+'</span></span>';
+    if (b.discount) return '<span style="font-weight:600;color:#c9870a">ลด '+b.discount+'</span>';
+    return '';
+  }
+  function bvOfferBlock(c){
+    var b=(c.buttons||[])[0]||{};
+    var t=(c.promoType||'').toLowerCase();
+    var disc = b.discount || '';
+    var minA = b.minAmount || c.minAmount || 0;
+    if (!disc && !minA) return '';
+    var lbl = t.indexOf('bill')>-1 ? 'ส่วนลดท้ายบิล' : (t.indexOf('member')>-1 ? 'สิทธิ์บัตรสมาชิก' : (t.indexOf('coupon')>-1 ? 'ส่วนลดต่อรายการ' : 'มูลค่า / ส่วนลด'));
+    var ic  = t.indexOf('bill')>-1 ? 'fa-money-bill-trend-up' : (t.indexOf('member')>-1 ? 'fa-id-card' : 'fa-gift');
+    return '<div class="sect-lbl"><i class="fas '+ic+'"></i>'+lbl+'</div>'+
+      (disc ? '<div class="offer"><span class="big" style="color:#2e934a">'+(t.indexOf('bill')>-1?'ลด ':'')+disc+'</span></div>' : '')+
+      (minA ? '<div class="cond"><i class="fas fa-circle-info me-1"></i>เมื่อสั่งครบขั้นต่ำ <b>'+bvBaht(minA)+'</b></div>' : '');
+  }
+
+  // เรียงปุ่มในการ์ดสาขา น้อย→มาก: ใช้ราคา net ก่อน, ไม่มีใช้เลขในชื่อ (เช่น Set 2 / [139])
+  function bvBtnSortVal(b){
+    var n=parseFloat(b&&b.net); if(!isNaN(n)&&n>0) return n;
+    var g=parseFloat(b&&b.gross); if(!isNaN(g)&&g>0) return g;
+    var m=String((b&&b.shortName)||'').match(/\[(\d+)\]|(\d+)\s*$/);
+    if(m) return parseFloat(m[1]||m[2]);
+    return 1e15;   // ไม่มีเลข → ไว้ท้าย
+  }
+  function bvSortButtons(btns){ return (btns||[]).slice().sort(function(a,b){ return bvBtnSortVal(a)-bvBtnSortVal(b); }); }
+
+  function bvBtnOne(b, c){
+    var code = b.itemSetCode || b.codePro || b.promoCode || '';
+    return '<div class="posbtn"><div class="top"><span class="sn">'+(b.shortName||'-')+'</span>'+(code?'<span class="code">'+code+'</span>':'')+'</div>'+
+      '<div class="row2"><span>'+(bvKitchen(b)?'<i class="fas fa-receipt me-1"></i>ครัว '+bvKitchen(b):'')+'</span><span>'+bvPriceCard(b)+'</span></div></div>';
+  }
+  var BV_BTN_PER = 3;   // ปุ่มสูงสุดต่อหน้าในการ์ด
+  // สลับหน้าปุ่มภายในการ์ดเดียว (ไม่ re-render ทั้งลิสต์)
+  window.bvBtnPage = function(key, p){
+    var pages = document.querySelectorAll('.posbtn-page[data-k="'+key+'"]');
+    var total = pages.length; if(!total) return;
+    p = Math.max(0, Math.min(total-1, p));
+    pages.forEach(function(el){ el.style.display = (String(el.dataset.p)===String(p)) ? '' : 'none'; });
+    var pager = document.querySelector('.bv-btnpager[data-k="'+key+'"]');
+    if(!pager) return;
+    pager.querySelectorAll('button[data-n]').forEach(function(btn){ btn.classList.toggle('on', String(btn.dataset.n)===String(p)); });
+    var prev = pager.querySelector('button[data-act="prev"]'), next = pager.querySelector('button[data-act="next"]');
+    if(prev) prev.disabled = (p<=0);
+    if(next) next.disabled = (p>=total-1);
+    var info = pager.querySelector('.pinfo'); if(info) info.textContent = 'หน้า '+(p+1)+'/'+total;
+  };
+  window.bvBtnPageRel = function(key, dir){
+    var on = document.querySelector('.bv-btnpager[data-k="'+key+'"] button.on');
+    var cur = on ? (+on.dataset.n) : 0;
+    window.bvBtnPage(key, cur + dir);
+  };
+
+  // กลุ่มลูกค้า (ทั่วไป / CRM เฉพาะสมาชิก) — ป้ายบนการ์ดสาขา
+  function bvCustRow(c){
+    if((c.customerGroup||'')==='koi'){
+      return '<div class="drow" style="color:#6e4218;font-weight:700"><i class="fas fa-mug-hot"></i><span><b>กลุ่มลูกค้า:</b> ลูกค้า KOC — เฉพาะสมาชิก KOC'+(c.crmTargetName?' ('+bvEsc(c.crmTargetName)+')':'')+'</span></div>';
+    }
+    if((c.customerGroup||'')==='crm'){
+      return '<div class="drow" style="color:#15623c;font-weight:700"><i class="fas fa-user-check"></i><span><b>กลุ่มลูกค้า:</b> ลูกค้า CRM — เฉพาะสมาชิก'+(c.crmTargetName?' ('+bvEsc(c.crmTargetName)+')':'')+'</span></div>';
+    }
+    return '<div class="drow"><i class="fas fa-users"></i><span><b>กลุ่มลูกค้า:</b> ลูกค้าทั่วไป</span></div>';
+  }
+  function bvCustTag(c){
+    if((c.customerGroup||'')==='koi'){
+      return '<span class="mtag" style="color:#6e4218;border-color:#e3cdab;background:#f6efe6"><i class="fas fa-mug-hot"></i>ลูกค้า KOC</span>';
+    }
+    if((c.customerGroup||'')==='crm'){
+      return '<span class="mtag" style="color:#15623c;border-color:#bfe6cf;background:#eafaf1"><i class="fas fa-user-check"></i>ลูกค้า CRM</span>';
+    }
+    return '<span class="mtag"><i class="fas fa-users"></i>ลูกค้าทั่วไป</span>';
+  }
+  // หมวดหมู่ (cateRemark) — Bill discount ที่ไม่มีหมวด ใช้ "สินค้าราคาปกติเท่านั้น" (EN: Standard-Exclude Non ผ่าน dict)
+  function bvCatRemarkOf(c){
+    if(c.cateRemark) return c.cateRemark;
+    if(/bill\s*discount/i.test(String(c.promoType||c.typePromotion||''))) return 'สินค้าราคาปกติเท่านั้น';
+    return '';
+  }
+  function bvCatBadge(c){
+    var v=bvCatRemarkOf(c); if(!v) return '';
+    return '<span class="mtag"><i class="fas fa-layer-group"></i>'+v+'</span>';
+  }
+  // ป้ายกลุ่มลูกค้าแบบเด่น — วางตรงข้ามชื่อแคมเปญบนการ์ด
+  function bvCustBadgeBig(c){
+    if((c.customerGroup||'')==='koi'){
+      return '<span style="flex:0 0 auto;background:#6e4218;color:#fff;font-weight:800;font-size:.74rem;padding:5px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.18)"><i class="fas fa-mug-hot me-1"></i>KOC · เฉพาะสมาชิก</span>';
+    }
+    if((c.customerGroup||'')==='crm'){
+      return '<span style="flex:0 0 auto;background:#15623c;color:#fff;font-weight:800;font-size:.74rem;padding:5px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.18)"><i class="fas fa-user-check me-1"></i>CRM · เฉพาะสมาชิก</span>';
+    }
+    return '<span style="flex:0 0 auto;background:#5b6470;color:#fff;font-weight:800;font-size:.74rem;padding:5px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.12)"><i class="fas fa-users me-1"></i>ลูกค้าทั่วไป</span>';
+  }
+
+  function bvBranchNote(c){
+    var n = (c && c.branchNote ? String(c.branchNote).trim() : '');
+    if(!n) return '';
+    n = n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<div style="margin:10px 0 2px;background:linear-gradient(90deg,#d5420c,#e8632a);color:#fff;font-weight:800;font-size:.9rem;padding:8px 13px;border-radius:9px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 7px rgba(213,66,12,.30)"><i class="fas fa-bullhorn"></i><span style="line-height:1.3">'+n+'</span></div>';
+  }
+
+  function bvCardHTML(c, idx){
+    var st = bvStatusOf(c);
+    var dim = (st.key==='ENDED' || st.key==='CANCELLED');
+    var disc = bvIsDiscount(c.promoType);
+    var all = bvSortButtons(c.buttons||[]);
+    var key = 'bvc'+idx;
+    var pageCount = Math.max(1, Math.ceil(all.length / BV_BTN_PER));
+    var pagesHTML = '';
+    for(var p=0; p<pageCount; p++){
+      pagesHTML += '<div class="posbtn-page" data-k="'+key+'" data-p="'+p+'"'+(p===0?'':' style="display:none"')+'>'+
+        all.slice(p*BV_BTN_PER, p*BV_BTN_PER+BV_BTN_PER).map(function(b){ return bvBtnOne(b, c); }).join('')+'</div>';
+    }
+    var pager = '';
+    if(pageCount>1){
+      var nums = '';
+      for(var n=0; n<pageCount; n++){ nums += '<button data-n="'+n+'" class="'+(n===0?'on':'')+'" onclick="window.bvBtnPage(\''+key+'\','+n+')">'+(n+1)+'</button>'; }
+      pager = '<div class="bv-btnpager" data-k="'+key+'">'+
+        '<span class="pinfo">หน้า 1/'+pageCount+'</span>'+
+        '<span class="pnums">'+
+          '<button data-act="prev" disabled onclick="window.bvBtnPageRel(\''+key+'\',-1)">‹</button>'+
+          nums+
+          '<button data-act="next" onclick="window.bvBtnPageRel(\''+key+'\',1)">›</button>'+
+        '</span></div>';
+    }
+    var cntLbl = all.length>BV_BTN_PER ? ' <span style="color:#aab0b8;font-weight:700">('+all.length+')</span>' : '';
+    var body = (disc ? bvOfferBlock(c) : '') +
+      '<div class="sect-lbl"><i class="fas fa-hand-pointer"></i>ปุ่มกดขายบน POS'+cntLbl+'</div>' + pagesHTML + pager;
+
+    return '<div class="pcard '+(dim?'dim':'')+'">'+
+      '<div class="pc-strip" style="background:'+st.color+'"><span><i class="fas '+st.icon+' me-2"></i>'+st.label+'</span><span class="cd">'+bvCountdown(c,st)+'</span></div>'+
+      '<div class="pc-body"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div class="pc-name" style="margin:0">'+c.campaign+'</div>'+bvCustBadgeBig(c)+'</div>'+bvBranchNote(c)+
+        '<div class="pc-detail">'+
+          '<div class="drow"><i class="fas fa-truck"></i><span><b>ช่องทางขาย:</b> '+(c.saleMode||'-')+'</span></div>'+
+          '<div class="drow"><i class="fas fa-tag"></i><span><b>ประเภทปุ่ม:</b> '+bvProposalLabel(c)+'</span></div>'+
+          (bvCatRemarkOf(c)?'<div class="drow"><i class="fas fa-layer-group"></i><span><b>หมวดหมู่:</b> '+bvCatRemarkOf(c)+'</span></div>':'')+
+          '<div class="drow"><i class="far fa-calendar"></i><span><b>ช่วงเวลา:</b> '+bvFmtShort(c.start)+' – '+bvFmtShort(c.end)+'</span></div>'+
+        '</div>'+ body +
+        '<div class="pc-foot">'+
+          '<button class="btn btn-outline-dark flex-grow-1" onclick="window.bvDetail(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-circle-info me-1"></i>รายละเอียด</button>'+
+          '<button class="btn btn-pos" onclick="window.bvViewPOS(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-cash-register me-1"></i>มุมมอง POS</button>'+
+          '<button class="btn btn-report" onclick="window.bvReport(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-flag me-1"></i>แจ้งปัญหา</button>'+
+          (c.memoUrl?'<button class="btn btn-danger" onclick="window.open(\''+c.memoUrl+'\',\'_blank\')"><i class="fas fa-file-pdf me-1"></i>MEMO</button>':'')+
+        '</div>'+
+      '</div></div>';
+  }
+
+  function bvRowHTML(c){
+    var st = bvStatusOf(c);
+    var dim = (st.key==='ENDED' || st.key==='CANCELLED');
+    var btns = bvSortButtons(c.buttons||[]).map(function(b){
+      var code = b.itemSetCode || b.codePro || b.promoCode || '';
+      var pr = bvHasNum(b.net) ? (bvHasNum(b.gross)?'<span class="po">'+bvBaht(b.gross)+'</span> ':'')+'<span class="pr">'+bvBaht(b.net)+'</span>' : (b.discount?'<span style="color:#c9870a;font-weight:600">ลด '+b.discount+'</span>':'');
+      return '<span class="lr-bchip"><span class="sn">'+(b.shortName||'-')+'</span>'+(bvKitchen(b)?'<span class="lr-code">ครัว '+bvKitchen(b)+'</span>':'')+(code?'<span class="lr-code">'+code+'</span>':'')+(pr?'<span>'+pr+'</span>':'')+'</span>';
+    }).join('');
+    return '<div class="lrow '+(dim?'dim':'')+'" style="--c:'+st.color+'">'+
+      '<div><div class="lr-pill"><span class="dot"></span><i class="fas '+st.icon+'"></i>'+st.label+'</div>'+
+        '<div class="lr-cd">'+bvCountdown(c,st)+' · '+bvFmtShort(c.start)+'–'+bvFmtShort(c.end)+'</div></div>'+
+      '<div class="lr-main"><div class="nm">'+c.campaign+'</div>'+
+        '<div class="meta"><span class="mtag"><i class="fas fa-truck"></i>'+(c.saleMode||'-')+'</span><span class="mtag"><i class="fas fa-tag"></i>'+bvProposalLabel(c)+'</span>'+bvCustTag(c)+bvCatBadge(c)+'</div>'+
+        '<div class="lr-btns">'+btns+'</div></div>'+
+      '<div class="lr-right">'+
+        '<button class="btn btn-outline-dark btn-sm" onclick="window.bvDetail(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-circle-info me-1"></i>รายละเอียด</button>'+
+        '<button class="btn btn-pos btn-sm" onclick="window.bvViewPOS(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-cash-register me-1"></i>มุมมอง POS</button>'+
+        '<button class="btn btn-report btn-sm" onclick="window.bvReport(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-flag me-1"></i>แจ้งปัญหา</button>'+
+      '</div></div>';
+  }
+
+  function bvEscQ(s){ return String(s).replace(/'/g,"\\'"); }
+
+  window.bvViewPOS = function (name) {
+    var c = bvData.find(function(x){ return x.campaign===name; });
+    var sel = document.getElementById('bvBranch');
+    var code = sel ? sel.value : '';
+    var codes = [];
+    if (c) (c.buttons||[]).forEach(function(b){ (b.itemCodes||[]).forEach(function(ic){ ic=String(ic||'').trim(); if(ic && codes.indexOf(ic)<0) codes.push(ic); }); });
+    try {
+      localStorage.setItem('pc_pl_open', JSON.stringify({
+        view:'pos', cat:'Promotion Set',
+        branch:(code && code!=='ALL')?code:'',
+        campaign: c ? c.campaign : '',
+        itemCodes: codes,
+        ts: Date.now()
+      }));
+    } catch(e){}
+    if (typeof loadPage==='function') loadPage('ProductLookup');
+  };
+
+  window.bvDetail = function (name) {
+    var c = bvData.find(function(x){ return x.campaign===name; });
+    if (!c) return;
+    var st = bvStatusOf(c);
+    var f = function(t){ return (t||'-').replace(/\n/g,'<br>'); };
+    var stores = (c.storeData||[]);
+    var storeTbl = stores.length
+      ? '<div class="table-responsive" style="max-height:240px;overflow:auto;"><table class="table table-sm table-bordered align-middle mb-0" style="font-size:13px;"><thead class="table-dark"><tr><th style="white-space:nowrap;">รหัส</th><th class="text-start">สาขา (EN)</th><th class="text-start">สาขา (TH)</th></tr></thead><tbody>'+stores.map(function(s){ return '<tr><td class="fw-bold text-success" style="white-space:nowrap;">'+s.id+'</td><td class="text-start" style="white-space:nowrap;">'+s.nameEn+'</td><td class="text-start" style="white-space:nowrap;">'+s.nameTh+'</td></tr>'; }).join('')+'</tbody></table></div>'
+      : '<div class="text-muted small">ทุกสาขา</div>';
+    Swal.fire({
+      title: '<span style="color:'+st.color+'"><i class="fas '+st.icon+' me-2"></i>'+name+'</span>',
+      html: '<div class="text-start" style="font-family:Kanit">'+
+        '<div class="d-flex flex-wrap gap-2 mb-3"><span class="badge" style="background:'+st.color+'">'+st.label+'</span>'+
+          '<span class="badge bg-light text-dark border">'+bvFmt(c.start)+' – '+bvFmt(c.end)+'</span>'+
+          '<span class="badge bg-light text-dark border">'+(c.saleMode||'-')+'</span>'+
+          ((c.customerGroup||'')==='koi'
+            ? '<span class="badge" style="background:#f6efe6;color:#6e4218;border:1px solid #e3cdab"><i class="fas fa-mug-hot me-1"></i>ลูกค้า KOC — เฉพาะสมาชิก KOC</span>'
+            : (c.customerGroup||'')==='crm'
+            ? '<span class="badge" style="background:#eafaf1;color:#15623c;border:1px solid #bfe6cf"><i class="fas fa-user-check me-1"></i>ลูกค้า CRM — เฉพาะสมาชิก</span>'
+            : '<span class="badge bg-light text-dark border"><i class="fas fa-users me-1"></i>ลูกค้าทั่วไป</span>')+
+          '</div>'+
+        '<div class="p-3 border rounded mb-2 bg-light"><div class="fw-bold small text-primary mb-1">รายละเอียดโปรโมชั่น</div><div style="white-space:pre-wrap;font-size:13px">'+f(c.detail)+'</div></div>'+
+        '<div class="p-3 border rounded mb-2 bg-light"><div class="fw-bold small" style="color:#c9870a">เงื่อนไขโปรโมชั่น</div><div style="white-space:pre-wrap;font-size:13px">'+f(c.mechanic)+'</div></div>'+
+        '<label class="fw-bold text-dark small d-block mb-1"><i class="fas fa-store me-1"></i>สาขาที่ร่วมรายการ ('+(stores.length||'ทุกสาขา')+')</label>'+storeTbl+
+      '</div>',
+      width:'640px', confirmButtonColor:'#2e934a', confirmButtonText:'ปิด'
+    });
+  };
+
+  /* ===== report problem → Report Problem.html (ported from mock openReport) ===== */
+  window.bvReport = function (name) {
+    var c = bvData.find(function(x){ return x.campaign===name; });
+    if (!c) return;
+    var sel = document.getElementById('bvBranch');
+    var code = sel ? sel.value : '';
+    var branchTxt = bvBranchLabel(code);
+    try {
+      localStorage.setItem('pc_report_ctx', JSON.stringify({
+        campaign: c.campaign, promoType: c.promoType, saleMode: c.saleMode,
+        branchCode: (code && code!=='ALL') ? code : '', branch: (code && code!=='ALL') ? branchTxt : '',
+        buttons: (c.buttons||[]).map(function(b){ return { sn:b.shortName||'', code:b.itemSetCode||b.codePro||b.promoCode||'', saleMode:b.saleMode||c.saleMode||'', kitchen:b.kitchen||'', priceFull:(b.gross!=null?b.gross:''), priceDisc:(b.net!=null?b.net:''), choose:'' }; })
+      }));
+      localStorage.setItem('pc_report_origin', 'Potato Corner Promotion System.html#Branch_View');
+    } catch (e) {}
+    location.href = 'Report Problem.html';
+  };
+
+  /* ===== branch tickets ===== */
+  window.bvGoTickets = function () {
+    if (typeof window.loadPage === 'function') { window.loadPage('BranchTickets'); return; }
+    try { localStorage.setItem('pc_report_origin', 'Potato Corner Promotion System.html#Branch_View'); } catch (e) {}
+    location.href = 'Branch Tickets.html';
+  };
+  window.bvUpdateTicketBadge = function () {
+    var sel = document.getElementById('bvBranch');
+    var code = sel ? sel.value : 'ALL';
+    var all = []; try { all = JSON.parse(localStorage.getItem('pc_branch_tickets')) || []; } catch (e) {}
+    var mine = code==='ALL' ? all : all.filter(function(t){ return t.branchCode===code; });
+    var open = mine.filter(function(t){ return t.status!=='CLOSED' && t.status!=='RESOLVED'; }).length;
+    var el = document.getElementById('bvTkBadge');
+    if (el) { el.textContent = open; el.classList.toggle('zero', open===0); }
+  };
+
+  /* ===== ตรวจสอบโค้ดในระบบ (เดิม) ===== */
+  window.__bvHit = null; window.__bvCode = '';
+
+  /* ===== สแกน QR / บาร์โค้ด ด้วยกล้องมือถือ ===== */
+  function bvEnsureScanOverlay(){
+    if (document.getElementById('bvScanOv')) return;
+    var ov = document.createElement('div');
+    ov.id = 'bvScanOv';
+    ov.innerHTML =
+      '<div class="box">' +
+        '<div class="hd"><span><i class="fas fa-camera lead"></i>สแกน QR / บาร์โค้ด</span>' +
+        '<button class="x" onclick="window.bvCloseScanner()" title="ปิด"><i class="fas fa-times"></i></button></div>' +
+        '<div id="bvQrReader"></div>' +
+        '<div class="hint"><i class="fas fa-mobile-screen-button me-1"></i> เล็งกล้องไปที่ QR / บาร์โค้ดของลูกค้า — ระบบจะกรอกโค้ดและค้นหาให้อัตโนมัติ</div>' +
+        '<div style="padding:0 16px 16px;">' +
+          '<div style="text-align:center;color:#8a93a0;font-size:.82rem;margin:2px 0 10px;font-weight:600;">— หรือ —</div>' +
+          '<label style="display:flex;align-items:center;justify-content:center;gap:9px;background:#eafaf1;color:#176b3a;border:2px solid #bfe6cd;border-radius:13px;padding:12px;font-weight:700;cursor:pointer;font-size:.98rem;">' +
+            '<i class="fas fa-image"></i> เลือกจากภาพถ่าย / อัลบั้ม' +
+            '<input type="file" accept="image/*" onchange="window.bvScanFromFile(this)" style="display:none">' +
+          '</label>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov) window.bvCloseScanner(); });
+  }
+  function bvLoadQrLib(cb){
+    if (window.Html5Qrcode) { cb(true); return; }
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = function () { cb(!!window.Html5Qrcode); };
+    s.onerror = function () { cb(false); };
+    document.head.appendChild(s);
+  }
+  window.__bvScanner = null;
+  window.bvOpenScanner = function () {
+    bvEnsureScanOverlay();
+    document.getElementById('bvScanOv').classList.add('show');
+    bvLoadQrLib(function (ok) {
+      if (!ok) { window.bvCloseScanner(); Swal.fire('เปิดตัวสแกนไม่ได้', 'โหลดตัวสแกนไม่สำเร็จ — ตรวจอินเทอร์เน็ต หรือกรอกโค้ดเองได้', 'error'); return; }
+      try {
+        window.__bvScanner = new Html5Qrcode('bvQrReader');
+        window.__bvScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          function (decodedText) {
+            var inp = document.getElementById('bvCodeInp'); if (inp) inp.value = String(decodedText || '').trim();
+            window.bvCloseScanner();
+            window.bvCodeSearch();
+          },
+          function () {}   // per-frame decode misses — ignore
+        ).catch(function () {
+          window.bvCloseScanner();
+          Swal.fire('เปิดกล้องไม่ได้', 'ไม่สามารถเข้าถึงกล้อง — โปรดอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วลองใหม่ หรือกรอกโค้ดเอง', 'warning');
+        });
+      } catch (e) { window.bvCloseScanner(); Swal.fire('เปิดกล้องไม่ได้', String(e && e.message || e), 'warning'); }
+    });
+  };
+  window.bvCloseScanner = function () {
+    var ov = document.getElementById('bvScanOv'); if (ov) ov.classList.remove('show');
+    if (window.__bvScanner) {
+      try {
+        window.__bvScanner.stop().then(function () { try { window.__bvScanner.clear(); } catch (e) {} window.__bvScanner = null; })
+          .catch(function () { window.__bvScanner = null; });
+      } catch (e) { window.__bvScanner = null; }
+    }
+  };
+
+  window.bvScanFromFile = function (input) {
+    var file = input && input.files && input.files[0]; if (!file) return;
+    bvLoadQrLib(function (ok) {
+      if (!ok) { Swal.fire('อ่านภาพไม่ได้', 'โหลดตัวสแกนไม่สำเร็จ — ลองใหม่ หรือกรอกโค้ดเอง', 'error'); return; }
+      var runScan = function(){
+        var holder = document.getElementById('bvQrFileTmp');
+        if (!holder) { holder = document.createElement('div'); holder.id = 'bvQrFileTmp'; holder.style.display='none'; document.body.appendChild(holder); }
+        var q = new Html5Qrcode('bvQrFileTmp');
+        q.scanFile(file, false).then(function (decodedText) {
+          try { q.clear(); } catch(e){}
+          var inp = document.getElementById('bvCodeInp'); if (inp) inp.value = String(decodedText || '').trim();
+          window.bvCloseScanner();
+          window.bvCodeSearch();
+        }).catch(function () {
+          try { q.clear(); } catch(e){}
+          Swal.fire('ไม่พบ QR / บาร์โค้ดในภาพ', 'ลองถ่าย/เลือกภาพที่เห็นโค้ดชัดเจนอีกครั้ง หรือกรอกโค้ดเอง', 'warning');
+        });
+        try{ input.value=''; }catch(e){}
+      };
+      if (window.__bvScanner) {
+        try { window.__bvScanner.stop().then(function(){ try{window.__bvScanner.clear();}catch(e){} window.__bvScanner=null; runScan(); }).catch(function(){ window.__bvScanner=null; runScan(); }); }
+        catch(e){ window.__bvScanner=null; runScan(); }
+      } else { runScan(); }
+    });
+  };
+
+  function bvEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  window.bvCodeDemo = function (kind) {
+    var v = kind === 'found' ? 'PAYDAY0001' : 'GHOST9999';
+    if (kind === 'used') { v = 'PAYDAY0001'; try { var rq = JSON.parse(localStorage.getItem('pc_code_requests'))||[]; var f=''; rq.forEach(function(r){ if(f) return; if(r.type==='ADD'&&r.status==='CONFIRMED'){ var c=(r.codes||[]).find(function(x){return x.redeemed;}); if(c) f=c.code; } }); if(f) v=f; } catch(e){} }
+    var inp = document.getElementById('bvCodeInp'); if (inp) inp.value = v;
+    window.bvCodeSearch();
+  };
+  window.bvCodeSearch = function () {
+    var v = (document.getElementById('bvCodeInp').value || '').trim();
+    var el = document.getElementById('bvCodeResult');
+    window.__bvCode = v; window.__bvHit = null;
+    if (!v) { el.innerHTML = ''; return; }
+    var reqs = []; try { reqs = JSON.parse(localStorage.getItem('pc_code_requests')) || []; } catch (e) { reqs = []; }
+    var up = v.toUpperCase(); var hit = null, hitUsed = false;
+    reqs.forEach(function(r){ if (hit) return; if (r.type === 'ADD' && r.status === 'CONFIRMED') { var mc=(r.codes||[]).find(function(c){ return String((c&&c.code)||c||'').toUpperCase() === up; }); if(mc){ hit = r; hitUsed = !!(mc&&mc.redeemed); } } });
+    // fallback: a code confirmed in the central Code Counter (incl. short-form details)
+    if (!hit && window.PC_COUNTER && PC_COUNTER.entryOf) {
+      var ce = PC_COUNTER.entryOf(v);
+      if (ce && ce.status === 'CONFIRMED') {
+        var ccfg = (PC_COUNTER.config && PC_COUNTER.config(ce.type)) || {};
+        hit = { campaign: ce.campaign || ce.where || '', button: ce.button || '', kind: ccfg.short || ce.type || '', promoCode: ce.code,
+                _counter: true, detail: ce.detail || '', condition: ce.condition || '', start: ce.start || '', end: ce.end || '' };
+      }
+    }
+    window.__bvHit = hit; window.__bvHitUsed = hitUsed;
+    if (hit && hitUsed) {
+      el.innerHTML = '<div class="alert border-0 mb-0" style="background:#fff4e0;border-left:5px solid #c9870a;">'+
+        '<div class="fw-bold mb-2" style="color:#9a6700"><i class="fas fa-triangle-exclamation me-2"></i>ห้ามให้สินค้า / ส่วนลดก่อน</div>'+
+        '<div class="d-flex flex-wrap gap-2 small mb-2">'+
+          '<span class="badge" style="background:#c9870a"><i class="fas fa-barcode me-1"></i>'+bvEsc(v)+'</span>'+
+          '<span class="badge bg-light text-dark border"><i class="fas fa-bullhorn me-1"></i>'+bvEsc(hit.campaign || '—')+'</span>'+
+          '<span class="badge" style="background:#c0392b"><i class="fas fa-circle-xmark me-1"></i>โค้ดถูกใช้งานไปแล้ว</span>'+
+        '</div>'+
+        '<div class="small mb-2" style="color:#6b5b2e;line-height:1.5">โค้ดนี้<b>ใช้งานไปแล้ว</b> จะไม่สามารถให้สินค้าก่อนได้ เนื่องจากระบบ POS มีข้อมูลบันทึกไว้ชัดเจน · แต่สามารถ<b>กรอกแจ้งปัญหา</b>เพื่อให้ทีม IT และการตลาดตรวจสอบหาสาเหตุของกรณีนี้ได้</div>'+
+        '<button class="btn btn-sm fw-bold text-white" style="background:#c9870a" onclick="window.bvCodeReport()"><i class="fas fa-flag me-1"></i>กรอกแจ้งปัญหาเพื่อตรวจสอบ</button></div>';
+    } else if (hit) {
+      var bvExtra = '';
+      if (hit.detail)    bvExtra += '<div class="small mb-1" style="color:#1d5e36"><b>สิทธิ์ที่ได้:</b> ' + bvEsc(hit.detail) + '</div>';
+      if (hit.condition) bvExtra += '<div class="small mb-1" style="color:#1d5e36"><b>เงื่อนไข:</b> ' + bvEsc(hit.condition) + '</div>';
+      if (hit.start || hit.end) bvExtra += '<div class="small mb-2" style="color:#1d5e36"><b>ช่วงวันที่:</b> ' + bvEsc(hit.start || '—') + ' ถึง ' + bvEsc(hit.end || '—') + '</div>';
+      el.innerHTML = '<div class="alert alert-success border-0 mb-0" style="background:#eafaf1;">'+
+        '<div class="fw-bold mb-2"><i class="fas fa-circle-check me-2"></i>พบโค้ดในระบบ</div>'+
+        '<div class="d-flex flex-wrap gap-2 small mb-2">'+
+          '<span class="badge bg-success"><i class="fas fa-barcode me-1"></i>'+bvEsc(v)+'</span>'+
+          '<span class="badge bg-light text-dark border"><i class="fas fa-bullhorn me-1"></i>'+bvEsc(hit.campaign || '—')+'</span>'+
+          '<span class="badge bg-light text-dark border"><i class="fas fa-hand-pointer me-1"></i>'+bvEsc(hit.button || '—')+'</span>'+
+          '<span class="badge bg-light text-dark border"><i class="fas fa-tag me-1"></i>'+bvEsc(hit.kind || '')+'</span>'+
+        '</div>'+ bvExtra +
+        '<div class="small text-success mb-2"><i class="fas fa-circle-info me-1"></i>โค้ดนี้มีอยู่ในระบบจริง — ถ้าที่หน้า POS หาไม่เจอ / กดใช้ไม่ได้ ให้แจ้ง IT ตรวจสอบ</div>'+
+        '<button class="btn btn-dark btn-sm fw-bold" onclick="window.bvCodeReport()"><i class="fas fa-flag me-1"></i>แจ้งปัญหาโค้ดโปรโมชัน</button></div>';
+    } else {
+      el.innerHTML = '<div class="alert alert-danger border-0 mb-0" style="background:#fdecea;">'+
+        '<div class="fw-bold mb-2"><i class="fas fa-circle-xmark me-2"></i>ไม่พบโค้ดในระบบ</div>'+
+        '<div class="small text-danger mb-2">ตรวจสอบตัวสะกดอีกครั้ง — ถ้าลูกค้ายืนยันว่าได้รับโค้ดนี้จริง สามารถแจ้ง IT ตรวจสอบได้</div>'+
+        '<button class="btn btn-outline-danger btn-sm fw-bold" onclick="window.bvCodeReport()"><i class="fas fa-flag me-1"></i>แจ้งปัญหาโค้ดโปรโมชัน</button></div>';
+    }
+  };
+  window.bvCodeReport = function () {
+    var hit = window.__bvHit, code = window.__bvCode;
+    var sel = document.getElementById('bvBranch');
+    var branchCode = sel ? sel.value : ''; var branchTxt = bvBranchLabel(branchCode);
+    var ctx = {
+      campaign: hit ? hit.campaign : '(ไม่พบในระบบ)', promoType: hit ? hit.kind : '',
+      branch: (branchCode && branchCode!=='ALL') ? branchTxt : '', branchCode: (branchCode && branchCode!=='ALL') ? branchCode : '',
+      saleMode: '', lookupCode: code, fromCodeLookup: true, usedCode: !!window.__bvHitUsed,
+      buttons: [{ sn: hit ? (hit.button || '') : '', code: hit ? (hit.promoCode || '') : '', priceFull: '', priceDisc: '', kitchen: '', choose: '' }]
+    };
+    try {
+      localStorage.setItem('pc_report_ctx', JSON.stringify(ctx));
+      localStorage.setItem('pc_report_origin', 'Potato Corner Promotion System.html#Branch_View');
+    } catch (e) {}
+    location.href = 'Report Code Problem.html';
+  };
+</script>

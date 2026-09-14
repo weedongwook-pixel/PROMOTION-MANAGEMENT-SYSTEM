@@ -1,0 +1,969 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+
+<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
+  
+  <div class="d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
+    <div>
+      <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
+        <i class="fas fa-calculator text-success me-2"></i>Bill Discount <span style="color:#2e934a;">Proposal</span>
+      </h2>
+      <p class="mb-0" style="font-size: 0.95rem; margin-top: 7px; color:#8a9099;">สร้างและจัดการโปรโมชัน Bill Discount สำหรับระบบ POS</p>
+    </div>
+
+    <div class="d-flex align-items-stretch gap-3 flex-wrap justify-content-end">
+      <div style="min-width:190px;background:rgba(255,255,255,.92);border:1.5px solid #d6dbe0;border-radius:10px;padding:9px 13px;">
+        <div class="fw-bold text-uppercase" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-calendar-check me-1"></i>วันที่ทำรายการ</div>
+        <div id="txnDateDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <div class="fw-bold text-uppercase mt-2" style="font-size:10px;color:#6b7280;letter-spacing:.6px;"><i class="fas fa-user-pen me-1"></i>ชื่อผู้ส่งงาน</div>
+        <div id="submitterDisplay" class="fw-bold text-dark" style="font-size:1rem;line-height:1.3;">—</div>
+        <small class="text-muted d-block mt-1" style="font-size:9px;"><i class="fas fa-lock me-1"></i>บันทึกอัตโนมัติ (แก้ไขไม่ได้)</small>
+        <input type="hidden" id="txnDate"><input type="hidden" id="submittedBy">
+      </div>
+      <div style="min-width: 240px;">
+        <label class="fw-bold text-uppercase d-block mb-1" style="font-size: 12px; color: #6b7280; letter-spacing: 1px;">TARGET MONTH <span class="text-danger">*</span></label>
+        <input type="month" id="globalMonth" class="form-control fw-bold text-dark shadow-none" style="font-size: 1.05rem; border:1.5px solid #d6dbe0; border-radius:9px;" min="2026-06">
+        <small class="text-muted d-block mt-1" style="font-size:10px;"><i class="fas fa-lock me-1"></i>เลือกย้อนหลังไม่ได้</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingStatus" class="text-center p-5">
+    <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+    <p class="mt-3 fw-bold" id="statusMessage">LOADING MASTER DATA (ITEMS & BRANCHES)...</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div id="pcCustomerGroup"></div>
+    <div id="campaignList"></div>
+
+    <div class="mb-4 text-center">
+      <button class="btn btn-dark w-100 fw-bold py-3 text-white shadow-sm" onclick="window.addCampaign()" style="font-size: 1.1rem; border-radius: 10px;">
+        <i class="fas fa-plus-circle me-2"></i> ADD NEW BILL DISCOUNT CAMPAIGN
+      </button>
+    </div>
+
+    <div class="text-center mb-5">
+      <button class="btn btn-success shadow px-5 py-3 fw-bold border border-dark text-white" onclick="window.submitAllData()" id="mainSubmitBtn" style="min-width: 450px; font-size: 1.3rem; border-radius: 12px;">
+        SEND TO IT DEPARTMENT <i class="fas fa-paper-plane ms-2"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="branchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-dark" style="border-radius: 15px; border: 3px solid #000;">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-store me-2 text-success"></i> SELECT BRANCHES (HIERARCHY)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="fw-bold small">SELECT MODE</label>
+            <select id="mainBranchMode" class="form-select border-dark shadow-none" onchange="window.handleBranchModeChange()">
+              <option value="MASTER">SEARCH BRANCH (ID/NAME)</option>
+              <option value="HIERARCHY">SELECT BYGROUP/TYPE/CLASS</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">FILTER BY</label>
+            <select id="hItemType" class="form-select border-dark shadow-none" onchange="window.handleHItemChange()">
+              <option value="">-- Select --</option>
+              <option value="type">TYPE</option>
+              <option value="group">GROUP</option>
+              <option value="class">CLASS</option>
+            </select>
+          </div>
+          <div class="col-md-4 h-options" style="display:none;">
+            <label class="fw-bold small">CONTENT</label>
+            <select id="hItemContent" class="form-select border-dark shadow-none" onchange="window.renderBranchTable()">
+              <option value="ALL">-- All Stores --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+            <input type="text" id="branchSearch" class="form-control border-dark shadow-none" placeholder="Search by ID or Name..." oninput="window.renderBranchTable()">
+        </div>
+        <div class="table-responsive border border-dark rounded" style="max-height: 400px; background: #fff;">
+          <table class="table table-hover table-bordered m-0">
+            <thead class="table-dark sticky-top">
+              <tr class="text-center">
+                <th width="50"><input type="checkbox" id="selectAllVisible" onchange="window.toggleAllVisible(this.checked)"></th>
+                <th width="100">ID</th>
+                <th>NAME (EN)</th>
+                <th>NAME (TH)</th>
+              </tr>
+            </thead>
+            <tbody id="branchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-white border-top border-dark d-flex justify-content-between">
+        <div class="fw-bold text-success" id="selectedCountDisplay">Selected: 0</div>
+        <div>
+          <button type="button" class="btn btn-outline-danger fw-bold me-2" onclick="window.clearBranchSelection()">CLEAR ALL</button>
+          <button type="button" class="btn btn-dark fw-bold px-4" onclick="window.confirmBranchSelection()">CONFIRM SELECTION</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.masterData = [];
+  window.masterBranches = [];
+  window.categories = [];
+  window.campaignCount = 0;
+  window.activeCampId = null;
+  window.branchModalObj = null;
+  window.existingCampaignNames = [];
+
+  window.checkAndActivatePage = function() {
+    const modalEl = document.getElementById('branchModal');
+    if (modalEl) window.branchModalObj = new bootstrap.Modal(modalEl);
+    
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7);
+    const globalMonthInput = document.getElementById('globalMonth');
+    if(globalMonthInput) globalMonthInput.setAttribute('min', currentMonth);
+    try {
+        var _u = (localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || '').trim() || 'ไม่ระบุผู้ใช้';
+        var _pcNow = new Date();
+        var d1=document.getElementById('txnDateDisplay'); if(d1) d1.textContent=_pcNow.toLocaleString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        var d2=document.getElementById('submitterDisplay'); if(d2) d2.textContent=_u;
+        var h1=document.getElementById('txnDate'); if(h1) h1.value=_pcNow.toISOString();
+        var h2=document.getElementById('submittedBy'); if(h2) h2.value=_u;
+    } catch(e) {}
+
+    if (window.masterData.length > 0) {
+      if (document.getElementById('loadingStatus')) document.getElementById('loadingStatus').style.display = 'none';
+      if (document.getElementById('mainContent')) document.getElementById('mainContent').style.display = 'block';
+      if (window.campaignCount === 0) {
+        document.getElementById('campaignList').innerHTML = "";
+        window.addCampaign();
+      }
+      return; 
+    }
+
+    if (typeof google !== 'undefined') {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
+            window.__pcRawMaster = response.items || [];
+            window.masterBranches = response.branches || [];
+            window.categories = (function(){ var cc={}; window.masterData.forEach(function(it){ if(it.category && it.cateCode && !(it.category in cc)) cc[it.category]=it.cateCode; }); window.catCodeMap=cc; return [...new Set(window.masterData.map(i => i.category))].filter(Boolean).sort(function(a,b){ var na=parseInt(cc[a],10),nb=parseInt(cc[b],10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; if(isNaN(na)&&!isNaN(nb))return 1; if(!isNaN(na)&&isNaN(nb))return -1; return String(a).localeCompare(String(b)); }); })();
+            
+            document.getElementById('loadingStatus').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            if (window.campaignCount === 0) window.addCampaign();
+          })
+          .getMasterDataExtended();
+
+        google.script.run
+          .withSuccessHandler(function(names) {
+            window.existingCampaignNames = (names || []).map(n => String(n).toLowerCase().trim());
+          })
+          .getExistingCampaignNames();
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", window.checkAndActivatePage);
+  setTimeout(window.checkAndActivatePage, 200);
+
+  window.checkDuplicateName = function(input) {
+    const val = input.value.trim().toLowerCase();
+    if (val.length < 2) return;
+    
+    const uiNames = Array.from(document.querySelectorAll('.camp-name'))
+      .filter(el => el !== input)
+      .map(el => el.value.trim().toLowerCase());
+
+    if (uiNames.includes(val) || window.existingCampaignNames.includes(val)) {
+      Swal.fire({ 
+          icon: 'error', 
+          title: 'พบข้อมูลซ้ำในระบบ', 
+          text: `พบชื่อแคมเปญ "${input.value}" มีอยู่แล้วในระบบ`, 
+          confirmButtonColor: '#000' 
+      })
+      .then(() => { 
+          input.value = ''; 
+          input.focus(); 
+      });
+      return;
+    }
+  };
+
+  window.validateNoSatang = function(input, fieldName = "มูลค่า") {
+    let val = input.value;
+    if (val.includes('.') || /[^0-9]/.test(val)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ระบบไม่รองรับเศษสตางค์!',
+        text: `ช่อง ${fieldName} ต้องระบุเป็นจำนวนเต็มเท่านั้น ห้ามใส่จุดทศนิยมหรือเศษสตางค์`,
+        confirmButtonColor: '#d33'
+      }).then(() => {
+        let cleanVal = parseFloat(val);
+        input.value = isNaN(cleanVal) ? '0' : Math.floor(cleanVal).toString();
+        input.focus();
+      });
+    }
+  };
+
+  window.pcApplyModeFilter = function(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} };
+  window.addCampaign = function() {
+    window.campaignCount++;
+    const campId = 'camp-' + Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    const html = `
+      <div class="card mb-5 border-dark campaign-card shadow" id="${campId}" style="border: 2px solid #000; border-radius: 15px; overflow: hidden;">
+        <div class="card-header bg-dark d-flex justify-content-between align-items-center py-2 border-0">
+          <span class="fw-bold text-white"><i class="fas fa-calculator text-success me-2"></i> BILL DISCOUNT CAMPAIGN #${window.campaignCount}</span>
+          <i class="fas fa-trash-alt text-danger cursor-pointer" onclick="document.getElementById('${campId}').remove(); window.campaignCount--;"></i>
+        </div>
+        <div class="card-body bg-white p-4">
+            <div class="bg-light p-3 rounded border border-dark mb-4">
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <label class="small fw-bold text-uppercase">Campaign Name *</label>
+                  <input type="text" class="form-control camp-name border-dark shadow-none mb-3" placeholder="Enter campaign name..." oninput="window.checkDuplicateName(this)">
+                </div>
+                <div class="col-md-2"><label class="small fw-bold text-uppercase">Start *</label><input type="date" class="form-control camp-start border-dark shadow-none" min="${(window.PCLock&&PCLock.minStartISO('billDiscount'))||today}"></div>
+                <div class="col-md-2"><label class="small fw-bold text-uppercase">End *</label><input type="date" class="form-control camp-end border-dark shadow-none" min="${today}"></div>
+                <div class="col-md-3">
+                  <label class="small fw-bold text-uppercase">Store Selection *</label>
+                  <div class="input-group">
+                    <div class="form-control border-dark d-flex flex-wrap gap-1 p-2 bg-white" id="tag-container-${campId}" style="min-height:38px; height:auto;">
+                      <input type="text" class="border-0 shadow-none flex-grow-1 manual-branch-input" style="outline:none; width:50px;" placeholder="Branch ID..." 
+                             onkeydown="if(event.key==='Enter' && this.value.trim()){window.createBranchTag('${campId}', this.value.toUpperCase().trim(), true); this.value=''}">
+                    </div>
+                    <button class="btn btn-dark" onclick="window.openBranchModal('${campId}')"><i class="fas fa-list text-success"></i></button>
+                  </div>
+                  <input type="hidden" class="camp-store" id="hidden-store-${campId}">
+                </div>
+              </div>
+
+              <div class="row g-3 border-top border-dark pt-3 mt-1">
+                <div class="col-md-12">
+                  <label class="small fw-bold text-uppercase d-block mb-2">SALE MODE *</label>
+                  <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                      <input class="form-check-input mode-check-delivery border-dark m-0 me-2" type="checkbox" value="ALL DELIVERY" onchange="window.handleModeSelect(this, '${campId}')"> 
+                      <label class="form-check-label small fw-bold">ALL DELIVERY</label>
+                    </div>
+                    <div class="form-check p-2 rounded border border-dark bg-light d-flex align-items-center" style="min-width: 130px; height: 40px;">
+                      <input class="form-check-input mode-check-all border-dark m-0 me-2" type="checkbox" value="ALL CHANNEL" onchange="window.handleModeSelect(this, '${campId}')"> 
+                      <label class="form-check-label small fw-bold">ALL CHANNEL</label>
+                    </div>
+                    <div class="vr mx-1" style="width: 2px; height: 30px; background-color: #000;"></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Take Away" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Take Away</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="GRAB" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">GRAB</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="LINEMAN" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">LINEMAN</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="ShopeeFood" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">ShopeeFood</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Robinhood" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Robinhood</label></div>
+                    <div class="form-check d-flex align-items-center"><input class="form-check-input mode-check border-dark me-2 mt-0" type="checkbox" value="Gokoo" onchange="window.handleModeSelect(this, '${campId}')"> <label class="form-check-label small fw-bold">Gokoo</label></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="btn-container-${campId}"></div>
+            <button class="btn btn-outline-dark fw-bold w-100 mt-3 mb-4" onclick="window.addButton('${campId}')"><i class="fas fa-plus"></i> ADD NEW BILL DISCOUNT BUTTON</button>
+
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <div class="bg-dark text-white p-2 fw-bold text-uppercase" style="border-radius: 5px 5px 0 0; font-size: 13px;">PROMOTION DETAIL *</div>
+                <textarea class="form-control border-dark shadow-none camp-detail" rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุรายละเอียดโปรโมชั่น..."></textarea>
+              </div>
+              <div class="col-md-6">
+                <div class="bg-warning text-dark p-2 fw-bold text-uppercase border border-dark" style="border-radius: 5px 5px 0 0; font-size: 13px;">PROMOTION CONDITION *</div>
+                <textarea class="form-control border-dark shadow-none camp-condition" rows="4" style="border-radius: 0 0 5px 5px; resize: none;" placeholder="ระบุเงื่อนไขการใช้งาน..."></textarea>
+              </div>
+            </div>
+        </div>
+      </div>`;
+    document.getElementById('campaignList').insertAdjacentHTML('beforeend', html);
+    try{ window.pcApplyModeFilter(document.getElementById(campId), 'bill'); }catch(e){}
+    window.addButton(campId);
+};
+
+window.openBranchModal = function(campId) {
+    window.activeCampId = campId;
+    var hidden = document.getElementById('hidden-store-' + campId);
+    var initial = (hidden && hidden.value) ? hidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+    StoreSelect.pick({
+      getBranches: function(){ return window.masterBranches || []; },
+      initialIds: initial,
+      onApply: function(ids, tokenStr, summary){
+        var container = document.getElementById('tag-container-' + campId);
+        if (container) container.querySelectorAll('.branch-tag').forEach(function(t){ t.remove(); });
+        var isTok = tokenStr==='ALL' || /(^|,\s*)[GCT]:/i.test(tokenStr||'');
+        if (isTok) window.createBranchTag(campId, summary || tokenStr, false, tokenStr);
+        else if (ids.length > 10) window.createBranchTag(campId, 'SELECTED ' + ids.length + ' STORES', false, ids.join(','));
+        else ids.forEach(function(v){ window.createBranchTag(campId, v, false); });
+      }
+    });
+};
+window._legacyOpenBranchModal = function(campId) {
+    window.activeCampId = campId;
+    document.getElementById('branchSearch').value = '';
+    document.getElementById('mainBranchMode').value = 'MASTER';
+    if(document.getElementById('selectAllVisible')) {
+        document.getElementById('selectAllVisible').checked = false;
+    }
+    window.handleBranchModeChange();
+    if (window.branchModalObj) {
+        window.branchModalObj.show();
+    }
+}; 
+
+  window.handleBranchModeChange = function() {
+    const mode = document.getElementById('mainBranchMode').value;
+    const hOptions = document.querySelectorAll('.h-options');
+    hOptions.forEach(el => el.style.display = (mode === 'HIERARCHY' ? 'block' : 'none'));
+    window.renderBranchTable();
+  };
+
+  window.handleHItemChange = function() {
+    const type = document.getElementById('hItemType').value;
+    const contentDrop = document.getElementById('hItemContent');
+    contentDrop.innerHTML = '<option value="ALL">-- All Stores --</option>';
+    if (type) {
+        const uniqueVals = [...new Set(window.masterBranches.map(b => b[type]))].filter(Boolean).sort();
+        uniqueVals.forEach(val => { contentDrop.innerHTML += `<option value="${val}">${val}</option>`; });
+    }
+    window.renderBranchTable();
+  };
+
+  window.renderBranchTable = function() {
+    const search = (document.getElementById('branchSearch').value || "").toLowerCase();
+    const mode = document.getElementById('mainBranchMode').value;
+    const hType = document.getElementById('hType') ? document.getElementById('hType').value : '';
+    const hContent = document.getElementById('hContent') ? document.getElementById('hContent').value : 'ALL';
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    if (!container) return;
+    const currentTags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+
+    const filtered = window.masterBranches.filter(b => {
+        const matchSearch = String(b.id + b.name + (b.nameTH || '')).toLowerCase().includes(search);
+        let matchHierarchy = true;
+        if (mode === 'HIERARCHY' && hType && hContent !== 'ALL') {
+            matchHierarchy = (String(b[hType] || "") === hContent);
+        }
+        return matchSearch && matchHierarchy;
+    });
+
+    const body = document.getElementById('branchTableBody');
+    body.innerHTML = filtered.map(b => {
+        const isChecked = currentTags.includes(String(b.id)) ? 'checked' : '';
+        return `
+        <tr class="text-center">
+            <td><input type="checkbox" class="branch-item-check" value="${b.id}" ${isChecked} onchange="window.updateSelectedCounter()"></td>
+            <td class="fw-bold">${b.id}</td>
+            <td class="text-start ps-3">${b.name}</td>
+            <td class="text-start ps-3">${b.nameTH || ''}</td>
+        </tr>`;
+    }).join('');
+    
+    window.updateSelectedCounter();
+  };
+
+  window.toggleAllVisible = function(isChecked) {
+    const visibleChecks = document.querySelectorAll('#branchTableBody .branch-item-check');
+    visibleChecks.forEach(ck => { ck.checked = isChecked; });
+    window.updateSelectedCounter();
+  };
+
+  window.updateSelectedCounter = function() {
+    const count = document.querySelectorAll('.branch-item-check:checked').length;
+    const display = document.getElementById('selectedCountDisplay');
+    if(display) display.innerText = `Selected: ${count}`;
+  };
+
+  window.confirmBranchSelection = function() {
+    const selected = Array.from(document.querySelectorAll('.branch-item-check:checked')).map(ck => ck.value);
+    const container = document.getElementById(`tag-container-${window.activeCampId}`);
+    container.querySelectorAll('.branch-tag').forEach(t => t.remove());
+    
+    if (selected.length > 10) {
+        window.createBranchTag(window.activeCampId, `SELECTED ${selected.length} STORES`, false, selected.join(','));
+    } else {
+        selected.forEach(val => window.createBranchTag(window.activeCampId, val, false));
+    }
+    window.branchModalObj.hide();
+  };
+
+  window.createBranchTag = function(campId, value, isManual, fullList = null) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const existing = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    if (existing.includes(fullList || value)) return;
+
+    const tag = document.createElement('span');
+    const isAll = value.toUpperCase() === 'ALL';
+    tag.className = `branch-tag badge ${isAll ? 'bg-warning text-dark border border-dark' : 'bg-success'} d-flex align-items-center gap-1`;
+    tag.style.padding = '5px 10px';
+    tag.dataset.val = fullList || value;
+    tag.innerHTML = `${value} <i class="fas fa-times cursor-pointer" onclick="this.parentElement.remove(); window.syncStoreHidden('${campId}')"></i>`;
+    
+    const input = container.querySelector('.manual-branch-input');
+    container.insertBefore(tag, input);
+    window.syncStoreHidden(campId);
+  };
+
+  window.syncStoreHidden = function(campId) {
+    const container = document.getElementById(`tag-container-${campId}`);
+    if (!container) return;
+    const tags = Array.from(container.querySelectorAll('.branch-tag')).map(t => t.dataset.val);
+    document.getElementById(`hidden-store-${campId}`).value = tags.join(',');
+  };
+
+  window.clearBranchSelection = function() {
+    const visibleChecks = document.querySelectorAll('#branchTableBody .branch-item-check');
+    visibleChecks.forEach(ck => { ck.checked = false; });
+    window.updateSelectedCounter();
+  };
+
+ window.addButton = function(campId) {
+    const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const html = `
+      <div class="pos-button-block mb-4 p-3 border border-dark rounded bg-white shadow-sm" id="${btnId}" style="border-left: 10px solid #2e934a !important;">
+        
+        <div class="row g-3 mb-3 pb-3 border-bottom border-dark">
+          <div class="col-md-12">
+            <label class="small fw-bold text-uppercase d-block mb-2"> BILL DISCOUNT TYPE * </label>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+              <div class="d-flex gap-4">
+                <div class="form-check">
+                  <input class="form-check-input border-dark" type="radio" name="couponType-${btnId}" id="normal-${btnId}" value="Normal" checked onchange="document.getElementById('upload-sec-${btnId}').style.display='none'">
+                  <label class="form-check-label small fw-bold" for="normal-${btnId}">Coupon Normal (ลดทันที)</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input border-dark" type="radio" name="couponType-${btnId}" id="online-${btnId}" value="Online" onchange="document.getElementById('upload-sec-${btnId}').style.display='block'">
+                  <label class="form-check-label small fw-bold" for="online-${btnId}">Coupon Online (Mapping code)</label>
+                </div>
+              </div>
+              <div id="upload-sec-${btnId}" style="display:none; flex-grow: 1; max-width: 400px;">
+                <input type="file" class="form-control form-control-sm border-dark shadow-none upload-file">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-12">
+            <input type="radio" class="p-mode" name="pMode-${btnId}" id="allP-${btnId}" value="All" checked style="display:none;">
+            <label class="small fw-bold text-uppercase">SHORT NAME (POS) - BILL DISCOUNT NAME *</label>
+            <input type="text" class="form-control btn-sn border-dark fw-bold text-dark shadow-none" maxlength="40" placeholder="Max 40 characters...">
+          </div>
+        </div>
+        
+        <table class="table table-sm table-bordered border-dark align-middle mb-2">
+          <thead class="table-dark small text-center" style="display:none;">
+            <tr>
+              <th style="width: 35%;">Category *</th>
+              <th style="width: 60%;">Item / All item *</th>
+              <th style="width: 5%;"></th>
+            </tr>
+          </thead>
+          <tbody class="item-body"></tbody>
+          <tfoot class="table-light fw-bold small">
+            <tr>
+                <td colspan="2" class="text-end align-middle">Value Discount:</td>
+                <td>
+                    <div class="input-group input-group-sm border border-dark rounded bg-white" style="min-width: 130px;">
+                        <input type="number" class="form-control text-end border-0 fw-bold btn-disc-val shadow-none" value="0" min="0" oninput="this.value = this.value.replace(/[^0-9]/g, ''); window.validateNoSatang(this, 'ส่วนลด')">
+                        <select class="form-select border-0 fw-bold btn-disc-unit shadow-none bg-light" style="max-width: 65px;">
+                            <option value="CUR">฿</option>
+                            <option value="PCT">%</option>
+                        </select>
+                    </div>
+                </td>
+                <td></td>
+            </tr>
+            <tr style="background-color: #e8f5e9;" class="min-spend-row-${btnId}">
+                <td colspan="2" class="text-end align-middle border-dark" style="color: #2e934a; line-height: 1.1;">
+                  <span style="font-size: 1.1rem;">Min Amount</span><br>
+                  <small style="font-weight: normal; font-size: 10px; color: #666;">กำหนดขั้นต่ำในการใช้งานหรือไม่?</small>
+                </td>
+                <td class="d-flex align-items-center gap-2 p-2 border-dark">
+                    <input type="checkbox" class="form-check-input border-dark m-0 min-spend-check" onchange="window.toggleMinSpend('${btnId}', this)">
+                    <input type="number" class="form-control form-control-sm border-dark min-val shadow-none fw-bold" placeholder="Amount" style="display:none; max-width:150px;" min="0" oninput="this.value = this.value.replace(/[^0-9]/g, ''); window.validateNoSatang(this, 'ยอดขั้นต่ำ')">
+                </td>
+                <td class="border-dark"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="builder-wrap border border-dark rounded p-2 mb-2" style="background:#f8f9fa;">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+              <label class="small fw-bold text-uppercase d-block mb-1">เลือกหมวด / Category <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm border-dark builder-cate shadow-none fw-bold text-primary" onchange="window.builderRender('${btnId}')">
+                <option value="">-- เลือกหมวด / Category --</option>
+                <option value="__ALLCATE__">All cate — ทุกหมวด (= All products)</option>
+                ${(window.PC_FormSubset?window.PC_FormSubset.optionHTML('bill'):'')}
+                ${window.categories.filter(window.pcCatShownInBill).map(c => `<option value="${c}">${(window.catCodeMap&&window.catCodeMap[c])?window.catCodeMap[c]+' - ':''}${c}</option>`).join('')}
+              </select>
+            </div>
+            <div class="col-md-7">
+              <input type="text" class="form-control form-control-sm border-dark builder-search shadow-none" placeholder="ค้นหาสินค้า (โค้ด / ชื่อ)..." oninput="window.builderFilter('${btnId}')" disabled>
+            </div>
+          </div>
+          <div class="builder-items mt-2" style="display:none;"></div>
+          <div class="builder-actions mt-2 d-flex justify-content-between align-items-center" style="display:none;">
+            <small class="text-muted builder-count fw-bold">เลือก 0 รายการ</small>
+            <button type="button" class="btn btn-sm btn-success fw-bold border border-dark" onclick="window.commitItems('${btnId}')"><i class="fas fa-plus me-1"></i>เพิ่มเข้าตาราง</button>
+          </div>
+        </div>
+        <div class="d-flex justify-content-end">
+          <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove Button</small>
+        </div>
+      </div>`;
+    document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.handleProductMode(btnId, 'All');
+  };
+
+  /* ---------- ITEM PICKER (builder) ---------- */
+  /* Spec mode: เลือกหมวด → ติ๊กสินค้า → กด "เพิ่มเข้าตาราง" → แต่ละสินค้ากลายเป็น 1 แถว */
+  window.builderRender = function(btnId) {
+    const block = document.getElementById(btnId);
+    const cateSel = block.querySelector('.builder-cate');
+    const search = block.querySelector('.builder-search');
+    const itemsBox = block.querySelector('.builder-items');
+    const actions = block.querySelector('.builder-actions');
+    const cat = cateSel.value;
+
+    if (cat === '__ALLCATE__') {
+      const allRadio = document.getElementById('allP-' + btnId);
+      if (allRadio) allRadio.checked = true;
+      window.handleProductMode(btnId, 'All');
+      return;
+    }
+    if (!cat) {
+      itemsBox.style.display = 'none'; itemsBox.innerHTML = '';
+      actions.style.display = 'none';
+      search.disabled = true; search.value = '';
+      return;
+    }
+    if (cat === '__SUBSET__') {
+      const subs = window.PC_FormSubset ? window.PC_FormSubset.list('bill') : [];
+      const head = '<span></span><span class="fw-bold text-uppercase" style="font-size:10px;color:#888;">SS Code</span><span class="fw-bold text-uppercase" style="font-size:10px;color:#888;">กลุ่มสินค้า</span>';
+      const rows = subs.map(s => {
+        const cnt = window.PC_FormSubset.members(s.ssCode).length;
+        return '<div class="builder-item-row" data-search="' + (String(s.ssCode) + ' ' + String(s.name || '')).toLowerCase() + '" style="display:contents;">' +
+          '<input class="form-check-input builder-check m-0" type="checkbox" value="' + s.ssCode + '" data-name="' + String(s.name || '').replace(/"/g, '&quot;') + '" id="bk-' + btnId + '-' + s.ssCode + '" onchange="window.builderCount(\'' + btnId + '\')">' +
+          '<label for="bk-' + btnId + '-' + s.ssCode + '" class="small fw-bold text-success" style="font-family:\'JetBrains Mono\',monospace;cursor:pointer;">' + s.ssCode + '</label>' +
+          '<label for="bk-' + btnId + '-' + s.ssCode + '" class="small" style="cursor:pointer;">' + (s.name || '') + ' <span style="color:#9aa1aa">(' + cnt + ' รายการ)</span></label>' +
+        '</div>';
+      }).join('');
+      itemsBox.innerHTML = subs.length
+        ? ('<div class="builder-item-list" style="display:grid;grid-template-columns:auto 90px 1fr;gap:3px 10px;align-items:center;max-height:210px;overflow:auto;">' + head + rows + '</div>')
+        : '<div class="small text-muted p-2">— ไม่มีกลุ่มสินค้าที่เปิดให้ฟอร์มนี้ (เปิดได้ที่ Form Display) —</div>';
+      itemsBox.style.display = ''; actions.style.display = 'flex';
+      search.disabled = false; search.value = '';
+      window.builderCount(btnId);
+      return;
+    }
+    const items = window.masterData.filter(i => String(i.category) === String(cat));
+    const head = '<span></span><span class="fw-bold text-uppercase" style="font-size:10px;color:#888;">Item Code</span><span class="fw-bold text-uppercase" style="font-size:10px;color:#888;">Item Name</span>';
+    const rows = items.map(i =>
+      '<div class="builder-item-row" data-search="' + (String(i.itemCode) + ' ' + String(i.itemNameEN)).toLowerCase() + '" style="display:contents;">' +
+        '<input class="form-check-input builder-check m-0" type="checkbox" value="' + i.itemCode + '" data-name="' + String(i.itemNameEN).replace(/"/g,'&quot;') + '" id="bk-' + btnId + '-' + i.itemCode + '" onchange="window.builderCount(\'' + btnId + '\')">' +
+        '<label for="bk-' + btnId + '-' + i.itemCode + '" class="small fw-bold text-success" style="font-family:\'JetBrains Mono\',monospace;cursor:pointer;">' + i.itemCode + '</label>' +
+        '<label for="bk-' + btnId + '-' + i.itemCode + '" class="small" style="cursor:pointer;">' + i.itemNameEN + '</label>' +
+      '</div>'
+    ).join('');
+    itemsBox.innerHTML =
+      '<div class="form-check mb-1 pb-1 border-bottom border-secondary-subtle">' +
+        '<input class="form-check-input builder-allitem" type="checkbox" id="bai-' + btnId + '" onchange="window.builderToggleAll(\'' + btnId + '\', this.checked)">' +
+        '<label class="form-check-label fw-bold small" for="bai-' + btnId + '"><i class="fas fa-check-double text-success me-1"></i>All item — ทั้งหมวด (' + items.length + ' รายการ)</label>' +
+      '</div>' +
+      '<div class="builder-item-list" style="display:grid;grid-template-columns:auto 78px 1fr;gap:3px 10px;align-items:center;max-height:210px;overflow:auto;">' + head + rows + '</div>';
+    itemsBox.style.display = '';
+    actions.style.display = 'flex';
+    search.disabled = false; search.value = '';
+    window.builderCount(btnId);
+  };
+
+  window.builderFilter = function(btnId) {
+    const block = document.getElementById(btnId);
+    const q = (block.querySelector('.builder-search').value || '').toLowerCase().trim();
+    block.querySelectorAll('.builder-item-row').forEach(r => {
+      const hit = !q || r.getAttribute('data-search').indexOf(q) !== -1;
+      r.style.display = hit ? 'contents' : 'none';
+    });
+  };
+
+  window.builderToggleAll = function(btnId, checked) {
+    const block = document.getElementById(btnId);
+    block.querySelectorAll('.builder-check').forEach(cb => { cb.disabled = checked; if (checked) cb.checked = false; });
+    const list = block.querySelector('.builder-item-list');
+    if (list) list.style.opacity = checked ? '0.4' : '1';
+    window.builderCount(btnId);
+  };
+
+  window.builderCount = function(btnId) {
+    const block = document.getElementById(btnId);
+    const allItem = block.querySelector('.builder-allitem');
+    const lbl = block.querySelector('.builder-count');
+    if (!lbl) return;
+    if (allItem && allItem.checked) { lbl.textContent = 'เลือก: ทั้งหมวด'; return; }
+    const n = block.querySelectorAll('.builder-check:checked').length;
+    lbl.textContent = 'เลือก ' + n + ' รายการ';
+  };
+
+  /* commit: แตกที่เลือกเป็นแถวละ 1 สินค้า */
+  window.commitItems = function(btnId) {
+    const block = document.getElementById(btnId);
+    const cat = block.querySelector('.builder-cate').value;
+    if (!cat || cat === '__ALLCATE__') { Swal.fire('เลือกหมวดก่อน', 'กรุณาเลือกหมวดสินค้า', 'info'); return; }
+    const allItem = block.querySelector('.builder-allitem');
+    let added = 0, dup = 0;
+
+    if (allItem && allItem.checked) {
+      const count = block.querySelectorAll('.builder-check').length;
+      if (window.addCommittedRow(btnId, { mode: 'CATE', cat: cat, code: cat, name: 'ทุกสินค้าในหมวด (' + count + ' รายการ)' })) added++; else dup++;
+    } else {
+      const checked = Array.from(block.querySelectorAll('.builder-check:checked'));
+      if (checked.length === 0) { Swal.fire('ยังไม่ได้เลือก', 'กรุณาติ๊กสินค้าอย่างน้อย 1 รายการ หรือติ๊ก All item', 'info'); return; }
+      checked.forEach(cb => {
+        if (window.addCommittedRow(btnId, { mode: 'ITEM', cat: (cat === '__SUBSET__' ? 'Subset' : cat), code: cb.value, name: cb.getAttribute('data-name') || '' })) added++; else dup++;
+      });
+    }
+    block.querySelectorAll('.builder-check').forEach(cb => { cb.checked = false; cb.disabled = false; });
+    if (allItem) allItem.checked = false;
+    const list = block.querySelector('.builder-item-list'); if (list) list.style.opacity = '1';
+    window.builderCount(btnId);
+    if (dup && !added) Swal.fire('ซ้ำ', 'รายการที่เลือกถูกเพิ่มไปแล้ว', 'warning');
+  };
+
+  window.addCommittedRow = function(btnId, data) {
+    const tbody = document.querySelector('#' + btnId + ' .item-body');
+    const exists = Array.from(tbody.querySelectorAll('.item-row')).some(r => {
+      const m = r.querySelector('.row-mode'), c = r.querySelector('.row-ic');
+      return m && c && m.value === data.mode && String(c.value) === String(data.code);
+    });
+    if (exists) return false;
+
+    const rowId = 'row-' + (Date.now() + Math.random().toString(36).substr(2, 5));
+    const tr = document.createElement('tr');
+    tr.id = rowId; tr.className = 'item-row';
+    const isCate = data.mode === 'CATE';
+    tr.innerHTML =
+      '<td class="fw-bold text-primary small align-middle">' + data.cat + '</td>' +
+      '<td class="small align-middle">' +
+        (isCate
+          ? '<span class="badge bg-success-subtle text-success border border-success fw-bold"><i class="fas fa-check-double me-1"></i>' + data.name + '</span>'
+          : '<span class="fw-bold text-success" style="font-family:\'JetBrains Mono\',monospace;">' + data.code + '</span> &mdash; ' + data.name) +
+        '<input type="hidden" class="row-mode" value="' + data.mode + '">' +
+        '<input type="hidden" class="row-cate" value="' + data.cat + '">' +
+        '<input type="hidden" class="row-ic" value="' + data.code + '">' +
+        '<input type="hidden" class="row-in" value="' + String(data.name).replace(/"/g,'&quot;') + '">' +
+      '</td>' +
+      '<td class="text-center align-middle"><i class="fas fa-times text-danger cursor-pointer" onclick="document.getElementById(\'' + rowId + '\').remove()"></i></td>';
+    tbody.appendChild(tr);
+    return true;
+  };
+
+  window.addAllProductsRow = function(btnId) {
+    const tbody = document.querySelector('#' + btnId + ' .item-body');
+    const tr = document.createElement('tr');
+    tr.className = 'item-row';
+    tr.style.backgroundColor = '#f0f0f0';
+    tr.innerHTML = `
+        <td colspan="3" class="p-2">
+          <div class="d-flex align-items-center gap-3 px-3 py-2" style="background:#eafaf1;border-left:5px solid #2e934a;border-radius:8px;">
+            <i class="fas fa-globe-asia" style="font-size:1.7rem;color:#2e934a;"></i>
+            <div class="text-start">
+              <div class="fw-bold" style="color:#2e934a;font-size:1rem;line-height:1.2;">All Products — สินค้าทั้งหมด</div>
+              <small class="text-muted">* เฉพาะสินค้าราคาปกติเท่านั้น (ไม่รวมสินค้าที่ลดราคา / สินค้าราคาโปรโมชัน)</small>
+            </div>
+            <span class="badge bg-warning text-dark ms-auto border border-dark fw-bold" style="font-size:.75rem;"><i class="fas fa-tag me-1"></i>ALL ITEMS</span>
+          </div>
+          <input type="hidden" class="row-mode" value="ALL">
+          <input type="hidden" class="row-ic" value="ALL ITEMS">
+        </td>`;
+    tbody.appendChild(tr);
+  };
+
+  /* หมวดนี้เปิดให้เลือกในฟอร์ม Bill Discount ไหม? (คุมจากหน้า Form Display — pc_cat_forms) */
+  window.pcCatShownInBill = function(cat){
+    try{ var m=JSON.parse(localStorage.getItem('pc_cat_forms')||'{}')||{}; var o=m[cat]; if(o && o.bill!==undefined) return !!o.bill; }catch(e){}
+    return true;
+  };
+  window.handleProductMode = function(btnId, mode) {
+    const btnBlock = document.getElementById(btnId);
+    const isAllMode = (mode === 'All');
+    btnBlock.querySelector('.item-body').innerHTML = '';
+    const builder = btnBlock.querySelector('.builder-wrap');
+    if (isAllMode) {
+      if (builder) builder.style.display = 'none';
+      window.addAllProductsRow(btnId);
+    } else {
+      if (builder) {
+        builder.style.display = '';
+        const cs = builder.querySelector('.builder-cate'); if (cs) cs.value = '';
+        window.builderRender(btnId);
+      }
+    }
+  };
+
+  window.handleModeSelect = function(el, campId) {
+    const card = document.getElementById(campId);
+    const deliveryModes = ["GRAB", "LINEMAN", "ShopeeFood", "Robinhood", "Gokoo"];
+    if (el.checked) {
+      if (el.value === "ALL CHANNEL") {
+        card.querySelectorAll('.mode-check, .mode-check-delivery, .mode-check-all').forEach(cb => { if(cb !== el) cb.checked = false; });
+      } else if (el.value === "ALL DELIVERY") {
+        card.querySelector('.mode-check-all').checked = false;
+        card.querySelectorAll('.mode-check').forEach(cb => { if (deliveryModes.includes(cb.value)) cb.checked = false; });
+      } else {
+        card.querySelector('.mode-check-all').checked = false;
+        if (el.value === "Take Away") {
+          card.querySelectorAll('.mode-check-delivery, .mode-check').forEach(cb => { if (cb !== el) cb.checked = false; });
+        } else if (deliveryModes.includes(el.value)) {
+          card.querySelector('.mode-check-delivery').checked = false;
+          card.querySelectorAll('.mode-check').forEach(cb => { if (cb.value === "Take Away") cb.checked = false; });
+        }
+      }
+    }
+  };
+
+  window.toggleMinSpend = function(btnId, cb) {
+    const btnBlock = document.getElementById(btnId);
+    const minValInput = btnBlock.querySelector('.min-val');
+    minValInput.style.display = cb.checked ? 'block' : 'none';
+    minValInput.value = cb.checked ? (btnBlock.querySelector('.btn-disc-val').value || '0') : '';
+  };
+
+  window.alertAndFocus = function(element, message) {
+      Swal.fire('ข้อมูลไม่ครบ', message, 'warning').then(() => {
+          element.focus();
+          if(element.scrollIntoView) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+  };
+
+  window.submitAllData = async function() {
+    const alertAndFocus = (el, msg) => {
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => el.focus(), 500);
+        }
+        Swal.fire('ข้อมูลไม่ครบ', msg, 'warning');
+    };
+
+    const monthEl = document.getElementById('globalMonth');
+    if (!monthEl || !monthEl.value) { alertAndFocus(monthEl, 'กรุณาระบุ Target Month (เดือนประจำงวดแคมเปญ)'); return; }
+    const _txnDate = (document.getElementById('txnDate') || {}).value || new Date().toISOString();
+    const _submittedBy = (document.getElementById('submittedBy') || {}).value || (function(){ try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch(e){ return ''; } })();
+    if(window.PC_CustomerGroup){ const _cg=PC_CustomerGroup.validate(); if(!_cg.ok){ alertAndFocus(null, _cg.msg); return; } }
+
+    const campaignCards = document.querySelectorAll('.campaign-card');
+    if (campaignCards.length === 0) return Swal.fire('Warning', 'กรุณาเพิ่มอย่างน้อย 1 แคมเปญ', 'warning');
+
+    let allCampaignData = [];
+    let isValid = true;
+    let globalButtonNames = []; 
+    let usedCampaignNames = [];
+
+    for (let [idx, card] of campaignCards.entries()) {
+        const campPrefix = `Campaign #${idx+1}`;
+        const nameEl = card.querySelector('.camp-name');
+        const startEl = card.querySelector('.camp-start');
+        const endEl = card.querySelector('.camp-end');
+        const storeHidden = card.querySelector('.camp-store');
+        const detailEl = card.querySelector('.camp-detail');
+        const conditionEl = card.querySelector('.camp-condition');
+
+        if (!nameEl.value.trim()) { alertAndFocus(nameEl, `${campPrefix}: กรุณาระบุชื่อแคมเปญ`); isValid = false; break; }
+        if (usedCampaignNames.includes(nameEl.value.trim().toLowerCase())) {
+            alertAndFocus(nameEl, `${campPrefix}: ชื่อแคมเปญ "${nameEl.value.trim()}" นี้ถูกใช้ซ้ำในหน้านี้`);
+            isValid = false; break;
+        }
+        usedCampaignNames.push(nameEl.value.trim().toLowerCase());
+
+        if (!startEl.value) { alertAndFocus(startEl, `${campPrefix}: กรุณาระบุวันที่เริ่ม`); isValid = false; break; }
+        if (!endEl.value) { alertAndFocus(endEl, `${campPrefix}: กรุณาระบุวันที่สิ้นสุด`); isValid = false; break; }
+        if (!storeHidden.value) { alertAndFocus(card.querySelector('[id^="tag-container-"]'), `${campPrefix}: กรุณาเลือกสาขา`); isValid = false; break; }
+
+        const btnBlocks = card.querySelectorAll('.pos-button-block');
+        if (btnBlocks.length === 0) {
+            Swal.fire('ข้อมูลไม่ครบ', `${campPrefix}: กรุณาเพิ่มอย่างน้อย 1 ปุ่มกด`, 'warning');
+            isValid = false; break;
+        }
+
+        let firstCouponType = btnBlocks[0].querySelector('input[name^="couponType"]:checked').value;
+        for (let btn of btnBlocks) {
+            let currentType = btn.querySelector('input[name^="couponType"]:checked').value;
+            if (currentType !== firstCouponType) {
+                Swal.fire('ข้อมูลไม่ถูกต้อง', `${campPrefix}: BILL DISCOUNT TYPE ในแคมเปญเดียวกันต้องเป็นประเภทเดียวกันทั้งหมด (${firstCouponType} เท่านั้น)`, 'warning');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                isValid = false; break;
+            }
+        }
+        if (!isValid) break;
+
+        let buttons = [];
+        for (let [bIdx, btn] of btnBlocks.entries()) {
+            const btnPrefix = `${campPrefix}, Button #${bIdx+1}`;
+            const snEl = btn.querySelector('.btn-sn');
+            const discValEl = btn.querySelector('.btn-disc-val');
+            const minSpendCheck = btn.querySelector('.min-spend-check');
+            const minValEl = btn.querySelector('.min-val');
+            const discountValue = parseInt(discValEl.value, 10) || 0;
+            const btnNameClean = snEl.value.trim().toLowerCase();
+            
+            const couponType = firstCouponType; 
+            const fileEl = btn.querySelector('.upload-file');
+            let fileData = null;
+
+            if (couponType === 'Online') {
+                if (!fileEl.files || fileEl.files.length === 0) {
+                    alertAndFocus(fileEl, `${btnPrefix}: กรุณาแนบไฟล์ Coupon Mapping`);
+                    isValid = false; break;
+                }
+                const file = fileEl.files[0];
+                fileData = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({
+                        base64: e.target.result.split(',')[1],
+                        mimeType: file.type,
+                        fileName: file.name
+                    });
+                    reader.readAsDataURL(file);
+                });
+                // ครบวง (option ข): แกะโค้ดในไฟล์ → ลงทะเบียนเข้า pc_code_requests (PENDING) → IT ดาวน์โหลด Backoffice + ยืนยัน → สาขาค้นเจอ
+                try { if (window.PC_CodeConvert) PC_CodeConvert.ingestFromInput(fileEl, { campaign: nameEl.value.trim(), button: snEl.value.trim(), kindShort: 'bill', proStatus: 'Normal', end: endEl.value }); } catch (e) {}
+            }
+
+            if (!snEl.value.trim()) { alertAndFocus(snEl, `${btnPrefix}: กรุณาระบุชื่อปุ่ม`); isValid = false; break; }
+            if (globalButtonNames.includes(btnNameClean)) {
+                alertAndFocus(snEl, `${btnPrefix}: ชื่อปุ่ม "${snEl.value.trim()}" นี้ซ้ำกับปุ่มอื่น`);
+                isValid = false; break;
+            }
+            globalButtonNames.push(btnNameClean);
+
+            if (discountValue <= 0) { alertAndFocus(discValEl, `${btnPrefix}: มูลค่าส่วนลดต้องมากกว่า 0`); isValid = false; break; }
+            if (minSpendCheck && minSpendCheck.checked && !minValEl.value.trim()) {
+                alertAndFocus(minValEl, `${btnPrefix}: กรุณาระบุจำนวนเงินเงื่อนไขขั้นต่ำ`);
+                isValid = false; break;
+            }
+
+            let items = [];
+            const isProductModeAll = btn.querySelector('input[name^="pMode"]:checked').value === 'All';
+            
+            if(!isProductModeAll) {
+              const itemRows = btn.querySelectorAll('.item-row');
+              if (itemRows.length === 0) {
+                Swal.fire('ข้อมูลไม่ครบ', `${btnPrefix}: กรุณาเพิ่มสินค้าเงื่อนไข หรือเลือกแบบ All products`, 'warning');
+                isValid = false; break;
+              }
+              for (let row of itemRows) {
+                const mode = (row.querySelector('.row-mode') || {}).value || '';
+                const cat = (row.querySelector('.row-cate') || {}).value || '';
+                if (mode === 'CATE') {
+                  items.push({ selectionMode: 'CATE', itemName: cat, itemCode: cat });
+                } else {
+                  const ic = (row.querySelector('.row-ic') || {}).value || '';
+                  const inm = (row.querySelector('.row-in') || {}).value || '';
+                  items.push({ selectionMode: 'ITEM', itemName: inm, itemCode: ic });
+                }
+              }
+            } else {
+              items.push({ selectionMode: "ALL", itemName: "All products *เฉพาะสินค้าราคาปกติเท่านั้น", itemCode: "ALL ITEMS" });
+            }
+            if (!isValid) break;
+
+            buttons.push({
+                shortName: snEl.value.trim(),
+                items: items,
+                couponType: couponType,
+                fileData: fileData,
+                discountValue: Math.floor(discountValue),
+                discountUnit: btn.querySelector('.btn-disc-unit').value,
+                minSpendAmount: Math.floor(parseInt(minValEl.value, 10) || 0)
+            });
+        }
+        if (!isValid) break;
+
+        let modes = Array.from(card.querySelectorAll('.mode-check:checked, .mode-check-delivery:checked, .mode-check-all:checked')).map(m => m.value);
+        if (modes.length === 0) { Swal.fire('ข้อมูลไม่ครบ', `${campPrefix}: กรุณาเลือก Sale Mode`, 'warning'); isValid = false; break; }
+        if (!detailEl.value.trim()) { alertAndFocus(detailEl, `${campPrefix}: กรุณาระบุรายละเอียดโปรโมชั่น`); isValid = false; break; }
+        if (!conditionEl.value.trim()) { alertAndFocus(conditionEl, `${campPrefix}: กรุณาระบุเงื่อนไขการใช้งาน`); isValid = false; break; }
+
+        allCampaignData.push({
+            txnDate: _txnDate,
+            submittedBy: _submittedBy,
+            month: monthEl.value,
+            name: nameEl.value.trim(),
+            start: startEl.value,
+            end: endEl.value,
+            stores: storeHidden.value,
+            saleModes: modes.join(','),
+            detail: detailEl.value,
+            condition: conditionEl.value,
+            buttons: buttons
+        });
+    }
+
+if (!isValid) return;
+
+    Swal.fire({
+      title: 'ยืนยันการบันทึก?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2e934a',
+      confirmButtonText: 'ตกลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        const finalPayload = {
+            globalMonth: monthEl.value,
+            campaigns: allCampaignData,
+            ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+        };
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            Swal.close();
+            if (res && res.status === "success") {
+                Swal.fire({ title: 'บันทึกสำเร็จ!', text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', icon: 'success', confirmButtonColor: '#2e934a' }).then(() => {
+                    document.getElementById('campaignList').innerHTML = ''; 
+                    window.campaignCount = 0; 
+                    window.addCampaign(); 
+                    document.getElementById('globalMonth').value = '';
+                    var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
+                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
+                });
+            } else { 
+                Swal.fire('เกิดข้อผิดพลาด', (res && res.message) ? res.message : 'ไม่สามารถบันทึกข้อมูลได้', 'error'); 
+            }
+          })
+          .withFailureHandler(function(err) {
+            Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
+          })
+          .submitBillDiscountProposal(finalPayload);
+      }
+    });
+};
+</script>
+<style>
+  .cursor-pointer { cursor: pointer; }
+  .sticky-top { position: sticky; top: 0; z-index: 1020; }
+  .form-control:focus { border-color: #2e934a !important; box-shadow: none; border-width: 2px; }
+  .form-check-input:checked { background-color: #2e934a !important; border-color: #2e934a !important; }
+  .badge { font-size: 0.85rem; }
+  .branch-tag { border: 1px solid #000; }
+  textarea::placeholder { font-size: 13px; color: #ccc; }
+  .form-check-input { margin-top: 0; cursor: pointer; }
+  .form-check-label { cursor: pointer; user-select: none; padding-left: 2px; }
+  .btn-gross, .manual-gross { font-size: 1.1rem; color: #000 !important; }
+  .pc-promo-io .btn { white-space: nowrap; }
+</style>
+<script>/* import bar ถอดออกทุกฟอร์มแล้ว (จะเปิดใช้เฉพาะหน้า Item Set ผ่านหน้าตั้งค่าในอนาคต) — window.PromoIO && window.PromoIO.mount('billdiscount'); */</script>

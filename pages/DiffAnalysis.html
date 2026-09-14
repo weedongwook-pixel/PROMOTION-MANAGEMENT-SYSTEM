@@ -1,0 +1,383 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  .da-scope{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --blue:#2f5fb3; --red:#c0392b; --purple:#6b3fa0; font-family:'Kanit',sans-serif; background:#eef1f4; color:var(--pc-black); min-height:100vh; padding:24px 24px 50px; }
+  .da-scope *{ box-sizing:border-box; }
+  .da-scope .mono{ font-family:'JetBrains Mono',monospace; }
+  .da-scope .head{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:var(--pc-black); color:#fff; border-radius:16px; padding:18px 22px; margin-bottom:16px; }
+  .da-scope .head .bar-accent{ width:8px; align-self:stretch; min-height:42px; background:var(--pc-yellow); border-radius:5px; }
+  .da-scope .head h1{ font-family:'Montserrat',sans-serif; font-weight:800; font-size:1.18rem; margin:0; display:flex; align-items:center; gap:10px; }
+  .da-scope .head h1 i{ color:var(--pc-yellow); }
+  .da-scope .head p{ margin:3px 0 0; font-size:.82rem; color:rgba(255,255,255,.72); }
+  .da-scope .head .ha{ margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .da-scope .mfilter{ border:0; border-radius:10px; padding:9px 13px; font-family:inherit; font-size:.88rem; }
+
+  .da-scope .stats{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+  .da-scope .stat{ flex:1; min-width:150px; background:#fff; border:1px solid #e7eaee; border-radius:14px; padding:14px 16px; }
+  .da-scope .stat .n{ font-family:'Montserrat',sans-serif; font-weight:900; font-size:1.7rem; line-height:1; }
+  .da-scope .stat .l{ font-size:.76rem; color:#8a9099; margin-top:7px; font-weight:600; }
+  .da-scope .stat.warn .n{ color:#c9870a; } .da-scope .stat.ok .n{ color:var(--pc-green); } .da-scope .stat.bad .n{ color:var(--red); } .da-scope .stat.pp .n{ color:var(--purple); }
+
+  .da-scope .row2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:900px){ .da-scope .row2{ grid-template-columns:1fr; } }
+  .da-scope .card{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:16px; }
+  .da-scope .card h2{ font-size:1rem; font-weight:700; margin:0 0 14px; display:flex; align-items:center; gap:9px; }
+  .da-scope .card h2 i{ color:var(--pc-green); }
+
+  .da-scope .bar{ margin-bottom:11px; }
+  .da-scope .bar .bl{ display:flex; justify-content:space-between; font-size:.86rem; margin-bottom:5px; }
+  .da-scope .bar .bl .v{ font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .da-scope .bar .track{ height:10px; background:#eef1f4; border-radius:6px; overflow:hidden; }
+  .da-scope .bar .fill{ height:100%; border-radius:6px; background:var(--pc-green); }
+  .da-scope .bar .fill.b{ background:var(--blue); } .da-scope .bar .fill.r{ background:var(--red); } .da-scope .bar .fill.y{ background:#e0a400; }
+
+  .da-scope .ai{ border:1px solid #e4d6f5; background:#faf7ff; border-radius:14px; padding:16px 18px; margin-bottom:16px; }
+  .da-scope .ai h2{ color:var(--purple); }
+  .da-scope .ai h2 i{ color:#8a5cd0; }
+  .da-scope .aibtn{ border:1.4px solid #c9b6e8; background:#fff; color:var(--purple); border-radius:10px; padding:9px 15px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .da-scope .aibtn:hover{ background:#f3ecff; }
+  .da-scope .aiout{ margin-top:12px; font-size:.92rem; line-height:1.6; }
+  .da-scope .aiout ul{ margin:6px 0; padding-left:20px; }
+  .da-scope .ai-loading{ color:var(--purple); font-size:.9rem; }
+
+  .da-scope table{ width:100%; border-collapse:collapse; font-size:.86rem; }
+  .da-scope th{ text-align:left; font-size:.7rem; color:#8a9099; font-weight:700; padding:8px 10px; border-bottom:2px solid #eef1f4; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0; background:#fff; }
+  .da-scope td{ padding:9px 10px; border-bottom:1px solid #f1f4f7; vertical-align:middle; }
+  .da-scope .tblscroll{ max-height:520px; overflow:auto; }
+  .da-scope .tcode{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:.8rem; }
+  .da-scope .ctag{ font-size:.72rem; font-weight:700; border-radius:6px; padding:2px 8px; background:#eef4ff; color:#2c4a82; display:inline-block; margin:1px; }
+  .da-scope .pill{ font-size:.7rem; font-weight:700; border-radius:999px; padding:3px 10px; white-space:nowrap; }
+  .da-scope .pill.submitted{ background:#eaf4ee; color:#9a6700; } .da-scope .pill.resolved{ background:#eafaf1; color:#1d7a4d; } .da-scope .pill.returned{ background:#fdecea; color:var(--red); }
+  .da-scope .sig{ font-size:.72rem; font-weight:700; border-radius:6px; padding:3px 8px; white-space:nowrap; }
+  .da-scope .sig.ok{ background:#eafaf1; color:#1d7a4d; } .da-scope .sig.pend{ background:#eaf4ee; color:#9a6700; } .da-scope .sig.none{ background:#f1f4f7; color:#5a616b; } .da-scope .sig.flag{ background:#fdecea; color:var(--red); }
+  .da-scope .diffv{ font-family:'JetBrains Mono',monospace; font-weight:700; }
+  .da-scope .empty{ text-align:center; color:#9aa1aa; padding:30px; }
+  .da-scope .lnk{ border:0; background:none; color:#6b3fa0; font-family:inherit; font-weight:700; font-size:.74rem; cursor:pointer; padding:0; }
+  .da-scope .lnk:hover{ text-decoration:underline; }
+  .da-scope .fcbadge{ font-size:.68rem; font-weight:700; border-radius:6px; padding:2px 7px; margin-left:6px; }
+  .da-scope .fcbadge.match{ background:#eafaf1; color:#1d7a4d; }
+  .da-scope .fcbadge.mismatch{ background:#fdecea; color:#c0392b; }
+  .da-scope .fcbadge.pending{ background:#eaf4ee; color:#9a6700; }
+  /* ----- detail view (full page) ----- */
+  .da-scope .dback{ border:1.4px solid #dde2e7; background:#fff; color:#1a1d20; border-radius:10px; padding:8px 14px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; margin-bottom:14px; display:inline-flex; align-items:center; gap:8px; }
+  .da-scope .dback:hover{ background:#f1f4f7; }
+  .da-scope .dhead{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:#fff; border:1px solid #e7eaee; border-left:6px solid #6b3fa0; border-radius:14px; padding:16px 20px; margin-bottom:16px; }
+  .da-scope .dcid{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.2rem; }
+  .da-scope .dbr{ color:#6a7178; font-size:.86rem; margin-top:2px; }
+  .da-scope .dmeta{ margin-left:auto; display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:.86rem; color:#5a616b; }
+  .da-scope .ddiff{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.1rem; }
+  .da-scope .dgrid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:900px){ .da-scope .dgrid{ grid-template-columns:1fr; } }
+  .da-scope .dcard{ background:#fff; border:1px solid #e7eaee; border-radius:16px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .da-scope .dcard h3{ font-size:.98rem; font-weight:700; margin:0 0 14px; display:flex; align-items:center; gap:9px; }
+  .da-scope .dcard h3 i{ color:#2e934a; }
+  .da-scope .drow{ display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #f4f6f8; font-size:.88rem; }
+  .da-scope .drow:last-of-type{ border-bottom:0; }
+  .da-scope .drow .dk{ flex:0 0 86px; color:#8a9099; font-weight:600; }
+  .da-scope .drow .dv{ flex:1; }
+  .da-scope .dline{ display:flex; gap:10px; align-items:flex-start; border-radius:11px; padding:11px 13px; font-size:.9rem; line-height:1.5; margin-bottom:9px; }
+  .da-scope .dline .di{ flex:0 0 auto; margin-top:2px; }
+  .da-scope .dfollow{ border-top:1px dashed #e0e4e8; margin-top:14px; padding-top:13px; }
+  .da-scope .fcbtn{ border:1.5px solid #dde2e7; background:#fff; color:#5a616b; border-radius:10px; padding:9px 15px; font-family:inherit; font-weight:700; font-size:.86rem; cursor:pointer; }
+  .da-scope .fcbtn:hover{ border-color:#bcc4cc; }
+  .da-scope .fcbtn.on-ok{ border-color:#1d7a4d; background:#eafaf1; color:#1d7a4d; }
+  .da-scope .fcbtn.on-bad{ border-color:#c0392b; background:#fdecea; color:#c0392b; }
+  .da-scope .fcbtn.on-pend{ border-color:#9a6700; background:#eaf4ee; color:#9a6700; }
+</style>
+
+<div class="da-scope" data-screen-label="DiffAnalysis">
+  <div class="head">
+    <div class="bar-accent"></div>
+    <div>
+      <h1><i class="fas fa-magnifying-glass-chart"></i> <span data-en="DIFF ANALYSIS (AUDIT)" data-th="วิเคราะห์ปิดบิลไม่ตรง (Audit)">วิเคราะห์ปิดบิลไม่ตรง (Audit)</span></h1>
+      <p data-en="For IT &amp; Accounting — root-cause of branch closing diffs, cross-checked with IT Settlement" data-th="สำหรับ IT &amp; บัญชี — หาสาเหตุที่แท้จริงของ diff ที่สาขาแจ้ง เทียบกับปุ่มใน IT Settlement">สำหรับ IT &amp; บัญชี — หาสาเหตุที่แท้จริงของ diff ที่สาขาแจ้ง เทียบกับปุ่มใน IT Settlement</p>
+    </div>
+    <div class="ha">
+      <select class="mfilter" id="daMonth" onchange="window.DA.render()"></select>
+    </div>
+  </div>
+
+  <div id="daMain">
+  <div id="daStats" class="stats"></div>
+
+  <div class="ai">
+    <h2><i class="fas fa-robot"></i> บทวิเคราะห์ด้วย AI</h2>
+    <div style="font-size:.85rem;color:#6a6a6a;margin-bottom:10px">AI สรุปว่าปัญหา diff ส่วนใหญ่เกิดจากอะไร จุดไหนควรแก้ และเคสไหนน่าสงสัยว่าไม่ใช่ปัญหาปุ่มจริง</div>
+    <button class="aibtn" onclick="window.DA.aiSummary()"><i class="fas fa-wand-magic-sparkles"></i> สร้างบทวิเคราะห์</button>
+    <div class="aiout" id="daAiOut"></div>
+  </div>
+
+  <div class="row2">
+    <div class="card"><h2><i class="fas fa-list-ul"></i> สาเหตุที่สาขาแจ้ง</h2><div id="daByCause"></div></div>
+    <div class="card"><h2><i class="fas fa-tags"></i> แยกตาม Sale mode / สถานะ</h2><div id="daBySale"></div></div>
+  </div>
+
+  <div class="card"><h2><i class="fas fa-store"></i> สาขาที่แจ้งบ่อย (Top)</h2><div id="daTopBranch"></div></div>
+
+  <div class="card">
+    <h2><i class="fas fa-table-list"></i> รายเคส + สัญญาณตรวจสอบจากระบบ</h2>
+    <div class="tblscroll">
+      <table>
+        <thead><tr><th>เคส</th><th>สาขา</th><th>วันที่</th><th>Sale mode</th><th>สาเหตุที่แจ้ง</th><th>ส่วนต่าง</th><th>สถานะ</th><th>ปุ่มในระบบ (IT Settlement)</th></tr></thead>
+        <tbody id="daBody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:.78rem;color:#8a9099;margin-top:10px"><i class="fas fa-circle-info me-1"></i>“ปุ่มในระบบ” = ตรวจกับ IT Settlement: <b>COMPLETE</b> = ปุ่มถูกตั้งแล้ว (ถ้าสาขาอ้างปุ่มไม่ขึ้น = น่าสงสัย) · <b>ยังไม่เสร็จ</b> = มีมูลว่าปุ่มไม่ขึ้นจริง · <b>ไม่พบ</b> = ไม่มีโปรของสาขานั้นในเดือนนั้น</div>
+  </div>
+  </div>
+  <div id="daDetail" style="display:none"></div>
+</div>
+
+<script>
+(function(){
+  var LS='pc_billdiff_reports';
+  var CAUSE={ PROD_BTN:'ปุ่มสินค้าไม่ขึ้น', PROD_PRICE:'ราคาสินค้าไม่ตรง', BTN:'ปุ่มโปรไม่ขึ้น', PRICE:'ราคาโปรไม่ตรง', DISC:'ส่วนลด/โปรไม่ทำงาน', DELIV:'โปร Delivery หลุด/หมดเขต', VCB:'Voucher/Coupon/Bill discount', CARD:'บัตรสมาชิก (Card MKT)', CRM:'สมาชิก CRM', TENDER:'Tender/EDC ไม่ตรง', NOCHARGE:'EDC ไม่ตัดเงิน', HUMAN:'กดผิด', WRONGREC:'บันทึกยอดผิด', NOCLOSE:'จบบิลที่ POS ไม่ได้', UNKNOWN:'ไม่ทราบสาเหตุ', OTHER:'อื่นๆ' };
+  function cl(id){ return CAUSE[id]||id; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS))||[]; }catch(e){ return []; } }
+  function saveReport(r){ var all=load(); var i=all.findIndex(function(x){return x.id===r.id;}); if(i>=0){ all[i]=r; try{ localStorage.setItem(LS, JSON.stringify(all)); }catch(e){} } }
+  function loadBranchTickets(){ try{ return JSON.parse(localStorage.getItem('pc_branch_tickets'))||[]; }catch(e){ return []; } }
+  function fmtTs(ts){ if(!ts) return '-'; var d=new Date(ts); var p=function(n){return (n<10?'0':'')+n;}; return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); }
+  function branchName(id){ var b=(window.PC_BRANCH_MASTER||[]).filter(function(x){return x.id===id;})[0]; return b?b.name:id; }
+  function fmtB(n){ n=parseFloat(n)||0; return (n<0?'-':'')+'฿'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
+  function totalDiff(r){ return (r.tenders||[]).reduce(function(s,t){ return s+((parseFloat(t.actual)||0)-(parseFloat(t.pos)||0)); },0); }
+  function smMatch(a,b){ a=String(a||'').toLowerCase(); b=String(b||'').toLowerCase(); if(!a||!b) return false; return a.indexOf(b.split(' ')[0])>=0 || b.indexOf(a.split(' ')[0])>=0; }
+  function parseJSON(s){ try{ var m=String(s).match(/\{[\s\S]*\}/); return m?JSON.parse(m[0]):null; }catch(e){ return null; } }
+  function aiComplete(p){ try{ if(window.claude&&window.claude.complete) return Promise.resolve(window.claude.complete(p)); }catch(e){} return Promise.resolve(null); }
+  function getBranchPromos(branchId, month){ return new Promise(function(res){
+    try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ google.script.run.withSuccessHandler(function(d){res(d||[]);}).withFailureHandler(function(){res([]);}).getBranchPromotions(branchId, month); return; } }catch(e){}
+    res([]);
+  }); }
+
+  // promo cache by branch|month
+  var promoCache={};
+  function promosFor(branchId, month){ var k=branchId+'|'+month; if(promoCache[k]) return Promise.resolve(promoCache[k]);
+    return getBranchPromos(branchId, month).then(function(d){ promoCache[k]=d||[]; return promoCache[k]; }); }
+
+  function systemSignal(r, promos){
+    var promoCause=(r.causes||[]).some(function(c){ return ['BTN','PRICE','DISC','DELIV'].indexOf(c)>=0; });
+    if(!promoCause) return {cls:'none', txt:'— (ไม่ใช่เคสปุ่ม)'};
+    var cand=promos.filter(function(c){ return smMatch(c.saleMode, r.saleMode); }); if(!cand.length) cand=promos.slice();
+    var ref=(r.campaignRef||'').toLowerCase().trim();
+    var hit=ref?cand.filter(function(c){ return String(c.campaign||'').toLowerCase().indexOf(ref)>=0; })[0]:null;
+    if(!hit) hit=cand.filter(function(c){ return String(c.itStatus).toUpperCase()==='COMPLETE'; })[0]||cand[0]||null;
+    if(!hit) return {cls:'none', txt:'ไม่พบโปร'};
+    if(String(hit.itStatus).toUpperCase()==='COMPLETE') return {cls:'flag', txt:'COMPLETE — น่าสงสัย', promo:hit.campaign};
+    return {cls:'pend', txt:(hit.itStatus||'PENDING')+' — มีมูล', promo:hit.campaign};
+  }
+
+  // หาโปร + ปุ่มที่ตรงกับเคส
+  function matchPromo(r, promos){
+    var ref=(r.campaignRef||'').toLowerCase().trim();
+    var cand=promos.filter(function(c){ return smMatch(c.saleMode, r.saleMode); }); if(!cand.length) cand=promos.slice();
+    var hit=ref?cand.filter(function(c){ return String(c.campaign||'').toLowerCase().indexOf(ref)>=0; })[0]:null;
+    if(!hit) hit=cand.filter(function(c){ return String(c.itStatus).toUpperCase()==='COMPLETE'; })[0]||cand[0]||null;
+    if(!hit) return null;
+    var btn=(hit.buttons||[]).filter(function(b){ return String(b.shortName||'')===String(r.itemRef||''); })[0] || (hit.buttons||[])[0] || {};
+    return { campaign:hit.campaign, itStatus:(hit.itStatus||'').toUpperCase(), end:hit.end, start:hit.start, net:btn.net, discount:btn.discount };
+  }
+  function ticketMatches(r, promo){
+    var camp=(promo&&promo.campaign)||r.campaignRef;
+    if(!camp) return [];
+    return loadBranchTickets().filter(function(t){ return t.campaign===camp; });
+  }
+  // ----- ระบบประเมินสาเหตุ (cross-check) — แสดงเป็น "หน้ารายละเอียด" ฝั่งบัญชี -----
+  function crossLines(r, promos){
+    var causes=r.causes||[];
+    var p=matchPromo(r, promos);
+    var diff=totalDiff(r);
+    var lines=[];
+    if(!p){ lines.push(['none','ไม่พบโปรของสาขานี้ในเดือนนั้น — diff อาจไม่เกี่ยวกับปุ่มโปร']); }
+    else {
+      if(causes.indexOf('DELIV')>=0){
+        var expired = p.end && r.date && r.date>p.end;
+        if(expired) lines.push(['ok','โปร <b>'+esc(p.campaign)+'</b> หมดเขตแล้ว (สิ้นสุด '+esc(p.end||'-')+') · แจ้งวันที่ '+esc(r.date)+' → ปุ่มถูกถอดตามกำหนด — สอดคล้องกับอาการ (ไม่ใช่ความผิดสาขา)']);
+        else lines.push(['flag','โปร <b>'+esc(p.campaign)+'</b> ยังไม่หมดเขต (สิ้นสุด '+esc(p.end||'-')+') · ปุ่มควรยังอยู่ — ควรตรวจเพิ่ม']);
+      }
+      if(causes.indexOf('BTN')>=0){
+        if(p.itStatus==='COMPLETE') lines.push(['flag','ปุ่ม <b>'+esc(p.campaign)+'</b> สถานะ COMPLETE (ถูกตั้งบน POS แล้ว) — ที่แจ้ง "ไม่ขึ้น" น่าสงสัย ควรสอบถามสาขา']);
+        else lines.push(['pend','ปุ่ม <b>'+esc(p.campaign)+'</b> สถานะ '+esc(p.itStatus||'PENDING')+' (ยังไม่พร้อม) — มีมูลว่าปุ่มไม่ขึ้นจริง (ต้นเหตุ IT/MKT)']);
+      }
+      if(causes.indexOf('PRICE')>=0 || causes.indexOf('DISC')>=0){
+        lines.push(['info','ราคาที่อนุมัติของปุ่มนี้ <b>'+(p.net?('฿'+p.net):'-')+'</b>'+(p.discount?(' · ส่วนลด '+esc(p.discount)):'')+' · ส่วนต่างที่สาขากรอกรวม <b>'+fmtB(diff)+'</b> → เทียบความสมเหตุผล']);
+      }
+    }
+    var tks=ticketMatches(r, p);
+    if(tks.length){ var t=tks[0]; lines.push(['ok','พบการแจ้ง IT จริง: <b>'+esc(t.id)+'</b> · '+fmtTs(t.createdAt)+' · สถานะ '+esc(t.status||'OPEN')+(t.branch?(' · '+esc(t.branch)):'')]); }
+    else lines.push(['flag','ไม่พบการแจ้ง IT สำหรับโปรนี้ในระบบ — ถ้าสาขาอ้างว่าแจ้งแล้ว ให้ขอหลักฐาน']);
+    return lines;
+  }
+  function evidenceThumbs(r){
+    var ev=r.evidence||{}; var keys=Object.keys(ev).filter(function(k){return (ev[k]||[]).length;});
+    if(!keys.length) return '<div style="color:#9aa1aa;font-size:.85rem">ไม่มีหลักฐานแนบ</div>';
+    var EVLBL={zreport:'Z-Report',receipt:'ใบเสร็จ',pos:'หน้าจอ POS',edc:'สลิป EDC',other:'อื่นๆ'};
+    return keys.map(function(k){ return '<div style="margin-bottom:8px"><div style="font-size:.74rem;color:#8a9099;font-weight:700;margin-bottom:4px">'+esc(EVLBL[k]||k)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +(ev[k]||[]).map(function(u){ return '<img src="'+u+'" style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid #e0e4e8;cursor:zoom-in" onclick="window.DA.zoom(\''+esc(r.id)+'\',\''+esc(k)+'\','+(ev[k]||[]).indexOf(u)+')">'; }).join('')
+      +'</div></div>'; }).join('');
+  }
+  function detailView(r, promos){
+    var causes=r.causes||[];
+    var lines=crossLines(r, promos);
+    var diff=totalDiff(r);
+    var ic={ok:'<i class="fas fa-check"></i>',flag:'<i class="fas fa-triangle-exclamation"></i>',pend:'<i class="fas fa-hourglass-half"></i>',info:'<i class="fas fa-scale-balanced"></i>',none:'<i class="fas fa-circle-info"></i>'};
+    var bg={ok:'#eafaf1',flag:'#fdecea',pend:'#eaf4ee',info:'#eef4ff',none:'#f3f5f7'};
+    var fg={ok:'#1d7a4d',flag:'#c0392b',pend:'#9a6700',info:'#2c4a82',none:'#8a9099'};
+    var sp={SUBMITTED:'submitted',RESOLVED:'resolved',RETURNED:'returned'}[r.status]||'submitted';
+    var spt={SUBMITTED:'รอตรวจ',RESOLVED:'ปิดเคส',RETURNED:'ตีกลับ'}[r.status]||r.status;
+    var fc=r.fieldCheck||{}; var st=fc.status||'';
+
+    var h='<button class="dback" onclick="window.DA.back()"><i class="fas fa-arrow-left"></i> กลับไปหน้ารวม</button>';
+    // header
+    h+='<div class="dhead"><div><div class="dcid">'+esc(r.id)+'</div><div class="dbr">'+esc(branchName(r.branchId))+' · '+esc(r.branchId)+'</div></div>'
+      +'<div class="dmeta"><span><i class="fas fa-calendar-day me-1"></i>'+esc(r.date||'-')+'</span><span><i class="fas fa-tag me-1"></i>'+esc(r.saleMode||'-')+'</span><span class="pill '+sp+'">'+esc(spt)+'</span>'
+      +'<span class="ddiff" style="color:'+(diff<0?'#c0392b':'#1d7a4d')+'">'+fmtB(diff)+'</span></div></div>';
+
+    h+='<div class="dgrid">';
+    // LEFT: branch report
+    h+='<div class="dcard"><h3><i class="fas fa-store"></i> สาขาแจ้ง</h3>';
+    h+='<div class="drow"><span class="dk">สาเหตุ</span><span class="dv">'+(causes.map(function(c){return '<span class="ctag">'+esc(cl(c))+'</span>';}).join('')||'-')+'</span></div>';
+    if(r.campaignRef) h+='<div class="drow"><span class="dk">โปร/ปุ่ม</span><span class="dv"><b>'+esc(r.campaignRef)+'</b>'+(r.itemRef?(' · '+esc(r.itemRef)):'')+'</span></div>';
+    if(r.otherCause) h+='<div class="drow"><span class="dk">สาเหตุอื่น</span><span class="dv">'+esc(r.otherCause)+'</span></div>';
+    if(r.detail) h+='<div class="drow"><span class="dk">รายละเอียด</span><span class="dv">'+esc(r.detail)+'</span></div>';
+    h+='<div class="drow"><span class="dk">ผู้แจ้ง</span><span class="dv">'+esc(r.requester||'-')+'</span></div>';
+    // tender mini-table
+    h+='<div style="margin-top:10px"><div style="font-weight:700;font-size:.82rem;margin-bottom:6px">ยอดแยกราย Tender</div><table style="font-size:.8rem"><thead><tr><th>ช่องชำระ</th><th style="text-align:right">POS</th><th style="text-align:right">จริง</th><th style="text-align:right">ส่วนต่าง</th></tr></thead><tbody>'
+      +(r.tenders||[]).map(function(t){ var d=(parseFloat(t.actual)||0)-(parseFloat(t.pos)||0); return '<tr'+(d!==0?' style="background:#fff8f6"':'')+'><td>'+esc(t.name||t.code)+'</td><td class="mono" style="text-align:right">'+fmtB(t.pos)+'</td><td class="mono" style="text-align:right">'+fmtB(t.actual)+'</td><td class="mono" style="text-align:right;color:'+(d<0?'#c0392b':(d>0?'#1d7a4d':'#9aa1aa'))+'">'+(d===0?'—':fmtB(d))+'</td></tr>'; }).join('')
+      +'</tbody></table></div>';
+    h+='<div style="margin-top:12px"><div style="font-weight:700;font-size:.82rem;margin-bottom:6px"><i class="fas fa-paperclip me-1"></i>หลักฐานแนบ</div>'+evidenceThumbs(r)+'</div>';
+    h+='</div>';
+    // RIGHT: system assessment + follow-up
+    h+='<div class="dcard"><h3 style="color:#6b3fa0"><i class="fas fa-magnifying-glass-chart" style="color:#8a5cd0"></i> ระบบประเมินสาเหตุ <span style="font-weight:400;font-size:.74rem;color:#9aa1aa">(ก่อนสอบถามสาขา)</span></h3>';
+    h+=lines.map(function(l){ return '<div class="dline" style="background:'+bg[l[0]]+';color:'+fg[l[0]]+'"><span class="di">'+ic[l[0]]+'</span><span>'+l[1]+'</span></div>'; }).join('');
+    h+='<div class="dfollow"><div style="font-weight:700;margin-bottom:8px"><i class="fas fa-clipboard-check me-1" style="color:#2e934a"></i> บัญชีสอบถามสาขาแล้ว?</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="fcbtn'+(st==='MATCH'?' on-ok':'')+'" onclick="window.DA.setField(\''+esc(r.id)+'\',\'MATCH\')">ตรงกับที่แจ้ง</button>'
+      +'<button class="fcbtn'+(st==='MISMATCH'?' on-bad':'')+'" onclick="window.DA.setField(\''+esc(r.id)+'\',\'MISMATCH\')">ไม่ตรง</button>'
+      +'<button class="fcbtn'+(st==='PENDING'?' on-pend':'')+'" onclick="window.DA.setField(\''+esc(r.id)+'\',\'PENDING\')">รอสอบถาม</button>'
+      +'</div>'+(fc.ts?('<div style="font-size:.74rem;color:#9aa1aa;margin-top:7px">บันทึกล่าสุด '+fmtTs(fc.ts)+'</div>'):'')+'</div>';
+    h+='</div>';
+    h+='</div>';
+    return h;
+  }
+
+
+
+  function months(){ var m={}; load().forEach(function(r){ var mo=(r.date||'').slice(0,7); if(mo) m[mo]=1; }); return Object.keys(m).sort().reverse(); }
+
+  function barRow(label, n, max, cls){ var pct=max?Math.round(n/max*100):0;
+    return '<div class="bar"><div class="bl"><span>'+esc(label)+'</span><span class="v">'+n+'</span></div><div class="track"><div class="fill '+(cls||'')+'" style="width:'+pct+'%"></div></div></div>'; }
+
+  function filtered(){ var mo=document.getElementById('daMonth'); mo=mo?mo.value:''; var all=load();
+    return (!mo||mo==='ALL')?all:all.filter(function(r){ return (r.date||'').slice(0,7)===mo; }); }
+
+  window.DA={
+    render:function(){
+      var rows=filtered();
+      // stats
+      var sub=0,res=0,ret=0,diff=0; rows.forEach(function(r){ if(r.status==='SUBMITTED')sub++; else if(r.status==='RESOLVED')res++; else if(r.status==='RETURNED')ret++; diff+=Math.abs(totalDiff(r)); });
+      var resolveDays=[]; rows.forEach(function(r){ if(r.status==='RESOLVED'&&r.review&&r.review.ts&&r.ts){ resolveDays.push((r.review.ts-r.ts)/86400000); } });
+      var avg=resolveDays.length?(resolveDays.reduce(function(a,b){return a+b;},0)/resolveDays.length):0;
+      document.getElementById('daStats').innerHTML=
+        '<div class="stat"><div class="n">'+rows.length+'</div><div class="l">เคสทั้งหมด</div></div>'
+        +'<div class="stat warn"><div class="n">'+sub+'</div><div class="l">รอตรวจสอบ</div></div>'
+        +'<div class="stat ok"><div class="n">'+res+'</div><div class="l">ปิดเคสแล้ว</div></div>'
+        +'<div class="stat bad"><div class="n">'+fmtB(diff)+'</div><div class="l">มูลค่า diff รวม (abs)</div></div>'
+        +'<div class="stat pp"><div class="n">'+(avg?avg.toFixed(1):'—')+'</div><div class="l">เฉลี่ยวันแก้ (วัน)</div></div>';
+
+      // by cause
+      var cc={}; rows.forEach(function(r){ (r.causes||[]).forEach(function(c){ cc[c]=(cc[c]||0)+1; }); });
+      var maxc=Math.max(1,...Object.keys(cc).map(function(k){return cc[k];}));
+      var bc=Object.keys(cc).sort(function(a,b){return cc[b]-cc[a];});
+      document.getElementById('daByCause').innerHTML = bc.length?bc.map(function(k){ return barRow(cl(k), cc[k], maxc, ['BTN','PRICE','DISC'].indexOf(k)>=0?'':'b'); }).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+
+      // by sale mode
+      var sm={}; rows.forEach(function(r){ var k=r.saleMode||'-'; sm[k]=(sm[k]||0)+1; });
+      var maxs=Math.max(1,...Object.keys(sm).map(function(k){return sm[k];}));
+      document.getElementById('daBySale').innerHTML = Object.keys(sm).length?Object.keys(sm).map(function(k){ return barRow(k, sm[k], maxs, 'y'); }).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+
+      // top branches
+      var bb={}; rows.forEach(function(r){ bb[r.branchId]=(bb[r.branchId]||0)+1; });
+      var tb=Object.keys(bb).sort(function(a,b){return bb[b]-bb[a];}).slice(0,8);
+      var maxb=Math.max(1,...tb.map(function(k){return bb[k];}));
+      document.getElementById('daTopBranch').innerHTML = tb.length?tb.map(function(k){ return barRow(branchName(k)+' ('+k+')', bb[k], maxb, 'r'); }).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+
+      // table + system signals (async)
+      var body=document.getElementById('daBody');
+      body.innerHTML = rows.length?rows.slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);}).map(function(r){
+        var d=totalDiff(r); var sp={SUBMITTED:'submitted',RESOLVED:'resolved',RETURNED:'returned'}[r.status]||'submitted';
+        return '<tr><td class="tcode">'+esc(r.id)+'</td><td>'+esc(branchName(r.branchId))+'<div style="font-size:.72rem;color:#9aa1aa">'+esc(r.branchId)+'</div></td>'
+          +'<td>'+esc(r.date||'-')+'</td><td>'+esc(r.saleMode||'-')+'</td>'
+          +'<td>'+(r.causes||[]).map(function(c){return '<span class="ctag">'+esc(cl(c))+'</span>';}).join('')+'</td>'
+          +'<td class="diffv" style="color:'+(d<0?'#c0392b':'#1d7a4d')+'">'+fmtB(d)+'</td>'
+          +'<td><span class="pill '+sp+'">'+esc({SUBMITTED:'รอตรวจ',RESOLVED:'ปิดเคส',RETURNED:'ตีกลับ'}[r.status]||r.status)+'</span></td>'
+          +'<td id="sig-'+esc(r.id)+'"><span class="sig none">…</span></td></tr>';
+      }).join(''):'<tr><td colspan="8"><div class="empty">ยังไม่มีเคสในเดือนนี้</div></td></tr>';
+
+      // resolve signals
+      rows.forEach(function(r){ var mo=(r.date||'').slice(0,7)||'ALL';
+        promosFor(r.branchId, mo).then(function(promos){ var cell=document.getElementById('sig-'+r.id); if(!cell) return;
+          var s=systemSignal(r, promos); var fc=(r.fieldCheck||{}).status; var fcb=fc?(' <span class="fcbadge '+fc.toLowerCase()+'">'+({MATCH:'ตรง',MISMATCH:'ไม่ตรง',PENDING:'รอสอบถาม'}[fc]||fc)+'</span>'):'';
+          cell.innerHTML='<span class="sig '+s.cls+'">'+esc(s.txt)+'</span>'+(s.promo?'<div style="font-size:.7rem;color:#9aa1aa">'+esc(s.promo)+'</div>':'')+'<div style="margin-top:4px"><button class="lnk" onclick="window.DA.detail(\''+r.id+'\')"><i class="fas fa-magnifying-glass-chart me-1"></i>ดูระบบประเมิน</button>'+fcb+'</div>'; });
+      });
+      if(typeof window.applyLang==='function') window.applyLang();
+    },
+
+    aiSummary:function(){ (async function(){
+      var out=document.getElementById('daAiOut'); out.innerHTML='<div class="ai-loading"><i class="fas fa-spinner fa-spin me-1"></i> AI กำลังวิเคราะห์ภาพรวม...</div>';
+      var rows=filtered();
+      if(!rows.length){ out.innerHTML='<div style="color:#9aa1aa">ไม่มีข้อมูลให้วิเคราะห์</div>'; return; }
+      // build aggregate incl system signals
+      var cc={},sm={},bb={}; var suspect=0, grounded=0;
+      for(var i=0;i<rows.length;i++){ var r=rows[i];
+        (r.causes||[]).forEach(function(c){ cc[c]=(cc[c]||0)+1; }); sm[r.saleMode||'-']=(sm[r.saleMode||'-']||0)+1; bb[r.branchId]=(bb[r.branchId]||0)+1;
+        if((r.causes||[]).some(function(c){return ['BTN','PRICE','DISC'].indexOf(c)>=0;})){
+          var promos=await promosFor(r.branchId,(r.date||'').slice(0,7)||'ALL'); var s=systemSignal(r,promos);
+          if(s.cls==='flag') suspect++; else if(s.cls==='pend') grounded++;
+        }
+      }
+      var agg={ total:rows.length, byCause:cc, bySaleMode:sm, topBranches:Object.keys(bb).sort(function(a,b){return bb[b]-bb[a];}).slice(0,5).map(function(k){return {branch:k,n:bb[k]};}),
+        promoSuspectButtonComplete:suspect, promoGroundedButtonNotReady:grounded };
+      var prompt='คุณเป็นนักวิเคราะห์ Audit ของ Potato Corner. นี่คือสรุปเคส "ปิดบิลไม่ตรง (diff)" ที่สาขาแจ้ง (JSON): '+JSON.stringify(agg)
+        +'.\nคำอธิบาย: promoSuspectButtonComplete = เคสที่สาขาอ้างปุ่มไม่ขึ้น/ราคาผิด แต่ระบบ IT Settlement แสดงว่าปุ่ม COMPLETE แล้ว (น่าสงสัยว่าไม่ใช่ปัญหาปุ่มจริง). promoGroundedButtonNotReady = เคสที่ปุ่มยังไม่ COMPLETE จริง (มีมูล).'
+        +'\nช่วยเขียนบทวิเคราะห์สั้นๆ ภาษาไทย สำหรับ IT และบัญชี: (1) ปัญหา diff ส่วนใหญ่มาจากอะไร (2) จุดที่ควรแก้ที่ต้นเหตุ (3) ข้อสังเกตเรื่องเคสที่น่าสงสัย/ควร audit. ตอบเป็น HTML <ul><li>...</li></ul> 4-6 ข้อ กระชับ ไม่ต้องมีหัวเรื่อง.';
+      var raw=await aiComplete(prompt);
+      if(raw){ var clean=String(raw).replace(/```html?/g,'').replace(/```/g,'').trim(); out.innerHTML=clean; }
+      else {
+        var top=Object.keys(cc).sort(function(a,b){return cc[b]-cc[a];})[0];
+        out.innerHTML='<ul><li>สาเหตุที่แจ้งบ่อยสุด: <b>'+(top?cl(top):'-')+'</b> ('+(top?cc[top]:0)+' เคส)</li>'
+          +'<li>เคสกลุ่มปุ่ม/ราคาที่ <b>ระบบยืนยันปุ่ม COMPLETE แล้ว</b> (น่าสงสัย ควร audit): <b>'+suspect+'</b> เคส</li>'
+          +'<li>เคสที่ <b>ปุ่มยังไม่พร้อมจริง</b> (ต้นเหตุที่ IT/MKT): <b>'+grounded+'</b> เคส</li>'
+          +'<li>สาขาที่แจ้งบ่อยสุด: <b>'+(agg.topBranches[0]?branchName(agg.topBranches[0].branch)+' ('+agg.topBranches[0].n+' เคส)':'-')+'</b></li>'
+          +'<li><i>(แสดงผลจากข้อมูลระบบ — เปิดใช้ AI ในแอปจริงเพื่อบทวิเคราะห์เชิงลึก)</i></li></ul>';
+      }
+    })(); },
+
+    detail:function(id){
+      var r=load().filter(function(x){return x.id===id;})[0]; if(!r) return;
+      var mo=(r.date||'').slice(0,7)||'ALL';
+      promosFor(r.branchId, mo).then(function(promos){
+        var dv=document.getElementById('daDetail'); dv.innerHTML=detailView(r, promos);
+        document.getElementById('daMain').style.display='none'; dv.style.display='block';
+        window.scrollTo(0,0);
+        if(typeof window.applyLang==='function') window.applyLang();
+      });
+    },
+    back:function(){ document.getElementById('daDetail').style.display='none'; document.getElementById('daMain').style.display='block'; },
+    zoom:function(id,key,i){ var r=load().filter(function(x){return x.id===id;})[0]; if(!r) return; var u=((r.evidence||{})[key]||[])[i]; if(u&&window.Swal) Swal.fire({imageUrl:u,width:680,showConfirmButton:false,showCloseButton:true}); },
+    setField:function(id, status){
+      var r=load().filter(function(x){return x.id===id;})[0]; if(!r) return;
+      r.fieldCheck={ status:status, ts:Date.now() }; saveReport(r);
+      var mo=(r.date||'').slice(0,7)||'ALL';
+      promosFor(r.branchId, mo).then(function(promos){
+        var dv=document.getElementById('daDetail'); if(dv && dv.style.display!=='none'){ dv.innerHTML=detailView(r, promos); if(typeof window.applyLang==='function') window.applyLang(); }
+      });
+    }
+  };
+
+  window.initDiffAnalysis=function(){
+    var sel=document.getElementById('daMonth'); var ms=months();
+    sel.innerHTML='<option value="ALL">ทุกเดือน</option>'+ms.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+    window.DA.render();
+  };
+})();
+</script>
