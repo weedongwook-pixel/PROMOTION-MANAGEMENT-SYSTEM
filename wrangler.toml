@@ -1,0 +1,10 @@
+# Production Worker serving the static Promotion Management System.
+# The Worker name matches the existing live URL:
+# https://white-pine-853e.quiet-surf-dda2.workers.dev/
+name = "white-pine-853e"
+main = "src/worker.js"
+compatibility_date = "2026-09-14"
+
+[assets]
+directory = "."
+binding = "ASSETS"

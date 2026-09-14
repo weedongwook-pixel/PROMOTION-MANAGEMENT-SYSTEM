@@ -1,0 +1,6 @@
+# Local Cloudflare development state and credentials must never be committed.
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
