@@ -1,0 +1,10 @@
+# Files created by the deployment action must never be treated as site assets.
+node_modules/
+.git/
+.github/
+.agents/
+.codex/
+
+# Local/editor artefacts
+.DS_Store
+*.log
