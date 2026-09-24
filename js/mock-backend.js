@@ -1006,7 +1006,7 @@
   };
   API.getRmMaster = () => rmMaster().filter(r => normCode(r.code) && normCode(r.desc));
   // สูตร RM รายสินค้าจาก NPD (BOM ที่ไม่มีในไฟล์ recipe-bom.js) — keyed by itemCode
-  API.getRecipeCustom = () => store.recipeCustom || {};
+  API.getRecipeCustom = () => { syncCompletedNpdMasters(); return store.recipeCustom || {}; };
   API.setRmStatus = (code, status) => {
     const r = findRm(code); if (!r) return { status: "error", message: "ไม่พบ RM" };
     r.status = status; stampVersion(r); persist();
@@ -4390,7 +4390,35 @@
     };
     return idemRemember(submitKey, { status: "success", message: "ส่งแบบฟอร์ม NPD เรียบร้อย", id, newRm, saved, version: rec.version });
   };
-  API.getNPDList = () => (store.npd || []).slice().reverse();
+  /* ซ่อมข้อมูล NPD รุ่นก่อนที่ IT ปิดงานแล้ว แต่ยังไม่สร้าง Recipe RM / ตารางผูก
+     สูตรสินค้า (เกิดได้จากเวอร์ชันก่อนเพิ่ม master-sync) โดยอ่านข้อมูลต้นทางจาก
+     ใบ NPD เดิมเท่านั้น และไม่ทับสูตรที่มีผู้ใช้แก้เอง */
+  function syncCompletedNpdMasters() {
+    var repairedRecipes = 0, repairedFormulaMaps = 0;
+    (store.npd || []).forEach(function (n) {
+      if (String(n.itStatus || '').toUpperCase() !== 'COMPLETE') return;
+      (n.items || []).forEach(function (it) {
+        var code = String(it.code || '').trim(); if (!code) return;
+        var expected = (it.recipes || []).filter(function (r) { return String(r.code || '').trim(); });
+        var current = (store.recipeCustom || {})[code];
+        var actual = current && current.modes ? Object.keys(current.modes).reduce(function (sum, k) { return sum + ((current.modes[k] || []).length); }, 0) : 0;
+        /* เติมเมื่อไม่มีสูตร หรือเป็นสูตร NPD เดิมที่เขียนมาไม่ครบเท่านั้น */
+        if (expected.length && (!current || (String(current._fromNpd || '') === String(n.id) && actual < expected.length))) {
+          npdSaveRecipe(it, code, n.id); repairedRecipes++;
+        }
+        /* สูตร Subset (เช่น Churro + SAUCE & TOPPING) ต้องมีในแหล่งผูกกลางด้วย */
+        try {
+          var before = localStorage.getItem('pc_itemset_comp') || '{}';
+          npdLinkSubsetComp(n, it, code);
+          if ((localStorage.getItem('pc_itemset_comp') || '{}') !== before) repairedFormulaMaps++;
+        } catch (e) {}
+      });
+    });
+    if (repairedRecipes && !persist()) return { recipes: 0, formulaMaps: repairedFormulaMaps, failed: true };
+    return { recipes: repairedRecipes, formulaMaps: repairedFormulaMaps, failed: false };
+  }
+  API.syncCompletedNpdMasters = syncCompletedNpdMasters;
+  API.getNPDList = () => { syncCompletedNpdMasters(); return (store.npd || []).slice().reverse(); };
 
   /* วันที่ใน Product Master จาก NPD ใช้ช่วงวันที่ที่ RD ระบุ; งานเก่า/ข้อมูลที่ไม่มีวัน
      จึง fallback เป็นวันนี้ถึง 31/12/2050 เพื่อไม่ให้สถานะสินค้าหาย */
