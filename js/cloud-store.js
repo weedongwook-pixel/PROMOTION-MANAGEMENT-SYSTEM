@@ -150,12 +150,63 @@
   var _snap = {};              // cloudKey -> ค่าที่ซิงค์ล่าสุด (รู้ว่าเครื่องนี้เคยเห็นแคมเปญไหน)
   var _migrateLegacy = false;  // true ถ้า cloud ยังเก็บแบบก้อนเดียว (ต้อง migrate ตอน push)
 
+  /* `working` สร้างได้จาก `months` อยู่แล้ว จึงไม่เก็บซ้ำใน localStorage.
+     รองรับ backup/ข้อมูล cloud รุ่นเก่าที่ยังมี field นี้โดยตัดออกก่อนเขียนลงเครื่อง. */
+  function compactStoreRaw(raw) {
+    try {
+      var s = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!s || typeof s !== 'object') return typeof raw === 'string' ? raw : JSON.stringify(raw);
+      var disk = Object.assign({}, s); delete disk.working;
+      return JSON.stringify(disk);
+    } catch (e) { return typeof raw === 'string' ? raw : JSON.stringify(raw); }
+  }
+
+  /* Cloud ยังเก็บ working เพื่อให้ client รุ่นก่อนหน้าทำงานต่อได้; ถ้า local disk รุ่นใหม่
+     ไม่มี working ให้สร้าง view นี้จาก months ก่อนแบ่งข้อมูลรายแคมเปญ. */
+  function workingForStore(s) {
+    if (s && Array.isArray(s.working) && s.working.length) return s.working;
+    var groups = {}, order = [];
+    Object.keys((s && s.months) || {}).forEach(function (month) {
+      ((s.months || {})[month] || []).forEach(function (r) {
+        if (!r || !r.campaign) return;
+        var key = r.campaign + '||' + month + '||' + (r.shortName || '');
+        if (!groups[key]) { groups[key] = { month: month, rows: [] }; order.push(key); }
+        groups[key].rows.push(r);
+      });
+    });
+    return order.map(function (key) {
+      var g = groups[key], rows = g.rows, f = rows[0] || {};
+      var total = rows.reduce(function (n, r) { return n + (parseFloat(r.gross) || 0) * (parseFloat(r.qty) || 1); }, 0);
+      var textDiscount = typeof f.discount === 'string' && /[%฿]/.test(f.discount);
+      return {
+        timestamp: f.timestamp || f.submittedDate || '', month: g.month, campaign: f.campaign,
+        promoType: f.promoType || f.typePromotion || '', start: f.start, end: f.end,
+        stores: f.stores, saleMode: f.saleMode, itStatus: f.itStatus, opStatus: f.opStatus,
+        codePromotion: f.codePromotion || '', codeItemSet: f.codeItemSet || f.itemPromotion || '',
+        kitchen: f.kitchen || '', shortName: f.shortName || '', itemCode: '', itemNameEN: '', qty: '',
+        gross: textDiscount ? '' : total.toFixed(2), discount: textDiscount ? f.discount : '', netPrice: '',
+        detail: f.detail, mechanic: f.mechanic, attachment: f.attachment || '',
+        updatedBy: f.updatedBy || '', updatedDate: f.updatedDate || '', cancelReason: f.cancelReason || '',
+        cateRemark: f.cateRemark || '', minAmount: f.minAmount || 0, memoUrl: f.memoUrl || '',
+        changeStatus: f.changeStatus || '', reason: f.reason || '', submittedDate: f.submittedDate || '',
+        itDoneDate: f.itDoneDate || '', opDoneDate: f.opDoneDate || '', posReady: !!f.posReady,
+        wentLive: !!f.wentLive, cancelHandled: !!f.cancelHandled, cancelAction: f.cancelAction || '',
+        cancelHandledDate: f.cancelHandledDate || '', removedFromPos: !!f.removedFromPos,
+        codeBurned: !!f.codeBurned, codesReturned: f.codesReturned || [], itRemark: f.itRemark || '',
+        discountText: f.discountText || '', condition: f.condition || '', rejectReason: f.rejectReason || '',
+        rejectCount: f.rejectCount || 0, extendCodeNote: f.extendCodeNote || '', proposalKind: f.proposalKind || '',
+        branchNote: f.branchNote || '', _wasItemSet: f._wasItemSet || false, typeSel: f.typeSel || '',
+        customerGroup: f.customerGroup || '', crmTarget: f.crmTarget || '', crmTargetName: f.crmTargetName || ''
+      };
+    });
+  }
+
   function campOf(r) { return String((r && r.campaign) || '__nocamp'); }
   function campCloudKey(c) { return CAMP_PREFIX + encodeURIComponent(c); }
   function splitStore(s) {
     var meta = {}, camps = {};
     Object.keys(s || {}).forEach(function (k) { if (k !== 'working' && k !== 'months') meta[k] = s[k]; });
-    ((s && s.working) || []).forEach(function (r) { var c = campOf(r); (camps[c] = camps[c] || { w: [], m: {} }).w.push(r); });
+    workingForStore(s).forEach(function (r) { var c = campOf(r); (camps[c] = camps[c] || { w: [], m: {} }).w.push(r); });
     Object.keys((s && s.months) || {}).forEach(function (mk) {
       (s.months[mk] || []).forEach(function (r) { var c = campOf(r); (camps[c] = camps[c] || { w: [], m: {} }); (camps[c].m[mk] = camps[c].m[mk] || []).push(r); });
     });
@@ -241,6 +292,12 @@
       var b; try { b = JSON.parse(keys[ck]); } catch (e) { return; }
       var c = null; try { c = decodeURIComponent(ck.slice(CAMP_PREFIX.length)); } catch (e) {}
       if (c != null) seenCamp[c] = 1;
+      /* Cloud อาจยังมีก้อนเก่าจากแท็บที่ค้างอยู่ แต่ทะเบียนลบใหม่กว่าแล้ว
+         tombstone ต้องชนะเสมอ ไม่เช่นนั้นเปิดเว็บใหม่แล้วโปรที่ลบจะฟื้นกลับมา. */
+      if (c != null && Number(_tombs[c]) >= (Number(b._ts) || 0) && Number(_tombs[c])) {
+        queuePush(STORE_KEY); // รอบถัดไปจะลบ key เก่าบน Cloud ตาม _snap
+        return;
+      }
       /* ⭐ ของในเครื่องใหม่กว่าก้อนบนคลาวด์ → คงของในเครื่อง แล้วดันขึ้นแทน (กันงานที่เพิ่งบันทึกถูกทับ) */
       if (c != null && localCamps[c]) {
         var lt = localTsOf(tsMap, c), ct = Number(b._ts) || 0;
@@ -354,7 +411,8 @@
       try { _tombs = JSON.parse(keys[DEL_CLOUDKEY] || '{}') || {}; } catch (e) { _tombs = {}; }
       var store = reassembleFromCloud(keys);
       var newStr = JSON.stringify(store);
-      if (localStorage.getItem(STORE_KEY) !== newStr) { _set(STORE_KEY, newStr); changed = true; }
+      var compactStr = compactStoreRaw(newStr);
+      if (localStorage.getItem(STORE_KEY) !== compactStr) { _set(STORE_KEY, compactStr); changed = true; }
       _snap = {}; if (hasMeta) _snap[META_CLOUDKEY] = keys[META_CLOUDKEY]; campKeys.forEach(function (ck) { _snap[ck] = keys[ck]; });
       _migrateLegacy = (keys[STORE_KEY] != null); // ถ้ายังมีก้อนเก่าค้าง → ลบตอน push ถัดไป
     } else if (keys[STORE_KEY] != null) {
@@ -455,6 +513,22 @@
         Object.keys(sp.camps).forEach(function (c) {
           body[campCloudKey(c)] = JSON.stringify({ w: sp.camps[c].w, m: sp.camps[c].m, _ts: localTsOf(tsMap, c) });
         });
+        /* ปิด/รีเฟรชทันทีหลังลบ: keepalive ส่ง DELETE ราย key ไม่แน่นอน
+           จึงส่ง tombstone ไปพร้อม request นี้ เพื่อให้เครื่องที่เปิดใหม่ไม่ดึงโปรเก่ากลับมา. */
+        var gone = Object.keys(_snap).filter(function (ck) {
+          if (ck.indexOf(CAMP_PREFIX) !== 0) return false;
+          try { return !sp.camps[decodeURIComponent(ck.slice(CAMP_PREFIX.length))]; } catch (e) { return false; }
+        });
+        if (gone.length) {
+          var changedTomb = false, now = Date.now();
+          gone.forEach(function (ck) {
+            try {
+              var c = decodeURIComponent(ck.slice(CAMP_PREFIX.length));
+              if (!_tombs[c]) { _tombs[c] = now; changedTomb = true; }
+            } catch (e) {}
+          });
+          if (changedTomb) body[DEL_CLOUDKEY] = JSON.stringify(_tombs);
+        }
       } catch (e) {}
     }
     if (!Object.keys(body).length) return;
@@ -494,6 +568,7 @@
       } catch (e) {}
     }
     localStorage.setItem = function (k, v) {
+      if (k === STORE_KEY) v = compactStoreRaw(v);
       try { _set(k, v); } catch (e) {
         reclaim();
         try { _set(k, v); } catch (e2) { window.__PC_QUOTA_FULL = { at: new Date().toISOString(), key: k }; throw e2; }
@@ -582,7 +657,7 @@
   }
   function importData(text) {
     var d = JSON.parse(text); var keys = d.keys || d; var n = 0;
-    Object.keys(keys).forEach(function (k) { if (TRACKED.indexOf(k) !== -1) { _set(k, keys[k]); n++; } });
+    Object.keys(keys).forEach(function (k) { if (TRACKED.indexOf(k) !== -1) { _set(k, k === STORE_KEY ? compactStoreRaw(keys[k]) : keys[k]); n++; } });
     return n;
   }
   function importFilePick() {

@@ -231,7 +231,17 @@
   function loadStore() {
     try {
       const raw = localStorage.getItem(STORE_KEY);
-      if (raw) { cleanupOldStores(); return JSON.parse(raw); }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        cleanupOldStores();
+        /* `working` เป็น view ที่สร้างกลับจาก months ได้ทุกครั้ง แต่เคยถูกเก็บซ้ำ
+           ใน localStorage จนพื้นที่ Chrome เต็ม. แปลงข้อมูลเดิมให้เล็กลงทันทีตอนเปิด
+           โดยไม่กระทบ object ที่ใช้งานในหน่วยความจำ. */
+        if (parsed && Object.prototype.hasOwnProperty.call(parsed, "working")) {
+          try { localStorage.setItem(STORE_KEY, compactStoreString(parsed)); } catch (e) {}
+        }
+        return parsed;
+      }
     } catch (e) {}
     // v28 ยังไม่มี → ย้ายข้อมูลจาก snapshot เวอร์ชันล่าสุดที่มีอยู่ (กันข้อมูลที่ผู้ใช้ทำไว้หาย)
     let migrated = null;
@@ -266,10 +276,17 @@
     try { cleanupOldStores(); } catch (e) {}
     return freed;
   }
+  /* `working` เป็นข้อมูล derived จาก `months` (rebuildWorking) จึงไม่ต้องเก็บลง disk
+     การตัดออกลดขนาด backup/localStorage ราว 20%+ และสร้างกลับทันทีทุกครั้งที่เปิดระบบ. */
+  function compactStoreString(s) {
+    const disk = Object.assign({}, s || {});
+    delete disk.working;
+    return JSON.stringify(disk);
+  }
   function persist(s) {
     s = s || store;
     try { rebuildWorking(s); } catch (e) {}
-    var json; try { json = JSON.stringify(s); } catch (e) { return false; }
+    var json; try { json = compactStoreString(s); } catch (e) { return false; }
     try { localStorage.setItem(STORE_KEY, json); window.__PC_PERSIST_FAIL = null; return true; } catch (e) {
       freeSpace();
       try { localStorage.setItem(STORE_KEY, json); window.__PC_PERSIST_FAIL = null; return true; } catch (e2) {
