@@ -618,20 +618,10 @@
     if (missItem) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก Item Code ให้ครบทุกปุ่มสินค้า', 'warning'); return; }
     var missSub = (e.subsets || []).some(function (s) { return !String(s.ssCode || '').trim(); });
     if (missSub) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก SS Code ให้ครบทุก Subset', 'warning'); return; }
-    /* lock (CONFIRM) any auto-reserved SS / Item / CMPOS codes \u2014 confirm() ignores
-       codes that were typed manually (not reserved), so this is safe either way */
-    try {
-      if (window.PC_COUNTER) {
-        var _ccWhere = e.project || e.id || 'NPD';
-        (e.subsets || []).forEach(function (s) {
-          if (String(s.ssCode || '').trim()) PC_COUNTER.confirm(String(s.ssCode).trim(), 'ss', { campaign: _ccWhere });
-          (s.powders || []).forEach(function (w) { if (String(w.cmpos || '').trim()) PC_COUNTER.confirm(String(w.cmpos).trim(), 'item', { campaign: _ccWhere }); });
-        });
-        (e.items || []).forEach(function (it) { if (String(it.code || '').trim()) PC_COUNTER.confirm(String(it.code).trim(), 'item', { campaign: _ccWhere }); });
-      }
-    } catch (ccErr) {}
+    /* Backend จะล็อกเลขหลังเขียน Product Master และ Recipe RM สำเร็จเท่านั้น */
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
-    google.script.run.withSuccessHandler(function () {
+    google.script.run.withSuccessHandler(function (res) {
+      if (res && res.status && res.status !== 'success') { Swal.fire('บันทึกไม่สำเร็จ', res.message || 'ตรวจสอบข้อมูล Product Master และ Recipe RM', 'error'); return; }
       itClearDraft('npd', id);
       Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ', timer: 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
     }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, e);
@@ -810,7 +800,8 @@
     }).then(function (r) {
       if (!r.isConfirmed) return;
       Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
-      google.script.run.withSuccessHandler(function () {
+      google.script.run.withSuccessHandler(function (res) {
+        if (res && res.status && res.status !== 'success') { Swal.fire('บันทึกไม่สำเร็จ', res.message || 'ตรวจสอบข้อมูล Product Master และ Recipe RM', 'error'); return; }
         Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'ส่งต่อให้ OP ตรวจสอบ', timer: 1500, showConfirmButton: false }).then(function () { window.loadItNpd(); });
       }).withFailureHandler(function (e) { Swal.fire('Error', String(e), 'error'); }).setNpdItStatus(id, r.value, 'COMPLETE');
     });

@@ -212,7 +212,7 @@
     store.recipeCustom = store.recipeCustom || {};
     (store.npd || []).forEach(function (n) {
       if (String(n.itStatus || "").toUpperCase() !== "COMPLETE" || !Array.isArray(n.items)) return;
-      n.items.forEach(function (it) { var c = String(it.code || "").trim(); if (c) npdSaveRecipe(it, c); });
+      n.items.forEach(function (it) { var c = String(it.code || "").trim(); if (c) npdSaveRecipe(it, c, n.id); });
     });
     store._recipeCustomVer = 1; persist();
   }
@@ -4339,12 +4339,17 @@
     const seen = idemSeen(submitKey);
     if (seen) return { status: "success", message: "ส่งแบบฟอร์ม NPD เรียบร้อย (รายการเดิม)", id: seen.id, duplicate: true };
     // MUST: subset names unique (within form + against existing)
-    const dupIn = dupSubsetName(payload);
+    /* เก็บ snapshot ของฟอร์ม ณ เวลาส่ง ไม่อ้าง object ของหน้าเว็บโดยตรง เพื่อให้
+       Project / สาขา / subset / ราคา / สูตร RM ทุกฟิลด์คงอยู่ในฐานข้อมูลใบงาน */
+    let submittedPayload;
+    try { submittedPayload = JSON.parse(JSON.stringify(payload || {})); }
+    catch (e) { return { status: "error", message: "ข้อมูล NPD ไม่อยู่ในรูปแบบที่บันทึกได้" }; }
+    const dupIn = dupSubsetName(submittedPayload);
     if (dupIn) return dupError("ชื่อ Subset ซ้ำในฟอร์ม: \"" + dupIn + "\"");
-    const _long = nameTooLong(payload);   /* FX-P87 */
+    const _long = nameTooLong(submittedPayload);   /* FX-P87 */
     if (_long) return dupError(_long);
     const existNames = (store.npd || []).reduce((a, n) => a.concat((n.subsets || []).map(s => String(s.name || "").trim().toLowerCase())), []);
-    const clash = (payload.subsets || []).map(s => String(s.name || "").trim().toLowerCase()).find(nm => nm && existNames.indexOf(nm) !== -1);
+    const clash = (submittedPayload.subsets || []).map(s => String(s.name || "").trim().toLowerCase()).find(nm => nm && existNames.indexOf(nm) !== -1);
     if (clash) return dupError("ชื่อ Subset \"" + clash + "\" มีอยู่ในระบบแล้ว");
     /* FX-P73 — รหัสสินค้าห้ามชนงาน NPD อื่น — เดิมซ้ำได้เงียบ แล้วตอน IT ขึ้นปุ่มจะเขียนทับสินค้าเดิมหายไปทั้งแถว */
     const codeOwner = {};
@@ -4354,21 +4359,21 @@
       (n.subsets || []).forEach(s => (s.powders || []).forEach(p => { const pc = String(p.cmpos || "").trim(); if (pc) codeOwner[pc] = n.id + (n.project ? " (" + n.project + ")" : ""); }));
     });
     (store.flavor || []).forEach(n => (n.groups || []).forEach(g => (g.flavors || []).forEach(f => { const fc = String(f.cmpos || "").trim(); if (fc) codeOwner[fc] = n.id; })));
-    const myCodes = (payload.items || []).map(it => String(it.code || "").trim())
-      .concat((payload.subsets || []).reduce((a, s) => a.concat((s.powders || []).map(p => String(p.cmpos || "").trim())), []));
+    const myCodes = (submittedPayload.items || []).map(it => String(it.code || "").trim())
+      .concat((submittedPayload.subsets || []).reduce((a, s) => a.concat((s.powders || []).map(p => String(p.cmpos || "").trim())), []));
     const codeClash = myCodes.filter(cc => cc && codeOwner[cc]);
     if (codeClash.length) return dupError("รหัส " + codeClash.slice(0, 4).join(", ") + (codeClash.length > 4 ? " …(" + codeClash.length + " รายการ)" : "") + " ถูกใช้อยู่แล้วในงาน " + codeOwner[codeClash[0]] + " — กรุณากดรันเลขใหม่");
     // atomic, collision-safe running id
     store._npdSeq = (store._npdSeq || (store.npd.length)) + 1;
     const id = "NPD-" + new Date().getFullYear() + String(store._npdSeq).padStart(3, "0");
-    const newRm = harvestRm(payload);   // MUST: new RM codes flow into rm_master
-    const rec = stampVersion(Object.assign({ id, submittedDate: NOW(), status: "PENDING" }, payload));
+    const newRm = harvestRm(submittedPayload);   // MUST: new RM codes flow into rm_master
+    const rec = stampVersion(Object.assign({ id, submittedDate: NOW(), status: "PENDING", itStatus: "PENDING", formVersion: 1 }, submittedPayload));
     store.npd.push(rec);
     /* FX-P67 (ส่วนที่ 2 — ฟอร์ม NPD/ผง): เขียนไม่ลงต้องเตือน ห้ามขึ้นสำเร็จลอย ๆ */
     if (!persist()) { store.npd.pop(); store._npdSeq--; return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม (งานยังไม่เข้าระบบ) — กดสำรองข้อมูล/รีเฟรช แล้วส่งอีกครั้ง" }; }
     try { if (window.PC_notify) {
-      const pn = payload.projectName || payload.project || (payload.items && payload.items[0] && payload.items[0].name) || id;
-      const _its = (payload.items || []);
+      const pn = submittedPayload.projectName || submittedPayload.project || (submittedPayload.items && submittedPayload.items[0] && submittedPayload.items[0].name) || id;
+      const _its = (submittedPayload.items || []);
       const _eb = ['มีสินค้าใหม่ (NPD) จากทีม RD — รอ IT ตรวจสอบสูตร/Subset และขึ้นปุ่มบน POS', '',
         'รหัสงาน (NPD ID)  : ' + id,
         'โปรเจกต์          : ' + pn,
@@ -4377,13 +4382,75 @@
         .concat(['', '— ระบบจัดการโปรโมชัน Potato Corner —']).join('\n');
       window.PC_notify("npd_new", { text: 'สินค้าใหม่ (NPD): “' + pn + '” — รอ IT ขึ้นปุ่ม', emailBody: _eb });
     } } catch (e) {}
-    return idemRemember(submitKey, { status: "success", message: "ส่งแบบฟอร์ม NPD เรียบร้อย", id, newRm, version: rec.version });
+    const saved = {
+      subsets: (rec.subsets || []).length,
+      powders: (rec.subsets || []).reduce(function (n, s) { return n + ((s.powders || []).length); }, 0),
+      items: (rec.items || []).length,
+      recipeRows: (rec.items || []).reduce(function (n, it) { return n + ((it.recipes || []).length); }, 0)
+    };
+    return idemRemember(submitKey, { status: "success", message: "ส่งแบบฟอร์ม NPD เรียบร้อย", id, newRm, saved, version: rec.version });
   };
   API.getNPDList = () => (store.npd || []).slice().reverse();
 
-  /* กฎของช่องวันที่ในข้อมูลหลักสินค้า (งาน NPD + งานเพิ่มผง):
-     เริ่ม = วันที่บันทึก · สิ้นสุด = 31/12/2050 (ขายต่อเนื่อง ไม่มีกำหนดสิ้นสุด) */
+  /* วันที่ใน Product Master จาก NPD ใช้ช่วงวันที่ที่ RD ระบุ; งานเก่า/ข้อมูลที่ไม่มีวัน
+     จึง fallback เป็นวันนี้ถึง 31/12/2050 เพื่อไม่ให้สถานะสินค้าหาย */
   var MASTER_NO_END = "2050-12-31";
+  /* ตรวจข้อมูลก่อนย้ายใบงาน NPD ไปเป็น master จริง: เดิมถ้าข้อมูล Recipe
+     กรอกไม่ครบ ระบบจะข้ามแถวนั้นแบบเงียบ ๆ แต่ยังเปลี่ยนงานเป็น COMPLETE */
+  function npdMasterInputErrors(n) {
+    var errors = [], itemCodes = {}, existing = {}, seededCodes = {};
+    if (!n || !Array.isArray(n.items) || !n.items.length) return ["ไม่มีรายการสินค้า"];
+    (store.npdProducts || []).forEach(function (p) {
+      var c = String(p.itemCode || "").trim();
+      if (c) existing[c] = p;
+    });
+    (SEED.items || []).forEach(function (p) { var c = String(p.itemCode || '').trim(); if (c) seededCodes[c] = 1; });
+    (n.items || []).forEach(function (it, ii) {
+      var label = 'สินค้า #' + (ii + 1) + ' (' + (it.name || '-') + ')';
+      var code = String(it.code || '').trim();
+      if (!code) { errors.push(label + ': ไม่มี Item Code'); return; }
+      if (itemCodes[code]) errors.push(label + ': Item Code ซ้ำกับสินค้า #' + itemCodes[code]);
+      itemCodes[code] = ii + 1;
+      if (existing[code] && String(existing[code]._fromNpd || '') !== String(n.id || '')) {
+        errors.push(label + ': Item Code ' + code + ' มีอยู่ใน Product Master แล้ว');
+      }
+      if (seededCodes[code]) errors.push(label + ': Item Code ' + code + ' มีอยู่ใน Product Master หลักแล้ว');
+      (it.recipes || []).forEach(function (r, ri) {
+        var vals = ['code', 'desc', 'qty', 'unit'].map(function (k) { return String(r[k] == null ? '' : r[k]).trim(); });
+        if (!vals.some(Boolean)) return; // แถวว่างที่ UI ใส่ไว้เป็นค่าเริ่มต้น
+        var missing = [];
+        ['Code RM', 'Description', 'Qty', 'Unit'].forEach(function (label2, vi) { if (!vals[vi]) missing.push(label2); });
+        if (missing.length) errors.push(label + ': Recipe RM แถว ' + (ri + 1) + ' ขาด ' + missing.join(', '));
+      });
+    });
+    (n.subsets || []).forEach(function (s, si) {
+      var hasPowder = (s.powders || []).some(function (p) { return !p.noFlavor && String(p.eng || p.th || p.cmpos || '').trim(); });
+      if (hasPowder && !String(s.ssCode || '').trim()) errors.push('Subset #' + (si + 1) + ': ไม่มี SS Code');
+      (s.powders || []).forEach(function (p, pi) {
+        if (p.noFlavor || !String(p.eng || p.th || p.cmpos || '').trim()) return;
+        if (!String(p.cmpos || '').trim()) errors.push('Subset #' + (si + 1) + ' ผง #' + (pi + 1) + ': ไม่มี CMPOS Code');
+      });
+    });
+    return errors;
+  }
+
+  /* ยืนยันหลังเขียนว่า Product Master และ Recipe RM ถูกสร้างครบจริงก่อนตอบว่า COMPLETE */
+  function npdMasterWriteErrors(n) {
+    var errors = [];
+    (n.items || []).forEach(function (it, ii) {
+      var code = String(it.code || '').trim(); if (!code) return;
+      var product = (store.npdProducts || []).find(function (p) { return String(p.itemCode || '') === code && String(p._fromNpd || '') === String(n.id || ''); });
+      if (!product) errors.push('สินค้า #' + (ii + 1) + ' ยังไม่ถูกเขียนเข้า Product Master');
+      var recipeRows = (it.recipes || []).filter(function (r) { return String(r.code || '').trim(); });
+      if (recipeRows.length) {
+        var recipe = (store.recipeCustom || {})[code];
+        var actual = recipe && recipe.modes ? Object.keys(recipe.modes).reduce(function (sum, k) { return sum + ((recipe.modes[k] || []).length); }, 0) : 0;
+        if (!recipe || actual < recipeRows.length) errors.push('สินค้า #' + (ii + 1) + ' เขียน Recipe RM ไม่ครบ');
+      }
+    });
+    return errors;
+  }
+
   /* NPD → product master: when IT completes an NPD button, create/refresh item rows + map prices per channel */
   function npdToProducts(n) {
     if (!n || !Array.isArray(n.items)) return;
@@ -4396,14 +4463,15 @@
       var row = {
         itemCode: code, itemNameEN: abbrFix(it.name || ""), itemNameTH: abbrFix(it.th || ""),
         /* FX-P77 — cateCode ว่าง = ตัวนับเลขสินค้านับหมวดนี้ไม่เห็นของจริง → จ่ายเลขซ้ำทับงานเก่า · ไม่มีให้เดาจาก  3 หลักหน้าของรหัส */
-        category: it.category || "", cateCode: it.cateCode || (/^\d{6,}$/.test(code) ? code.slice(0, 3) : ""),
-        department: it.department || "Food", depCode: it.depCode || "100",
+        category: it.category || n.category || "", cateCode: it.cateCode || n.cateCode || (/^\d{6,}$/.test(code) ? code.slice(0, 3) : ""),
+        department: it.department || n.department || "Food", depCode: it.depCode || n.depCode || "100",
         itemType: it.itemType || "Single Item",
         priceTA: it.priceTakeaway || "", priceDLV: dlv,
         priceGrab: ch("Grab"), priceLineman: ch("Lineman"), pricePanda: dlv,
         priceShopee: ch("ShopeeFood"), priceRobinhood: ch("Robinhood"), priceGokoo: ch("Gokoo"),
-        status: "Active", core: "", showInForm: "Show", sellStores: it.sellStores || "ALL",
-        fromDate: TODAY(), toDate: MASTER_NO_END,
+        prices: Object.assign({}, px), saleModes: (it.saleModes || []).slice(),
+        status: "Active", core: "", showInForm: "Show", sellStores: it.sellStores || n.store || "ALL", storeConds: (it.storeConds || n.storeConds || []).slice(),
+        fromDate: n.start || TODAY(), toDate: n.end || MASTER_NO_END,
         _fromNpd: n.id, updatedAt: NOW()   /* FX-P84 — ตราเวลาให้ตัวรวมข้อมูลข้ามเครื่องรู้ว่าแถวไหนใหม่กว่า */
       };
       /* บันทึกซ้ำทีหลัง — คงวันที่เริ่มเดิมที่เคยลงไว้ */
@@ -4414,13 +4482,13 @@
       // link NPD powder-formulas (Subset) into the product's "Subset & Item List" (pc_itemset_comp)
       npdLinkSubsetComp(n, it, code);
       // สูตร RM รายสินค้า (BOM) → store.recipeCustom (แยกช่องทาง) เพื่อให้ตาราง Recipe (ItemSet) ดึงมาโชว์ได้
-      npdSaveRecipe(it, code);
+      npdSaveRecipe(it, code, n.id);
     });
   }
 
   /* NPD recipe lines (items[].recipes[]) → store.recipeCustom[code] = {name, modes:{"Take Away":[{rm,d,q,u}],"Delivery":[...]}}
      channels ตัวอย่าง: "Take-Away","Grab","Lineman" — แยก Take Away vs Delivery (ช่องทางอื่นที่ไม่ใช่ Take Away = Delivery) */
-  function npdSaveRecipe(it, code) {
+  function npdSaveRecipe(it, code, npdId) {
     store.recipeCustom = store.recipeCustom || {};
     var modes = { "Take Away": [], "Delivery": [] };
     (it.recipes || []).forEach(function (r) {
@@ -4434,7 +4502,7 @@
       if (isDlv) modes["Delivery"].push(line);
     });
     if (!modes["Take Away"].length && !modes["Delivery"].length) { delete store.recipeCustom[code]; return; }
-    store.recipeCustom[code] = { name: it.name || "", modes: modes };
+    store.recipeCustom[code] = { name: it.name || "", modes: modes, _fromNpd: npdId || "", updatedAt: NOW() };
   }
 
   /* NPD form "\u0e2a\u0e39\u0e15\u0e23\u0e1c\u0e07/Subset" \u2192 Edit Product "Subset & Item List" (pc_itemset_comp)
@@ -4484,7 +4552,8 @@
       (s.powders || []).forEach(function (p, pi) {
         var code = String(p.cmpos || "").trim(); if (!code) return;
         var nm = abbrFix(String(p.eng || p.th || "").trim()); if (!nm) nm = ss + " " + (pi + 1);
-        var price = (p.addon === 0 || p.addon) ? String(p.addon) : "";
+        var addon = (p.addon !== undefined && p.addon !== null && p.addon !== '') ? p.addon : p.price;
+        var price = (addon === 0 || addon) ? String(addon) : "";
         var row = {
           itemCode: code, itemNameEN: nm, itemNameTH: abbrFix(String(p.th || p.eng || "").trim()) || nm,
           category: "Flavors", cateCode: "103", department: "Food", depCode: "100",
@@ -4540,15 +4609,28 @@
     if (!target) return conflict("ไม่พบงาน NPD นี้แล้ว (อาจถูกลบ)");
     // MUST: don't let two people complete the same job twice
     if (String(target.itStatus || "").toUpperCase() === "COMPLETE") return conflict("งานนี้ถูกบันทึกขึ้นปุ่มไปแล้วโดยผู้ใช้อื่น — กรุณาโหลดใหม่");
+    const oldCodes = (target.items || []).map(function (it) { return { code: it.code, cmpos: it.cmpos, ssCode: it.ssCode }; });
     (target.items || []).forEach((it, i) => {
       const c = (itemCodes || [])[i] || {};
       if (c.code !== undefined) it.code = c.code;
       if (c.cmpos !== undefined) it.cmpos = c.cmpos;
       if (c.ssCode !== undefined) it.ssCode = c.ssCode;
     });
+    if (String(status || "COMPLETE").toUpperCase() === "COMPLETE") {
+      const inputErrors = npdMasterInputErrors(target);
+      if (inputErrors.length) {
+        (target.items || []).forEach(function (it, i) { Object.assign(it, oldCodes[i] || {}); });
+        return { status: "error", message: "ยังขึ้น Product Master ไม่ได้:\n• " + inputErrors.slice(0, 8).join("\n• ") };
+      }
+    }
     target.itStatus = status || "COMPLETE";
     target.itDoneDate = TODAY();
-    if (String(target.itStatus).toUpperCase() === "COMPLETE") { npdToProducts(target); npdSubsetToProducts(target); (target.subsets || []).forEach(function (s) { subsetRegister(s.ssCode, s.name, s.name2 || s.short, "npd:" + target.id); }); lockNpdCodes(target); /* FX-P86 */ }
+    if (String(target.itStatus).toUpperCase() === "COMPLETE") {
+      npdToProducts(target); npdSubsetToProducts(target);
+      const writeErrors = npdMasterWriteErrors(target);
+      if (writeErrors.length) return { status: "error", message: "ตรวจสอบการเขียน Master ไม่ผ่าน:\n• " + writeErrors.join("\n• ") };
+      (target.subsets || []).forEach(function (s) { subsetRegister(s.ssCode, s.name, s.name2 || s.short, "npd:" + target.id); }); lockNpdCodes(target); /* FX-P86 */
+    }
     stampVersion(target);
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
     return { status: "success", message: "ขึ้นปุ่มสินค้าใหม่เรียบร้อย", version: target.version };
@@ -4565,24 +4647,36 @@
     if (expectedVersion != null && n.version != null && Number(expectedVersion) !== Number(n.version)) {
       return conflict("มีผู้อื่นแก้งานนี้ไปแล้ว — กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก");
     }
-    harvestRm(data);   // new RM from IT edits also flows into rm_master
     // แอดมินแก้ข้อมูลจากศูนย์ติดตามงาน = แก้ให้ถูกต้องเฉย ๆ ห้ามดันสถานะเป็น "IT ขึ้นปุ่มเสร็จ"
     const _adminEdit = !!(data && data._adminEdit);
     const _d = Object.assign({}, data || {}); delete _d._adminEdit;
-    store.npd[idx] = stampVersion(Object.assign({}, n, _d, _adminEdit ? {
+    const next = stampVersion(Object.assign({}, n, _d, _adminEdit ? {
       id: n.id, submittedDate: n.submittedDate, status: n.status || "PENDING",
       itStatus: n.itStatus || "", itDoneDate: n.itDoneDate || ""
     } : {
       id: n.id, submittedDate: n.submittedDate, status: n.status || "PENDING",
       itStatus: "COMPLETE", itDoneDate: TODAY()
     }));
-    npdToProducts(store.npd[idx]);
-    npdSubsetToProducts(store.npd[idx]);   /* FX-P80 — ผงใน Subset ของงานนี้ → สินค้าหมวด Flavors */
-    lockNpdCodes(store.npd[idx]);          /* FX-P86 — ล็อกเลขที่แจกแล้วกันแจกซ้ำ */
-    // subset ที่ IT บันทึก → เก็บเข้าหน้าจัดการ Subset (pc_subset_custom)
-    try { const _c = JSON.parse(localStorage.getItem("pc_subset_custom") || "[]"); (store.npd[idx].subsets || []).forEach(s => { const ss = s.ssCode || s.code; if (ss && !_c.find(x => x.ssCode === ss)) _c.push({ ssCode: ss, nameTH: s.name || ss, nameEN: s.name || ss }); }); localStorage.setItem("pc_subset_custom", JSON.stringify(_c)); } catch (e) {}
-    /* FX-P72 — ขึ้นทะเบียน Subset จริง เพื่อให้หน้าแจ้งโปร/Item Set เลือกเป็นกลุ่มได้ */
-    try { (store.npd[idx].subsets || []).forEach(s => subsetRegister(s.ssCode || s.code, s.name, s.name2 || s.short, "npd:" + store.npd[idx].id)); } catch (e) {}
+    const syncMaster = String(next.itStatus || "").toUpperCase() === "COMPLETE";
+    if (syncMaster) {
+      const inputErrors = npdMasterInputErrors(next);
+      if (inputErrors.length) return { status: "error", message: "ยังขึ้น Product Master ไม่ได้:\n• " + inputErrors.slice(0, 8).join("\n• ") };
+    }
+    harvestRm(next);   // new RM from IT edits also flows into rm_master
+    store.npd[idx] = next;
+    if (syncMaster) {
+      npdToProducts(next);
+      npdSubsetToProducts(next);   /* FX-P80 — ผงใน Subset ของงานนี้ → สินค้าหมวด Flavors */
+      const writeErrors = npdMasterWriteErrors(next);
+      if (writeErrors.length) return { status: "error", message: "ตรวจสอบการเขียน Master ไม่ผ่าน:\n• " + writeErrors.join("\n• ") };
+      lockNpdCodes(next);          /* FX-P86 — ล็อกเลขที่แจกแล้วกันแจกซ้ำ */
+    }
+    if (syncMaster) {
+      // subset ที่ IT บันทึก → เก็บเข้าหน้าจัดการ Subset (pc_subset_custom)
+      try { const _c = JSON.parse(localStorage.getItem("pc_subset_custom") || "[]"); (store.npd[idx].subsets || []).forEach(s => { const ss = s.ssCode || s.code; if (ss && !_c.find(x => x.ssCode === ss)) _c.push({ ssCode: ss, nameTH: s.name || ss, nameEN: s.name || ss }); }); localStorage.setItem("pc_subset_custom", JSON.stringify(_c)); } catch (e) {}
+      /* FX-P72 — ขึ้นทะเบียน Subset จริง เพื่อให้หน้าแจ้งโปร/Item Set เลือกเป็นกลุ่มได้ */
+      try { (store.npd[idx].subsets || []).forEach(s => subsetRegister(s.ssCode || s.code, s.name, s.name2 || s.short, "npd:" + store.npd[idx].id)); } catch (e) {}
+    }
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
     return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version };
   };

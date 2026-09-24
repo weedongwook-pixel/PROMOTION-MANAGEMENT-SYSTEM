@@ -690,17 +690,26 @@
       var set = {}; state.storeConds.forEach(function (c) { (c.ids || []).forEach(function (id) { set[id] = 1; }); });
       storeStr = Object.keys(set).join(', '); storeConds = state.storeConds.slice();
     }
+    var depCode = state.dept || deptOf(state.cateCode);
     var subsets = state.subsets.filter(function (s) { return String(s.name || '').trim(); }).map(function (s) {
       return {
-        ssCode: s.ssCode || '', name: String(s.name).trim(), name2: String(s.name2 || '').trim(), cat: s.cat || '',
+        ssCode: s.ssCode || '', name: String(s.name).trim(), name2: String(s.name2 || '').trim(), cat: s.cat || '', registered: !!s.registered,
         powders: (s.powders || []).map(function (w) {
-          return { cmpos: w.cmpos || '', eng: w.eng || '', th: w.th || '', code: w.code || '', desc: w.desc || '', qty: w.qty || '', unit: w.unit || '', spoon: w.spoon || '', price: num(w.addon), seq: w.seq || '', noFlavor: !!w.noFlavor };
+          /* `price` เป็นชื่อเดิมที่ฝั่ง IT ใช้ ส่วน `addon` เก็บไว้ด้วยเพื่อให้
+             การสร้าง Product Master ผงไม่ทำราคา Add-on หาย */
+          var addon = (w.addon === '' || w.addon == null) ? '' : num(w.addon);
+          return { cmpos: w.cmpos || '', eng: w.eng || '', th: w.th || '', code: w.code || '', desc: w.desc || '', qty: w.qty || '', unit: w.unit || '', spoon: w.spoon || '', price: addon, addon: addon, seq: w.seq || '', noFlavor: !!w.noFlavor, std: !!w.std, targetSS: w.targetSS || '' };
         })
       };
     });
     var items = state.products.map(function (p) {
       return {
-        name: String(p.name || '').trim(), th: String(p.th || '').trim(), code: p.code || '', category: state.category || '',
+        name: String(p.name || '').trim(), th: String(p.th || '').trim(), code: p.code || '',
+        /* เก็บ master attributes ไว้ที่ item ด้วย เพื่อให้ขั้น IT COMPLETE
+           สร้าง Product Master ได้โดยไม่ต้องเดาจากเลขรหัสสินค้า */
+        category: state.category || '', cateCode: state.cateCode || '',
+        department: deptName(depCode), depCode: depCode,
+        sellStores: storeStr, storeConds: storeConds.slice(),
         saleModes: (p.saleModes || []).slice(), priceTakeaway: p.priceTakeaway || '', priceDelivery: p.priceDelivery || '',
         prices: Object.assign({}, p.prices || {}),
         recipes: (p.recipes || []).map(function (r) { return { code: r.code || '', desc: r.desc || '', qty: r.qty || '', unit: r.unit || '', channels: (r.channels || []).slice() }; }),
@@ -709,8 +718,9 @@
     });
     return {
       project: getVal('npProject'), start: getVal('npStart'), end: getVal('npEnd'),
-      store: storeStr, storeConds: storeConds, remark: '', rd: getVal('npRd') || loginUser(),
-      category: state.category || '', cateCode: state.cateCode || '', subsets: subsets, items: items
+      store: storeStr, storeMode: state.storeMode || 'ALL', storeConds: storeConds, remark: '', rd: getVal('npRd') || loginUser(),
+      category: state.category || '', cateCode: state.cateCode || '', depCode: depCode, department: deptName(depCode),
+      subsets: subsets, items: items
     };
   }
 
@@ -874,6 +884,13 @@
 
       for (var _pi = 0; _pi < state.products.length; _pi++) {
         var _pd = state.products[_pi];
+        for (var _ri = 0; _ri < (_pd.recipes || []).length; _ri++) {
+          var _rr = _pd.recipes[_ri];
+          var _rv = ['code', 'desc', 'qty', 'unit'].map(function (k) { return String(_rr[k] == null ? '' : _rr[k]).trim(); });
+          if (_rv.some(function (v) { return !!v; }) && !_rv.every(function (v) { return !!v; })) {
+            return warnFill('ปุ่มสินค้า "' + (_pd.name || '#' + (_pi + 1)) + '": Recipe RM แถว ' + (_ri + 1) + ' ต้องกรอก Code RM, Description, Qty และ Unit ให้ครบ หรือเคลียร์ทั้งแถว');
+          }
+        }
         for (var _fi = 0; _fi < (_pd.formulas || []).length; _fi++) {
           if (!resolveFormulaSub(_pd.formulas[_fi].subId)) return warnFill('ปุ่มสินค้า "' + (_pd.name || '#' + (_pi + 1)) + '": สูตรผง #' + (_fi + 1) + ' กรุณาเลือก Subset ให้ครบ (ถ้าเว้นว่าง ข้อมูลสูตรผงแถวนี้จะไม่ถูกส่งไปให้ IT)');
         }
@@ -887,10 +904,11 @@
         Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
         google.script.run.withSuccessHandler(function (res) {
           RD._sending = false;
-          if (res && (res.status === 'duplicate' || res.status === 'conflict')) { return Swal.fire('บันทึกไม่ได้', res.message || 'ข้อมูลซ้ำ/ชนกัน', 'error'); }
+          if (res && res.status && res.status !== 'success') { return Swal.fire('บันทึกไม่ได้', res.message || 'ข้อมูลซ้ำ/ชนกัน', 'error'); }
           RD._submitKey = null;
           var rmTxt = (res && res.newRm && res.newRm.length) ? '<br><span style="color:#2e934a">+ เพิ่ม RM ใหม่ ' + res.newRm.length + ' รายการ</span>' : '';
-          Swal.fire({ icon: 'success', title: 'ส่งเรียบร้อย!', html: 'เลขที่เอกสาร: <b>' + (res && res.id || '-') + '</b><br>จำนวนปุ่มสินค้า: ' + payload.items.length + ' รายการ' + rmTxt, confirmButtonColor: '#2e934a' }).then(function () { npdConfirmAllCodes(); RD.clearDraft(); RD.resetNew(); window.__npdBaseline = npdSig(); });
+          var saveTxt = (res && res.saved) ? '<br><span style="font-size:.78rem;color:#667085">บันทึกแล้ว: ' + res.saved.subsets + ' Subset · ' + res.saved.powders + ' ผง · ' + res.saved.items + ' สินค้า · ' + res.saved.recipeRows + ' Recipe RM</span>' : '';
+          Swal.fire({ icon: 'success', title: 'ส่งเรียบร้อย!', html: 'เลขที่เอกสาร: <b>' + (res && res.id || '-') + '</b><br>จำนวนปุ่มสินค้า: ' + payload.items.length + ' รายการ' + saveTxt + rmTxt, confirmButtonColor: '#2e934a' }).then(function () { npdConfirmAllCodes(); RD.clearDraft(); RD.resetNew(); window.__npdBaseline = npdSig(); });
         }).withFailureHandler(function (e) { RD._sending = false; Swal.fire('Error', String(e), 'error'); }).submitNPD(payload, key);
       });
     } else {
