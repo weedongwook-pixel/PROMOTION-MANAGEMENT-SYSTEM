@@ -138,11 +138,13 @@
   };
   window.optPrintRows = function(rows, title){
     var esc=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;'})[c];});};
-    var body = rows.map(function(c,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(c.campaign)+'</td><td>'+esc(c.promoType||'')+'</td><td>'+esc(c.codePromotion||c.promoCode||c.codeItemSet||c.itemPromoCode||'')+'</td><td>'+esc(c.startDate||'')+'</td><td>'+esc(c.endDate||'')+'</td><td>'+esc(c.channel||'')+'</td><td>'+esc(c.itStatus||'')+'</td><td>'+esc(c.opStatus||'')+'</td></tr>'; }).join('');
+    var fmtTxn=function(s){ var d=new Date(s); return s && !isNaN(d.getTime()) ? d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : String(s||''); };
+    var fmtOpDone=function(s){ var d=new Date(String(s||'').length===10?String(s)+'T00:00:00':s); return s&&!isNaN(d.getTime())?d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}):String(s||''); };
+    var body = rows.map(function(c,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(c.campaign)+'</td><td>'+esc(c.promoType||'')+'</td><td>'+esc(c.codePromotion||c.promoCode||c.codeItemSet||c.itemPromoCode||'')+'</td><td>'+esc(c.startDate||'')+'</td><td>'+esc(c.endDate||'')+'</td><td>'+esc(c.channel||'')+'</td><td>'+esc(c.itStatus||'')+'</td><td>'+esc(c.opStatus||'')+'</td><td>'+esc(fmtOpDone(c.opDoneDate))+'</td><td>'+esc(fmtTxn(c.txnDate))+'</td><td>'+esc(c.reporter||c.submittedBy||'')+'</td></tr>'; }).join('');
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+
       '<style>body{font-family:"Kanit",sans-serif;padding:24px;color:#1a1d20}h2{margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #cfd4da;padding:6px 8px;text-align:left}thead th{background:#1a1d20;color:#fff}tbody tr:nth-child(even){background:#f6f8fa}@media print{.noprint{display:none}}</style>'+
       '</head><body><h2>'+esc(title)+'</h2><div class="sub">Potato Corner · พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+'</div>'+
-      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th></tr></thead><tbody>'+body+'</tbody></table>'+
+      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table>'+
       '<button class="noprint" onclick="window.print()" style="margin-top:16px;padding:8px 18px;border:0;background:#2e934a;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">🖨️ พิมพ์</button>'+
       '<scr'+'ipt>setTimeout(function(){try{window.print();}catch(e){}},400);<\/scr'+'ipt></body></html>';
     var w=window.open('','_blank'); if(!w){ Swal.fire('ป๊อปอัปถูกบล็อก','กรุณาอนุญาต popup เพื่อพิมพ์','warning'); return; } w.document.write(html); w.document.close();
@@ -230,9 +232,12 @@
       window.__optLoading = true;
       setTimeout(function () { window.__optLoading = false; if (!optData.length && document.getElementById('optBody')) window.loadOpTasks(); }, 50);
     }
-    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" class="py-5 text-muted">ไม่มีรายการในสถานะนี้</td></tr>'; return; }
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="12" class="py-5 text-muted">ไม่มีรายการในสถานะนี้</td></tr>'; return; }
 
     let html = '';
+    const escCell = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[c]);
+    const fmtTxn = s => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? escCell(s) : d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+    const fmtOpDone = s => { if (!s) return ''; const d = new Date(String(s).length === 10 ? String(s) + 'T00:00:00' : s); return isNaN(d.getTime()) ? escCell(s) : d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}); };
     rows.forEach(c => {
       const expanded = String(optExpanded) === String(c.rowIdx);
       const itDone = c.itStatus === 'COMPLETE';
@@ -265,11 +270,14 @@
           <td class="small">${window.PCniceChannel ? PCniceChannel(c.channel) : (c.channel || '-')}</td>
           <td><span class="status-badge ${itCls}" data-en="${itEn}" data-th="${itTh}">${itTh}</span></td>
           <td><span class="status-badge ${opCls}">${opWord}</span>${op === 'REJECTED' && c.rejectReason ? `<button class="btn btn-sm btn-link text-danger p-0 d-block mx-auto" style="font-size:.65rem;" onclick="window.optShowReject(${c.rowIdx})"><i class="fas fa-circle-info me-1"></i>ดูเหตุผล</button>` : ''}</td>
+          <td class="small">${c.opDoneDate ? fmtOpDone(c.opDoneDate) : '<span class="text-muted">-</span>'}</td>
+          <td class="small">${c.txnDate ? fmtTxn(c.txnDate) : '<span class="text-muted">-</span>'}</td>
+          <td class="small">${(c.reporter || c.submittedBy) ? escCell(c.reporter || c.submittedBy) : '<span class="text-muted">-</span>'}</td>
           <td>
             <button class="btn btn-sm ${expanded ? 'btn-secondary' : 'btn-outline-primary'} fw-bold" ${itDone ? '' : 'disabled'} title="${itDone ? 'ดูรายละเอียด / ตรวจสอบ' : 'รอ IT ตั้งค่าปุ่มก่อน'}" onclick="window.optToggle(${c.rowIdx})">${expanded ? '<i class="fas fa-chevron-up me-1"></i>ปิด' : '<i class="fas fa-eye me-1"></i>ดูรายละเอียด'}</button>
           </td>
         </tr>`;
-      if (expanded) html += `<tr class="opt-open-detail"><td colspan="9" class="expand-content-cell"><div class="item-table-wrapper" id="opt-exp-${c.rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-success"></div></div></div></td></tr>`;
+      if (expanded) html += `<tr class="opt-open-detail"><td colspan="12" class="expand-content-cell"><div class="item-table-wrapper" id="opt-exp-${c.rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-success"></div></div></div></td></tr>`;
     });
     tbody.innerHTML = html;
     if (optExpanded !== null) window.optFetch(optExpanded);

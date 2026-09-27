@@ -276,11 +276,12 @@ window.openFile = function(url, name) {
   /* renderer พิมพ์ตาราง (ใช้ทั้งพิมพ์ที่เลือก/พิมพ์ทั้งหมด) */
   window.ctPrintRows = function(rows, title){
     var esc=function(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;'})[c];});};
-    var body = rows.map(function(c,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(c.campaign)+'</td><td>'+esc(c.promoType||'')+'</td><td>'+esc(c.codePromotion||c.promoCode||c.codeItemSet||c.itemPromoCode||'')+'</td><td>'+esc(c.startDate||'')+'</td><td>'+esc(c.endDate||'')+'</td><td>'+esc(c.channel||'')+'</td><td>'+esc(c.itStatus||'')+'</td><td>'+esc(c.opStatus||'')+'</td><td>'+esc(c.txnDate?new Date(c.txnDate).toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</td><td>'+esc(c.reporter||c.submittedBy||'')+'</td></tr>'; }).join('');
+    var fmtOpDone=function(s){ var d=new Date(String(s||'').length===10?String(s)+'T00:00:00':s); return s&&!isNaN(d.getTime())?d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}):String(s||''); };
+    var body = rows.map(function(c,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(c.campaign)+'</td><td>'+esc(c.promoType||'')+'</td><td>'+esc(c.codePromotion||c.promoCode||c.codeItemSet||c.itemPromoCode||'')+'</td><td>'+esc(c.startDate||'')+'</td><td>'+esc(c.endDate||'')+'</td><td>'+esc(c.channel||'')+'</td><td>'+esc(c.itStatus||'')+'</td><td>'+esc(c.opStatus||'')+'</td><td>'+esc(fmtOpDone(c.opDoneDate))+'</td><td>'+esc(c.txnDate?new Date(c.txnDate).toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</td><td>'+esc(c.reporter||c.submittedBy||'')+'</td></tr>'; }).join('');
     var st='body{font-family:Kanit,sans-serif;padding:24px;color:#1a1d20}h2{margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #cfd4da;padding:6px 8px;text-align:left}thead th{background:#1a1d20;color:#fff}tbody tr:nth-child(even){background:#f6f8fa}';
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>'+st+'</style></head><body>'+
       '<h2>'+esc(title)+'</h2><div class="sub">Potato Corner · พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+'</div>'+
-      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table></body></html>';
+      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table></body></html>';
     var w=window.open('','_blank'); if(!w){ Swal.fire('ป๊อปอัปถูกบล็อก','กรุณาอนุญาต popup เพื่อพิมพ์','warning'); return; }
     w.document.write(html); w.document.close();
     try{ w.focus(); setTimeout(function(){ try{ w.print(); }catch(e){} }, 500); }catch(e){}
@@ -395,6 +396,7 @@ window.openFile = function(url, name) {
 
     let html = '';
     const fmtTxn = (s)=>{ if(!s) return ''; const d=new Date(s); return isNaN(d.getTime())?esc(String(s)):d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+    const fmtOpDone = (s)=>{ if(!s) return ''; const d=new Date(String(s).length===10 ? String(s)+'T00:00:00' : s); return isNaN(d.getTime())?esc(String(s)):d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}); };
     paginatedData.forEach(camp => {
       const isExpanded = String(expandedRowIdx) === String(camp.rowIdx);
       const chg = (camp.changeStatus || '').toUpperCase();
@@ -430,6 +432,7 @@ window.openFile = function(url, name) {
           <td style="text-align:left">${window.PCniceChannel ? PCniceChannel(camp.channel) : (camp.channel || '-')}</td>
           <td><span class="status-badge ${itCls}">${camp.itStatus || 'PENDING'}</span></td>
           <td><span class="status-badge ${opCls}">${camp.opStatus || 'WAITING'}</span>${camp.opStatus === 'REJECTED' && camp.rejectReason ? `<button class="btn btn-sm btn-link text-danger p-0 d-block mx-auto" style="font-size:.65rem;" onclick="window.showRejectReason('${encodeURIComponent(camp.rejectReason||'').replace(/'/g,'%27')}')"><i class="fas fa-circle-info me-1"></i>ดูเหตุผล</button>` : ''}</td>
+          <td class="small">${camp.opDoneDate ? fmtOpDone(camp.opDoneDate) : '<span class="text-muted">-</span>'}</td>
           <td class="small">${camp.txnDate ? fmtTxn(camp.txnDate) : '<span class="text-muted">-</span>'}</td>
           <td class="small">${(camp.reporter||camp.submittedBy) ? esc(camp.reporter||camp.submittedBy) : '<span class="text-muted">-</span>'}</td>
           <td>
@@ -443,11 +446,11 @@ window.openFile = function(url, name) {
         </tr>`;
 
       if (isExpanded) {
-        html += `<tr class="expand-row"><td colspan="11" class="expand-content-cell"><div class="item-table-wrapper" id="expand-container-${camp.rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning" role="status"></div></div></div></td></tr>`;
+        html += `<tr class="expand-row"><td colspan="12" class="expand-content-cell"><div class="item-table-wrapper" id="expand-container-${camp.rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning" role="status"></div></div></div></td></tr>`;
       }
     });
 
-    tbody.innerHTML = html || '<tr><td colspan="11" class="py-5 text-muted text-center">ไม่พบข้อมูลที่ค้นหา</td></tr>';
+    tbody.innerHTML = html || '<tr><td colspan="12" class="py-5 text-muted text-center">ไม่พบข้อมูลที่ค้นหา</td></tr>';
     window.renderSummary({ 
       all: filteredData.length, 
       pending: filteredData.filter(x=>x.itStatus!=='COMPLETE' && x.itStatus!=='CANCELLED').length, 

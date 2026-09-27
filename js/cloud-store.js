@@ -196,6 +196,8 @@
         discountText: f.discountText || '', condition: f.condition || '', rejectReason: f.rejectReason || '',
         rejectCount: f.rejectCount || 0, extendCodeNote: f.extendCodeNote || '', proposalKind: f.proposalKind || '',
         branchNote: f.branchNote || '', _wasItemSet: f._wasItemSet || false, typeSel: f.typeSel || '',
+        txnDate: f.txnDate || f.submittedDate || f.timestamp || '', submittedBy: f.submittedBy || f.reporter || '',
+        reporter: f.reporter || f.submittedBy || '',
         customerGroup: f.customerGroup || '', crmTarget: f.crmTarget || '', crmTargetName: f.crmTargetName || ''
       };
     });

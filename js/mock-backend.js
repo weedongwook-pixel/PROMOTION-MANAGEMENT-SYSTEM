@@ -351,6 +351,10 @@
         branchNote: f.branchNote || "",
         _wasItemSet: f._wasItemSet || false,
         typeSel: f.typeSel || "",
+        /* audit จากหน้าแจ้งโปรโมชั่น — คงทั้งเวลาที่ส่งและชื่อผู้ส่งไว้ให้ศูนย์ติดตามงาน */
+        txnDate: f.txnDate || f.submittedDate || f.timestamp || "",
+        submittedBy: f.submittedBy || f.reporter || "",
+        reporter: f.reporter || f.submittedBy || "",
         customerGroup: f.customerGroup || "", crmTarget: f.crmTarget || "", crmTargetName: f.crmTargetName || "",
       };
     });
@@ -943,7 +947,10 @@
         isSubset: it.isSubset || "", chooseMin: it.chooseMin || "", chooseMax: it.chooseMax || "",
         detail: cfg.detail, mechanic: cfg.mechanic,
         itStatus: cfg.itStatus, opStatus: cfg.opStatus, changeStatus: cfg.changeStatus || "",
-        reporter: cfg.reporter || "", updatedBy: "seed@rocks-foods.com", timestamp: ts,
+        /* audit: เก็บค่าจากฟอร์มไว้ระดับ row เพื่อ rebuild working/ส่งขึ้น Cloud ได้ครบ */
+        reporter: cfg.reporter || cfg.submittedBy || "", submittedBy: cfg.submittedBy || cfg.reporter || "",
+        txnDate: cfg.txnDate || cfg.submittedDate || ts,
+        updatedBy: "seed@rocks-foods.com", timestamp: ts,
         attachment: cfg.attachment || "", memoUrl: "", updatedDate: ts,
         cateRemark: cfg.cateRemark || "", cate: cfg.cate || "", minAmount: cfg.minAmount || 0, posReady: !!cfg.posReady,
         addons: it.addons || cfg.addons || "",
@@ -2244,7 +2251,8 @@
       const totalGross = g.items.reduce((a, it) => a + (parseFloat(it.originalPrice) || 0) * (parseInt(it.qty) || 1), 0);
       const net = Number(info.netPrice) || 0;
       addButtonGroup(store, {
-        month, campaign: info.campaign, reporter: currentUser(), promoType: ptype, typePromotion: ptype,
+        month, campaign: info.campaign, reporter: info.submittedBy || currentUser(), submittedBy: info.submittedBy || currentUser(),
+        txnDate: info.txnDate || NOW(), submittedDate: info.txnDate || NOW(), promoType: ptype, typePromotion: ptype,
         // ⛔ ไม่ pre-gen Code Item Set — ปล่อยว่างให้หน้า IT autorun (จอง 107 จาก PC_COUNTER + ป้าย "รอ IT ยืนยันเลข")
         codePromotion: _evCode, codeItemSet: "", itemPromotion: "",
         start: info.start, end: info.end, stores: info.storeSelection, saleMode: info.saleMode,
@@ -3619,7 +3627,10 @@
       changeStatus: String(r.changeStatus || "").toUpperCase(), cancelReason: String(r.cancelReason || r.reason || ""),
       rejectReason: String(r.rejectReason || ""), extendCodeNote: String(r.extendCodeNote || ""),
       customerGroup: String(r.customerGroup || ""), crmTargetName: String(r.crmTargetName || ""),
-      reporter: String(r.reporter || r.rd || ""),
+      txnDate: String(r.txnDate || r.submittedDate || r.timestamp || ""),
+      submittedBy: String(r.submittedBy || r.reporter || r.rd || ""),
+      reporter: String(r.reporter || r.submittedBy || r.rd || ""),
+      opDoneDate: String(r.opDoneDate || ""),
       totalPrice: campGrossTotal(r.campaign, r.shortName),
     })).filter(x => x.campaign && x.campaign !== "No Name").reverse();
 
