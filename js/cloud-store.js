@@ -25,7 +25,7 @@
     'pc_dep_flags', 'pc_dep_custom',                              // แผนก
     'pc_product_flags', 'pc_product_coupon', 'pc_product_deleted', 'pc_platform_flags', 'pc_product_edits', // สินค้า/แพลตฟอร์ม/ราคาแก้รายสาขา
     'pc_subset_map', 'pc_subset_items', 'pc_subset_price', 'pc_itemset_comp', // subset ↔ ผง / item set
-    'pc_subset_meta', 'pc_subset_powders',                       // subset meta / ผงในชุด (ใช้ในฟอร์ม Item Set)
+    'pc_subset_meta', 'pc_subset_powders', 'pc_subset_custom', 'pc_subset_deleted', 'pc_addon_subsets', // subset ที่เพิ่ม/แก้/ลบเอง + ผงในชุด
     // --- master data ที่ต้อง share ทุกเครื่อง (voucher/บัตร/ผูกคูปอง/Memo) ---
     'pc_vouchers', 'pc_member_cards', 'pc_member_coupons', 'pc_memo_docs',
     'pc_staff_discounts', 'pc_staff_conditions',                 // ส่วนลดพนักงาน (คำขอ + เงื่อนไข)
@@ -54,7 +54,7 @@
   /* ===== คีย์ที่เป็น "รายการงาน" (array ของ object ที่มี id) → ตอน pull ให้ MERGE ไม่ทับ =====
      เดิม pull เอาค่าจากคลาวด์ทับทั้งก้อน → งานที่เพิ่งกดบันทึกในเครื่อง (ยัง push ไม่ทัน)
      หายตอนรีเฟรช (เช่น กดยืนยันที่แท็บ IT หน้าแจ้งเพิ่มโค้ด/บัตร แล้วงานเด้งกลับสถานะเดิม) */
-  var MERGE_LIST_KEYS = ['pc_code_requests', 'pc_branch_tickets', 'pc_tender_requests', 'pc_billdiff_reports',
+  var MERGE_LIST_KEYS = ['pc_subset_custom', 'pc_code_requests', 'pc_branch_tickets', 'pc_tender_requests', 'pc_billdiff_reports',
     'pc_staff_discounts', 'pc_staff_conditions', 'pc_co_promotions', 'pc_product_reopen',
     'pc_plan_actions', 'pc_cmpos_license_req', 'pc_plan_cmpos_tasks', 'pc_asset_disposal', 'pc_notify_log',
     'pc_abbr_requests', 'pc_abbr_log'];   // คำขอเปลี่ยนตัวย่อ: รวมราย id (ห้ามทับทั้งก้อน — ใบที่ยื่น/ลบจากอีกเครื่องจะหาย)
@@ -459,6 +459,10 @@
         if (lt && lt > ct) { queuePush(k); return; }
       }
       _set(k, keys[k]); markKeyFromCloud(k, keys[k], keys[k + TS_SUFFIX]); changed = true;
+    });
+    // คีย์ Subset ที่เพิ่งเริ่มซิงค์: ส่งรายการเดิมในเครื่องขึ้น Cloud ด้วย
+    ['pc_subset_custom', 'pc_subset_deleted', 'pc_addon_subsets'].forEach(function (k) {
+      if (keys[k] == null && localStorage.getItem(k) != null) queuePush(k);
     });
     return { changed: changed, keys: n };
   }

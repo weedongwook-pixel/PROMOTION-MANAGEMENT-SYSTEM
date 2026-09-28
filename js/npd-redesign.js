@@ -72,8 +72,8 @@
     SHOP_DATA['Shop Type'].rows = groupBy('type');
     SHOP_DATA['Shop Master'].rows = BRANCHES.map(function (b) { return { code: b.id, d1: b.en, d2: b.th, ids: [b.id] }; });
   }
-  // Existing Subsets in the database — ดึงจาก Subset master จริง (data/subset-master.js)
-  var SUBSETS_MASTER = (window.PC_SUBSET_MASTER && window.PC_SUBSET_MASTER.length) ? window.PC_SUBSET_MASTER.map(function (s) { return { ssCode: s.ssCode, name: s.name, short: s.short }; }) : [];
+  // อ่านรายการล่าสุดทุกครั้ง: master เดิม + Subset ที่เพิ่ม/แก้ในหน้าข้อมูลหลัก
+  function subsetMaster() { return window.PC_SubsetCatalog ? PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER || []); }
   /* Form Display filter (pc_subset_forms[ss].npd / pc_cat_forms[cat].npd) — คุมจากหน้า Form Display */
   function npdSubsetShown(ss) { try { var m = JSON.parse(localStorage.getItem('pc_subset_forms') || '{}') || {}; var o = m[ss]; if (o && o.npd !== undefined) return !!o.npd; } catch (e) {} return true; }
   function npdCatShown(cat) { try { var m = JSON.parse(localStorage.getItem('pc_cat_forms') || '{}') || {}; var o = m[cat]; if (o && o.npd !== undefined) return !!o.npd; } catch (e) {} return true; }
@@ -164,12 +164,12 @@
   /* resolve formula subId → {ssCode,name,count} · รองรับทั้งชุดในฟอร์ม (id) และ Subset ใน DB ('db:'+ssCode) */
   function resolveFormulaSub(subId) {
     if (!subId) return null;
-    if (String(subId).indexOf('db:') === 0) { var code = String(subId).slice(3); var d = SUBSETS_MASTER.find(function (x) { return x.ssCode === code; }); return d ? { ssCode: d.ssCode, name: d.name, count: 0 } : null; }
+    if (String(subId).indexOf('db:') === 0) { var code = String(subId).slice(3); var d = subsetMaster().find(function (x) { return x.ssCode === code; }); return d ? { ssCode: d.ssCode, name: d.name, count: 0 } : null; }
     var s = Ssub(subId); return s ? { ssCode: s.ssCode, name: s.name, count: (s.powders || []).length } : null;
   }
 
   function flavorSubOpts(sel) {
-    return '<option value="">— เลือก Subset —</option>' + SUBSETS_MASTER.filter(function (s) { return s.ssCode === sel || npdSubsetShown(s.ssCode); }).map(function (s) {
+    return '<option value="">— เลือก Subset —</option>' + subsetMaster().filter(function (s) { return s.ssCode === sel || (String(s.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(s.ssCode)); }).map(function (s) {
       return '<option value="' + esc(s.ssCode) + '"' + (s.ssCode === sel ? ' selected' : '') + '>' + esc(s.ssCode) + ' · ' + esc(s.name) + '</option>';
     }).join('');
   }
@@ -280,7 +280,7 @@
       var s = resolveFormulaSub(f.subId);
       var max = (s && s.count) ? s.count : 0;
       var inForm = state.subsets.filter(function (x) { return x.registered; }).map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
-      var dbOpts = SUBSETS_MASTER.filter(function (x) { return ('db:' + x.ssCode) === f.subId || npdSubsetShown(x.ssCode); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
+      var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
       var opts = '<option value="">— เลือก Subset —</option>' +
         (inForm ? '<optgroup label="ชุดใหม่ในฟอร์มนี้">' + inForm + '</optgroup>' : '') +
         (dbOpts ? '<optgroup label="Subset ในระบบ (ฐานข้อมูล)">' + dbOpts + '</optgroup>' : '');
@@ -632,10 +632,10 @@
     var ab = String(s.name2 || '').trim(); if (ab && dbHasSubAbbr(ab, sid)) npdDupToast('ตัวย่อ "' + ab + '" ซ้ำกับ Subset ที่มีอยู่แล้ว (ตรวจจากฐานข้อมูล) — กรุณาใช้ตัวย่ออื่น'); };
   /* dup-check helpers — เทียบกับฐานข้อมูลจริง (SUBSETS_MASTER) + Subset ในฟอร์ม */
   function dbHasSubName(name, exceptSid) { var nrm = function (s) { return String(s || '').replace(/\s+/g, ''); }; name = nrm(name); if (!name) return false;
-    if (SUBSETS_MASTER.some(function (s) { return nrm(s.name) === name; })) return true;
+    if (subsetMaster().some(function (s) { return nrm(s.name) === name; })) return true;
     return state.subsets.some(function (s) { return s.id !== exceptSid && nrm(s.name) === name; }); }
   function dbHasSubAbbr(ab, exceptSid) { var nrm = function (s) { return String(s || '').replace(/\s+/g, '').toUpperCase(); }; ab = nrm(ab); if (!ab) return false;
-    if (SUBSETS_MASTER.some(function (s) { return nrm(s.short) === ab; })) return true;
+    if (subsetMaster().some(function (s) { return nrm(s.short) === ab; })) return true;
     return state.subsets.some(function (s) { return s.id !== exceptSid && nrm(s.name2) === ab; }); }
   function npdDupToast(msg) { Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: msg, showConfirmButton: false, timer: 4000, timerProgressBar: true }); }
   RD.checkSubName = function (sid) { var s = Ssub(sid); if (!s) return; var nm = String(s.name || '').trim(); if (nm && dbHasSubName(nm, sid)) npdDupToast('ชื่อ "' + nm + '" ซ้ำกับ Subset ที่มีอยู่แล้ว (ตรวจจากฐานข้อมูล) — กรุณาใช้ชื่ออื่น'); };
@@ -923,7 +923,7 @@
 
       var byTarget = {}; pw.forEach(function (w) { (byTarget[w.targetSS] = byTarget[w.targetSS] || []).push(w); });
       var groups = Object.keys(byTarget).map(function (ss) {
-        var sub = SUBSETS_MASTER.find(function (s) { return s.ssCode === ss; });
+        var sub = subsetMaster().find(function (s) { return s.ssCode === ss; });
         return {
           ssCode: ss, name: sub ? sub.name : '',
           flavors: byTarget[ss].map(function (w) { return { seq: w.seq || '', cmpos: w.cmpos || '', eng: w.eng || '', th: w.th || '', code: w.code || '', desc: w.desc || '', qty: w.qty || '', unit: w.unit || '', spoon: w.spoon || '', price: num(w.addon) }; })
@@ -1019,7 +1019,6 @@
     state.flavor.rd = user;
     var rdEl = document.getElementById('npRd'); if (rdEl) { rdEl.value = user; rdEl.readOnly = true; rdEl.classList.add('it-field'); }
     var dl = document.getElementById('rmList'); if (dl) dl.innerHTML = RM_MASTER.map(function (r) { return '<option value="' + esc(r.code) + '">' + esc(r.code) + ' · ' + esc(r.desc) + '</option>'; }).join('');
-    if (window.PC_SUBSET_MASTER && window.PC_SUBSET_MASTER.length) SUBSETS_MASTER = window.PC_SUBSET_MASTER.map(function (s) { return { ssCode: s.ssCode, name: s.name, short: s.short }; });
     renderCatList();
     buildShopData();
     if (hasBackend()) {

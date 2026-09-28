@@ -528,8 +528,8 @@
         inDoc.push('<option value="' + itEsc(v) + '"' + (isSel ? ' selected' : '') + '>' + itEsc((s.ssCode ? s.ssCode + ' · ' : '') + (s.name || 'Subset')) + '</option>');
       });
       try {
-        (window.PC_SUBSET_MASTER || []).forEach(function (s) {
-          var v = s.ssCode || ''; if (!v || seen[v]) return; seen[v] = 1;
+        (window.PC_SubsetCatalog ? PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER || [])).forEach(function (s) {
+          var v = s.ssCode || ''; if (!v || seen[v] || (String(s.status || 'Active').toLowerCase() === 'inactive' && String(v) !== String(sel))) return; seen[v] = 1;
           inDb.push('<option value="' + itEsc(v) + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + itEsc(v + ' · ' + (s.name || '')) + '</option>');
         });
       } catch (e) {}
@@ -540,7 +540,7 @@
     };
     var fml = (it.formulas || []).map(function (f, fi) {
       var s = (window._itEdit.subsets || []).find(function (x) { return String(x.ssCode || '') === String(f.ss || '') || String(x.name || '') === String(f.ss || ''); });
-      if (!s && f.ss) { try { var _d = (window.PC_SUBSET_MASTER || []).find(function (x) { return String(x.ssCode) === String(f.ss); }); if (_d) s = { ssCode: _d.ssCode, name: _d.name, powders: [] }; } catch (e) {} }
+      if (!s && f.ss) { try { var _d = (window.PC_SubsetCatalog ? PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER || [])).find(function (x) { return String(x.ssCode) === String(f.ss); }); if (_d) s = { ssCode: _d.ssCode, name: _d.name, powders: [] }; } catch (e) {} }
       var max = (s && (s.powders || []).length) ? s.powders.length : 99;
       return '<div class="d-flex gap-2 align-items-center mb-2 flex-wrap"><span class="badge bg-dark">#' + (fi + 1) + '</span>' +
         '<span class="badge bg-secondary">' + itEsc(s ? (s.ssCode || '— SS —') : '—') + '</span>' +

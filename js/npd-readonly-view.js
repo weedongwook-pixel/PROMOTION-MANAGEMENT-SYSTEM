@@ -69,12 +69,13 @@
   }
 
   var CUR = null, LASTOPTS = {};
+  function subsetMaster() { return window.PC_SubsetCatalog ? PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER || []); }
   function isAdmin() { try { return (localStorage.getItem('pc_role') || 'Admin') === 'Admin'; } catch (e) { return true; } }
   /* ตัวเลือก Subset — รวม Subset ในใบนี้ + คลัง Subset กลาง (เหมือนหน้ากรอก RD) */
   function subsetOpts(sel) {
     var seen = {}, list = [];
     (CUR && CUR.subsets || []).forEach(function (s) { var v = s.ssCode || s.name || ''; if (v && !seen[v]) { seen[v] = 1; list.push({ v: v, t: (s.ssCode ? s.ssCode + ' · ' : '') + (s.name || 'Subset') }); } });
-    try { (window.PC_SUBSET_MASTER || []).forEach(function (s) { var v = s.ssCode || ''; if (v && !seen[v]) { seen[v] = 1; list.push({ v: v, t: v + ' · ' + (s.name || '') }); } }); } catch (e) {}
+    try { subsetMaster().forEach(function (s) { var v = s.ssCode || ''; if (v && !seen[v] && (String(s.status || 'Active').toLowerCase() !== 'inactive' || String(v) === String(sel || ''))) { seen[v] = 1; list.push({ v: v, t: v + ' · ' + (s.name || '') }); } }); } catch (e) {}
     if (sel && !seen[sel]) list.unshift({ v: sel, t: sel });
     return '<option value="">— เลือก Subset —</option>' + list.map(function (o) { return '<option value="' + esc(o.v) + '"' + (String(o.v) === String(sel || '') ? ' selected' : '') + '>' + esc(o.t) + '</option>'; }).join('');
   }
@@ -154,7 +155,7 @@
       f.ss = v;
       var s = (CUR.subsets || []).find(function (x) { return String(x.ssCode || '') === String(v) || String(x.name || '') === String(v); });
       if (s) f.ssName = s.name || '';
-      else { try { var d = (window.PC_SUBSET_MASTER || []).find(function (x) { return String(x.ssCode) === String(v); }); if (d) f.ssName = d.name || ''; } catch (e) {} }
+      else { try { var d = subsetMaster().find(function (x) { return String(x.ssCode) === String(v); }); if (d) f.ssName = d.name || ''; } catch (e) {} }
       rerender(); return;
     }
     var num = parseInt(v, 10) || 1;
@@ -211,7 +212,7 @@
     _payload.items.forEach(function (c) {
       (c.formulas || []).forEach(function (f) {
         var v = String(f.ss || "").trim(); if (!v || _have[v]) return;
-        var d = null; try { d = (window.PC_SUBSET_MASTER || []).find(function (x) { return String(x.ssCode) === v; }); } catch (e) {}
+        var d = null; try { d = subsetMaster().find(function (x) { return String(x.ssCode) === v; }); } catch (e) {}
         _payload.subsets.push({ ssCode: v, name: (d && d.name) || f.ssName || v, name2: (d && d.short) || "", cat: "", powders: [], fromMaster: true });
         _have[v] = 1;
       });

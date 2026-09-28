@@ -110,7 +110,7 @@
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
   function ls(k,d){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){} return (arguments.length>1?d:null); }
-  function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } }
   function meta(){ var m=ls(META_K); return (m&&typeof m==='object')?m:{}; }
   function prices(){ var m=ls(PRICE_K); return (m&&typeof m==='object')?m:{}; }
   function powders(){ var m=ls(POW_K); return (m&&typeof m==='object')?m:{}; }
@@ -244,13 +244,21 @@
     if(typeof window.applyLang==='function') window.applyLang();
   }
   function saveNew(){
-    var code=(document.getElementById('nsCode').value||'').trim();
+    var code=(document.getElementById('nsCode').value||'').trim().toUpperCase();
     if(!code){ Swal.fire({icon:'warning',title:'กรุณากรอก SS Code',confirmButtonColor:'#2e934a'}); return; }
     if(allSubsets().some(function(s){return s.ssCode.toLowerCase()===code.toLowerCase();})){ Swal.fire({icon:'error',title:'SS Code นี้มีอยู่แล้ว',confirmButtonColor:'#2e934a'}); return; }
     var nameTH=(document.getElementById('nsTH').value||'').trim(), nameEN=(document.getElementById('nsEN').value||'').trim();
-    var c=customs(); c.push({ssCode:code,nameTH:nameTH,nameEN:nameEN}); save(MASTER_K,c);
-    setMeta(code,{nameTH:nameTH,nameEN:nameEN,status:document.getElementById('nsStatus').value});
-    setPrice(code, document.getElementById('nsPrice').value);
+    var c=customs(); c.push({ssCode:code,nameTH:nameTH,nameEN:nameEN});
+    var M=meta(); M[code]=Object.assign({},M[code]||{},{nameTH:nameTH,nameEN:nameEN,status:document.getElementById('nsStatus').value});
+    var P=prices(), price=document.getElementById('nsPrice').value;
+    if(price===''||price==null) delete P[code]; else P[code]=Number(price)||0;
+    var D=deleted(); delete D[code]; // รหัสที่เคยลบแล้วสร้างใหม่ ต้องไม่ถูก tombstone ซ่อน
+    var keys=[MASTER_K,META_K,PRICE_K,DEL_K], before={};
+    keys.forEach(function(k){ before[k]=localStorage.getItem(k); });
+    if(!save(MASTER_K,c) || !save(META_K,M) || !save(PRICE_K,P) || !save(DEL_K,D)){
+      keys.forEach(function(k){ try{ if(before[k]===null) localStorage.removeItem(k); else localStorage.setItem(k,before[k]); }catch(e){} });
+      Swal.fire({icon:'error',title:'บันทึก Subset ไม่สำเร็จ',text:'พื้นที่เก็บข้อมูลอาจเต็ม กรุณาตรวจสอบแล้วลองอีกครั้ง',confirmButtonColor:'#c0392b'}); return;
+    }
     Swal.fire({icon:'success',title:'เพิ่ม Subset แล้ว',timer:1000,showConfirmButton:false});
     edit(code);  // เปิดหน้าแก้ไขต่อ เพื่อเพิ่มผง
   }

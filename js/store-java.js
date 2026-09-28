@@ -16,7 +16,7 @@
     'pc_dep_flags', 'pc_dep_custom',
     'pc_product_flags', 'pc_product_coupon', 'pc_product_deleted', 'pc_platform_flags', 'pc_product_edits',
     'pc_subset_map', 'pc_subset_items', 'pc_subset_price', 'pc_itemset_comp',
-    'pc_subset_meta', 'pc_subset_powders',
+    'pc_subset_meta', 'pc_subset_powders', 'pc_subset_custom', 'pc_subset_deleted', 'pc_addon_subsets',
     'pc_vouchers', 'pc_member_cards', 'pc_member_coupons', 'pc_memo_docs',
     'pc_staff_discounts', 'pc_staff_conditions', 'pc_card_links', 'pc_co_promotions', 'pc_product_reopen',
     'pc_branch_tickets', 'pc_tender_requests', 'pc_tender_master', 'pc_tender_workflow', 'pc_op_zones',
@@ -31,7 +31,7 @@
     'pc_permissions', 'pc_permissions_rwd'
   ];
   /* คีย์ที่เป็น "รายการงาน" (array ของ object ที่มี id) → merge ไม่ทับตอน pull */
-  var MERGE_LIST_KEYS = ['pc_code_requests', 'pc_branch_tickets', 'pc_tender_requests', 'pc_billdiff_reports',
+  var MERGE_LIST_KEYS = ['pc_subset_custom', 'pc_code_requests', 'pc_branch_tickets', 'pc_tender_requests', 'pc_billdiff_reports',
     'pc_staff_discounts', 'pc_staff_conditions', 'pc_co_promotions', 'pc_product_reopen',
     'pc_plan_actions', 'pc_cmpos_license_req', 'pc_plan_cmpos_tasks', 'pc_asset_disposal', 'pc_notify_log'];
   var STAMP_FIELDS = ['doneAt', 'downloadedAt', 'updatedAt', 'savedAt', 'confirmedAt', 'createdAt', 'ts', 'at', 'time'];
@@ -53,6 +53,7 @@
   var _set = localStorage.setItem.bind(localStorage);
 
   function _stamp(o) { var m = 0; if (!o || typeof o !== 'object') return 0; STAMP_FIELDS.forEach(function (f) { var v = Number(o[f]); if (!isNaN(v) && v > m) m = v; }); return m; }
+  function _idOf(r) { if (!r || typeof r !== 'object') return null; if (r.id != null) return 'id:' + String(r.id); if (r.ssCode != null) return 'ssCode:' + String(r.ssCode); return null; }
   function mergeList(localStr, cloudStr) {
     var L, C;
     try { L = JSON.parse(localStr); } catch (e) { L = null; }
@@ -60,14 +61,14 @@
     if (!Array.isArray(L)) return cloudStr;
     if (!Array.isArray(C)) return localStr;
     var out = [], seen = {}, cMap = {};
-    C.forEach(function (r) { if (r && r.id != null) cMap[String(r.id)] = r; });
+    C.forEach(function (r) { var id = _idOf(r); if (id) cMap[id] = r; });
     L.forEach(function (r) {
-      var id = (r && r.id != null) ? String(r.id) : null;
+      var id = _idOf(r);
       if (!id) { out.push(r); return; }
       seen[id] = 1; var c = cMap[id];
       out.push(c && _stamp(c) > _stamp(r) ? c : r);
     });
-    C.forEach(function (r) { var id = (r && r.id != null) ? String(r.id) : null; if (!id || seen[id]) return; seen[id] = 1; out.push(r); });
+    C.forEach(function (r) { var id = _idOf(r); if (!id || seen[id]) return; seen[id] = 1; out.push(r); });
     return JSON.stringify(out);
   }
 
