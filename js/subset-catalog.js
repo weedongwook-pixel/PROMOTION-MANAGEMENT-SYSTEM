@@ -31,6 +31,8 @@
       if (rank < existing._rank) return;
       var name = nonempty(source.nameEN) || nonempty(source.nameTH) || nonempty(source.name);
       if (name) existing.name = name;
+      if (nonempty(source.nameEN)) existing.nameEN = nonempty(source.nameEN);
+      if (nonempty(source.nameTH)) existing.nameTH = nonempty(source.nameTH);
       if (nonempty(source.short)) existing.short = nonempty(source.short);
       if (nonempty(source.status)) existing.status = nonempty(source.status);
       existing._rank = rank;
@@ -41,10 +43,17 @@
       add(Object.assign({ ssCode: code }, registered[code] || {}), 1);
     });
     if (Array.isArray(custom)) custom.forEach(function (row) { add(row, 2); });
+    // บางเครื่องได้รับชื่อ/สถานะจาก Cloud แล้ว แต่ทะเบียน custom ยังซิงค์มาไม่ครบ
+    Object.keys(metadata || {}).forEach(function (code) {
+      var meta = metadata[code] || {};
+      if (nonempty(meta.nameEN) || nonempty(meta.nameTH)) add(Object.assign({ ssCode: code }, meta), 0);
+    });
 
     rows.forEach(function (row) {
       var meta = metadata[row.ssCode] || {}, edit = edits[row.ssCode] || {};
       row.name = nonempty(meta.nameEN) || nonempty(meta.nameTH) || nonempty(edit.name) || row.name || row.ssCode;
+      row.nameEN = nonempty(meta.nameEN) || row.nameEN || row.name;
+      row.nameTH = nonempty(meta.nameTH) || row.nameTH || row.name;
       row.short = nonempty(edit.short) || row.short || '';
       row.status = nonempty(meta.status) || row.status || 'Active';
       delete row._rank;

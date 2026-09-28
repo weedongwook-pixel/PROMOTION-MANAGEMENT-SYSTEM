@@ -814,7 +814,8 @@
   function getIsfFormulas(){ try{ var s=JSON.parse(localStorage.getItem('pc_mock_isf')||'{}'); return (s&&s.formulas)||{}; }catch(e){ return {}; } }
   /* legacy product→subset (จาก backoffice CMPOS) — ผงรสสินค้าเก่าที่รู้แน่ (สอดคล้อง IT_SUBSET) */
   var LEGACY_SUBSET={};
-  function compDesc(code){ var s=(window.PC_SUBSET_MASTER||[]).find(function(x){return x.ssCode===code;}); if(s) return {d1:s.name,d2:s.short||s.name}; var it=ITEMS.find(function(x){return String(x.itemCode)===String(code);}); if(it) return {d1:it.itemNameEN||'',d2:it.itemNameTH||it.itemNameEN||''}; return {d1:'',d2:''}; }
+  function compSubsets(){ return window.PC_SubsetCatalog ? window.PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER||[]); }
+  function compDesc(code){ var s=compSubsets().find(function(x){return String(x.ssCode||'').toUpperCase()===String(code||'').toUpperCase();}); if(s) return {d1:s.nameEN||s.name||'',d2:s.short||s.nameTH||s.name||''}; var it=ITEMS.find(function(x){return String(x.itemCode)===String(code);}); if(it) return {d1:it.itemNameEN||'',d2:it.itemNameTH||it.itemNameEN||''}; return {d1:'',d2:''}; }
   Object.assign(window.PM, {
     compAutoSeed:function(code){ var all=getComp(); if(all[code]&&all[code].length) return; /* มีของ manual/NPD แล้ว ไม่ทับ */
       var rows=[], seen={};
@@ -878,7 +879,7 @@
     compSearch:function(){ var q=((document.getElementById('caQ')||{}).value||'').toLowerCase().trim(); var box=document.getElementById('caRes'); if(!box)return;
       var have={}; (getComp()[window.__compCode]||[]).forEach(function(x){have[x.code]=1;});
       var res=[];
-      (window.PC_SUBSET_MASTER||[]).forEach(function(s){ if(have[s.ssCode])return; if(!q||(s.ssCode+' '+s.name+' '+(s.short||'')).toLowerCase().indexOf(q)>=0) res.push({code:s.ssCode,d1:s.name,d2:s.short||'',type:'Subset'}); });
+      compSubsets().forEach(function(s){ if(have[s.ssCode])return; if(!q||(s.ssCode+' '+(s.name||'')+' '+(s.nameTH||'')+' '+(s.short||'')).toLowerCase().indexOf(q)>=0) res.push({code:s.ssCode,d1:s.nameEN||s.name||'',d2:s.short||s.nameTH||s.name||'',type:'Subset'}); });
       if(q){ ITEMS.forEach(function(it){ if(have[it.itemCode])return; if((it.itemCode+' '+(it.itemNameEN||'')+' '+(it.itemNameTH||'')).toLowerCase().indexOf(q)>=0) res.push({code:it.itemCode,d1:it.itemNameEN||'',d2:it.itemNameTH||'',type:'Item'}); }); }
       res=res.slice(0,80);
       if(!res.length){ box.innerHTML='<div style="padding:14px;color:#9aa1aa">ไม่พบรายการ</div>'; return; }

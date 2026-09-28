@@ -297,10 +297,10 @@ var App = (function(){
   function posPick(camp, sn){ posSel.camp=camp; posSel.sn=sn; posBuildTree(); posRender(); recRender(); }
   function recAdd(){ if(!posSel.sn) return; store.recipeDone[posSel.camp+'|'+posSel.sn]=true; persist(); posBuildTree(); recRender(); Swal.fire({icon:'success',title:'เพิ่ม Recipe แล้ว',html:'<b>'+esc(posSel.sn)+'</b> ย้ายไปแท็บ "เพิ่มเสร็จแล้ว"',confirmButtonColor:'#2e934a'}); }
   // aggregate subsets across all member items of a POS button → sum powders per subset
-  // อ่านการผูก subset จริงจาก pc_itemset_comp (ที่ผูกใน Products) + ชื่อจาก PC_SUBSET_MASTER
+  // อ่านการผูก subset จริงจาก pc_itemset_comp (ที่ผูกใน Products) + ชื่อจากทะเบียน Subset ล่าสุด
   function compStore(){ try{ return JSON.parse(localStorage.getItem('pc_itemset_comp')||'{}'); }catch(e){ return {}; } }
-  function subMasterList(){ return window.PC_SUBSET_MASTER||[]; }
-  function subByCode(ss){ return subMasterList().find(function(s){ return String(s.ssCode)===String(ss); }); }
+  function subMasterList(){ return window.PC_SubsetCatalog ? PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER||[]); }
+  function subByCode(ss){ return subMasterList().find(function(s){ return String(s.ssCode||'').toUpperCase()===String(ss||'').toUpperCase(); }); }
   function isSubsetCode(c){ return /^SS/i.test(String(c||'')) || !!subByCode(c); }
   function itemNm(code){ var it=ITEMS.find(function(x){return String(x.itemCode)===String(code);}); return it?(it.itemNameEN||it.itemNameEn||code):code; }
   // เดินตามลิงก์: Item Set → สินค้า(component) → subset(SS)  รวบ subset ทั้งหมดที่ปลายทาง
@@ -407,7 +407,7 @@ var App = (function(){
     // SUBSET ที่ต้องผูก (รวมจำนวนผงข้ามสินค้า)
     var subRows = comp.subsets.map(function(s){
       var detail = s.parts.map(function(p){ return esc(p.item)+' ×'+esc(p.qty)+' (เลือก '+esc(p.per)+'/ชิ้น)'; }).join(' + ');
-      return '<tr><td class="mono fw-bold"><i class="fas fa-flask text-success me-1"></i>'+esc(s.ss)+'<button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size:.7rem;line-height:1" type="button" title="คัดลอกรหัส Subset" data-copy="'+esc(s.ss)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></td><td>'+esc(s.name)+'</td><td class="small text-muted">'+detail+'</td>'+
+      return '<tr><td class="mono fw-bold"><i class="fas fa-flask text-success me-1"></i>'+esc(s.ss)+'<button class="btn btn-outline-secondary btn-sm py-0 px-1 ms-1" style="font-size:.7rem;line-height:1" type="button" title="คัดลอกรหัส Subset" data-copy="'+esc(s.ss)+'" onclick="App.copyText(this.getAttribute(\'data-copy\'), this)"><i class="fas fa-copy"></i></button></td><td>'+esc(s.name||'(ไม่พบชื่อ Subset ในข้อมูลหลัก)')+'</td><td class="small text-muted">'+detail+'</td>'+
         '<td class="text-center"><input type="number" class="form-control form-control-sm text-center" style="width:80px;margin:auto" value="'+s.minTotal+'.000" readonly></td>'+
         '<td class="text-center"><input type="number" class="form-control form-control-sm text-center" style="width:80px;margin:auto" value="'+s.maxTotal+'.000" readonly></td></tr>';
     }).join('') || '<tr><td colspan="5" class="empty">ปุ่มนี้ไม่มี subset ผง (สินค้าไม่มีให้กดผง)</td></tr>';
