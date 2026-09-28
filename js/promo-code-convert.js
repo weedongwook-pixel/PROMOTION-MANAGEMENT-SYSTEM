@@ -149,6 +149,22 @@
       });
   }
 
+  /* ตรวจ Mapping Code โดยไม่เขียนข้อมูล — ฟอร์ม Voucher ใช้ก่อนถามยืนยันการส่ง */
+  function inspectFromInput(fileInput, opts) {
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return Promise.reject(new Error('กรุณาแนบไฟล์ Mapping Code'));
+    var needsXLSX = !/\.(csv|txt)$/i.test(file.name || '');
+    return (needsXLSX ? ensureXLSX() : Promise.resolve())
+      .then(function () { return readArrayBuffer(file); })
+      .then(function (buf) {
+        var parsed = classify(rawFromBuffer(buf, file.name));
+        var existing = existingCodeSet(opts || {}), duplicateCodes = [];
+        parsed.codes.forEach(function (code) { if (existing[String(code).toUpperCase()]) duplicateCodes.push(code); });
+        return { codes: parsed.codes.filter(function (code) { return !existing[String(code).toUpperCase()]; }),
+          dup: parsed.dup, invalid: parsed.invalid, dupSystem: duplicateCodes.length, dupSystemCodes: duplicateCodes.slice(0, 20) };
+      });
+  }
+
   /* ---- requests ที่ผูกกับแคมเปญ (มาจากฟอร์ม) ---- */
   function requestsForCampaign(campaign) {
     campaign = String(campaign || '').trim();
@@ -261,6 +277,7 @@
     ensureXLSX: ensureXLSX,
     classify: classify,
     ingestFromInput: ingestFromInput,
+    inspectFromInput: inspectFromInput,
     registerCodes: registerCodes,
     requestsForCampaign: requestsForCampaign,
     codeCountForCampaign: codeCountForCampaign,

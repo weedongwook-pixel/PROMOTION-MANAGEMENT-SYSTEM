@@ -744,9 +744,12 @@
 });
 
 window.submitAllData = async function() {
+    if (window.__voucherChecking || window.__voucherSubmitting) return;
+    window.__voucherChecking = true;
+    try {
     const monthEl = document.getElementById('globalMonth');
     if (!monthEl || !monthEl.value) { window.alertAndFocus(monthEl, 'กรุณาระบุ Target Month'); return; }
-    const _txnDate = (document.getElementById('txnDate') || {}).value || new Date().toISOString();
+    const _txnDate = new Date().toISOString();
     const _submittedBy = (document.getElementById('submittedBy') || {}).value || (function(){ try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch(e){ return ''; } })();
     if(window.PC_CustomerGroup){ const _cg=PC_CustomerGroup.validate(); if(!_cg.ok){ Swal.fire('เลือกกลุ่มลูกค้า', _cg.msg, 'warning'); return; } }
 
@@ -756,6 +759,7 @@ window.submitAllData = async function() {
     let allVoucherData = [];
     let isValid = true;
     let allShortNamesInForm = [];
+    const mappingJobs = [];
 
     for (let [idx, card] of campaignCards.entries()) {
         const campPrefix = `Voucher Campaign #${idx+1}`;
@@ -810,15 +814,23 @@ window.submitAllData = async function() {
                     window.alertAndFocus(fileEl, `${btnPrefix}: กรุณาแนบไฟล์ Mapping Code`);
                     isValid = false; break;
                 }
-                fileData = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve({
-                        base64: e.target.result.split(',')[1],
-                        mimeType: fileEl.files[0].type,
-                        fileName: fileEl.files[0].name
+                try {
+                    fileData = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve({
+                            base64: String(e.target.result || '').split(',')[1] || '',
+                            mimeType: fileEl.files[0].type,
+                            fileName: fileEl.files[0].name
+                        });
+                        reader.onerror = () => reject(new Error('อ่านไฟล์ Mapping Code ไม่สำเร็จ'));
+                        reader.onabort = () => reject(new Error('การอ่านไฟล์ Mapping Code ถูกยกเลิก'));
+                        reader.readAsDataURL(fileEl.files[0]);
                     });
-                    reader.readAsDataURL(fileEl.files[0]);
-                });
+                    if (!fileData.base64 || fileData.base64.length > 3600000) throw new Error('ไฟล์ Mapping Code ใหญ่เกินขนาดที่ระบบบันทึกได้');
+                } catch (e) {
+                    window.alertAndFocus(fileEl, `${btnPrefix}: ${e.message || e}`);
+                    isValid = false; break;
+                }
             }
 
             const discValue = Math.floor(parseFloat(discValEl.value) || 0);
@@ -830,9 +842,6 @@ window.submitAllData = async function() {
                 isValid = false; break;
             }
             allShortNamesInForm.push(shortName.toLowerCase());
-            // ครบวง (option ข): แกะโค้ดในไฟล์ → ลงทะเบียน pc_code_requests → IT ดาวน์โหลด Backoffice + ยืนยัน → สาขาค้นเจอ (Voucher/E-Coupon ProStatus = HS)
-            if (voucherType === 'Online') { try { if (window.PC_CodeConvert) PC_CodeConvert.ingestFromInput(fileEl, { campaign: nameEl.value.trim(), button: shortName, kindShort: 'voucher', proStatus: 'HS', end: endEl.value }); } catch (e) {} }
-
             if (discValue <= 0) { window.alertAndFocus(discValEl, `${btnPrefix}: มูลค่า Voucher ต้องมากกว่า 0`); isValid = false; break; }
 
             let items = [];
@@ -845,6 +854,7 @@ window.submitAllData = async function() {
                 items.push({ itemCode: isAllMode ? "ALL" : ic, itemName: searchInput.value, qty: isAllMode ? "" : row.querySelector('.row-qty').value, price: isAllMode ? "" : row.querySelector('.row-op').value, selectionMode: isAllMode ? "ALL" : "ITEM" });
             }
             if (!isValid) break;
+            if (voucherType === 'Online') mappingJobs.push({ fileEl, campaign: nameEl.value.trim(), button: shortName, start: startEl.value, end: endEl.value });
 
             // Participating Products → ข้อความหมวด (POS) ที่ IT Settlement (f-cate-remark)
             //   All Products  → "สินค้าที่ร่วมรายการ"
@@ -885,20 +895,69 @@ window.submitAllData = async function() {
     }
 
     if (!isValid) return;
+    if (mappingJobs.length) {
+        if (!window.PC_CodeConvert || !PC_CodeConvert.inspectFromInput || !PC_CodeConvert.registerCodes) {
+            Swal.fire('ตรวจไฟล์ไม่ได้', 'ตัวอ่าน Mapping Code ยังไม่พร้อม กรุณารีเฟรชหน้าแล้วลองอีกครั้ง', 'error'); return;
+        }
+        try {
+            const seenCodes = new Set();
+            for (const job of mappingJobs) {
+                const checked = await PC_CodeConvert.inspectFromInput(job.fileEl, { campaign: job.campaign, button: job.button, kindShort: 'voucher' });
+                if (!checked.codes.length || checked.dup || checked.invalid || checked.dupSystem) {
+                    throw new Error(`ปุ่ม ${job.button}: ไฟล์ Mapping Code ต้องมีรหัสที่ใช้ได้และไม่ซ้ำ (รหัสใช้ได้ ${checked.codes.length}, ซ้ำในไฟล์ ${checked.dup}, รูปแบบผิด ${checked.invalid}, ซ้ำในระบบ ${checked.dupSystem})`);
+                }
+                for (const code of checked.codes) {
+                    const key = String(code).toUpperCase();
+                    if (seenCodes.has(key)) throw new Error(`รหัส ${code} ซ้ำกันระหว่างปุ่ม Voucher ในฟอร์มนี้`);
+                    seenCodes.add(key);
+                }
+                job.codes = checked.codes;
+            }
+        } catch (e) {
+            Swal.fire('Mapping Code ไม่ถูกต้อง', String(e.message || e), 'error'); return;
+        }
+    }
 
-    Swal.fire({
+    const result = await Swal.fire({
       title: 'ยืนยันการบันทึก?',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#2e934a',
       confirmButtonText: 'ตกลง',
       cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-      if (result.isConfirmed) {
+    });
+      if (result.isConfirmed && !window.__voucherSubmitting) {
+        window.__voucherSubmitting = true;
+        const submitBtn = document.getElementById('mainSubmitBtn');
+        if (submitBtn) submitBtn.disabled = true;
+        const unlock = () => { window.__voucherSubmitting = false; if (submitBtn) submitBtn.disabled = false; };
+        const sentAt = new Date().toISOString();
+        allVoucherData.forEach(camp => { camp.txnDate = sentAt; camp.submittedBy = _submittedBy; });
+        const dateInput = document.getElementById('txnDate'); if (dateInput) dateInput.value = sentAt;
+        const dateDisplay = document.getElementById('txnDateDisplay'); if (dateDisplay) dateDisplay.textContent = new Date(sentAt).toLocaleString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
         Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        google.script.run.withSuccessHandler(function(res) {
+        let oldRequests;
+        try { oldRequests = localStorage.getItem('pc_code_requests'); }
+        catch (e) {
+            unlock(); Swal.close();
+            Swal.fire('ส่งงานไม่สำเร็จ', 'อ่านข้อมูล Mapping Code ในเครื่องไม่ได้ กรุณาตรวจพื้นที่จัดเก็บแล้วลองอีกครั้ง', 'error'); return;
+        }
+        const restoreRequests = () => {
+            try { if (oldRequests === null) localStorage.removeItem('pc_code_requests'); else localStorage.setItem('pc_code_requests', oldRequests); } catch (e) { console.error('คืนรายการ Mapping Code ไม่สำเร็จ', e); }
+        };
+        try {
+            for (const job of mappingJobs) {
+                const req = PC_CodeConvert.registerCodes(job.codes, { campaign: job.campaign, button: job.button, kindShort: 'voucher', proStatus: 'HS', start: job.start, end: job.end, reporter: _submittedBy });
+                if (!req || req.error) throw new Error('บันทึก Mapping Code ไม่สำเร็จ พื้นที่เก็บข้อมูลในเครื่องอาจเต็ม');
+            }
+        } catch (e) {
+            restoreRequests(); unlock(); Swal.close();
+            Swal.fire('ส่งงานไม่สำเร็จ', String(e.message || e), 'error'); return;
+        }
+        try { google.script.run.withSuccessHandler(function(res) {
             Swal.close();
             if (res === "Success") {
+                unlock();
                 Swal.fire({ title: 'บันทึกสำเร็จ!', text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', icon: 'success', confirmButtonColor: '#2e934a' }).then(() => {
                     document.getElementById('campaignList').innerHTML = ''; 
                     window.campaignCount = 0; 
@@ -907,12 +966,16 @@ window.submitAllData = async function() {
                     var _c = Array.from(new Set((allVoucherData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
                     if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
                 });
-            } else { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + res, 'error'); }
+            } else { restoreRequests(); unlock(); Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + res, 'error'); }
         }).withFailureHandler(function(err) {
-            Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
-        }).processVoucher(allVoucherData);
+            restoreRequests(); unlock(); Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
+        }).processVoucher(allVoucherData); }
+        catch (e) {
+            restoreRequests(); unlock(); Swal.close();
+            Swal.fire('ส่งงานไม่สำเร็จ', String(e.message || e), 'error');
+        }
       }
-    });
+    } finally { window.__voucherChecking = false; }
 };
 </script>
 <style>

@@ -2347,8 +2347,27 @@
   API.submitVoucherProposal = (payload) => {
     const month = payload.globalMonth;
     if (!month) return { status: "error", message: "Missing Target Month Data" };
+    if (!(payload.campaigns || []).length) return { status: "error", message: "ไม่มีข้อมูล Voucher ที่จะส่ง" };
+    const draft = Object.assign({}, store, { months: Object.assign({}, store.months) });
+    draft.months[month] = (store.months[month] || []).slice();
+    const savedFiles = [];
+    let uploadError = false;
+    const discardFiles = () => {
+      if (!savedFiles.length) return;
+      try {
+        const files = JSON.parse(localStorage.getItem("pc_promo_files") || "{}");
+        savedFiles.forEach(id => { delete files[id]; });
+        localStorage.setItem("pc_promo_files", JSON.stringify(files));
+      } catch (e) {}
+    };
     (payload.campaigns || []).forEach(camp => {
       (camp.buttons || []).forEach(btn => {
+        if (uploadError) return;
+        if ((String(btn.voucherType) === "Online" && !btn.fileData) ||
+            (btn.fileData && (!btn.fileData.base64 || btn.fileData.base64.length > 3600000))) { uploadError = true; return; }
+        const attachment = pcSaveUpload(btn.fileData, "VOUCHER_" + btn.shortName);
+        if (attachment.indexOf("file:") === 0) savedFiles.push(attachment.slice(5));
+        if (btn.fileData && attachment.indexOf("file:") !== 0) { uploadError = true; return; }
         // Voucher: ค่า = มูลค่าหน้าบัตร → ลง Gross พร้อมหน่วย (฿/%) · discount เว้นว่าง
         const gv = fmtUnit(btn.discountValue, btn.discountUnit);
         let items = (btn.items || []).map(it => ({
@@ -2356,8 +2375,10 @@
           qty: it.qty || "All", gross: gv, discount: "", netPrice: "",
         }));
         if (!items.length) items = [{ catCode: "", itemCode: "ALL ITEMS", itemNameEN: "All products", qty: "All", gross: gv, discount: "", netPrice: "" }];
-        addButtonGroup(store, {
-          month, campaign: camp.name, reporter: currentUser(), promoType: (String(btn.voucherType) === "Online" ? "Voucher Online" : "Voucher"),
+        addButtonGroup(draft, {
+          month, campaign: camp.name, reporter: camp.submittedBy || currentUser(), submittedBy: camp.submittedBy || currentUser(),
+          txnDate: camp.txnDate || NOW(), submittedDate: camp.txnDate || NOW(),
+          promoType: (String(btn.voucherType) === "Online" ? "Voucher Online" : "Voucher"),
           typePromotion: "Voucher", codePromotion: reserveFormCode("voucher", "VoucherForm", camp.name, btn.shortName, btn.voucherType),
           codeChannel: btn.voucherType || "",   /* FX-P85 */
           proposalKind: camp.proposalKind || "voucher",   // 'voucher' | 'ecoupon' — ต่างแค่ป้ายหน้าสาขา (e)
@@ -2366,18 +2387,28 @@
           cateRemark: btn.cateRemark || "",
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
           customerGroup: camp.customerGroup || "", crmTarget: camp.crmTarget || "", crmTargetName: camp.crmTargetName || "",
-          attachment: pcSaveUpload(btn.fileData, "VOUCHER_" + btn.shortName),
+          attachment,
           items,
         });
       });
     });
-    if (!persist()) return { status: "error", message: "พื้นที่เก็บข้อมูลในเครื่องเต็ม — ข้อมูลยังไม่เข้าระบบ กรุงาสำรองข้อมูล/รีเฟรช แล้วส่งอีกครั้ง" };
+    const expectedButtons = (payload.campaigns || []).reduce((n, camp) => n + (camp.buttons || []).length, 0);
+    if (uploadError || !expectedButtons) {
+      discardFiles();
+      return { status: "error", message: "บันทึกไฟล์ Mapping Code ไม่สำเร็จหรือไฟล์ใหญ่เกินไป กรุณาตรวจพื้นที่เก็บข้อมูลและขนาดไฟล์" };
+    }
+    if (!persist(draft)) {
+      discardFiles();
+      return { status: "error", message: "พื้นที่เก็บข้อมูลในเครื่องเต็ม — ข้อมูลยังไม่เข้าระบบ กรุณาสำรองข้อมูล/รีเฟรช แล้วส่งอีกครั้ง" };
+    }
+    store = draft;
     try { if (window.PC_notify) { const cs=(payload.campaigns||[]).map(c=>c.name).filter(Boolean); window.PC_notify("coupon_issued", { text: 'ออก Voucher/E-Coupon ใหม่: ' + cs.join(', ') + ' — รอ OP ตรวจสอบ' }); } } catch (e) {}
     return { status: "success", message: "Data Saved Successfully" };
   };
   API.processVoucher = (arr) => {
     if (!arr || !arr.length) return "No Data Selected";
-    return API.submitVoucherProposal({ globalMonth: arr[0].month, campaigns: arr }).status === "success" ? "Success" : "Error";
+    const result = API.submitVoucherProposal({ globalMonth: arr[0].month, campaigns: arr });
+    return result.status === "success" ? "Success" : result.message;
   };
 
   /* ---- Discount Allocation Report (เกลี่ยส่วนลดต่อไอเทมในชุด: Item Set / Combo / Value / Price) ---- */
