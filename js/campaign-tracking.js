@@ -395,8 +395,8 @@ window.openFile = function(url, name) {
     const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     let html = '';
-    const fmtTxn = (s)=>{ if(!s) return ''; const d=new Date(s); return isNaN(d.getTime())?esc(String(s)):d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
-    const fmtOpDone = (s)=>{ if(!s) return ''; const d=new Date(String(s).length===10 ? String(s)+'T00:00:00' : s); return isNaN(d.getTime())?esc(String(s)):d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+    const fmtTxn = (s)=>{ if(!s) return ''; const d=new Date(s); return isNaN(d.getTime())?ctEsc(String(s)):d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+    const fmtOpDone = (s)=>{ if(!s) return ''; const d=new Date(String(s).length===10 ? String(s)+'T00:00:00' : s); return isNaN(d.getTime())?ctEsc(String(s)):d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}); };
     paginatedData.forEach(camp => {
       const isExpanded = String(expandedRowIdx) === String(camp.rowIdx);
       const chg = (camp.changeStatus || '').toUpperCase();
@@ -434,7 +434,7 @@ window.openFile = function(url, name) {
           <td><span class="status-badge ${opCls}">${camp.opStatus || 'WAITING'}</span>${camp.opStatus === 'REJECTED' && camp.rejectReason ? `<button class="btn btn-sm btn-link text-danger p-0 d-block mx-auto" style="font-size:.65rem;" onclick="window.showRejectReason('${encodeURIComponent(camp.rejectReason||'').replace(/'/g,'%27')}')"><i class="fas fa-circle-info me-1"></i>ดูเหตุผล</button>` : ''}</td>
           <td class="small">${camp.opDoneDate ? fmtOpDone(camp.opDoneDate) : '<span class="text-muted">-</span>'}</td>
           <td class="small">${camp.txnDate ? fmtTxn(camp.txnDate) : '<span class="text-muted">-</span>'}</td>
-          <td class="small">${(camp.reporter||camp.submittedBy) ? esc(camp.reporter||camp.submittedBy) : '<span class="text-muted">-</span>'}</td>
+          <td class="small">${(camp.reporter||camp.submittedBy) ? ctEsc(camp.reporter||camp.submittedBy) : '<span class="text-muted">-</span>'}</td>
           <td>
             <div class="d-flex justify-content-center">
               <button class="btn-circle btn-edit-mode shadow-sm" title="ดูรายละเอียด" onclick="window.toggleExpand(${camp.rowIdx})"><i class="fas ${isExpanded ? 'fa-times text-danger' : 'fa-eye'}"></i></button>
