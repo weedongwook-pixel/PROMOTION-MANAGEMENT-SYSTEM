@@ -509,7 +509,7 @@ var App = (function(){
     posEditMode=false;
     if(window.Swal && Swal.close) Swal.close();
     posBuildTree(); posRender(); recRender();
-    Swal.fire({icon:'success', title:'ยืม Item Set แล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส 107 <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b>'+(returnedMsg?('<br><span class="small text-muted">'+esc(returnedMsg)+'</span>'):'')+'<br><span class="small text-muted">กลับไปกดยืนยันรหัสนี้ที่หน้า IT Settlement แล้วจึงปิดงาน</span>', confirmButtonColor:'#2e934a'});
+    Swal.fire({icon:'success', title:'ยืม Item Set แล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส 107 <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b>'+(returnedMsg?('<br><span class="small text-muted">'+esc(returnedMsg)+'</span>'):'')+'<br><span class="small text-muted">กลับไปหน้า IT Settlement แล้วกดบันทึก ระบบจะให้ IT ยืนยันการใช้รหัสเดิมก่อนปิดงาน</span>', confirmButtonColor:'#2e934a'});
   }
   // ---- จองเลข Code Item Set (107) จากตัวนับกลาง PC_COUNTER แล้ว "ล็อกต่อปุ่ม" ----
   // ปุ่มเดียวกันได้เลขเดิมเสมอ (findReservedFor) · ปุ่มต่างกันได้คนละเลข (reserve เดินตัวนับ)

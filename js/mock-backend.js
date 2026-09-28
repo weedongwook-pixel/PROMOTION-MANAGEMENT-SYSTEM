@@ -2196,7 +2196,7 @@
     try {
       var pp = JSON.parse(localStorage.getItem("pc_product_promo") || "{}"); if (!pp || typeof pp !== "object") pp = {};
       var typeP = (cate === "E-Voucher") ? "E-Voucher" : "Price Promotion";
-      var prow = { typePromo: typeP, prCode: info.codePromotion || "", net: (info.netPrice == null ? "" : String(info.netPrice)), desc1: info.shortName || "", desc2: "", _fromItemSet: true };
+      var prow = { typePromo: typeP, prCode: info.codePromotion || "", net: (info.netPrice == null ? "" : String(info.netPrice)), desc1: info.shortName || "", desc2: "", saleMode: info.saleMode || "", _fromItemSet: true };
       // 1 item (107) = แถวสินค้าเดียว · หลายแคมเปญยืมรหัส = append หลาย row Code Promotion (ดึง manual ไว้) · dedupe ตาม prCode
       var arr = Array.isArray(pp[String(code)]) ? pp[String(code)] : [];
       arr = arr.filter(function (r) { return !(r && r._fromItemSet && String(r.prCode || "") === String(prow.prCode || "")); });
@@ -3107,7 +3107,9 @@
         if (String(row.opStatus || "").toUpperCase() === "REJECTED") { row.opStatus = "WAITING"; row.rejectReason = ""; row.opDoneDate = ""; }
       }
       store.working.forEach(w => {
-        if (w.campaign === upd.campaign) {
+        // A campaign can contain several POS buttons with different Item Set
+        // codes. Update only the button represented by this settlement row.
+        if (w.campaign === upd.campaign && w.shortName === (upd.sourceShortName || upd.shortName)) {
           const _wWasIS = /item set/i.test(String(w.typePromotion || w.promoType || "")) || !!w.codeItemSet || /^107/.test(String(w.itemPromotion || ""));
           w.itStatus = "COMPLETE"; if (upd.promoType) { w.promoType = upd.promoType; w.typePromotion = upd.promoType; w.typeSel = upd.promoType; if (_wWasIS) w._wasItemSet = true; } w.codePromotion = upd.promoCode;
           w.codeItemSet = upd.itemPromo; w.cateRemark = upd.cateRemark; w.updatedDate = NOW();

@@ -1127,7 +1127,7 @@
              </div>
            </div>`);
       html += `
-        <div class="card mb-5 border-0 shadow-sm" style="border-radius: 15px; overflow: hidden;" data-campaign="${itEsc(campName)}" data-month="${itEsc(month)}" data-everlive="${everLive ? '1' : '0'}">`;
+        <div class="card mb-5 border-0 shadow-sm" style="border-radius: 15px; overflow: hidden;" data-campaign="${itEsc(campName)}" data-month="${itEsc(month)}" data-sale-mode="${itEsc(first.saleMode || 'ALL')}" data-everlive="${everLive ? '1' : '0'}">`;
       html += cancelBar ? '' : '';
       html += `
           ${cancelBar}
@@ -1343,7 +1343,7 @@
             return '<div class="px-4 py-3 border-top" style="background:#eef9f1"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><div><div class="fw-bold small text-uppercase mb-1"><i class="fas fa-mug-hot me-1 text-success"></i>Add on (MKT กรอกมา) — IT ต้องสร้าง Subset</div><div>'+chips+'</div></div>'+act+'</div></div>';
           })()}
           <div class="card-footer bg-white py-2 px-4 d-flex justify-content-between align-items-center border-top">
-            <small class="text-muted"><i class="fas fa-circle-info me-1"></i> Item Set: กรอก Code Item Set + Kitchen · Coupon/Bill/Voucher: กรอกแค่ Code Promotion (ส่วนลด/ชื่อปุ่มมาจากฟอร์ม) แล้วกดบันทึกเพื่อปิดงาน</small>
+            <small class="text-muted"><i class="fas fa-circle-info me-1"></i> Item Set: กรอก Code Item Set + Kitchen (ถ้าใช้รหัสเดิม IT จะยืนยันตอนบันทึก) · Coupon/Bill/Voucher: กรอกแค่ Code Promotion แล้วกดบันทึกเพื่อปิดงาน</small>
             <div class="d-flex gap-2 align-items-center">
               ${chg === 'CANCELLED'
                 ? (everLive
@@ -1598,6 +1598,7 @@
     const card = window.itCardOf(campName, month);
     /* FX-P70b — หาการ์ดไม่เจอ ห้าม return เงียบ (เดิมกดบันทึกแล้วไม่มีอะไรเกิดขึ้นเลย) */
     if (!card) return Swal.fire({ icon: 'warning', title: 'หาการ์ดงานนี้ไม่เจอ', html: '<div class="text-start small">ชื่อแคมเปน: <b>' + itEsc(campName) + '</b><br>ลองกดรีเฟรชหน้า หรือสลับแท็บเป็น ALL แล้วลองอีกครั้ง</div>', confirmButtonColor: '#c0392b' });
+    if (card.dataset.itSavePending === '1') return;
     const rows = card.querySelectorAll('.it-row-item');
     const cateRemarkInp = card.querySelector('.f-cate-remark');
     const cateRemark = cateRemarkInp ? cateRemarkInp.value.trim() : '';
@@ -1607,6 +1608,7 @@
     let headerStore = {};
     let isValid = true, errorMessage = "";
     let usedPromoCodes = new Set(), usedItemPromos = new Map();
+    const reusedItemSets = [];
 
     /* หมวดปุ่มบน POS — บังคับเฉพาะงาน Item Set (คูปอง/Bill/Voucher ไม่ต้องมี — ไม่ได้สร้างปุ่มชุดใหม่) */
     const _hasItemSetRow = Array.from(rows).some(function (tr) {
@@ -1636,14 +1638,22 @@
           const cate = itemInp && itemInp.getAttribute('data-it-cate');
           const itemType = cate === '107' ? 'itemset' : 'item';
           const approved = itemInp && itFieldEntry(itemType, itemType === 'item' ? cate : null, campName, itemInp.id);
-          const reuseApproved = itemInp && window.PC_API && PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, shortName, itemPromo);
+          const reuse = /^107\d{3,}$/.test(itemPromo) && itemInp && window.PC_API && PC_API.getItemSetReuse && PC_API.getItemSetReuse(campName, shortName, itemPromo);
+          const reuseSelected = !!reuse;
           if (!itemPromo || !kitchen) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "Item Set ต้องกรอก Code Item Set และ Kitchen Name ให้ครบ"; }
-          else if (usedItemPromos.has(itemPromo) && !reuseApproved && !usedItemPromos.get(itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Item Set ซ้ำกันในแคมเปญ: ${itemPromo}`; }
-          else if (!isChangeRow && !reuseApproved && (!approved || approved.status !== 'CONFIRMED' || approved.code !== itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่ได้กดยืนยันรหัส Code Item Set ที่หน้า IT Settlement`; }
+          else if (usedItemPromos.has(itemPromo) && !reuseSelected && !usedItemPromos.get(itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Item Set ซ้ำกันในแคมเปญ: ${itemPromo}`; }
+          else if (!isChangeRow && !reuseSelected && (!approved || approved.status !== 'CONFIRMED' || approved.code !== itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่ได้กดยืนยันรหัส Code Item Set ที่หน้า IT Settlement`; }
           else if (!isChangeRow && !builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่มีรหัส Code Item Set จากหน้า Item Set Builder & Powder-Formula — ต้องตั้ง/ยืนยันรหัสที่หน้านั้นก่อน จึงจะปิดงานได้`; }
           else if (!isChangeRow && itemPromo !== builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `รหัส Code Item Set ไม่ตรงกันระหว่าง 2 หน้า — IT Settlement: ${itemPromo || '(ว่าง)'} · Item Set Builder: ${builderCode} — ต้องเป็นรหัสเดียวกัน จึงจะปิดงานได้`; }
           else if (netPrice < 0) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = "Net Price ไม่สามารถมีค่าติดลบได้"; }
-          else { tr.style.backgroundColor = ""; usedItemPromos.set(itemPromo, !!reuseApproved || !!usedItemPromos.get(itemPromo)); if (promoCode) usedPromoCodes.add(promoCode); }
+          else {
+            tr.style.backgroundColor = "";
+            usedItemPromos.set(itemPromo, reuseSelected || !!usedItemPromos.get(itemPromo));
+            if (reuseSelected && !reusedItemSets.some(x => x.shortName === shortName && x.code === itemPromo)) {
+              reusedItemSets.push({ shortName, code: itemPromo, fromCamp: reuse.fromCamp, fromShort: reuse.fromShort });
+            }
+            if (promoCode) usedPromoCodes.add(promoCode);
+          }
         } else {
           // Coupon / Bill discount / Voucher / Price → IT ยืนยันแค่ Code Promotion (ส่วนลด/ชื่อปุ่ม มาจากฟอร์ม)
           if (!promoCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "กรุณากรอก Code Promotion (โค้ดโปรโมชั่น)"; }
@@ -1655,7 +1665,7 @@
       }
       const h = headerStore[shortName] || {};
       return {
-        rowIdx: tr.getAttribute('data-row-idx'), campaign: campName, month: month,
+        rowIdx: tr.getAttribute('data-row-idx'), campaign: campName, month: month, sourceShortName: shortName,
         promoType: h.promoType || "", promoCode: h.promoCode || "", itemPromo: h.itemPromo || "",
         kitchenName: h.kitchenName || "", shortName: h.shortName || "",
         itemCode: tr.querySelector('.f-itemcode').value, itemNameEN: tr.querySelector('.f-itemname').value,
@@ -1666,9 +1676,12 @@
 
     if (!isValid) return Swal.fire('Validation Error', errorMessage, 'warning');
 
-    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    google.script.run
+    card.dataset.itSavePending = '1';
+    const submit = function () {
+      Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      google.script.run
       .withSuccessHandler(function(res) {
+        delete card.dataset.itSavePending;
         if (res === "SUCCESS") {
           /* ยืนยัน (CONFIRM) โค้ดที่จองไว้ของแคมเปญนี้ — กันถูกคืนตอน reload */
           try { updates.forEach(function (u) { itConfirmIfReserved(u.promoCode, campName); itConfirmIfReserved(u.itemPromo, campName); }); } catch (e) {}
@@ -1683,8 +1696,40 @@
           Swal.fire('บันทึกไม่สำเร็จ', 'พื้นที่เก็บข้อมูลในเครื่องเต็ม งานยังไม่ถูกบันทึกหรือซิงก์ Cloud กรุณาสำรองข้อมูลและรีเฟรชก่อนลองใหม่', 'error');
         } else { Swal.fire('Database Notification', res, 'info'); }
       })
-      .withFailureHandler(function(err) { Swal.fire('System Connection Error', 'ไม่สามารถเข้าถึงฐานข้อมูลได้: ' + err, 'error'); })
-      .saveSettlementBatch(month, updates);
+      .withFailureHandler(function(err) { delete card.dataset.itSavePending; Swal.fire('System Connection Error', 'ไม่สามารถเข้าถึงฐานข้อมูลได้: ' + err, 'error'); })
+        .saveSettlementBatch(month, updates);
+    };
+    if (!reusedItemSets.length) { submit(); return; }
+    const saleMode = card.getAttribute('data-sale-mode') || 'ALL';
+    const reuseRows = reusedItemSets.map(function (x) {
+      return '<div class="border rounded p-2 mb-2"><b>' + itEsc(x.shortName) + '</b> · <span class="font-monospace">' + itEsc(x.code) + '</span>' +
+        '<div class="small text-muted">ใช้ร่วมกับ ' + itEsc(x.fromCamp) + ' / ' + itEsc(x.fromShort) + '</div></div>';
+    }).join('');
+    Swal.fire({
+      icon: 'warning', title: 'ยืนยันใช้รหัส Item Set เดิม', width: 620,
+      html: '<div class="text-start">' + reuseRows +
+        '<div class="small mt-2">Sale Mode ของงานนี้: <b>' + itEsc(saleMode) + '</b><br>' +
+        'IT ยืนยันว่าตั้งใจใช้รหัส Item Set เดียวกับปุ่มต้นทาง ระบบจะเก็บ Sale Mode ของงานนี้แยกตามแคมเปญ และไม่แก้สินค้า/สูตรหลักของรหัสเดิม</div></div>',
+      showCancelButton: true, confirmButtonText: 'ยืนยันใช้รหัสซ้ำและบันทึก',
+      cancelButtonText: 'กลับไปตรวจสอบ', confirmButtonColor: '#b7791f'
+    }).then(function (answer) {
+      if (!answer.isConfirmed) { delete card.dataset.itSavePending; return; }
+      if (!window.PC_API || !PC_API.confirmPosReuse) {
+        delete card.dataset.itSavePending;
+        Swal.fire('ยืนยันไม่ได้', 'โหลดข้อมูล Item Set ไม่สำเร็จ กรุณารีเฟรชแล้วลองใหม่', 'error'); return;
+      }
+      for (const x of reusedItemSets) {
+        let result;
+        try { result = PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, x.shortName, x.code)
+          ? { status: 'success' } : PC_API.confirmPosReuse(campName, x.shortName, x.code); }
+        catch (e) { result = { status: 'error', message: 'บันทึกการยืนยันไม่สำเร็จ กรุณารีเฟรชแล้วลองใหม่' }; }
+        if (!result || result.status !== 'success') {
+          delete card.dataset.itSavePending;
+          Swal.fire('ยืนยันรหัสซ้ำไม่สำเร็จ', (result && result.message) || 'กรุณาตรวจรหัส Item Set ต้นทางอีกครั้ง', 'error'); return;
+        }
+      }
+      submit();
+    }).catch(function () { delete card.dataset.itSavePending; Swal.fire('บันทึกไม่สำเร็จ', 'เกิดข้อผิดพลาดระหว่างยืนยันรหัส Item Set กรุณาลองใหม่', 'error'); });
   };
 
   /* ---- extend / reduce / cancel ---- */
