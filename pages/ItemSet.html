@@ -375,7 +375,8 @@ var App = (function(){
     // ราคารวมปุ่ม = ผลรวม "ราคาปกติ (gross)" ของทุกบรรทัดในปุ่ม (รวมสินค้า+subset · ราคา×qty) — ราคาเต็ม
     var posTotalPrice = comp.grossTotal || 0;
     var _reuseKey = posSel.camp+'||'+posSel.sn;
-    var borrowed = (store.reuse||{})[_reuseKey];
+    var borrowed = btn.itemSetReuse || (store.reuse||{})[_reuseKey];
+    if(borrowed && String(borrowed.code||'')!==String(btn.codeItemSet||'')) borrowed=null;
     if(borrowed && borrowed.code){ curCode = borrowed.code; }
     var reuseMatch = (!borrowed && !btn.posReady) ? findReuseMatch(posSel.camp, posSel.sn) : null;
     // header: Code Item Set (auto from latest 107) + Kitchen + Short Name + save
@@ -403,7 +404,9 @@ var App = (function(){
         : '<button class="btn '+(locked?'btn-outline-success':'btn-pc')+' btn-sm fw-bold" style="width:46px" title="'+(locked?'แก้ไขปุ่ม':'บันทึกปุ่ม (เซตเสร็จ)')+'" onclick="App.posSaveOrEdit()"><i class="fas fa-'+(locked?'pen':'floppy-disk')+'"></i></button>')+'</div>'+
       '</div>'+
       (itLocked ? '<div class="alert alert-secondary py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-lock me-1"></i>'+itLockReason+'</div>'
-        : btn.posReady ? '<div class="alert alert-success py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-circle-check me-1"></i>ปุ่มถูกเซตแล้ว — Code Item Set ไหลไปหน้า IT Settlement พร้อมให้กดบันทึกปิดงาน</div>'
+        : btn.posReady ? (borrowed && !borrowed.confirmedAt
+            ? '<div class="alert alert-info py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-circle-info me-1"></i>ใช้ Item Set เดิมแล้ว — กลับไปกดยืนยันรหัสที่หน้า IT Settlement ก่อนปิดงาน</div>'
+            : '<div class="alert alert-success py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-circle-check me-1"></i>ปุ่มถูกเซตแล้ว — Code Item Set ไหลไปหน้า IT Settlement พร้อมให้กดบันทึกปิดงาน</div>')
         : '<div class="alert alert-warning py-1 px-2 mb-3" style="font-size:.8rem"><i class="fas fa-triangle-exclamation me-1"></i>ยังไม่ได้ตั้งค่าปุ่ม — ต้องกด "ตั้งค่าปุ่ม" ก่อน IT ถึงจะกดบันทึกปิดงานที่หน้า IT Settlement ได้</div>');
     // SUBSET ที่ต้องผูก (รวมจำนวนผงข้ามสินค้า)
     var subRows = comp.subsets.map(function(s){
@@ -462,7 +465,7 @@ var App = (function(){
         var items = (comp.members||[]).map(function(m){ return esc(m.itemNameEn||m.itemNameEN||m.itemCode); }).slice(0,6).join(', ') + ((comp.members||[]).length>6?' …':'');
         return '<div style="border:1px solid '+(match?'#2e934a':'#e2e6ea')+';border-radius:9px;padding:10px 12px;margin-bottom:8px;background:'+(match?'#f4faf6':'#fff')+'">'+
           '<div class="d-flex justify-content-between align-items-start gap-2">'+
-          '<div><div class="fw-bold">'+esc(b.campaign)+(match?' <span class="badge bg-success ms-1" style="font-size:.6rem">item ตรงกัน</span>':'')+'</div>'+
+          '<div><div class="fw-bold">'+esc(b.campaign)+(match?' <span class="badge bg-success ms-1" style="font-size:.6rem">item ตรงกัน</span>':' <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem">รายการต่างกัน · ยืนยันก่อนใช้</span>')+'</div>'+
           '<div class="small text-muted">ปุ่ม: '+esc(b.shortName)+' · <span class="mono">107 = '+esc(b.codeItemSet)+'</span></div>'+
           '<div class="small" style="color:#6c757d">item: '+(items||'—')+'</div></div>'+
           '<button class="btn btn-sm btn-pc fw-bold" onclick="App.posReusePick(\''+jsq(b.campaign)+'\',\''+jsq(b.shortName)+'\')">เลือก</button>'+
@@ -470,21 +473,29 @@ var App = (function(){
       }).join('');
     };
     Swal.fire({ title:'ใช้ Item Set เดิม (ยืมรหัส 107)', width:640,
-      html:'<div class="text-start"><div class="small text-muted mb-2">พิมพ์ชื่อแคมเปญต้นทางที่มี item ชุดเดียวกัน แล้วกด "เลือก" — ระบบจะเอารหัส 107 มาใส่ปุ่มนี้ (ไม่ต้องสร้าง item ใหม่) · เลข 107 ที่จองให้ปุ่มนี้ถูกคืนกลับ</div>'+
+      html:'<div class="text-start"><div class="small text-muted mb-2">เลือกปุ่มต้นทางเพื่อใช้รหัส 107 เดียวกัน หากรายการสินค้าต่างกัน ระบบจะให้ยืนยันอีกครั้ง และจะไม่แก้สินค้า/สูตรหลักของรหัสเดิม</div>'+
         '<input id="reuseSearch" class="form-control form-control-sm mb-2" placeholder="ค้นหาชื่อแคมเปญ / รหัส 107 / ชื่อปุ่ม">'+
         '<div id="reuseList" style="max-height:380px;overflow:auto">'+renderList('')+'</div></div>',
       showConfirmButton:false, showCancelButton:true, cancelButtonText:'ปิด',
       didOpen:function(){ var inp=document.getElementById('reuseSearch'); if(inp){ inp.focus(); inp.addEventListener('input',function(){ document.getElementById('reuseList').innerHTML=renderList(inp.value); }); } }
     });
   }
-  function posReusePick(fromCamp, fromSn){
+  function posReusePick(fromCamp, fromSn, acknowledgedDifference, expectedCode){
     var all = itemSetButtons();
     var src = all.find(function(b){ return b.campaign===fromCamp && b.shortName===fromSn; });
     if(!src || !String(src.codeItemSet||'').trim()){ Swal.fire('ใช้ไม่ได้','ปุ่มต้นทางยังไม่มีรหัส Item Set (107)','warning'); return; }
     var aCode = String(src.codeItemSet).trim();
+    if(expectedCode && aCode!==expectedCode){ Swal.fire('รหัสต้นทางเปลี่ยนแล้ว','กรุณาเปิดรายการ Item Set เดิมและเลือกใหม่อีกครั้ง','warning'); return; }
     var bBtn = all.find(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; }) || {};
     var bPrev = String(bBtn.codeItemSet||'').trim();
-    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, aCode); }
+    if(btnItemSig(posSel.camp, posSel.sn)!==btnItemSig(fromCamp, fromSn) && !acknowledgedDifference){
+      Swal.fire({icon:'warning',title:'รายการสินค้าไม่เหมือน Item Set ต้นทาง',html:'จะใช้รหัส <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b><br><span class="small">สินค้าและสูตรหลักของรหัสนี้จะคงตามต้นทาง ไม่ถูกแทนที่ด้วยรายการของโปรใหม่</span>',showCancelButton:true,confirmButtonText:'ใช้รหัสเดิม',cancelButtonText:'ยกเลิก',confirmButtonColor:'#b7791f'})
+        .then(function(r){ if(r.isConfirmed) posReusePick(fromCamp, fromSn, true, aCode); });
+      return;
+    }
+    if(!window.PC_API || !PC_API.savePosButton){ Swal.fire('ใช้ไม่ได้','โหลดระบบบันทึกปุ่มไม่สำเร็จ กรุณารีเฟรชหน้า','error'); return; }
+    var saved = PC_API.savePosButton(posSel.camp, posSel.sn, aCode, {fromCamp:fromCamp, fromShort:fromSn});
+    if(!saved || saved.status!=='success'){ Swal.fire('ใช้ Item Set เดิมไม่ได้',(saved&&saved.message)||'กรุณาลองใหม่','error'); return; }
     var returnedMsg = '';
     try{
       if(bPrev && bPrev!==aCode && /^\d+$/.test(bPrev) && window.PC_COUNTER && PC_COUNTER.returnCode){
@@ -498,7 +509,7 @@ var App = (function(){
     posEditMode=false;
     if(window.Swal && Swal.close) Swal.close();
     posBuildTree(); posRender(); recRender();
-    Swal.fire({icon:'success', title:'ยืม Item Set แล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส 107 <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b>'+(returnedMsg?('<br><span class="small text-muted">'+esc(returnedMsg)+'</span>'):'')+'<br><span class="small text-muted">เหลือแค่รอ Code Promotion (ราคาต่าง จองแยกแคมเปญ)</span>', confirmButtonColor:'#2e934a'});
+    Swal.fire({icon:'success', title:'ยืม Item Set แล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส 107 <b class="mono">'+esc(aCode)+'</b> ร่วมกับ <b>'+esc(fromCamp)+'</b>'+(returnedMsg?('<br><span class="small text-muted">'+esc(returnedMsg)+'</span>'):'')+'<br><span class="small text-muted">กลับไปกดยืนยันรหัสนี้ที่หน้า IT Settlement แล้วจึงปิดงาน</span>', confirmButtonColor:'#2e934a'});
   }
   // ---- จองเลข Code Item Set (107) จากตัวนับกลาง PC_COUNTER แล้ว "ล็อกต่อปุ่ม" ----
   // ปุ่มเดียวกันได้เลขเดิมเสมอ (findReservedFor) · ปุ่มต่างกันได้คนละเลข (reserve เดินตัวนับ)
@@ -603,7 +614,7 @@ var App = (function(){
     Swal.fire({icon:'warning', title:'ล้างรหัสออกจากปุ่มนี้?', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> จะกลับไปเป็น “ยังไม่มีรหัส”<br><span class="small text-muted">เลขจองที่ IT Settlement ยังอยู่ครบ — กด “รับรหัส” ใหม่ได้ตลอด</span>',
       showCancelButton:true, confirmButtonText:'ล้างรหัส', cancelButtonText:'ยกเลิก', confirmButtonColor:'#c0392b'})
     .then(function(r){ if(!r.isConfirmed) return;
-      if(window.PC_API && PC_API.clearPosButtonCode){ PC_API.clearPosButtonCode(posSel.camp, posSel.sn); }
+      if(window.PC_API && PC_API.clearPosButtonCode){ var cleared=PC_API.clearPosButtonCode(posSel.camp, posSel.sn); if(!cleared || cleared.status!=='success'){ Swal.fire('ล้างรหัสไม่สำเร็จ',(cleared&&cleared.message)||'กรุณาลองใหม่','error'); return; } }
       try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk]){ delete store.reuse[_rk]; persist(); } }catch(e){}
       posEditMode=false; posBuildTree(); posRender(); recRender();
       Swal.fire({icon:'success', title:'ล้างรหัสแล้ว', confirmButtonColor:'#2e934a'});
@@ -619,15 +630,18 @@ var App = (function(){
   function posSave(){
     var code = (document.getElementById('posCode').value||'').trim();
     if(!code){ Swal.fire('ยังไม่มี Code Item Set','กด “รับรหัสจาก IT Settlement” ก่อนจึงจะตั้งค่าปุ่มได้','warning'); return; }
-    if(window.PC_API && PC_API.checkCode){
+    var btn = itemSetButtons().find(function(b){ return b.campaign===posSel.camp && b.shortName===posSel.sn; }) || {};
+    var borrowed = btn.itemSetReuse || (store.reuse||{})[posSel.camp+'||'+posSel.sn];
+    if(borrowed && (String(borrowed.code||'')!==code || String(btn.codeItemSet||'')!==code)) borrowed=null;
+    if(window.PC_API && PC_API.checkCode && !(borrowed && borrowed.code===code)){
       var chk = PC_API.checkCode('itemset', code, posSel.camp);
       if(chk && chk.status==='dup'){ Swal.fire({icon:'error',title:'โค้ดซ้ำในระบบ',text:chk.message,confirmButtonColor:'#c0392b'}); return; }
     }
-    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, code); }
+    if(window.PC_API && PC_API.savePosButton){ var saved=PC_API.savePosButton(posSel.camp, posSel.sn, code); if(!saved || saved.status!=='success'){ Swal.fire('บันทึกไม่สำเร็จ',(saved&&saved.message)||'กรุณาลองใหม่','error'); return; } }
     try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk] && store.reuse[_rk].code!==code){ delete store.reuse[_rk]; persist(); } }catch(e){}
     posEditMode=false;
     posBuildTree(); posRender(); recRender();
-    Swal.fire({icon:'success', title:'ตั้งค่าปุ่มแล้ว', html:'Code Item Set <b>'+esc(code)+'</b> ถูกส่งไปหน้า <b>IT Settlement</b><br><span class="small text-muted">IT กดบันทึกปิดงานได้แล้ว</span>', confirmButtonColor:'#2e934a'});
+    Swal.fire({icon:'success', title:'ตั้งค่าปุ่มแล้ว', html:'Code Item Set <b>'+esc(code)+'</b> ถูกส่งไปหน้า <b>IT Settlement</b><br><span class="small text-muted">'+(borrowed && borrowed.code===code && !borrowed.confirmedAt ? 'IT ต้องกดยืนยันการใช้รหัสเดิมก่อนปิดงาน' : 'IT กดบันทึกปิดงานได้แล้ว')+'</span>', confirmButtonColor:'#2e934a'});
   }
   // ---- Recipe tab (separate) ----
   function recRender(){

@@ -340,6 +340,7 @@
         cateRemark: f.cateRemark || "", minAmount: f.minAmount || 0, memoUrl: f.memoUrl || "",
         changeStatus: f.changeStatus || "", reason: f.reason || "", submittedDate: f.submittedDate || "",
         itDoneDate: f.itDoneDate || "", opDoneDate: f.opDoneDate || "", posReady: !!f.posReady,
+        itemSetReuse: f.itemSetReuse || null,
         /* FX-P45 — สถานะที่ต้องรอดจากการ rebuild (เดิมหาย → หน้าสาขา/ยกเลิกอ่านค่าผิด) */
         wentLive: !!f.wentLive, cancelHandled: !!f.cancelHandled, cancelAction: f.cancelAction || "",
         cancelHandledDate: f.cancelHandledDate || "", removedFromPos: !!f.removedFromPos,
@@ -1917,13 +1918,50 @@
   /* ---- POS Button Setup: persist Code Item Set + mark button POS-ready ----
      Writes codeItemSet to both the month rows and the working row so IT_Settlement
      (Code Item Set field) reflects it. posReady=true lets IT save & close the work. */
+  const itemSetReuseSource = (campaign, shortName, code, fromCamp, fromShort, requireTargetCode = true) => {
+    if (!/^107\d{3,}$/.test(String(code || "")) || !fromCamp || !fromShort || (campaign === fromCamp && shortName === fromShort)) return null;
+    const source = store.working.find(w => w.campaign === fromCamp && w.shortName === fromShort && String(w.codeItemSet || "").trim() === String(code));
+    const target = store.working.find(w => w.campaign === campaign && w.shortName === shortName);
+    // The explicit "use existing Item Set" action means both buttons share one
+    // 107 code. Different campaign item rows do not make that code a new SKU.
+    return source && target && (!requireTargetCode || String(target.codeItemSet || "").trim() === String(code)) ? source : null;
+  };
+  const itemSetReuseFor = (campaign, shortName, code) => {
+    const target = store.working.find(w => w.campaign === campaign && w.shortName === shortName);
+    if (!target) return null;
+    let reuse = target.itemSetReuse;
+    if (!reuse) {
+      // Legacy clicks stored the source only in the Item Set page state.
+      try { reuse = (JSON.parse(localStorage.getItem("pc_mock_isf") || "{}").reuse || {})[campaign + "||" + shortName]; } catch (e) {}
+    }
+    if (!reuse || String(reuse.code || "").trim() !== String(code || target.codeItemSet || "").trim()) return null;
+    return { code: String(reuse.code), fromCamp: String(reuse.fromCamp || ""), fromShort: String(reuse.fromShort || ""), confirmedAt: String(reuse.confirmedAt || "") };
+  };
+  API.getItemSetReuse = (campaign, shortName, code) => itemSetReuseFor(campaign, shortName, code);
+  API.isPosReuseConfirmed = (campaign, shortName, code) => {
+    const reuse = itemSetReuseFor(campaign, shortName, code);
+    return !!(reuse && reuse.confirmedAt && itemSetReuseSource(campaign, shortName, code, reuse.fromCamp, reuse.fromShort));
+  };
+  API.confirmPosReuse = (campaign, shortName, code) => {
+    const reuse = itemSetReuseFor(campaign, shortName, code);
+    if (!reuse || !itemSetReuseSource(campaign, shortName, code, reuse.fromCamp, reuse.fromShort)) {
+      return { status: "error", message: "รหัส Item Set เดิมไม่ตรงกับปุ่มต้นทาง กรุณาตรวจที่หน้า Item Set" };
+    }
+    const before = JSON.parse(JSON.stringify(store));
+    const confirmed = Object.assign({}, reuse, { confirmedAt: reuse.confirmedAt || NOW() });
+    const apply = r => { if (r.campaign === campaign && r.shortName === shortName && String(r.codeItemSet || "").trim() === String(code)) r.itemSetReuse = confirmed; };
+    store.working.forEach(apply);
+    Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
+    if (!persist()) { store = before; return { status: "error", message: "บันทึกการยืนยันไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" }; }
+    return { status: "success", reuse: confirmed };
+  };
   API.getItemSetButtons = () => {
     return store.working
       .filter(w => String(w.typePromotion || w.promoType || "").toLowerCase().indexOf("item set") !== -1 || w._wasItemSet)
       .map(w => ({
         campaign: w.campaign, shortName: w.shortName, month: w.month,
         start: w.start || "", end: w.end || "",
-        codeItemSet: w.codeItemSet || "", kitchen: w.kitchen || "", saleMode: w.saleMode || "",
+        codeItemSet: w.codeItemSet || "", itemSetReuse: itemSetReuseFor(w.campaign, w.shortName, w.codeItemSet), kitchen: w.kitchen || "", saleMode: w.saleMode || "",
         cateRemark: w.cateRemark || w.postCate || "",
         branchNote: w.branchNote || "",
         typeSel: w.typeSel || "",
@@ -1935,6 +1973,7 @@
     let n = 0;
     const apply = (r) => {
       if (r.campaign === campaign && codeMap[r.shortName]) {
+        if (r.itemSetReuse && String(r.itemSetReuse.code || "") !== String(codeMap[r.shortName])) delete r.itemSetReuse;
         r.codeItemSet = codeMap[r.shortName]; r.itemPromotion = codeMap[r.shortName]; r.posReady = true; r.updatedDate = NOW(); n++;
       }
     };
@@ -1944,30 +1983,37 @@
     if (!persist()) return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" };
     return { status: "success", updated: n };
   };
-  API.savePosButton = (campaign, shortName, codeItemSet) => {
+  API.savePosButton = (campaign, shortName, codeItemSet, reuseSource) => {
+    if (reuseSource && !itemSetReuseSource(campaign, shortName, codeItemSet, reuseSource.fromCamp, reuseSource.fromShort, false)) {
+      return { status: "error", message: "ใช้ Item Set เดิมไม่ได้ — ไม่พบรหัสนี้ที่ปุ่มต้นทาง" };
+    }
+    const before = JSON.parse(JSON.stringify(store));
     let n = 0;
     const apply = (r) => {
       if (r.campaign === campaign && r.shortName === shortName) {
         r.codeItemSet = codeItemSet; r.itemPromotion = codeItemSet; r.posReady = true; r.updatedDate = NOW(); n++;
+        if (reuseSource) r.itemSetReuse = { code: codeItemSet, fromCamp: reuseSource.fromCamp, fromShort: reuseSource.fromShort, confirmedAt: "" };
+        else if (r.itemSetReuse && String(r.itemSetReuse.code || "") !== String(codeItemSet)) delete r.itemSetReuse;
       }
     };
     store.working.forEach(apply);
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
     if (!n) return { status: "error", message: "ไม่พบปุ่ม Item Set ที่เลือก กรุณารีเฟรชหน้า" };
-    if (!persist()) return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" };
+    if (!persist()) { store = before; return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" }; }
     return { status: "success", updated: n, codeItemSet };
   };
   // ล้าง Code Item Set ของปุ่ม (คืนสถานะเป็น "ยังไม่ได้รับรหัส") — ไม่แตะเลขจองในตัวนับกลาง
   API.clearPosButtonCode = (campaign, shortName) => {
+    const before = JSON.parse(JSON.stringify(store));
     let n = 0;
     const apply = (r) => {
       if (r.campaign === campaign && (!shortName || r.shortName === shortName)) {
-        r.codeItemSet = ""; r.itemPromotion = ""; r.itemPromoCode = ""; r.posReady = false; r.updatedDate = NOW(); n++;
+        r.codeItemSet = ""; r.itemPromotion = ""; r.itemPromoCode = ""; r.posReady = false; delete r.itemSetReuse; r.updatedDate = NOW(); n++;
       }
     };
     store.working.forEach(apply);
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
-    persist();
+    if (!persist()) { store = before; return { status: "error", message: "ล้างรหัสไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" }; }
     return { status: "success", updated: n };
   };
   // หมายเหตุเด่นหน้าสาขา (branchNote) — IT ใส่ที่หน้าทำปุ่ม → โชว์เป็นป้ายเด่นบนการ์ดสาขา
@@ -2116,7 +2162,7 @@
     return 1;
   }
 
-  function itemsetToProducts(info, code, totalGross, items) {
+  function itemsetToProducts(info, code, totalGross, items, reused) {
     if (!code) return;
     store.npdProducts = store.npdProducts || [];
     const cate = info.postCate || "Promotion set";
@@ -2138,9 +2184,14 @@
       fromDate: info.start || "", toDate: info.end || "",
       postCate: cate, _fromItemSet: (info.campaign || "") + "|" + (info.shortName || ""),
     }, px);
-    const i = store.npdProducts.findIndex(p => String(p.itemCode) === String(code));
-    if (i >= 0) store.npdProducts[i] = Object.assign({}, store.npdProducts[i], row);
-    else store.npdProducts.push(row);
+    // A borrowed 107 is the same product as the source campaign. Only its
+    // promotion/price binding is new; never overwrite an existing master/recipe.
+    const hasMaster = store.npdProducts.some(p => String(p.itemCode) === String(code)) || (SEED.items || []).some(p => String(p.itemCode) === String(code));
+    if (!reused || !hasMaster) {
+      const i = store.npdProducts.findIndex(p => String(p.itemCode) === String(code));
+      if (i >= 0) store.npdProducts[i] = Object.assign({}, store.npdProducts[i], row);
+      else store.npdProducts.push(row);
+    }
     // เติมตาราง Price Promotion (pc_product_promo) — Type + Code Promotion + Net (ผูกกับโปในหน้าสินค้า) · เติมเฉพาะตอนว่าง/เคย auto — ไม่ทับที่ user แก้เอง
     try {
       var pp = JSON.parse(localStorage.getItem("pc_product_promo") || "{}"); if (!pp || typeof pp !== "object") pp = {};
@@ -2153,7 +2204,7 @@
       pp[String(code)] = arr;
       localStorage.setItem("pc_product_promo", JSON.stringify(pp));
     } catch (e) {}
-    itemsetLinkSubsetComp(code, items, (info.campaign || "") + "|" + (info.shortName || ""));
+    if (!reused || !hasMaster) itemsetLinkSubsetComp(code, items, (info.campaign || "") + "|" + (info.shortName || ""));
   }
 
   /* Item Set components → Edit Product "Subset & Item List" (pc_itemset_comp)
@@ -2730,7 +2781,7 @@
           saleMode: r.saleMode, promoType: r.promoType || r.typePromotion, promoCode: r.codePromotion,
           typeSel: r.typeSel || "", _wasItemSet: r._wasItemSet || false,
           itemPromo: r.itemPromotion, kitchenName: r.kitchen, shortName: r.shortName,
-          builderCode: String(r.codeItemSet || ""), posReady: !!r.posReady,
+          builderCode: String(r.codeItemSet || ""), itemSetReuse: itemSetReuseFor(r.campaign, r.shortName, r.codeItemSet), posReady: !!r.posReady,
           /* เคยขึ้นปุ่มบน POS แล้วหรือยัง — ตัวตัดสินว่าคืนโค้ดได้ไหมเวลายกเลิก */
           wentLive: !!r.wentLive, everLive: (!!r.wentLive || !!r.posReady || status === "COMPLETE" || !!r.itDoneDate),
           cancelReason: r.cancelReason || "", cancelHandled: !!r.cancelHandled,
@@ -3020,14 +3071,20 @@
       if (prevCodes.has(pc.toUpperCase())) continue;                 /* โค้ดเดิมของแคมเปญนี้ = อัปเดตข้อมูล ไม่ถือว่าซ้ำ */
       if (existPromo[pc.toUpperCase()]) return "DUP_PROMO|" + pc + "|" + existPromo[pc.toUpperCase()];
     }
-    // Code Item Set: บล็อกเฉพาะรหัสซ้ำ + item ไม่ตรง (คนละของ) · item เดียวกัน = ยืมรหัส ผ่าน
+    // Different item rows normally mean a different Item Set. The exception is
+    // an explicitly borrowed 107 that IT already confirmed for this button.
     {
       const isCodes = new Set(updates.map(u => String(u.itemPromo || "").trim().toUpperCase()).filter(Boolean));
       for (const isU of isCodes) {
         if (!existItemSet[isU]) continue;
         const bSet = new Set(updates.filter(x => String(x.itemPromo || "").trim().toUpperCase() === isU).map(x => String(x.itemCode || "").trim()));
         if (sigOf(existItemSetSig[isU] || new Set()) !== sigOf(bSet)) {
-          return "DUP_ITEMSET|" + isU + "|" + existItemSet[isU];
+          const buttons = new Map();
+          updates.filter(x => String(x.itemPromo || "").trim().toUpperCase() === isU)
+            .forEach(x => buttons.set(String(x.campaign) + "||" + String(x.shortName), x));
+          if ([...buttons.values()].some(x => !API.isPosReuseConfirmed(x.campaign, x.shortName, isU))) {
+            return "DUP_ITEMSET|" + isU + "|" + existItemSet[isU];
+          }
         }
       }
     }
@@ -3071,7 +3128,7 @@
       const code = String(u.itemPromo || "").trim();
       if (!code) return;
       const gk = u.campaign + "|" + u.shortName;
-      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, promoCode: u.promoCode || "", netPrice: u.netPrice || "", items: [] };
+      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, promoCode: u.promoCode || "", netPrice: u.netPrice || "", reused: API.isPosReuseConfirmed(u.campaign, u.shortName, code), items: [] };
       _isGroups[gk].items.push({ originalPrice: u.price, qty: u.qty, itemCode: u.itemCode, itemNameEN: u.itemNameEN });
     });
     Object.keys(_isGroups).forEach(gk => {
@@ -3089,7 +3146,7 @@
         codePromotion: grp.promoCode || "", netPrice: grp.netPrice || "",
       };
       const tg = grp.items.reduce((a, it) => a + (parseFloat(it.originalPrice) || 0) * (parseInt(it.qty) || 1), 0);
-      itemsetToProducts(info, grp.code, tg, grp.items);
+      itemsetToProducts(info, grp.code, tg, grp.items, grp.reused);
     });
     /* \u2b50 \u0e17\u0e38\u0e01\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17\u0e2d\u0e37\u0e48\u0e19 (Coupon · Bill Discount · Voucher · Price Promotion) \u2192 \u0e40\u0e02\u0e35\u0e22\u0e19\u0e25\u0e07\u0e15\u0e32\u0e23\u0e32\u0e07\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2b\u0e25\u0e31\u0e01\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e40\u0e21\u0e37\u0e48\u0e2d IT \u0e01\u0e14\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e17\u0e38\u0e01\u0e04\u0e23\u0e31\u0e49\u0e07
        (\u0e40\u0e14\u0e34\u0e21\u0e40\u0e02\u0e35\u0e22\u0e19\u0e40\u0e09\u0e1e\u0e32\u0e30 Item Set \u2192 \u0e07\u0e32\u0e19\u0e2d\u0e37\u0e48\u0e19\u0e44\u0e21\u0e48\u0e21\u0e35\u0e15\u0e31\u0e27\u0e15\u0e19\u0e43\u0e19\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2b\u0e25\u0e31\u0e01 \u0e15\u0e2d\u0e19\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e15\u0e31\u0e27\u0e22\u0e48\u0e2d\u0e08\u0e36\u0e07\u0e2b\u0e32\u0e44\u0e21\u0e48\u0e40\u0e08\u0e2d) */

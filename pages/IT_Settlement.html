@@ -964,8 +964,8 @@
   window.itConfirmItemSetCode = async function(btn) {
     var tr = btn && btn.closest('tr.it-row-item'), card = tr && tr.closest('.card');
     var inp = tr && tr.querySelector('.f-itempromo');
-    if (!inp || !card || !window.PC_COUNTER || !PC_COUNTER.claimExact) {
-      Swal.fire('ยืนยันไม่ได้', 'โหลดตัวนับกลางไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error'); return;
+    if (!inp || !card || !window.PC_API) {
+      Swal.fire('ยืนยันไม่ได้', 'โหลดข้อมูลงานไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error'); return;
     }
     var camp = card.getAttribute('data-campaign') || '', month = card.getAttribute('data-month') || '';
     var shortName = tr.getAttribute('data-short-name') || '';
@@ -979,6 +979,28 @@
     var builderCode = (tr.getAttribute('data-builder-code') || '').trim();
     if (builderCode && builderCode !== code) {
       Swal.fire('ปุ่มนี้รับรหัสไปแล้ว', 'หน้า Item Set ใช้รหัส ' + builderCode + ' อยู่ กรุณาล้างรหัสที่หน้านั้นก่อนเปลี่ยนเป็น ' + code, 'warning'); return;
+    }
+    var reuse = PC_API.getItemSetReuse && PC_API.getItemSetReuse(camp, shortName, code);
+    if (reuse) {
+      btn.disabled = true;
+      try {
+        var reused = PC_API.confirmPosReuse && PC_API.confirmPosReuse(camp, shortName, code);
+        if (!reused || reused.status !== 'success') {
+          inp.classList.add('is-invalid');
+          Swal.fire('ยืนยันไม่สำเร็จ', (reused && reused.message) || 'ตรวจข้อมูล Item Set ต้นทางแล้วลองใหม่', 'error'); return;
+        }
+        inp.setAttribute('data-it-confirmed', '1');
+        inp.classList.remove('is-invalid'); inp.classList.add('is-valid');
+        var reuseStatus = inp.closest('td').querySelector('.it-itemset-status');
+        if (reuseStatus) { reuseStatus.className = 'it-itemset-status small text-success'; reuseStatus.textContent = 'ยืนยันใช้รหัสเดิมแล้ว'; }
+        Swal.fire({icon:'success', title:'ยืนยันใช้ Item Set เดิมแล้ว', html:'<b>' + itEsc(shortName) + '</b> ใช้รหัส <b class="mono">' + itEsc(code) + '</b> ร่วมกับ <b>' + itEsc(reuse.fromCamp) + '</b><br><span class="small text-muted">สามารถตรวจข้อมูลแล้วกดบันทึกปิดงานได้</span>', confirmButtonColor:'#2e934a'});
+      } catch (err) {
+        Swal.fire('ยืนยันไม่สำเร็จ', 'ระบบบันทึกการใช้ Item Set เดิมไม่ได้ กรุณารีเฟรชแล้วลองใหม่', 'error');
+      } finally { btn.disabled = false; }
+      return;
+    }
+    if (!window.PC_COUNTER || !PC_COUNTER.claimExact) {
+      Swal.fire('ยืนยันไม่ได้', 'โหลดตัวนับกลางไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error'); return;
     }
     var buttons = window.PC_API && PC_API.getItemSetButtons ? PC_API.getItemSetButtons() : [];
     var usedBy = buttons.find(function(b) {
@@ -1264,12 +1286,14 @@
                     const _isField = itCodeFieldId(_isType === 'itemset' ? 'itemset' : 'item-' + _isCate, campName, it.shortName || '', month);
                     const _isEntry = itFieldEntry(_isType, _isType === 'item' ? _isCate : null, campName, _isField);
                     const _isVal = String(it.itemPromo||'').trim() || _bcRaw || (_isEntry && _isEntry.code) || _sharedIS;
+                    const _reuseConfirmed = !!(isHeader && _isVal && window.PC_API && PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, it.shortName || '', _isVal));
+                    const _isConfirmed = _reuseConfirmed || !!(_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal);
                     const _isAttr = (_isCate === '107')
                       ? `id="${_isField}" data-cc-reserve="itemset" data-cc-where='${itEsc(campName)}'`
                       : `id="${_isField}" data-cc-reserve="item" data-cc-cat="${_isCate}" data-cc-where='${itEsc(campName)}'`;
                     const _isLegacyField = 'itccf-' + (_isType === 'itemset' ? 'itemset' : 'item-' + _isCate) + '-' + _oldKey;
                     const _canMigrateLegacy = _legacyUnique || (_bcRaw && _bcRaw === _isVal);
-                    const _itemSetInputAttr = `${_isAttr} data-cc-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-cate="${_isCate}" data-it-confirmed="${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? '1' : '0'}"`;
+                    const _itemSetInputAttr = `${_isAttr} data-cc-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-cate="${_isCate}" data-it-confirmed="${_isConfirmed ? '1' : '0'}"`;
                     const naAttr = 'disabled title="ไม่ใช้กับโปรประเภทนี้ — เฉพาะ Item Set" style="background-color:#f1f3f5; color:#adb5bd; border:none; text-align:center;"';
                     return `
                       <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-row-idx="${it.rowIdx}" data-short-name="${itEsc(it.shortName || '')}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-is-itemset="${isItemSet ? '1' : '0'}" data-change-status="${_chg}">
@@ -1285,7 +1309,7 @@
                           ? `<input type="text" class="form-control form-control-sm f-itempromo text-center" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
                           : (isItemSet
                               ? ((_isVal || _isChange)
-                                  ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="${itEsc(_isVal || '')}" ${_isChange ? 'readonly' : ''} oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}" title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม' : 'แก้รหัสได้ แล้วยืนยันก่อนให้หน้า Item Set รับรหัส'}"><div class="it-itemset-actions"><span class="it-itemset-status small ${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'text-success' : 'text-warning'}">${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" ${_isChange ? 'disabled' : ''} title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`
+                                  ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="${itEsc(_isVal || '')}" ${_isChange ? 'readonly' : ''} oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}" title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม' : 'แก้รหัสได้ แล้วยืนยันก่อนให้หน้า Item Set รับรหัส'}"><div class="it-itemset-actions"><span class="it-itemset-status small ${_isConfirmed ? 'text-success' : 'text-warning'}">${_reuseConfirmed ? 'ยืนยันใช้รหัสเดิมแล้ว' : _isConfirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" ${_isChange ? 'disabled' : ''} title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`
                                   : `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="" placeholder="รอรหัสจากตัวนับ" oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}"><div class="it-itemset-actions"><span class="it-itemset-status small text-warning">ยังไม่ยืนยัน</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`)
                               : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`)}</td>
                         <td>${!isHeader
@@ -1582,7 +1606,7 @@
 
     let headerStore = {};
     let isValid = true, errorMessage = "";
-    let usedPromoCodes = new Set(), usedItemPromos = new Set();
+    let usedPromoCodes = new Set(), usedItemPromos = new Map();
 
     /* หมวดปุ่มบน POS — บังคับเฉพาะงาน Item Set (คูปอง/Bill/Voucher ไม่ต้องมี — ไม่ได้สร้างปุ่มชุดใหม่) */
     const _hasItemSetRow = Array.from(rows).some(function (tr) {
@@ -1612,13 +1636,14 @@
           const cate = itemInp && itemInp.getAttribute('data-it-cate');
           const itemType = cate === '107' ? 'itemset' : 'item';
           const approved = itemInp && itFieldEntry(itemType, itemType === 'item' ? cate : null, campName, itemInp.id);
+          const reuseApproved = itemInp && window.PC_API && PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, shortName, itemPromo);
           if (!itemPromo || !kitchen) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "Item Set ต้องกรอก Code Item Set และ Kitchen Name ให้ครบ"; }
-          else if (usedItemPromos.has(itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Item Set ซ้ำกันในแคมเปญ: ${itemPromo}`; }
-          else if (!isChangeRow && (!approved || approved.status !== 'CONFIRMED' || approved.code !== itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่ได้กดยืนยันรหัส Code Item Set ที่หน้า IT Settlement`; }
+          else if (usedItemPromos.has(itemPromo) && !reuseApproved && !usedItemPromos.get(itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `พบ Code Item Set ซ้ำกันในแคมเปญ: ${itemPromo}`; }
+          else if (!isChangeRow && !reuseApproved && (!approved || approved.status !== 'CONFIRMED' || approved.code !== itemPromo)) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่ได้กดยืนยันรหัส Code Item Set ที่หน้า IT Settlement`; }
           else if (!isChangeRow && !builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `ปุ่ม "${shortName}" ยังไม่มีรหัส Code Item Set จากหน้า Item Set Builder & Powder-Formula — ต้องตั้ง/ยืนยันรหัสที่หน้านั้นก่อน จึงจะปิดงานได้`; }
           else if (!isChangeRow && itemPromo !== builderCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = `รหัส Code Item Set ไม่ตรงกันระหว่าง 2 หน้า — IT Settlement: ${itemPromo || '(ว่าง)'} · Item Set Builder: ${builderCode} — ต้องเป็นรหัสเดียวกัน จึงจะปิดงานได้`; }
           else if (netPrice < 0) { isValid = false; tr.style.backgroundColor = "#fff3f3"; errorMessage = "Net Price ไม่สามารถมีค่าติดลบได้"; }
-          else { tr.style.backgroundColor = ""; usedItemPromos.add(itemPromo); if (promoCode) usedPromoCodes.add(promoCode); }
+          else { tr.style.backgroundColor = ""; usedItemPromos.set(itemPromo, !!reuseApproved || !!usedItemPromos.get(itemPromo)); if (promoCode) usedPromoCodes.add(promoCode); }
         } else {
           // Coupon / Bill discount / Voucher / Price → IT ยืนยันแค่ Code Promotion (ส่วนลด/ชื่อปุ่ม มาจากฟอร์ม)
           if (!promoCode) { isValid = false; tr.style.backgroundColor = "#fff3f3"; if (!errorMessage) errorMessage = "กรุณากรอก Code Promotion (โค้ดโปรโมชั่น)"; }
