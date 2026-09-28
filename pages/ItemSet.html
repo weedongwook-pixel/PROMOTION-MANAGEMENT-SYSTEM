@@ -285,13 +285,14 @@ var App = (function(){
     }
     var arr=itemSetButtons().filter(function(b){return b.campaign===camp && !b.posReady && b.itStatus!=='COMPLETE';});
     if(!arr.length){ Swal.fire('','ทุกปุ่มในแคมเปญนี้ตั้งค่าแล้ว','info'); return; }
-    Swal.fire({title:'ตั้งค่าทั้งแคมเปญ?', html:'<b>'+esc(camp)+'</b><br>ระบบจะใช้ <b>รหัสที่ IT จองไว้ที่หน้า IT Settlement</b> เติมให้ปุ่มที่มีเลขจองตรงกัน แล้วส่งกลับไปหน้า IT Settlement<br><span class="small text-muted">ปุ่มที่ยังไม่มีรหัสจอง จะข้ามไว้—ต้องกดรับรหัสทีละปุ่ม</span>', icon:'question', showCancelButton:true, confirmButtonText:'ตั้งค่าทั้งหมด', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก'})
+    Swal.fire({title:'ตั้งค่าทั้งแคมเปญ?', html:'<b>'+esc(camp)+'</b><br>ระบบจะรับเฉพาะ <b>รหัสที่ IT ยืนยันให้แต่ละปุ่มแล้ว</b> จากหน้า IT Settlement<br><span class="small text-muted">ปุ่มที่ยังไม่ยืนยันรหัสจะถูกข้าม</span>', icon:'question', showCancelButton:true, confirmButtonText:'ตั้งค่าทั้งหมด', confirmButtonColor:'#2e934a', cancelButtonText:'ยกเลิก'})
       .then(function(r){ if(!r.isConfirmed) return;
-        var codeMap={}, skipped=[]; arr.forEach(function(b){ var c=itemsetFindReserved(camp, b.shortName); if(c) codeMap[b.shortName]=c; else skipped.push(b.shortName); });
-        if(!Object.keys(codeMap).length){ Swal.fire({icon:'info',title:'ยังไม่มีรหัสจอง',html:'ปุ่มในแคมเปญนี้ยังไม่มีรหัสจาก IT Settlement — ให้ IT จองรหัสก่อน',confirmButtonColor:'#2e934a'}); return; }
-        PC_API.savePosCampaign(camp, codeMap);
+        var codeMap={}, skipped=[]; arr.forEach(function(b){ var c=itemsetConfirmedFor(camp, b.shortName); if(c) codeMap[b.shortName]=c; else skipped.push(b.shortName); });
+        if(!Object.keys(codeMap).length){ Swal.fire({icon:'info',title:'ยังไม่มีรหัสที่ยืนยัน',html:'ให้ IT กดยืนยันรหัสที่หน้า IT Settlement ก่อน',confirmButtonColor:'#2e934a'}); return; }
+        var saved=PC_API.savePosCampaign(camp, codeMap);
+        if(!saved || saved.status!=='success'){ Swal.fire('บันทึกไม่สำเร็จ',(saved&&saved.message)||'กรุณาลองใหม่อีกครั้ง','error'); return; }
         posBuildTree(); posRender(); recRender();
-        Swal.fire({icon:'success',title:'ตั้งค่าแล้ว',html:Object.keys(codeMap).length+' ปุ่มถูกส่งไป IT Settlement'+(skipped.length?('<br><span class="small text-muted">ข้าม '+skipped.length+' ปุ่ม (ยังไม่มีรหัสจอง)</span>'):''),confirmButtonColor:'#2e934a'});
+        Swal.fire({icon:'success',title:'ตั้งค่าแล้ว',html:Object.keys(codeMap).length+' ปุ่มถูกส่งไป IT Settlement'+(skipped.length?('<br><span class="small text-muted">ข้าม '+skipped.length+' ปุ่ม (IT ยังไม่ยืนยันรหัส)</span>'):''),confirmButtonColor:'#2e934a'});
       });
   }
   function posPick(camp, sn){ posSel.camp=camp; posSel.sn=sn; posBuildTree(); posRender(); recRender(); }
@@ -544,57 +545,44 @@ var App = (function(){
     }
     return (window.PC_API && PC_API.getNextPromoCode) ? PC_API.getNextPromoCode() : '';
   }
-  /* อ่านเลขที่จองไว้แล้วเท่านั้น (read-only — ห้ามจองเลขใหม่ที่หน้านี้) */
-  function itemsetFindReserved(camp, sn){
-    var C = window.PC_COUNTER; if(!C || !C.findReservedFor) return '';
-    var field = String(camp||'')+'|'+String(sn||'');
+  /* รับเฉพาะรหัสที่ IT ยืนยันให้ปุ่มนี้โดยตรง — ห้ามเลือกเลขของปุ่มอื่นในแคมเปญเดียวกัน */
+  function itemsetConfirmedFor(camp, sn){
+    var C = itemsetCounter(); if(!C || !C.findForField) return '';
+    var b = itemSetButtons().find(function(x){ return x.campaign===camp && x.shortName===sn; });
+    if(!b) return '';
     var cate = itemsetCateFor(camp, sn);
+    var type = cate==='107' ? 'itemset' : 'item';
+    var field = 'itccf-' + (type==='itemset' ? 'itemset' : 'item-'+cate) + '-' + encodeURIComponent(JSON.stringify([camp, sn, b.month]));
     try{
-      var ex = (cate==='107') ? C.findReservedFor('itemset', null, 'ItemSet Builder', field)
-                              : C.findReservedFor('item', cate, 'ItemSet Builder', field);
-      if(ex && ex.code) return ex.code;
+      var ex = C.findForField(type, type==='item' ? cate : null, camp, field);
+      if(ex && ex.status==='CONFIRMED' && ex.code) return ex.code;
     }catch(e){}
     return '';
   }
-  /* เลขที่ IT จองไว้ที่หน้า IT Settlement ของแคมเปญนี้ ที่ยังไม่ถูกปุ่มอื่นหยิบไป */
+  /* เลขที่ IT ยืนยันไว้สำหรับปุ่มนี้เท่านั้น (ไม่แสดงเลขจองของปุ่มอื่น) */
   function itemsetAvailableCodes(camp, sn){
-    var C = window.PC_COUNTER; if(!C || !C.list) return [];
-    var used = {};
-    itemSetButtons().forEach(function(b){
-      if(b.campaign===camp && b.shortName===sn) return;
-      var c=String(b.codeItemSet||b.itemPromoCode||'').trim(); if(c) used[c]=(b.campaign+' · '+b.shortName);
-    });
-    var snKey=String(sn||'').replace(/\s+/g,'');
-    var out=[];
-    try{
-      C.list({}).forEach(function(e){
-        var code=String(e.code||'').trim(); if(!/^10[5-9]/.test(code)) return;
-        var st=String(e.status||''); if(st!=='RESERVED' && st!=='CONFIRMED') return;
-        if(used[code]) return;
-        var w=String(e.where||''), f=String(e.field||'').replace(/\s+/g,'');
-        var mine = (w==='ItemSet Builder' && f.endsWith('|'+snKey));
-        var sameCamp = (w===String(camp||''));
-        if(!mine && !sameCamp) return;
-        out.push({ code:code, exact:mine || (snKey && f.indexOf(snKey)!==-1), where:w, field:String(e.field||''), status:st });
-      });
-    }catch(e){}
-    out.sort(function(a,b){ return (b.exact?1:0)-(a.exact?1:0) || String(a.code).localeCompare(String(b.code)); });
-    return out;
+    var code = itemsetConfirmedFor(camp, sn);
+    if(!code) return [];
+    var other = itemSetButtons().find(function(b){ return !(b.campaign===camp && b.shortName===sn) && String(b.codeItemSet||'').trim()===code; });
+    return other ? [] : [{code:code, exact:true, where:camp, field:sn, status:'CONFIRMED'}];
   }
   function posApplyCode(code){
     code=String(code||'').trim(); if(!code) return;
-    if(window.PC_API && PC_API.savePosButton){ PC_API.savePosButton(posSel.camp, posSel.sn, code); }
+    if(itemsetConfirmedFor(posSel.camp, posSel.sn)!==code || !itemsetAvailableCodes(posSel.camp, posSel.sn).length){
+      Swal.fire('รับรหัสไม่ได้','รหัสนี้ยังไม่ถูก IT ยืนยันให้ปุ่มนี้ หรือถูกใช้ที่ปุ่มอื่นแล้ว กรุณารีเฟรชและตรวจที่ IT Settlement','error'); return;
+    }
+    if(window.PC_API && PC_API.savePosButton){ var saved=PC_API.savePosButton(posSel.camp, posSel.sn, code); if(!saved || saved.status!=='success') { Swal.fire('บันทึกไม่สำเร็จ','กรุณาลองใหม่อีกครั้ง','error'); return; } }
     try{ var _rk=posSel.camp+'||'+posSel.sn; if(store.reuse && store.reuse[_rk]){ delete store.reuse[_rk]; persist(); } }catch(e){}
     if(window.Swal && Swal.close) Swal.close();
     posBuildTree(); posRender(); recRender();
-    Swal.fire({icon:'success', title:'รับรหัสแล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส <b class="mono">'+esc(code)+'</b> ที่ IT จองไว้ที่หน้า IT Settlement', confirmButtonColor:'#2e934a'});
+    Swal.fire({icon:'success', title:'รับรหัสแล้ว', html:'ปุ่ม <b>'+esc(posSel.sn)+'</b> ใช้รหัส <b class="mono">'+esc(code)+'</b> ที่ IT ยืนยันไว้', confirmButtonColor:'#2e934a'});
   }
   /* กดรับรหัสจาก IT Settlement — มีตัวเดียวที่ตรงปุ่ม = ใส่เลย · หลายตัว = ให้เลือก */
   function posPullCode(){
     if(!posSel.sn) return;
     var list = itemsetAvailableCodes(posSel.camp, posSel.sn);
     if(!list.length){
-      Swal.fire({icon:'info', title:'ยังไม่มีรหัสจองไว้', html:'หน้านี้ไม่จองรหัสเองแล้ว — ให้ IT กดจองรหัส Code Item Set ที่หน้า <b>IT Settlement</b> ก่อน<br><span class="small text-muted">แล้วกลับมากด “รับรหัส” ที่หน้านี้</span>', confirmButtonColor:'#2e934a'});
+      Swal.fire({icon:'info', title:'ยังไม่มีรหัสที่ยืนยัน', html:'ให้ IT กดยืนยันรหัส Code Item Set ที่หน้า <b>IT Settlement</b> ก่อน<br><span class="small text-muted">แล้วกลับมากด “รับรหัส” ที่หน้านี้</span>', confirmButtonColor:'#2e934a'});
       return;
     }
     var exact = list.filter(function(x){ return x.exact; });

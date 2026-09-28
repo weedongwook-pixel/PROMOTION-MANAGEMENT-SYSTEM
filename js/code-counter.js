@@ -70,7 +70,7 @@
       return null;
     },
     write: function (state) {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
     },
   };
 
@@ -80,7 +80,7 @@
   if (!state.reservations) state.reservations = {};
   if (!state.log) state.log = [];
 
-  function save() { CounterStore.write(state); fire(); }
+  function save() { if (!CounterStore.write(state)) return false; fire(); return true; }
 
   /* seed each type's cursor from the highest real number in the file.
    * cursor = "highest number ever issued". It can only move UP. */
@@ -193,6 +193,7 @@
   function reserve(type, opts) {
     var cfg = TYPES[type]; if (!cfg) return null;
     opts = opts || {};
+    var before = JSON.parse(JSON.stringify(state));
     var t = ensureType(type);
     var n = takeNext(t);                  // recycle เลขที่คืนก่อน (ต่ำสุด) แล้วค่อยเดินหน้า — ไม่เผาทิ้ง
     var code = fmtCode(cfg, n);
@@ -204,7 +205,7 @@
     state.reservations[key(type, code)] = entry;
     state.log.unshift({ t: now(), act: "RESERVE", type: type, code: code, where: entry.where, by: entry.by });
     trimLog();
-    save();
+    if (!save()) { state = before; return null; }
     return entry;
   }
 
@@ -250,6 +251,7 @@
     return catCode(cc, availCat(c, offset));
   }
   function reserveCat(cc, opts) {
+    var before = JSON.parse(JSON.stringify(state));
     var c = ensureCat(cc); if (!c) return null;
     opts = opts || {};
     var n = takeNextCat(c);   // recycle เลขที่คืนก่อน แล้วค่อยเดินหน้า — ไม่เผาทิ้ง
@@ -261,7 +263,7 @@
     };
     state.reservations[key("item", code)] = entry;
     state.log.unshift({ t: now(), act: "RESERVE", type: "item", code: code, where: entry.where, by: entry.by });
-    trimLog(); save();
+    trimLog(); if (!save()) { state = before; return null; }
     return entry;
   }
 
@@ -293,6 +295,63 @@
       return e;
     }
     return null;
+  }
+
+  /* A field keeps its code after IT confirms it. The older lookup intentionally
+     returns only RESERVED entries; use this one for the IT → Item Set handoff. */
+  function findForField(type, cat, where, field) {
+    field = String(field == null ? "" : field).trim(); if (!field) return null;
+    return Object.keys(state.reservations).map(function (k) { return state.reservations[k]; }).find(function (e) {
+      return e && e.status !== STATUS.RELEASED && e.type === type &&
+        (!cat || String(e.cat) === String(cat)) &&
+        String(e.where || "") === String(where || "") && String(e.field || "") === field;
+    }) || null;
+  }
+
+  /* Confirm an exact Item Set code typed by IT. A confirmed code belongs to one
+     stable field; replacing a field burns its former code instead of recycling
+     a number that may already have reached POS/Backoffice. */
+  function claimExact(type, code, opts) {
+    opts = opts || {};
+    code = String(code == null ? "" : code).trim().toUpperCase();
+    var where = String(opts.where || ""), field = String(opts.field || "");
+    var cat = opts.cat ? String(opts.cat) : "";
+    var valid = type === "itemset" ? /^107\d{3,}$/.test(code)
+      : type === "item" && /^(105|106|109)\d{3,}$/.test(code) && code.indexOf(cat) === 0;
+    if (!valid || !where || !field) return { ok: false, reason: "invalid" };
+    var existing = findByCode(code, type);
+    if (existing && existing.status === STATUS.RELEASED) return { ok: false, reason: "released" };
+    var ownField = existing && String(existing.where || "") === where &&
+      (String(existing.field || "") === field ||
+       (opts.legacyField && String(existing.field || "") === String(opts.legacyField)));
+    var ownBuilder = existing && String(existing.where || "") === "ItemSet Builder" &&
+      opts.builderField && String(existing.field || "") === String(opts.builderField);
+    if (existing && !ownField && !ownBuilder) {
+      return { ok: false, reason: "taken", where: existing.where || "", field: existing.field || "" };
+    }
+    if (existing && existing.status === STATUS.CONFIRMED && ownField && String(existing.field || "") === field) {
+      return { ok: true, entry: existing };
+    }
+    var previous = findForField(type, cat, where, field);
+    var before = JSON.parse(JSON.stringify(state));
+    var seq = type === "itemset" ? codeToSeq(TYPES.itemset, code) : parseInt(code.slice(cat.length), 10);
+    var t = type === "itemset" ? ensureType("itemset") : ensureCat(cat);
+    if (!t || !Number.isFinite(seq)) return { ok: false, reason: "invalid" };
+    if (previous && previous.code !== code) {
+      previous.status = STATUS.RELEASED;
+      previous.releasedAt = now(); // burn, never place in freed pool
+      state.log.unshift({ t: now(), act: "SUPERSEDE", type: type, code: previous.code, where: where, by: currentUser() });
+    }
+    t.cursor = Math.max(t.cursor || 0, seq);
+    t.freed = (t.freed || []).filter(function (n) { return Number(n) !== seq; });
+    var entry = existing || { code: code, type: type, num: seq, cat: cat || undefined, at: now(), by: currentUser() };
+    entry.where = where; entry.field = field; entry.status = STATUS.CONFIRMED;
+    entry.confirmedAt = now(); entry.releasedAt = "";
+    state.reservations[key(type, code)] = entry;
+    state.log.unshift({ t: now(), act: existing ? "CONFIRM" : "CLAIM", type: type, code: code, where: where, by: currentUser() });
+    trimLog();
+    if (!save()) { state = before; return { ok: false, reason: "storage" }; }
+    return { ok: true, entry: entry };
   }
 
   function confirm(code, type, details) {
@@ -498,7 +557,17 @@
     var cat = el.getAttribute("data-cc-cat");
     var fieldId = el.id || el.name || "";
     // จองครั้งแรกแล้ว "ล็อกเลขนั้นถาวร" — ถ้าช่องนี้ (คีย์เดียวกัน) เคยจองไว้แล้ว → ใช้เลขเดิม ไม่จองใหม่ (กันเลขเปลี่ยนตอน re-render/reload)
-    var ex = findReservedFor(type, cat, where, fieldId);
+    var ex = findForField(type, cat, where, fieldId);
+    var legacyField = el.getAttribute("data-cc-legacy-field") || "";
+    if (!ex && legacyField) {
+      // The page supplies this only when the old field ID belongs to exactly
+      // one button. Ambiguous Thai-name IDs must never be adopted automatically.
+      ex = findForField(type, cat, where, legacyField);
+      if (ex) {
+        var oldField = ex.field; ex.field = fieldId;
+        if (!save()) { ex.field = oldField; return; }
+      }
+    }
     if (ex) {
       el.value = ex.code; el.setAttribute("data-cc-code", ex.code);
       el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -633,6 +702,7 @@
     autoReserveIn: autoReserveIn,
     returnOrphans: returnOrphans,
     statusOf: statusOf, entryOf: entryOf, reservedHit: reservedHit, findReservedFor: findReservedFor,
+    findForField: findForField, claimExact: claimExact,
     list: list, badgeHTML: badgeHTML, chipHTML: chipHTML,
     onChange: onChange, reset: reset,
     _save: save,

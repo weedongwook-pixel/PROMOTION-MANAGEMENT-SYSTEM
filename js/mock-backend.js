@@ -1940,7 +1940,8 @@
     };
     store.working.forEach(apply);
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
-    persist();
+    if (!n) return { status: "error", message: "ไม่พบปุ่ม Item Set ที่เลือก กรุณารีเฟรชหน้า" };
+    if (!persist()) return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" };
     return { status: "success", updated: n };
   };
   API.savePosButton = (campaign, shortName, codeItemSet) => {
@@ -1952,7 +1953,8 @@
     };
     store.working.forEach(apply);
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
-    persist();
+    if (!n) return { status: "error", message: "ไม่พบปุ่ม Item Set ที่เลือก กรุณารีเฟรชหน้า" };
+    if (!persist()) return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" };
     return { status: "success", updated: n, codeItemSet };
   };
   // ล้าง Code Item Set ของปุ่ม (คืนสถานะเป็น "ยังไม่ได้รับรหัส") — ไม่แตะเลขจองในตัวนับกลาง
@@ -3113,6 +3115,7 @@
         start: hdr.start, end: hdr.end, gross: u.netPrice || u.price || hdr.gross || "",
       }, code, pt || hdr.typePromotion || hdr.promoType || "Promotion");
     });
+    if (!persist()) return "STORAGE_ERROR";
     // ✅ ยืนยันเลข Code Item Set (107) ในตัวนับกลาง — เลขที่ IT ปิดงานแล้วถูกล็อกถาวร (ไม่แจกซ้ำ) · ปลอดภัยกับเลขที่พิมพ์เอง (ไม่เคย reserve → confirm no-op)
     try {
       if (window.PC_COUNTER && PC_COUNTER.confirm) {
@@ -3124,7 +3127,6 @@
         });
       }
     } catch (e) {}
-    persist();
     try {
       if (window.PC_notify) {
         const cs = [...campsInBatch].filter(Boolean);
