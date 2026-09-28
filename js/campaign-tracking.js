@@ -8,6 +8,7 @@
   let currentPage = 1; 
   let rowsPerPage = 99999;
   let expandedRowIdx = null;
+  let ctDetailRowIdx = null;
   let currentStoreCache = {}; 
   // สิทธิ์: Admin = แก้ไขได้ทุกช่อง + เห็นปุ่ม "จัดกลุ่ม" · MKT/อื่นๆ = อ่านอย่างเดียว (ซ่อนปุ่มแอดมิน + ช่องรายละเอียด readonly)
   var IS_ADMIN = (function(){ try{ return (localStorage.getItem('pc_role')||'Admin')==='Admin'; }catch(e){ return true; } })();
@@ -437,7 +438,7 @@ window.openFile = function(url, name) {
           <td class="small">${(camp.reporter||camp.submittedBy) ? ctEsc(camp.reporter||camp.submittedBy) : '<span class="text-muted">-</span>'}</td>
           <td>
             <div class="d-flex justify-content-center">
-              <button class="btn-circle btn-edit-mode shadow-sm" title="ดูรายละเอียด" onclick="window.toggleExpand(${camp.rowIdx})"><i class="fas ${isExpanded ? 'fa-times text-danger' : 'fa-eye'}"></i></button>
+              <button class="btn-circle btn-edit-mode shadow-sm" title="เปิดหน้ารายละเอียด" aria-label="เปิดรายละเอียด ${ctEsc(camp.campaign || '')}" onclick="window.ctOpenDetail(${camp.rowIdx})"><i class="fas fa-eye"></i></button>
               <button class="btn-circle btn-light border shadow-sm text-dark mkt-admin-only" title="แก้ไขทุกช่องในแถวนี้ (แอดมิน)" onclick="window.ctEditRow(${camp.rowIdx})" ${isCancelled ? 'disabled' : ''}><i class="fas fa-pen"></i></button>
               <button class="btn-circle btn-light border shadow-sm text-primary" onclick="window.extendCampaignPopup('${camp.campaign}', '${camp.endDate}', '${camp.startDate}', '${String(camp.promoType||'').replace(/'/g,"\\'")}', '${String(camp.itemPromoCode||'').replace(/'/g,"\\'")}')" ${isCancelled ? 'disabled' : ''}><i class="fas fa-calendar-plus"></i></button>
               <button class="btn-circle btn-light border shadow-sm text-danger" onclick="window.cancelCampaignPopup('${String(camp.campaign||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" ${isCancelled ? 'disabled' : ''}><i class="fas fa-trash"></i></button>
@@ -1438,34 +1439,65 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
     } 
   };
 
-  window.toggleExpand = function(rowIdx) {
-    const tbody = document.getElementById('trackingTableBody');
-    if (!tbody) return;
-    const wasOpen = String(expandedRowIdx) === String(rowIdx);
-    // collapse any open detail row + reset all edit icons
-    const openDetail = tbody.querySelector('tr.expand-detail-row');
-    if (openDetail) openDetail.remove();
-    tbody.querySelectorAll('.btn-edit-mode i').forEach(i => { i.className = 'fas fa-eye'; });
-    tbody.querySelectorAll('tr').forEach(tr => tr.classList.remove('expand-row', 'fw-bold'));
-    if (wasOpen) { expandedRowIdx = null; window.ctSetFocus(false); return; }
-    // locate the row whose edit button targets this rowIdx
-    const btn = [...tbody.querySelectorAll('.btn-edit-mode')]
-      .find(b => (b.getAttribute('onclick') || '').replace(/\s/g, '').includes('toggleExpand(' + rowIdx + ')'));
-    if (!btn) { expandedRowIdx = null; window.ctSetFocus(false); return; }
-    const tr = btn.closest('tr');
-    expandedRowIdx = rowIdx;
-    btn.querySelector('i').className = 'fas fa-times text-danger';
-    tr.classList.add('expand-row', 'fw-bold');
-    const exp = document.createElement('tr');
-    exp.className = 'expand-detail-row expand-row';
-    exp.innerHTML = `<td colspan="10" class="expand-content-cell"><div class="item-table-wrapper" id="expand-container-${rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning" role="status"></div></div></div></td>`;
-    tr.after(exp);
+  window.ctOpenDetail = function(rowIdx) {
+    const camp = allCampaigns.find(function(x){ return String(x.rowIdx) === String(rowIdx); });
+    const detail = document.getElementById('ctDetailPage');
+    const list = document.getElementById('ctPromoBox');
+    const summary = document.getElementById('summaryRow');
+    if (!camp || !detail || !list) return;
+    const esc = ctEsc;
+    const formatDate = function(s, withTime) {
+      if (!s) return '—';
+      const raw = String(s), d = new Date(raw.length === 10 ? raw + 'T00:00:00' : raw);
+      if (isNaN(d.getTime())) return esc(raw);
+      return withTime ? d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'});
+    };
+    const op = String(camp.opStatus || 'WAITING').toUpperCase();
+    const opClass = (op === 'CONFIRMED' || op === 'APPROVED' || op === 'COMPLETE') ? 'bg-success text-white' : (op === 'REJECTED' || op === 'CANCELLED' ? 'bg-danger text-white' : 'bg-secondary text-white');
+    const itClass = String(camp.itStatus || '').toUpperCase() === 'COMPLETE' ? 'bg-success text-white' : 'bg-warning text-dark';
+    const channel = window.PCniceChannel ? PCniceChannel(camp.channel) : (camp.channel || '—');
+    ctDetailRowIdx = rowIdx;
+    expandedRowIdx = null;
+    detail.innerHTML = `
+      <div class="ct-detail-topbar">
+        <button type="button" class="ct-detail-back" onclick="window.ctCloseDetail()"><i class="fas fa-arrow-left me-1"></i>กลับไปรายการ</button>
+        <div class="ct-detail-title">
+          <div class="ct-detail-path">ศูนย์ติดตามงาน <i class="fas fa-chevron-right mx-1" aria-hidden="true"></i> รายละเอียดแคมเปญ</div>
+          <h2>${esc(camp.campaign || 'ไม่ระบุชื่อแคมเปญ')}</h2>
+        </div>
+        <div class="ct-detail-status"><span class="status-badge ${itClass}">IT ${esc(camp.itStatus || 'PENDING')}</span> <span class="status-badge ${opClass}">OP ${esc(camp.opStatus || 'WAITING')}</span></div>
+      </div>
+      <div class="ct-detail-meta">
+        <div><span class="ct-detail-label">ประเภท / ช่องทาง</span><span class="ct-detail-value">${esc(camp.promoType || '—')} · ${channel}</span></div>
+        <div><span class="ct-detail-label">ช่วงเวลา</span><span class="ct-detail-value">${esc(camp.startDate || '—')} – ${esc(camp.endDate || '—')}</span></div>
+        <div><span class="ct-detail-label">ผู้ส่งงาน</span><span class="ct-detail-value">${esc(camp.reporter || camp.submittedBy || '—')}</span></div>
+        <div><span class="ct-detail-label">วันที่ทำรายการ</span><span class="ct-detail-value">${formatDate(camp.txnDate, true)}</span></div>
+        <div><span class="ct-detail-label">OP ตรวจเสร็จ</span><span class="ct-detail-value">${formatDate(camp.opDoneDate, false)}</span></div>
+      </div>
+      <div class="ct-detail-body"><div class="item-table-wrapper" id="expand-container-${rowIdx}"><div class="text-center py-5"><div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>กำลังโหลดรายละเอียดแคมเปญ...</div></div></div>`;
+    list.hidden = true;
+    if (summary) summary.hidden = true;
+    detail.hidden = false;
+    window.ctSetFocus(false);
+    try { detail.scrollIntoView({ block:'start', behavior:'smooth' }); } catch (e) {}
     window.fetchItemsToRow(rowIdx);
-    // enter full-screen promo view: collapse banner/tabs/summary and bring the row to the top
-    window.ctSetFocus(true);
-    const scroller = document.querySelector('.ct-scope .table-responsive-scroll');
-    if (scroller) { requestAnimationFrame(() => { const head = scroller.querySelector('thead'); const off = head ? head.offsetHeight : 0; scroller.scrollTop = Math.max(0, tr.offsetTop - off); }); }
   };
+
+  window.ctCloseDetail = function() {
+    const detail = document.getElementById('ctDetailPage');
+    const list = document.getElementById('ctPromoBox');
+    const summary = document.getElementById('summaryRow');
+    if (detail) { detail.hidden = true; detail.innerHTML = ''; }
+    if (list) list.hidden = false;
+    if (summary) summary.hidden = false;
+    ctDetailRowIdx = null;
+    expandedRowIdx = null;
+    window.ctSetFocus(false);
+    try { if (list) list.scrollIntoView({ block:'start', behavior:'smooth' }); } catch (e) {}
+  };
+
+  // Compatibility for buttons or links saved from older markup.
+  window.toggleExpand = window.ctOpenDetail;
 
   window.ctSetFocus = function(on) {
     const scope = document.querySelector('.ct-scope');
@@ -1473,7 +1505,7 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
   };
 
   window.ctExitFocus = function() {
-    if (expandedRowIdx != null) window.toggleExpand(expandedRowIdx);
+    if (ctDetailRowIdx != null) window.ctCloseDetail();
     else window.ctSetFocus(false);
   };
   

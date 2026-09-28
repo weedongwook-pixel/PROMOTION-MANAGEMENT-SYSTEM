@@ -54,6 +54,26 @@
   .ct-scope .ct-tab { background:none; border:none; border-bottom:3px solid transparent; padding:10px 4px; font-weight:700; font-size:.95rem; color:#7a7a7a; cursor:pointer; transition:color .15s, border-color .15s; }
   .ct-scope .ct-tab:hover { color:#198754; }
   .ct-scope .ct-tab.active { color:#198754; border-bottom-color:#198754; }
+  #ctDetailPage[hidden] { display:none !important; }
+  .ct-detail-page { background:#fff; border:1px solid #dfe5e1; border-radius:14px; overflow:hidden; animation:ctDetailEnter .2s cubic-bezier(.22,.61,.36,1); }
+  .ct-detail-topbar { display:flex; align-items:flex-start; gap:16px; padding:22px 24px 18px; border-bottom:1px solid #e7ece9; }
+  .ct-detail-back { flex:0 0 auto; border:1px solid #c9d5ce; background:#fff; color:#1d5e36; border-radius:8px; min-height:38px; padding:7px 12px; font-weight:700; }
+  .ct-detail-back:hover { background:#edf7f0; border-color:#83b897; }
+  .ct-detail-back:focus-visible { outline:3px solid rgba(25,135,84,.28); outline-offset:2px; }
+  .ct-detail-title { min-width:0; flex:1; }
+  .ct-detail-title h2 { margin:0; color:#1a1d20; font-size:1.35rem; font-weight:700; line-height:1.35; overflow-wrap:anywhere; }
+  .ct-detail-path { color:#68736d; font-size:.78rem; margin-bottom:5px; }
+  .ct-detail-status { flex:0 0 auto; padding-top:5px; }
+  .ct-detail-meta { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); background:#fafcfb; border-bottom:1px solid #e7ece9; }
+  .ct-detail-meta > div { min-width:0; padding:14px 16px; border-right:1px solid #e7ece9; }
+  .ct-detail-meta > div:last-child { border-right:0; }
+  .ct-detail-label { display:block; color:#6e7973; font-size:.7rem; font-weight:700; letter-spacing:.02em; margin-bottom:4px; }
+  .ct-detail-value { color:#26342c; font-size:.9rem; font-weight:600; overflow-wrap:anywhere; }
+  .ct-detail-body { min-height:240px; }
+  .ct-detail-body .item-table-wrapper { margin:0; border:0; border-radius:0; padding:24px; }
+  @keyframes ctDetailEnter { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @media (max-width: 992px) { .ct-detail-meta { grid-template-columns:repeat(3,minmax(0,1fr)); } .ct-detail-meta > div:nth-child(3) { border-right:0; } }
+  @media (max-width: 640px) { .ct-detail-topbar { padding:16px; gap:10px; } .ct-detail-topbar { flex-wrap:wrap; } .ct-detail-status { order:3; width:100%; padding-top:0; } .ct-detail-meta { grid-template-columns:repeat(2,minmax(0,1fr)); } .ct-detail-meta > div:nth-child(2n) { border-right:0; } .ct-detail-body .item-table-wrapper { padding:14px; } }
 </style>
 
 <div class="p-4 ct-scope" style="background-color: #f4f4f4; min-height: 100vh;">
@@ -157,13 +177,14 @@
       <nav><ul class="pagination m-0" id="paginationControls"></ul></nav>
     </div>
   </div>
+  <section id="ctDetailPage" class="ct-detail-page" hidden aria-live="polite"></section>
   <div id="ctNpdTab" style="display:none;"></div>
   <div id="ctFlvTab" style="display:none;"></div>
     </div>
   </div>
 </div>
 
-<script src="js/campaign-tracking.js?v=33"></script>
+<script src="js/campaign-tracking.js?v=34"></script>
 <template data-legacy="ct-externalized" id="ctLegacyInert">
   let allCampaigns = []; 
   var ctStaffMode = false;
