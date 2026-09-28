@@ -4,6 +4,7 @@ node_modules/
 .github/
 .agents/
 .codex/
+tests/
 
 # Local/editor artefacts
 .DS_Store

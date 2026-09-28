@@ -2196,10 +2196,12 @@
     try {
       var pp = JSON.parse(localStorage.getItem("pc_product_promo") || "{}"); if (!pp || typeof pp !== "object") pp = {};
       var typeP = (cate === "E-Voucher") ? "E-Voucher" : "Price Promotion";
-      var prow = { typePromo: typeP, prCode: info.codePromotion || "", net: (info.netPrice == null ? "" : String(info.netPrice)), desc1: info.shortName || "", desc2: "", saleMode: info.saleMode || "", _fromItemSet: true };
-      // 1 item (107) = แถวสินค้าเดียว · หลายแคมเปญยืมรหัส = append หลาย row Code Promotion (ดึง manual ไว้) · dedupe ตาม prCode
+      var bindingKey = (info.campaign || "") + "||" + (info.shortName || "");
+      var prow = { typePromo: typeP, prCode: info.codePromotion || "", net: (info.netPrice == null ? "" : String(info.netPrice)), desc1: info.shortName || "", desc2: "", saleMode: info.saleMode || "", _fromItemSet: true, _fromItemSetKey: bindingKey };
+      // Same 107 and Promotion code can have separate Sale Mode bindings. Replace
+      // only this button's auto row; never erase another campaign's binding.
       var arr = Array.isArray(pp[String(code)]) ? pp[String(code)] : [];
-      arr = arr.filter(function (r) { return !(r && r._fromItemSet && String(r.prCode || "") === String(prow.prCode || "")); });
+      arr = arr.filter(function (r) { return !(r && r._fromItemSet && r._fromItemSetKey === bindingKey); });
       arr.push(prow);
       pp[String(code)] = arr;
       localStorage.setItem("pc_product_promo", JSON.stringify(pp));
@@ -3041,50 +3043,56 @@
     if (!updates || !updates.length) return "NO_DATA";
     // cross-campaign duplicate check for Code Promotion / Code Item Set
     const campsInBatch = new Set(updates.map(u => u.campaign));
-    const existPromo = {}, existItemSet = {}, existItemSetSig = {};
+    const existPromo = {}, existItemSet = {};
     store.working.forEach(w => {
       if (campsInBatch.has(w.campaign)) return; // skip the campaigns being saved now
-      if (w.codePromotion) existPromo[String(w.codePromotion).trim().toUpperCase()] = w.campaign;
+      if (w.codePromotion) {
+        const code = String(w.codePromotion).trim().toUpperCase();
+        (existPromo[code] = existPromo[code] || []).push({ campaign: w.campaign, itemSet: String(w.codeItemSet || "").trim().toUpperCase() });
+      }
       if (w.codeItemSet) existItemSet[String(w.codeItemSet).trim().toUpperCase()] = w.campaign;
     });
-    // ลายเซ็น item ต่อ Code Item Set (107) — item เดียวกัน = ยืมรหัสได้ (ไม่นับเป็น dup)
-    Object.keys(store.months).forEach(m => store.months[m].forEach(r => {
-      if (campsInBatch.has(r.campaign)) return;
-      const c = String(r.codeItemSet || r.itemPromotion || "").trim().toUpperCase();
-      if (!c) return;
-      (existItemSetSig[c] = existItemSetSig[c] || new Set()).add(String(r.itemCode || "").trim());
-    }));
-    const sigOf = (set) => [...set].filter(Boolean).sort().join(",");
-    /* โค้ดที่แคมเปญนี้ "ใช้อยู่เดิม" — กดบันทึกซ้ำเพื่ออัปเดต (เช่น งานขยาย/ลดเวลา) ไม่ใช่การออกโค้ดใหม่
-       เดิมตรวจซ้ำแบบไม่แยกกรณีนี้ → IT บันทึกงานขยายไม่ได้ ขึ้น "Code Promotion ซ้ำ" ทั้งที่ไม่ได้แก้โค้ด */
-    const prevCodes = new Set();
-    const collectPrev = (r) => {
-      if (!campsInBatch.has(r.campaign)) return;
-      const a = String(r.codePromotion || "").trim().toUpperCase(); if (a) prevCodes.add(a);
-      const b = String(r.promoCode || "").trim().toUpperCase(); if (b) prevCodes.add(b);
-    };
-    (store.working || []).forEach(collectPrev);
-    Object.keys(store.months).forEach(m => (store.months[m] || []).forEach(collectPrev));
+    const completedButtons = new Map();
+    store.working.forEach(w => {
+      if (w.itDoneDate && w.codeItemSet) completedButtons.set(w.campaign + "||" + w.shortName + "||" + String(w.codeItemSet).trim().toUpperCase(), String(w.codePromotion || "").trim().toUpperCase());
+    });
+    const completedCode = (u, code) => completedButtons.has(u.campaign + "||" + (u.sourceShortName || u.shortName) + "||" + code);
     for (const u of updates) {
       const pc = String(u.promoCode || "").trim();
       if (!pc) continue;
-      if (prevCodes.has(pc.toUpperCase())) continue;                 /* โค้ดเดิมของแคมเปญนี้ = อัปเดตข้อมูล ไม่ถือว่าซ้ำ */
-      if (existPromo[pc.toUpperCase()]) return "DUP_PROMO|" + pc + "|" + existPromo[pc.toUpperCase()];
+      // Owners from this same campaign are already excluded above, so an
+      // existing code here remains safe to re-save. Do not skip a different
+      // campaign's owner merely because MKT prefilled this code on the target.
+      const owners = existPromo[pc.toUpperCase()] || [];
+      if (owners.length) {
+        const itemSet = String(u.itemPromo || "").trim().toUpperCase();
+        // One real POS item/Item Set can carry the same promotion code in
+        // different Sale Modes. Permit that pair only after IT confirmed the
+        // explicit "use existing Item Set" selection on this button. A button
+        // completed earlier with this exact pair may also be re-saved.
+        const sharedPair = /^107\d{3,}$/.test(itemSet) &&
+          (API.isPosReuseConfirmed(u.campaign, u.sourceShortName || u.shortName, itemSet) ||
+            (completedCode(u, itemSet) && completedButtons.get(u.campaign + "||" + (u.sourceShortName || u.shortName) + "||" + itemSet) === pc.toUpperCase())) &&
+          owners.every(owner => owner.itemSet === itemSet);
+        if (!sharedPair) return "DUP_PROMO|" + pc + "|" + owners[0].campaign + "|" + owners[0].itemSet;
+      }
     }
-    // Different item rows normally mean a different Item Set. The exception is
-    // an explicitly borrowed 107 that IT already confirmed for this button.
+    // An identical list of items is not permission to reuse a 107. IT must
+    // confirm the explicit reuse, except when re-saving a button already
+    // completed with that exact code (e.g. an extended promotion).
     {
       const isCodes = new Set(updates.map(u => String(u.itemPromo || "").trim().toUpperCase()).filter(Boolean));
       for (const isU of isCodes) {
         if (!existItemSet[isU]) continue;
-        const bSet = new Set(updates.filter(x => String(x.itemPromo || "").trim().toUpperCase() === isU).map(x => String(x.itemCode || "").trim()));
-        if (sigOf(existItemSetSig[isU] || new Set()) !== sigOf(bSet)) {
-          const buttons = new Map();
-          updates.filter(x => String(x.itemPromo || "").trim().toUpperCase() === isU)
-            .forEach(x => buttons.set(String(x.campaign) + "||" + String(x.shortName), x));
-          if ([...buttons.values()].some(x => !API.isPosReuseConfirmed(x.campaign, x.shortName, isU))) {
-            return "DUP_ITEMSET|" + isU + "|" + existItemSet[isU];
-          }
+        const buttons = new Map();
+        updates.filter(x => String(x.itemPromo || "").trim().toUpperCase() === isU)
+          .forEach(x => buttons.set(String(x.campaign) + "||" + String(x.sourceShortName || x.shortName), x));
+        if ([...buttons.values()].some(x => {
+          const sourceName = x.sourceShortName || x.shortName;
+          if (API.isPosReuseConfirmed(x.campaign, sourceName, isU)) return false;
+          return !completedCode(x, isU);
+        })) {
+          return "DUP_ITEMSET|" + isU + "|" + existItemSet[isU];
         }
       }
     }
@@ -3130,7 +3138,7 @@
       const code = String(u.itemPromo || "").trim();
       if (!code) return;
       const gk = u.campaign + "|" + u.shortName;
-      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, promoCode: u.promoCode || "", netPrice: u.netPrice || "", reused: API.isPosReuseConfirmed(u.campaign, u.shortName, code), items: [] };
+      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, promoCode: u.promoCode || "", netPrice: u.netPrice || "", reused: API.isPosReuseConfirmed(u.campaign, u.sourceShortName || u.shortName, code) || completedCode(u, code.toUpperCase()), items: [] };
       _isGroups[gk].items.push({ originalPrice: u.price, qty: u.qty, itemCode: u.itemCode, itemNameEN: u.itemNameEN });
     });
     Object.keys(_isGroups).forEach(gk => {

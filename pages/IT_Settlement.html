@@ -1689,9 +1689,13 @@
           try { if (window.PC_API && PC_API.savePosButtonNoteCampaign) PC_API.savePosButtonNoteCampaign(campName, branchNote); } catch (e) {}  // ป้ายหมายเหตุเด่น → ทุกปุ่มของแคมเปญ → โชว์บนการ์ดสาขา
           Swal.fire({ title: 'ปิดงานสำเร็จ!', text: 'แคมเปญถูกตั้งค่าและเปลี่ยนสถานะเป็น COMPLETE แล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
         } else if (String(res).startsWith('DUP_PROMO|')) {
-          const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Promotion ซ้ำ', html:`รหัส <b>${p[1]}</b> ถูกใช้ไปแล้วในแคมเปญ<br><b>"${p[2]}"</b><br><span class="text-muted small">กรุณาใช้รหัสที่ไม่ซ้ำ</span>`, confirmButtonColor:'#dc3545' });
+          const p = String(res).split('|');
+          const reason = reusedItemSets.length && p[3]
+            ? 'รหัสโปรโมชั่นนี้ใช้ร่วมได้เฉพาะเมื่อ Code Item Set ตรงกับงานเดิม (' + itEsc(p[3]) + ') กรุณาตรวจคู่รหัสที่หน้า Item Set'
+            : 'กรุณาใช้รหัสโปรโมชั่นที่ไม่ซ้ำ';
+          Swal.fire({ icon:'error', title:'Code Promotion ซ้ำ', html:'รหัส <b>' + itEsc(p[1]) + '</b> ถูกใช้แล้วในแคมเปญ <b>' + itEsc(p[2]) + '</b><br><span class="text-muted small">' + reason + '</span>', confirmButtonColor:'#dc3545' });
         } else if (String(res).startsWith('DUP_ITEMSET|')) {
-          const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Item Set ซ้ำ', html:`รหัส <b>${p[1]}</b> ถูกใช้ไปแล้วในแคมเปญ<br><b>"${p[2]}"</b><br><span class="text-muted small">กรุณาใช้รหัสที่ไม่ซ้ำ</span>`, confirmButtonColor:'#dc3545' });
+          const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Item Set ซ้ำ', html:'รหัส <b>' + itEsc(p[1]) + '</b> ถูกใช้แล้วในแคมเปญ <b>' + itEsc(p[2]) + '</b><br><span class="text-muted small">ถ้าตั้งใจใช้รหัสเดิม ให้เลือก “ใช้ Item Set เดิม” ที่หน้า Item Set และให้ IT ยืนยันก่อนบันทึก</span>', confirmButtonColor:'#dc3545' });
         } else if (res === 'STORAGE_ERROR') {
           Swal.fire('บันทึกไม่สำเร็จ', 'พื้นที่เก็บข้อมูลในเครื่องเต็ม งานยังไม่ถูกบันทึกหรือซิงก์ Cloud กรุณาสำรองข้อมูลและรีเฟรชก่อนลองใหม่', 'error');
         } else { Swal.fire('Database Notification', res, 'info'); }
