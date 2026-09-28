@@ -5,6 +5,9 @@
   .it-scope .ring-active { outline: 3px solid #1a1d20; outline-offset: 0; }
   .it-scope .ring-active::after { content: "▼ กำลังกรอง"; position: absolute; top: 6px; right: 10px; font-size: .55rem; font-weight: 700; color: #1a1d20; }
   .it-scope .progress { background: #e9ecef; }
+  .it-scope .it-itemset-code .f-itempromo { display: block; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+  .it-scope .it-itemset-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .it-scope .it-itemset-actions .btn { flex: 0 0 auto; }
 </style>
 
 <div class="p-4 it-scope" style="background-color: #f4f4f4; min-height: 100vh;">
@@ -1017,7 +1020,7 @@
       inp.value = code; inp.setAttribute('data-cc-code', code); inp.setAttribute('data-it-confirmed', '1');
       inp.classList.remove('is-invalid'); inp.classList.add('is-valid');
       var status = inp.closest('td').querySelector('.it-itemset-status');
-      if (status) { status.className = 'it-itemset-status small text-success'; status.textContent = 'ยืนยันแล้ว · ไปกดรับที่หน้า Item Set'; }
+      if (status) { status.className = 'it-itemset-status small text-success'; status.textContent = 'ยืนยันแล้ว'; }
       Swal.fire({icon:'success', title:'ยืนยันรหัสแล้ว', html:'<b>' + itEsc(shortName) + '</b> ใช้รหัส <b class="mono">' + itEsc(code) + '</b><br><span class="small text-muted">ไปกด “รับรหัสจาก IT Settlement” ที่หน้า Item Set</span>', confirmButtonColor:'#2e934a'});
     } catch (err) {
       Swal.fire('ยืนยันไม่สำเร็จ', 'ระบบไม่สามารถบันทึกรหัสได้ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error');
@@ -1154,11 +1157,11 @@
                 <thead style="background-color: #ffffff;">
                   <tr class="text-center text-dark fw-bold">
                     <th style="width: 150px;" class="py-3">Type Promo</th>
-                    <th style="width: 160px;">Code Promotion <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th> <th style="width: 130px;">Code Item Set <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th>
+                    <th style="width: 160px;">Code Promotion <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th> <th style="width: 180px;">Code Item Set <span style="font-size:.6rem;font-weight:700;background:#fff3cd;color:#7a5b00;border:1px solid #e0c25a;border-radius:6px;padding:0 5px">RESERVED</span></th>
                     <th style="width: 210px;">Kitchen Name</th>
                     <th style="width: 150px;">Short Name</th>
                     <th style="width: 110px;">Item Code</th>
-                    <th>Item Name EN</th>
+                    <th style="width: 230px;">Item Name EN</th>
                     <th style="width: 60px;">Qty</th>
                     <th style="width: 100px;">Gross</th>
                     <th style="width: 90px;">Discount</th>
@@ -1282,8 +1285,8 @@
                           ? `<input type="text" class="form-control form-control-sm f-itempromo text-center" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
                           : (isItemSet
                               ? ((_isVal || _isChange)
-                                  ? `<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="${itEsc(_isVal || '')}" ${_isChange ? 'readonly' : ''} oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}" title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม' : 'แก้รหัสได้ แล้วยืนยันก่อนให้หน้า Item Set รับรหัส'}"><button class="btn btn-outline-success" type="button" onclick="window.itConfirmItemSetCode(this)" ${_isChange ? 'disabled' : ''} title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div><span class="it-itemset-status small ${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'text-success' : 'text-warning'}">${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'ยืนยันแล้ว · ไปกดรับที่หน้า Item Set' : 'ยังไม่ยืนยันรหัส'}</span>`
-                                  : `<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="" placeholder="รอรหัสจากตัวนับ" oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}"><button class="btn btn-outline-success" type="button" onclick="window.itConfirmItemSetCode(this)" title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div><span class="it-itemset-status small text-warning">ยังไม่ยืนยันรหัส</span>`)
+                                  ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="${itEsc(_isVal || '')}" ${_isChange ? 'readonly' : ''} oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}" title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม' : 'แก้รหัสได้ แล้วยืนยันก่อนให้หน้า Item Set รับรหัส'}"><div class="it-itemset-actions"><span class="it-itemset-status small ${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'text-success' : 'text-warning'}">${_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" ${_isChange ? 'disabled' : ''} title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`
+                                  : `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="" placeholder="รอรหัสจากตัวนับ" oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}"><div class="it-itemset-actions"><span class="it-itemset-status small text-warning">ยังไม่ยืนยัน</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`)
                               : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`)}</td>
                         <td>${!isHeader
                           ? `<input type="text" class="form-control form-control-sm f-kitchen" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
@@ -1292,7 +1295,7 @@
                               : `<input type="text" class="form-control form-control-sm f-kitchen" value="—" ${naAttr}>`)}</td>
                         <td>${isHeader ? `<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm f-short" value="${it.shortName || ''}"><button class="btn btn-outline-secondary" type="button" title="คัดลอก Short Name" onclick="window.itCopyNear(this,'f-short')"><i class="fas fa-copy"></i></button></div>` : `<input type="text" class="form-control form-control-sm f-short" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}</td>
                         <td><input type="text" class="form-control form-control-sm f-itemcode text-center fw-bold text-primary" list="listCode" value="${it.itemCode || ''}" oninput="window.syncItem(this, 'code')"></td>
-                        <td><input type="text" class="form-control form-control-sm f-itemname" list="listNameEN" value="${it.itemNameEN || ''}" oninput="window.syncItem(this, 'name')"></td>
+                        <td><input type="text" class="form-control form-control-sm f-itemname" list="listNameEN" value="${itEsc(it.itemNameEN || '')}" title="${itEsc(it.itemNameEN || '')}" aria-label="Item Name EN" oninput="window.syncItem(this, 'name')"></td>
                         <td><input type="number" class="form-control form-control-sm text-center f-qty fw-bold px-1" value="${it.qty || ''}"></td>
                         <td><input type="text" class="form-control form-control-sm text-end f-gross px-1" value="${it.price || ''}" oninput="window.calcRow(this)"></td>
                         <td><input type="text" class="form-control form-control-sm text-end f-disc text-danger px-1" value="${it.discount || ''}" oninput="window.calcRow(this)"></td>
@@ -1765,6 +1768,7 @@
     const nameInp = tr.querySelector('.f-itemname');
     if (type === 'code') { if (itemMasterMap[codeInp.value]) nameInp.value = itemMasterMap[codeInp.value]; }
     else { for (let code in itemMasterMap) { if (itemMasterMap[code] === nameInp.value) { codeInp.value = code; break; } } }
+    nameInp.title = nameInp.value;
   };
 
   window.calcRow = function(el) {
