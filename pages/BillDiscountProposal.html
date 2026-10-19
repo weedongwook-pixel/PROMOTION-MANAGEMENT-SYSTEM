@@ -935,15 +935,6 @@ if (!isValid) return;
         Swal.fire('ตรวจไฟล์ไม่ได้', String(e.message || e), 'error'); return;
     }
 
-    const confirmation = await Swal.fire({
-        title: 'ยืนยันส่งข้อมูลให้ IT ขึ้นปุ่ม',
-        text: 'Campaign Name: ' + allCampaignData.map(c => c.name).join('\n'),
-        icon: 'question', showCancelButton: true,
-        confirmButtonText: 'ยืนยันส่งข้อมูล', cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: '#2e934a'
-    });
-    if (!confirmation.isConfirmed) return;
-
         if (!window.PC_SubmissionLog) { Swal.fire('ยังส่งงานไม่ได้', 'ระบบตรวจการบันทึกยังโหลดไม่ครบ กรุณารีเฟรชแล้วลองใหม่', 'error'); return; }
         try {
             for (const job of mappingJobs) {
