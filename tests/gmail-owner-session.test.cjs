@@ -68,3 +68,24 @@ test('logout blocks both pending and already-exchanging consent callbacks in tha
   assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_owner_sessions').get().n,0);assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_admin_grants').get().n,0);f.DB.db.close();
  }
 });
+
+test('failed consent reports a safe reason and stage without exposing provider data or creating a session',async()=>{
+ for(const [failure,want] of [
+  ['email_missing_scopes','email_missing_scopes'],
+  ['email_refresh_required','email_refresh_required'],
+  ['email_reconnect_required','email_reconnect_required'],
+  ['email_provider_error','email_provider_error'],
+  ['secret-token <script>alert(1)</script>','email_connection_failed']
+ ]){
+  const f=setup();f.a.exchangeCode=async()=>{throw Error(failure);};
+  const start=await f.a.routeEmail(f.req('gmail/connect',{method:'POST'}),f.env),u=new URL((await start.json()).authorizationUrl),cookie=start.headers.get('set-cookie').split(';')[0];
+  const r=await f.a.routeEmail(f.req('gmail/callback?state='+u.searchParams.get('state')+'&code=private-code',{cookie}),f.env),body=await r.text();
+  assert.equal(r.status,400);assert.ok(body.includes(want));assert.ok(body.includes('token_exchange'));
+  assert.ok(!body.includes('private-code'));assert.ok(!body.includes('secret-token'));assert.ok(!body.includes('กรุณาเลือกบัญชีผู้ส่งที่กำหนด'));
+  assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_owner_sessions').get().n,0);f.DB.db.close();
+ }
+ const f=setup();f.a.verifySender=async()=>{throw Error('email_wrong_mailbox');};
+ const start=await f.a.routeEmail(f.req('gmail/connect',{method:'POST'}),f.env),u=new URL((await start.json()).authorizationUrl),cookie=start.headers.get('set-cookie').split(';')[0];
+ const r=await f.a.routeEmail(f.req('gmail/callback?state='+u.searchParams.get('state')+'&code=x',{cookie}),f.env),body=await r.text();
+ assert.ok(body.includes('email_wrong_mailbox'));assert.ok(body.includes('sender_profile'));f.DB.db.close();
+});

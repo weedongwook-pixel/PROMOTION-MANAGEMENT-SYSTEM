@@ -16,9 +16,20 @@
     if(!['GET','HEAD'].includes(request.method)&&(request.headers.get('Origin')!==c.origin||request.headers.get('X-PC-Email-CSRF')!==row.csrf))denied();
     return {...OWNER,csrf:row.csrf,expiresAt:row.expires_at};
   };
-  function callbackPage(c,ok,cookie){
+  const failureMessages=Object.freeze({
+    email_wrong_mailbox:'บัญชี Gmail ที่ Google ยืนยันไม่ตรงกับบัญชีผู้ส่ง it@rocks-foods.com',
+    email_missing_scopes:'Google ยังไม่ได้ให้สิทธิ์อ่านและส่งอีเมลครบ กรุณาอนุญาตสิทธิ์ทั้งสองรายการ',
+    email_refresh_required:'Google ไม่ได้ส่งสิทธิ์สำหรับการเชื่อมต่อระยะยาว กรุณาเริ่มเชื่อมต่อใหม่',
+    email_reconnect_required:'รหัสอนุญาตจาก Google ใช้ไม่ได้หรือหมดอายุ กรุณาเริ่มเชื่อมต่อใหม่',
+    email_provider_error:'ระบบติดต่อ Google หรือรับสิทธิ์ไม่สำเร็จ กรุณาส่งรหัสด้านล่างให้ผู้ดูแลตรวจสอบ',
+    email_consent_denied:'การอนุญาตจาก Google ไม่สำเร็จหรือถูกยกเลิก',
+    email_consent_expired:'คำขอเชื่อมต่อหมดอายุหรือไม่ตรงกับเบราว์เซอร์ กรุณาเริ่มเชื่อมต่อใหม่',
+    email_connection_failed:'ระบบเชื่อมต่อไม่สำเร็จ กรุณาส่งรหัสด้านล่างให้ผู้ดูแลตรวจสอบ'
+  });
+  function callbackPage(c,ok,cookie,reason='email_connection_failed',stage='callback'){
+    const detail=ok?'':('<p>'+failureMessages[reason]+'</p><p>รหัสตรวจสอบ: '+reason+' / '+stage+'</p>');
     const nonce=api.random(),status=ok?'connected':'error';
-    return new Response('<!doctype html><html lang="th"><meta charset="utf-8"><title>Gmail connection</title><h1>'+(ok?'เชื่อม Gmail แล้ว':'เชื่อมต่อไม่สำเร็จ กรุณาเลือกบัญชีผู้ส่งที่กำหนด')+'</h1><p>ปิดหน้านี้แล้วกลับไปที่ตั้งค่าอีเมล</p><script nonce="'+nonce+'">history.replaceState(null,"","/email/gmail/callback");if(window.opener)window.opener.postMessage({type:"pc-email-result",status:"'+status+'"},'+JSON.stringify(c.origin)+');</script>',{status:ok?200:400,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff',...(cookie?{'Set-Cookie':cookie}:{})}});
+    return new Response('<!doctype html><html lang="th"><meta charset="utf-8"><title>Gmail connection</title><h1>'+(ok?'เชื่อม Gmail แล้ว':'เชื่อมต่อไม่สำเร็จ')+'</h1>'+detail+'<p>ปิดหน้านี้แล้วกลับไปที่ตั้งค่าอีเมล</p><script nonce="'+nonce+'">history.replaceState(null,"","/email/gmail/callback");if(window.opener)window.opener.postMessage({type:"pc-email-result",status:"'+status+'"},'+JSON.stringify(c.origin)+');</script>',{status:ok?200:400,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff',...(cookie?{'Set-Cookie':cookie}:{})}});
   }
   api.routeGmailOwner=async function(request,env){
     const c=api.readEmailConfig(env),url=new URL(request.url),path=url.pathname,now=Date.now();
@@ -47,15 +58,23 @@
       return json({authorizationUrl:auth.href},200,{'Set-Cookie':BROWSER+'='+browser+'; Path=/; Max-Age=600; HttpOnly; Secure; SameSite=Lax'});
     }
     if(path==='/email/gmail/callback'&&request.method==='GET'){
+      let stage='consent_validation';
       try{
         const state=url.searchParams.get('state')||'',browser=getCookie(request,BROWSER),code=url.searchParams.get('code');
-        if(!/^[\w-]{43}$/.test(state)||!/^[\w-]{43}$/.test(browser)||!code||code.length>4096||url.searchParams.has('error'))throw Error();
+        if(url.searchParams.has('error'))throw Error('email_consent_denied');
+        if(!/^[\w-]{43}$/.test(state)||!/^[\w-]{43}$/.test(browser)||!code||code.length>4096)throw Error('email_consent_expired');
         const hash=await api.hash(state),attempt=await stmt(env,'UPDATE email_owner_attempts SET consumed_at=? WHERE state_hash=? AND browser_hash=? AND consumed_at IS NULL AND expires_at>? AND generation=(SELECT generation FROM email_connections WHERE id=1) RETURNING *',now,hash,await api.hash(browser),now).first();
-        if(!attempt)throw Error();
+        if(!attempt)throw Error('email_consent_expired');
+        stage='pkce_decryption';
         const verifier=await api.decryptSecret(attempt.verifier_cipher,c.encryptionKey,'owner-pkce:'+hash);
-        const tokens=await api.exchangeCode(code,verifier,c),sender=await api.verifySender(tokens.access_token,c);
-        if(sender!==c.sender)throw Error();
+        stage='token_exchange';
+        const tokens=await api.exchangeCode(code,verifier,c);
+        stage='sender_profile';
+        const sender=await api.verifySender(tokens.access_token,c);
+        if(sender!==c.sender)throw Error('email_wrong_mailbox');
+        stage='credential_encryption';
         const cipher=await api.encryptSecret(tokens.refresh_token,c.encryptionKey,'gmail:'+sender),session=api.random(),csrf=api.random(),at=new Date().toISOString();
+        stage='session_commit';
         await env.DB.batch([
           stmt(env,"UPDATE email_connections SET sender=?,status='connected',refresh_cipher=?,granted_scopes=?,connected_at=?,updated_at=?,generation=generation+1 WHERE id=1 AND generation=? AND EXISTS(SELECT 1 FROM email_owner_attempts WHERE state_hash=? AND browser_hash=? AND consumed_at IS NOT NULL AND expires_at>?)",sender,cipher,tokens.scope,at,at,attempt.generation,hash,attempt.browser_hash,Date.now()),
           env.DB.prepare('INSERT INTO email_owner_commit_guard(id) SELECT CASE WHEN changes()=1 THEN 1 ELSE 0 END'),env.DB.prepare('DELETE FROM email_owner_commit_guard'),
@@ -65,7 +84,10 @@
           stmt(env,'INSERT INTO email_owner_sessions(session_hash,csrf,generation,expires_at) VALUES(?,?,?,?)',await api.hash(session),csrf,attempt.generation+1,Date.now()+3600000)
         ]);
         return callbackPage(c,true,SESSION+'='+session+'; Path=/; Max-Age=3600; HttpOnly; Secure; SameSite=Strict');
-      }catch(_){return callbackPage(c,false);}
+      }catch(error){
+        const reason=Object.hasOwn(failureMessages,error?.message)?error.message:'email_connection_failed';
+        return callbackPage(c,false,null,reason,stage);
+      }
     }
     if(path==='/email/auth/session'&&request.method==='GET'){
       try{const actor=await api.verifyOwnerSession(request,env);return json({identity:{tenantId:actor.tenantId,objectId:actor.objectId},sender:c.sender,csrf:actor.csrf,expiresAt:actor.expiresAt});}
