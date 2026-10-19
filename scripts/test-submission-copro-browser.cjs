@@ -1,0 +1,28 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+ try{for(const history of [false,true])for(const copro of [false,true]){
+  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',route=>{assert.equal(new URL(route.request().url()).origin,'http://copro.test','test must never send external requests');return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});});
+  await page.goto('http://copro.test/');
+  for(const file of ['vendor/sweetalert2/sweetalert2.all.min.js','js/submission-log.js','js/co-promo.js'])await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'..',file),'utf8')});
+  await page.evaluate(()=>{
+   localStorage.setItem('pc_userName','MKT');window.navigation=[];window.loadPage=name=>navigation.push(name);
+   const rows=[{campaign:'Co-Promo test',shortName:'Discount',month:'2026-10'}];
+   window.PC_CLOUD={enabled:()=>true,readCampaignRows:async()=>rows};
+   const run={withSuccessHandler(fn){this.success=fn;return this;},withFailureHandler(){return this;},getAllCampaignData(){this.success(rows);},getCoPromoContext(){this.success({campaign:'Co-Promo test',buttons:[{buttonName:'Discount',codePromotion:'BD001'}]});}};
+   window.google={script:{run}};
+   const plan=PC_SubmissionLog.prepare('Bill Discount',rows);
+   window.result=PC_SubmissionLog.afterSave(plan,{onAfter:()=>PC_CoPromo.promptAfterSubmit(['Co-Promo test'])});
+  });
+  await page.getByText('ตรวจพบข้อมูลครบแล้ว',{exact:true}).waitFor();
+  await page.locator(history?'.swal2-confirm':'.swal2-cancel').click();
+  await page.getByText('เป็น Co-Promotion หรือไม่?',{exact:true}).waitFor();
+  assert.deepEqual(await page.evaluate(()=>navigation),[],'navigation cannot skip Co-Promo');
+  await page.locator(copro?'.swal2-confirm':'.swal2-cancel').click();
+  if(copro){await page.locator('#cpfCancel').waitFor();assert.deepEqual(await page.evaluate(()=>navigation),[]);await page.locator('#cpfCancel').click();}
+  assert.equal(await page.evaluate(()=>result),true);assert.deepEqual(await page.evaluate(()=>navigation),history?['SubmissionLog']:[]);assert.deepEqual(errors,[]);
+  console.log(`Verified history=${history}, Co-Promo=${copro}: prompt and form complete before navigation; no external sends`);await page.close();
+ }}finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

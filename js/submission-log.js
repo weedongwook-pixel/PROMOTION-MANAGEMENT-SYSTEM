@@ -158,7 +158,10 @@
   async function afterSave(plan, options) {
     options = options || {};
     (plan.entries || []).forEach(function (entry) { setAttempt(entry, 'cloud_acked'); });
-    if (window.Swal) Swal.fire({ title: 'กำลังตรวจ Cloud และศูนย์ติดตามงาน…', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    if (window.Swal) {
+      Swal.fire({ title: 'กำลังตรวจ Cloud และศูนย์ติดตามงาน…', allowOutsideClick: false });
+      Swal.showLoading();
+    }
     var results = await verifyPlan(plan), ok = results.length > 0 && results.every(function (r) { return r.ok; });
     plan.entries.forEach(function (entry, i) {
       var result = results[i] || {};
@@ -166,18 +169,26 @@
         { cloudSaved: result.cloudSaved, successShown: ok });
     });
     if (typeof options.onDone === 'function') options.onDone(ok);
-    var navigated = false;
+    var navigateToLog = false;
     if (window.Swal) {
       if (ok) await Swal.fire({ icon: 'success', title: 'ตรวจพบข้อมูลครบแล้ว',
         text: plan.entries.length + ' แคมเปญ · Cloud บันทึกแล้ว และพบทุกปุ่มในศูนย์ติดตามงาน',
         showCancelButton: true, confirmButtonText: 'ดูประวัติการแจ้งโปรฯ', cancelButtonText: 'ทำงานต่อ', confirmButtonColor: '#2e934a'
-      }).then(function (r) { if (r.isConfirmed) { navigated = true; openLog(); } });
+      }).then(function (r) { if (r.isConfirmed) navigateToLog = true; });
       else await Swal.fire({ icon: 'warning', title: 'ยังตรวจผลการส่งไม่ครบ',
         text: 'มี ' + results.filter(function (r) { return !r.ok; }).length + ' แคมเปญที่ต้องตรวจเพิ่มเติม กรุณาเปิด “ประวัติการแจ้งโปรฯ” เพื่อตรวจสถานะ Cloud ก่อนกดส่งซ้ำ',
         confirmButtonText: 'เปิดประวัติการแจ้งโปรฯ', confirmButtonColor: '#2e934a'
-      }).then(function () { navigated = true; openLog(); });
+      }).then(function () { navigateToLog = true; });
     }
-    if (ok && !navigated && typeof options.onAfter === 'function') options.onAfter();
+    // Finish the post-save Co-Promo decision before leaving the submitted form.
+    if (ok && typeof options.onAfter === 'function') {
+      try { await options.onAfter(); }
+      catch (error) {
+        if (window.Swal) await Swal.fire({ icon:'warning', title:'บันทึกโปรฯ แล้ว แต่เปิดขั้นตอนถัดไปไม่สำเร็จ',
+          text:'ไม่ต้องส่งโปรฯ ซ้ำ กรุณาเปิด Co-Promotion เพื่อตรวจข้อมูลเพิ่มเติม: ' + String(error && error.message || error) });
+      }
+    }
+    if (navigateToLog) openLog();
     return ok;
   }
   function openLog() {

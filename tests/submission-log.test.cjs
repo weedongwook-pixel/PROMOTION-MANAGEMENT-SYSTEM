@@ -22,7 +22,7 @@ function setup(role = 'MKT', name = 'Bow') {
   context.window = context;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/submission-log.js'), 'utf8'), context);
-  return { log: context.PC_SubmissionLog, setTracking: x => { tracking = x; }, setRemote: x => { remote = x; }, setActivity: x => { activity = x; }, data };
+  return { context, log: context.PC_SubmissionLog, setTracking: x => { tracking = x; }, setRemote: x => { remote = x; }, setActivity: x => { activity = x; }, data };
 }
 
 test('Cloud activity log filters by actor without inflating new-submission counts', async () => {
@@ -301,4 +301,25 @@ test('ten campaigns submitted today appear as ten Cloud-verified successes', asy
   assert.equal(summary.pending, 0);
   assert.equal(summary.failed, 0);
   assert.ok(entries.every(entry => entry.user === 'Bow'));
+});
+
+
+test('both success-dialog choices complete the Co-Promo follow-up before navigating', async () => {
+  for (const isConfirmed of [true, false]) {
+    const f=setup(),events=[],rows=[{campaign:'TOTO',shortName:'Discount'}];
+    const plan=f.log.prepare('Bill Discount',rows);f.setTracking(rows);f.setRemote({TOTO:rows});
+    f.context.document={getElementById(){return null;}};
+    f.context.loadPage=page=>events.push('navigate:'+page);
+    f.context.Swal={fire:async options=>{if(options.icon==='success')events.push('success');return {isConfirmed};},showLoading(){}};
+    let release;const followUp=new Promise(resolve=>{release=resolve;});
+    const finished=f.log.afterSave(plan,{onAfter:()=>{events.push('copro');return followUp.then(()=>events.push('copro-complete'));}});
+    for(let i=0;i<20;i++)await Promise.resolve();
+    assert.deepEqual(events,['success','copro'],'Co-Promo cannot be skipped by choosing history');
+    release();assert.equal(await finished,true);
+    assert.deepEqual(events,['success','copro','copro-complete',...(isConfirmed?['navigate:SubmissionLog']:[])]);
+  }
+});
+test('unverified submissions do not start the Co-Promo follow-up',async()=>{
+ const f=setup(),plan=f.log.prepare('Bill Discount',[{campaign:'TOTO',shortName:'Missing'}]);let calls=0;
+ assert.equal(await f.log.afterSave(plan,{onAfter:()=>calls++}),false);assert.equal(calls,0);
 });

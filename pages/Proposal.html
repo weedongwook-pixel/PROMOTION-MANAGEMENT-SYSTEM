@@ -711,7 +711,7 @@
                         if (_submissionPlan) {
                             PC_SubmissionLog.afterSave(_submissionPlan, {
                                 onDone: function (ok) { if (ok) window.resetForm(); },
-                                onAfter: function () { if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV }); }
+                                onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV }); }
                             });
                         }
                     } else {

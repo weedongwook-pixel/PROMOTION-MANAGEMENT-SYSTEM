@@ -979,7 +979,7 @@ if (!isValid) return;
                 var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
                 if (_submissionPlan) PC_SubmissionLog.afterSave(_submissionPlan, {
                     onDone: function (ok) { if (ok) _complete(); },
-                    onAfter: function () { if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c); }
+                    onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_c); }
                 });
             } else { 
                 if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, res && res.message || 'Unknown Error');
