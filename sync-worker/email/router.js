@@ -19,9 +19,11 @@
     const json = (data, status=200, extra={}) => new Response(JSON.stringify(data),{status,headers:{...headers,...extra}});
     if (origin && origin !== c.origin) return json({error:'email_origin_denied'},403);
     if (origin === c.origin) headers['Access-Control-Allow-Origin'] = c.origin;
-    if (request.method === 'OPTIONS') return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Credentials':'true'}});
-    if (path === '/email/capabilities' && request.method === 'GET') return json({enabled:readiness.ready,sendingEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true'&&env.EMAIL_SEND_ENABLED==='true',coproEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true',testSendingEnabled:readiness.ready&&env.EMAIL_TEST_SEND_ENABLED==='true',scope:c.scope || null});
+    if (request.method === 'OPTIONS') return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, X-PC-Email-CSRF','Access-Control-Allow-Credentials':'true'}});
+    if (path === '/email/capabilities' && request.method === 'GET') return json({enabled:readiness.ready,sendingEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true'&&env.EMAIL_SEND_ENABLED==='true',coproEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true',testSendingEnabled:readiness.ready&&env.EMAIL_TEST_SEND_ENABLED==='true',scope:c.authMode==='gmail_owner'?null:(c.scope||null),authMode:c.authMode});
+    if(api.routeGmailOwner&&path==='/email/auth/logout'&&request.method==='POST')return api.routeGmailOwner(request,env);
     if (!readiness.ready) return json({state:'configuration_incomplete',sender:null,missing:readiness.missing,sendingEnabled:false},503);
+    if(c.authMode==='gmail_owner'){const result=await api.routeGmailOwner(request,env);if(result)return result;}
     if(api.routeCoProEmail){const result=await api.routeCoProEmail(request,env);if(result)return result;}
     try {
       if (path === '/email/gmail/callback' && request.method === 'GET') {

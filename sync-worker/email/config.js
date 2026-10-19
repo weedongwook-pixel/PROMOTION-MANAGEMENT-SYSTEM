@@ -5,6 +5,7 @@
   api.readEmailConfig = function (env) {
     return Object.freeze({
       enabled: env.EMAIL_CONNECTION_ENABLED === 'true',
+      authMode: env.EMAIL_AUTH_MODE === 'gmail_owner' ? 'gmail_owner' : 'microsoft',
       tenantId: env.EMAIL_TENANT_ID || '',
       audience: env.EMAIL_API_AUDIENCE || '',
       scope: env.EMAIL_API_SCOPE || '',
@@ -19,9 +20,11 @@
   api.emailReadiness = function (c) {
     const missing = [];
     if (!c.enabled) missing.push('EMAIL_CONNECTION_ENABLED');
+    if(c.authMode!=='gmail_owner') {
     if (!/^[a-f0-9-]{36}$/i.test(c.tenantId)) missing.push('EMAIL_TENANT_ID');
     if (!/^[a-f0-9-]{36}$/i.test(c.audience)) missing.push('EMAIL_API_AUDIENCE');
     if (c.scope !== 'api://' + c.audience + '/access_as_user') missing.push('EMAIL_API_SCOPE');
+    }
     if (!c.clientSecret) missing.push('GMAIL_CLIENT_SECRET');
     try { if (atob(c.encryptionKey).length !== 32) throw new Error(); } catch (_) { missing.push('EMAIL_ENCRYPTION_KEY'); }
     return {ready: missing.length === 0, missing};

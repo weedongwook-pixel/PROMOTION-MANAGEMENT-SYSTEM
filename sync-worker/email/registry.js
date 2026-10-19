@@ -26,6 +26,7 @@
     const members=new Set(([h.to,h.cc,h.from].filter(Boolean).join(',').match(/[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/ig)||[]).map(x=>x.toLowerCase()));
     if(!members.has('it@rocks-foods.com')||[...recipients.to,...recipients.cc].some(x=>!members.has(x)))throw Error('email_unapproved_recipients');
     if(!Array.isArray(input.audience)||!input.audience.length||input.audience.length>50||input.audience.some(x=>!/^[-a-f0-9]{36}$/i.test(x.tenantId||'')||!/^[-a-f0-9]{36}$/i.test(x.objectId||'')))throw Error('email_invalid_audience');
+    if(env.EMAIL_AUTH_MODE==='gmail_owner'&&input.audience.some(x=>x.tenantId!==actor.tenantId||x.objectId!==actor.objectId))throw Error('email_invalid_audience');
     const refs=(h.references||'').match(/<[^\s<>]+@[^\s<>]+>/g)||[];
     const id=crypto.randomUUID();
     await env.DB.prepare('INSERT INTO email_threads(id,thread_id,message_id,rfc_message_id,references_json,subject,to_json,cc_json,audience_json,version,mode,enabled,published_by,updated_at,delivery_mode) VALUES (?,?,?,?,?,?,?,?,?,1,\'test\',1,?,?,?)').bind(id,message.threadId,message.messageId,h['message-id'],JSON.stringify(refs),h.subject,JSON.stringify(recipients.to),JSON.stringify(recipients.cc),JSON.stringify(input.audience),api.emailActorKey(actor),Date.now(),mode).run();

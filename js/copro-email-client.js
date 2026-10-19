@@ -10,9 +10,9 @@
   async function request(path,{method='GET',body,interactive=false}={}){
     if(!caps)await capabilities();
     if(!caps.coproEnabled)throw Error('ยังไม่เปิดบริการ Co-Promotion email / Email disabled');
-    if(!window.PC_EmailAuth)throw Error('เปิดตั้งค่าอีเมลและยืนยัน Microsoft ก่อน / Verify Microsoft in Email Settings');
-    const token=await window.PC_EmailAuth.acquireToken({scope:caps.scope,interactive});
-    const r=await fetch('/email/'+path,{method,credentials:'same-origin',cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
+    if(!window.PC_EmailAuth)throw Error('กรุณาเชื่อมบัญชีผู้ส่งที่ตั้งค่าอีเมล / Connect the sender in Email Settings');
+    const authHeaders=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({scope:caps.scope,interactive})};
+    const r=await fetch('/email/'+path,{method,credentials:'same-origin',cache:'no-store',headers:{...authHeaders,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
     const result=await r.json();if(!r.ok)throw Error('ยังดำเนินการอีเมลไม่ได้ / Email not completed: '+(result.error||r.status));return result;
   }
   async function list(){return (await request('copro')).items;}

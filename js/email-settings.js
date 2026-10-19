@@ -26,14 +26,15 @@
       get('status').setAttribute('data-en',text[1]+(next==='connected'?value:''));
       get('status').textContent=text[en()?1:0]+(next==='connected'?value:'');
       connect.disabled=busy || !caps?.enabled || !['not_connected','disconnected','reconnect_required','error','blocked'].includes(next);
-      verify.hidden= !caps?.enabled || !['signin','denied'].includes(next);
+      verify.hidden= caps?.authMode==='gmail_owner' || !caps?.enabled || !['signin','denied'].includes(next);
       disconnect.hidden=next!=='connected';
       for(const b of [verify,disconnect,refresh])b.disabled=busy;
       root.querySelectorAll('[data-th][data-en]').forEach(el=>{el.textContent=el.getAttribute(en()?'data-en':'data-th');});
     }
     async function call(path,{method='GET',interactive=false,publicRequest=false}={}) {
-      const headers={};
-      if (!publicRequest) headers.Authorization='Bearer '+await window.PC_EmailAuth.acquireToken({interactive,scope:caps.scope});
+      let headers={};
+      const ownerPublic=caps?.authMode==='gmail_owner'&&['status','gmail/connect'].includes(path);
+      if (!publicRequest&&!ownerPublic) headers=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({interactive,scope:caps.scope})};
       const response=await fetch('/email/'+path,{method,headers,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000)});
       const data=await response.json();
       if(!response.ok){if(data.state==='configuration_incomplete')return data;throw new Error(response.status===403?'email_denied':'email_error');}

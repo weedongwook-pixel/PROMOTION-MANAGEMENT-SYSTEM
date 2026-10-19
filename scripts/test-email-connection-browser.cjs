@@ -1,6 +1,7 @@
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 (async()=>{
+  const ownerMode=process.argv.includes('--gmail-owner');
   const server=http.createServer((req,res)=>{
     const p=req.url.split('?')[0];
     if(p==='/fixture'){
@@ -22,17 +23,18 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       let enabled=false,status='not_connected';
       await page.route('**/email/**',async route=>{
         const p=new URL(route.request().url()).pathname;let body;
-        if(p==='/email/capabilities')body={enabled,scope:enabled?'api://22222222-2222-4222-8222-222222222222/access_as_user':null,sendingEnabled:false};
+        if(p==='/email/capabilities')body={enabled,authMode:ownerMode?'gmail_owner':'microsoft',scope:enabled?'api://22222222-2222-4222-8222-222222222222/access_as_user':null,sendingEnabled:false};
+        else if(p==='/email/auth/session')body={identity:{tenantId:'owner',objectId:'owner'},csrf:'mock-csrf'};
         else if(p==='/email/status')body=enabled?{state:status,sender:status==='connected'?'it@rocks-foods.com':null,missing:[],sendingEnabled:false}:{state:'configuration_incomplete',missing:['GMAIL_CLIENT_SECRET'],sendingEnabled:false};
         else if(p==='/email/gmail/connect')body={authorizationUrl:'https://accounts.google.com/o/oauth2/v2/auth'};
         else body={state:'disconnected',ownerRevocationRequired:true};
         await route.fulfill({status:!enabled&&p!=='/email/capabilities'?503:200,json:body});
       });
-      await page.addInitScript(()=>{
+      await page.addInitScript(ownerMode=>{
         window.PC_LANG='TH';
         const account={username:'admin@example.com',idTokenClaims:{tid:'tenant',oid:'object'}};
-        window.PC_EmailMsalContext=async()=>({email:account.username,identity:{tenantId:'tenant',objectId:'object'},app:{getAllAccounts:()=>[account],acquireTokenSilent:async()=>({account,accessToken:'mock'}),acquireTokenPopup:async()=>({account,accessToken:'mock'})}});
-      });
+        window.PC_EmailMsalContext=async()=>{if(ownerMode)throw Error('Microsoft must not be used');return ({email:account.username,identity:{tenantId:'tenant',objectId:'object'},app:{getAllAccounts:()=>[account],acquireTokenSilent:async()=>({account,accessToken:'mock'}),acquireTokenPopup:async()=>({account,accessToken:'mock'})}});};
+      },ownerMode);
       await page.goto(`http://127.0.0.1:${server.address().port}/fixture`);
       await page.evaluate(()=>window.initEmail_Settings());
       await page.waitForFunction(()=>document.querySelector('[data-email-status]').textContent.includes('ตั้งค่า'));
@@ -41,6 +43,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       enabled=true;
       await page.locator('[data-email-refresh]').click();
       await page.waitForFunction(()=>!document.querySelector('[data-email-connect]').disabled);
+      if(ownerMode)assert.equal(await page.locator('[data-email-verify]').isVisible(),false);
       await page.evaluate(()=>{
         const frame=document.createElement('iframe');frame.hidden=true;document.body.append(frame);
         window.__emailPopup=frame.contentWindow;

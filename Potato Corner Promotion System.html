@@ -1101,8 +1101,10 @@
         icon: 'warning', showCancelButton: true,
         confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
         confirmButtonText: 'ยืนยัน (LOGOUT)', cancelButtonText: 'ยกเลิก (CANCEL)'
-      }).then((r) => {
+      }).then(async (r) => {
         if (r.isConfirmed) {
+          try { if(window.PC_EmailAuth?.logout)await window.PC_EmailAuth.logout(); }
+          catch(error){await Swal.fire({icon:'error',title:'ออกจากระบบไม่สำเร็จ',text:String(error.message||error)});return;}
           // keep the mock data store; only clear the session keys
           ['pc_session','pc_role','pc_userName','pc_last_page','pc_guest','pc_section'].forEach(k => localStorage.removeItem(k));
           // ล้าง hash ก่อน reload — กันไม่ให้ PC_tryBranchGuest เห็น #Branch_View ฯลฯ แล้วเข้า guest mode ซ้ำ (logout ไม่หลุดจากหน้าสาขา)

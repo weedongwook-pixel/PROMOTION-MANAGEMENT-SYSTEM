@@ -52,7 +52,7 @@
       if(!root)return;
       root.innerHTML='<h2 data-th="อีเมล Co-Promotion" data-en="Co-Promotion email">อีเมล Co-Promotion</h2>'+
         '<p data-th="เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที" data-en="Choose the real conversation for each promotion and confirm recipients. Connecting does not send email.">เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที</p>'+
-        '<p data-copro-note role="status" aria-live="polite"></p><button type="button" class="btn btn-outline-success mb-3" data-copro-enable>ยืนยัน Microsoft / เปิดใช้อีเมลในแท็บนี้</button>'+
+        '<p data-copro-note role="status" aria-live="polite"></p><button type="button" class="btn btn-outline-success mb-3" data-copro-enable>เปิดใช้อีเมลในแท็บนี้</button>'+
         '<details><summary data-th="ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ" data-en="Administrator: approve conversation and recipients">ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ</summary>'+
         '<label class="d-block mt-3" for="coproMode">ประเภทลูป / Conversation type</label><select id="coproMode" class="form-select"><option value="production">งานจริง / Production</option><option value="test">ทดสอบ / Test</option></select><label class="d-block mt-3" for="coproSearch">Subject / หัวข้อเมล</label><input id="coproSearch" class="form-control" placeholder="หัวข้อเมลของโปรฯ" maxlength="200"><button type="button" class="btn btn-outline-success my-3" data-copro-search>ค้นหาใน Gmail / Search Gmail</button><div data-copro-results></div>'+
         '<label class="d-block" for="coproPublishTo">To — ผู้รับ / Recipients</label><textarea id="coproPublishTo" class="form-control mb-3" rows="2"></textarea><label for="coproPublishCc">CC</label><textarea id="coproPublishCc" class="form-control mb-3" rows="2"></textarea>'+
@@ -61,7 +61,7 @@
         '<button type="button" class="btn btn-outline-success my-3" data-copro-history>ตรวจคิวเมลของงาน / Check campaign mail status</button><div data-copro-history-list></div>';
       const get=name=>root.querySelector('[data-copro-'+name+']'),note=text=>{get('note').textContent=text;};let selected=null;
       root.querySelector('#coproMode').addEventListener('change',()=>{selected=null;get('publish').disabled=true;get('results').replaceChildren();});
-      const toggleLabel=()=>{get('enable').textContent=client().active()?word('ปิดใช้อีเมลในแท็บนี้','Disable email in this tab'):word('ยืนยัน Microsoft / เปิดใช้อีเมลในแท็บนี้','Verify Microsoft / Enable email in this tab');};toggleLabel();
+      const toggleLabel=()=>{get('enable').textContent=client().active()?word('ปิดใช้อีเมลในแท็บนี้','Disable email in this tab'):word('เปิดใช้อีเมลในแท็บนี้','Enable email in this tab');};toggleLabel();
       const action=(button,fn)=>button.addEventListener('click',async()=>{button.disabled=true;try{await fn();}catch(e){note(String(e.message||e));}finally{button.disabled=false;}});
       action(get('enable'),async()=>{
         if(client().active()){client().disable();toggleLabel();note(word('ปิดใช้อีเมลในแท็บนี้แล้ว','Pilot disabled in this tab'));return;}
@@ -75,9 +75,10 @@
       });
       action(get('publish'),async()=>{
         if(!selected)throw Error('Select a conversation');
-        const context=await window.PC_EmailMsalContext(),identity=context.identity;
-        if(!identity?.tenantId||!identity?.objectId)throw Error('Sign in with Microsoft again');
-        const recipients={to:addresses(root.querySelector('#coproPublishTo').value),cc:addresses(root.querySelector('#coproPublishCc').value)},audienceInput=addresses(root.querySelector('#coproAudience').value);
+        const caps=await client().capabilities();
+        const context=caps.authMode==='gmail_owner'?await window.PC_EmailAuth.ownerSession():await window.PC_EmailMsalContext(),identity=context.identity;
+        if(!identity?.tenantId||!identity?.objectId)throw Error('กรุณาเชื่อมบัญชีผู้ส่งอีกครั้ง / Verify email access again');
+        const recipients={to:addresses(root.querySelector('#coproPublishTo').value),cc:addresses(root.querySelector('#coproPublishCc').value)},audienceInput=caps.authMode==='gmail_owner'?[]:addresses(root.querySelector('#coproAudience').value);
         const audience=audienceInput.length?audienceInput.map(objectId=>({tenantId:identity.tenantId,objectId})):[identity];
         if(!window.confirm(word('อนุมัติผู้รับเหล่านี้หรือไม่?\n','Approve these recipients?\n')+selected.subject+'\n'+selected.mode+'\n'+JSON.stringify(recipients)))return;
         await client().request('threads',{method:'POST',body:{mode:selected.mode,messageId:selected.messageId,recipients,audience},interactive:true});note(word('อนุมัติลูปแล้ว ยังไม่มีการส่งเมล','Conversation approved. No email has been sent.'));
@@ -87,7 +88,7 @@
         for(const c of campaigns){const p=document.createElement('p');p.textContent=c.key.replace('promo::c::','')+' / '+c.month+' — '+c.history.map(h=>h.event_key.split(':').at(-1)+': '+h.status).join(' · ');get('history-list').append(p);}
         if(!campaigns.length)note(word('ยังไม่มีงานใหม่ในโหมดทดสอบ','No new pilot campaigns'));
       });
-      client().capabilities().then(c=>{get('enable').disabled=!c.coproEnabled&&!client().active();note(c.coproEnabled?(c.testSendingEnabled?word('ผู้ดูแลเปิดส่งทดสอบแล้ว','Test dispatch enabled by administrator'):word('สร้างคิวได้ แต่ผู้ดูแลยังปิดการส่งจริง','Queueing available; actual test dispatch is disabled')):word('ผู้ดูแลยังไม่เปิด Co-Promotion email หรือการตั้งค่ายังไม่ครบ','Co-Promotion email is disabled or setup is incomplete'));}).catch(e=>note(String(e.message||e)));
+      client().capabilities().then(c=>{if(c.authMode==='gmail_owner'){root.querySelector('#coproAudience').hidden=true;root.querySelector('label[for="coproAudience"]').hidden=true;}get('enable').disabled=!c.coproEnabled&&!client().active();note(c.coproEnabled?(c.sendingEnabled?word('ส่งเข้าลูปงานจริงหลังเชื่อม Gmail และยืนยันผู้รับ','Production email requires connected Gmail and confirmed recipients'):c.testSendingEnabled?word('ผู้ดูแลเปิดส่งทดสอบแล้ว','Test dispatch enabled by administrator'):word('สร้างคิวได้ แต่ผู้ดูแลยังปิดการส่งจริง','Queueing available; actual test dispatch is disabled')):word('ผู้ดูแลยังไม่เปิด Co-Promotion email หรือการตั้งค่ายังไม่ครบ','Co-Promotion email is disabled or setup is incomplete'));}).catch(e=>note(String(e.message||e)));
     }
   };
 })(window);

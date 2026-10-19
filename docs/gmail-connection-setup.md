@@ -1,4 +1,22 @@
-# Gmail connection setup — activation pending
+# Gmail connection setup — Gmail owner mode
+
+## Current mode (2026-10-19)
+
+The user requested removing the Microsoft administrator dependency and explicitly chose to start with only the person connecting `it@rocks-foods.com`. `EMAIL_AUTH_MODE=gmail_owner` replaces Microsoft email API tokens for this deployment. Existing website login is independent. The Microsoft configuration sections below describe the legacy mode only and are not prerequisites for owner mode.
+
+Apply additive migration `006_gmail_owner_sessions.sql` before deploying owner mode. Google client secret and encryption key remain unchanged. Connection, Co-Promotion and production dispatch are enabled in this mode; test dispatch stays off. These switches alone send nothing: owner consent, protected submission, approved real thread/recipients and explicit preview confirmation are still required.
+
+1. Website → Email Settings → Connect Gmail. No Microsoft administrator button is required.
+2. The owner signs in to Google as `it@rocks-foods.com` and consents. The configured redirect must be `https://white-pine-853e.quiet-surf-dda2.workers.dev/email/gmail/callback`. Google Workspace policy may still restrict consent; this change does not bypass Google policy.
+3. Successful token exchange and server-side Gmail profile verification create the protected owner grants and a one-hour browser session. A different Gmail account is rejected. No public request, browser role, shared sync token or Microsoft token grants access in owner mode.
+4. That connected browser can approve real loops/participants and submit new promotions followed by Co-Promotion email confirmation. Other staff can continue ordinary promotion work, but do not inherit sender authority. Additional independent staff identities are outside this temporary owner-only mode.
+5. Website logout revokes the browser's mail session and pending consent attempts. Disconnect removes credentials and revokes all owner sessions; Google access must be revoked separately if desired. Reconnecting replaces the prior owner session. A session expiry requires reconnecting before new email commands.
+
+All tests use mocked Google/provider responses. Deployment is not evidence of owner consent or actual delivery. Existing unverified promotions are not automatically backfilled, and legacy Microsoft-owned queued campaigns are held in owner mode.
+
+The implementation uses [Google's server-side OAuth flow](https://developers.google.com/identity/protocols/oauth2/web-server), encrypted refresh credentials, browser-bound single-use state/PKCE, Secure HttpOnly cookies and CSRF headers for protected mutations.
+
+## Legacy Microsoft mode reference
 
 The connection slice connects one sender, `it@rocks-foods.com`. The added Co-Promotion pilot implements approved-conversation selection and two queued replies, but is disabled by default. All development provider calls use mocks. No production migration, connection, consent or delivery is implied by this document.
 

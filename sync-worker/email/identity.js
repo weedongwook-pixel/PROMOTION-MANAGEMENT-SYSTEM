@@ -9,6 +9,7 @@
   }
   api.verifyEmailActor = async function (request, env, deps = {}) {
     const config = api.readEmailConfig(env);
+    if(config.authMode==='gmail_owner'){const actor=await api.verifyOwnerSession(request,env);return {tenantId:actor.tenantId,objectId:actor.objectId};}
     if (!/^[a-f0-9-]{36}$/i.test(config.tenantId) || !/^[a-f0-9-]{36}$/i.test(config.audience) || config.scope !== 'api://' + config.audience + '/access_as_user' || !env.DB) reject();
     try {
       const authorization = request.headers.get('Authorization') || '';
@@ -50,6 +51,7 @@
   };
   api.requireEmailPermission = async function(actor, permission, env) {
     if(!actor || !['manage','submit','it'].includes(permission))reject();
+    if(env.EMAIL_AUTH_MODE==='gmail_owner'&&!api.isGmailOwner(actor))reject();
     if(permission==='manage') {
       const admin=await env.DB.prepare('SELECT enabled FROM email_admin_grants WHERE tenant_id=? AND object_id=? AND enabled=1').bind(actor.tenantId,actor.objectId).first();
       if(admin?.enabled===1)return;

@@ -1,35 +1,46 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const {webcrypto}=require('node:crypto');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
-const {database,actor,grant}=require('../tests/helpers/copro-context.cjs');
+const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.cjs');
 (async()=>{
+  const ownerMode=process.argv.includes('--gmail-owner');
+  const actor=ownerMode?{tenantId:'00000000-0000-4000-8000-000000000001',objectId:'00000000-0000-4000-8000-000000000002'}:staffActor;
   const mode=process.argv.includes('--production')?'production':'test';
   const subject=mode==='production'?'UOB October campaign':'Test send to email copro UOB';
-  const DB=database();DB.db.exec('CREATE TABLE promo_store(k TEXT PRIMARY KEY,v TEXT,updated_at INTEGER)');DB.db.exec(fs.readFileSync('sync-worker/migrations/002_submission_receipts.sql','utf8'));
-  for(const role of ['manage','submit','it'])grant(DB,actor,role);
-  const env={DB,CLOUD_FIRST_ENABLED:'true',EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:mode==='test'?'true':'false',EMAIL_SEND_ENABLED:mode==='production'?'true':'false',EMAIL_TENANT_ID:actor.tenantId,EMAIL_API_AUDIENCE:'22222222-2222-4222-8222-222222222222',EMAIL_API_SCOPE:'api://22222222-2222-4222-8222-222222222222/access_as_user',GMAIL_CLIENT_SECRET:'mock',EMAIL_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')};
+  const DB=database();if(ownerMode)DB.db.exec(fs.readFileSync('sync-worker/migrations/006_gmail_owner_sessions.sql','utf8'));DB.db.exec('CREATE TABLE promo_store(k TEXT PRIMARY KEY,v TEXT,updated_at INTEGER)');DB.db.exec(fs.readFileSync('sync-worker/migrations/002_submission_receipts.sql','utf8'));
+  if(!ownerMode)for(const role of ['manage','submit','it'])grant(DB,actor,role);
+  const env={DB,EMAIL_AUTH_MODE:ownerMode?'gmail_owner':'microsoft',CLOUD_FIRST_ENABLED:'true',EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:mode==='test'?'true':'false',EMAIL_SEND_ENABLED:mode==='production'?'true':'false',EMAIL_TENANT_ID:actor.tenantId,EMAIL_API_AUDIENCE:'22222222-2222-4222-8222-222222222222',EMAIL_API_SCOPE:'api://22222222-2222-4222-8222-222222222222/access_as_user',GMAIL_CLIENT_SECRET:'mock',EMAIL_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')};
   const sent=[];
   const provider=async(url,opts)=>{if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:subject},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'external-test@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
   const c={crypto:webcrypto,fetch:provider,URL,URLSearchParams,TextEncoder,TextDecoder,atob,btoa,AbortSignal,Request,Response,Headers,console};
   vm.createContext(c);vm.runInContext(require('../tests/helpers/sync-worker-source.cjs')().replace('export default','globalThis.worker='),c);
-  c.PC_Email.verifyEmailActor=async()=>actor;c.PC_Email.gmailAccess=async()=> 'mock';
+  if(!ownerMode)c.PC_Email.verifyEmailActor=async()=>actor;
+  if(ownerMode){c.PC_Email.exchangeCode=async()=>({access_token:'mock',refresh_token:'mock',scope:c.PC_Email.readEmailConfig(env).scopes.join(' ')});c.PC_Email.verifySender=async()=> 'it@rocks-foods.com';}c.PC_Email.gmailAccess=async()=> 'mock';
   DB.db.exec("INSERT INTO email_connections VALUES(1,'it@rocks-foods.com','connected','mock','mock','now','now',1)");
-  await c.PC_Email.publishThread(actor,{mode,messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
+
   const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
   try{
     const page=await browser.newPage({viewport:{width:1366,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',async route=>{
-      const u=new URL(route.request().url());assert.equal(u.origin,'http://pilot.test');
+      const u=new URL(route.request().url());assert.equal(u.origin,'https://pilot.test');
       if(u.pathname.startsWith('/email/')){
         const request=route.request(),headers=new Headers(request.headers());headers.set('Origin','https://white-pine-853e.quiet-surf-dda2.workers.dev');
         const response=await c.worker.fetch(new Request('https://sync.test'+u.pathname+u.search,{method:request.method(),headers,body:request.method()==='GET'?undefined:request.postData()}),env);
         return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
       }
-      if(u.pathname==='/')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css"><link rel="stylesheet" href="/css/workspace.css"><div id="pilot"></div><script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script><script src="/js/copro-email-client.js"></script><script src="/js/copro-email-ui.js"></script>'});
+      if(u.pathname==='/')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css"><link rel="stylesheet" href="/css/workspace.css"><div id="pilot"></div><script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>'+(ownerMode?'<script src="/js/email-auth.js"></script>':'')+'<script src="/js/copro-email-client.js"></script><script src="/js/copro-email-ui.js"></script>'});
       return route.fulfill({path:path.join(process.cwd(),u.pathname)});
     });
     await page.addInitScript(actor=>{window.PC_LANG='TH';window.PC_EmailAuth={acquireToken:async()=> 'mock'};window.PC_EmailMsalContext=async()=>({identity:actor});},actor);
-    await page.goto('http://pilot.test/');await page.evaluate(async()=>{await PC_CoProEmail.enable();PC_CoProEmailUI.mountSettings(document.getElementById('pilot'));});
+    await page.goto('https://pilot.test/');
+    if(ownerMode)await page.evaluate(async()=>{
+      window.PC_EmailMsalContext=async()=>{throw Error('Microsoft must never be called');};
+      const start=await fetch('/email/gmail/connect',{method:'POST'}),auth=new URL((await start.json()).authorizationUrl);
+      const callback=await fetch('/email/gmail/callback?state='+auth.searchParams.get('state')+'&code=mock');if(!callback.ok)throw Error('mock Gmail callback failed');
+      const session=await PC_EmailAuth.ownerSession();if(session.sender!=='it@rocks-foods.com')throw Error('owner missing');
+    });
+  await c.PC_Email.publishThread(actor,{mode,messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
+    await page.evaluate(async()=>{await PC_CoProEmail.enable();PC_CoProEmailUI.mountSettings(document.getElementById('pilot'));});
     const row={campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
     const receipt=await page.evaluate(async row=>PC_CoProEmail.registerPrimary({submissionId:'batch-test-1234',actor:'Test staff',expectedButtons:2,writes:[{key:'promo::c::Email%20UOB%20test',expectedUpdatedAt:null,value:JSON.stringify({m:{'2026-10':[row,{...row,shortName:'Button B',codePromotion:'IC002'}]},w:[]})}]}),row);
     const operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
@@ -55,6 +66,6 @@ const {database,actor,grant}=require('../tests/helpers/copro-context.cjs');
     await page.getByRole('status').filter({hasText:'ผู้ดูแลยังไม่เปิด'}).waitFor();
     assert.equal(await page.locator('[data-copro-enable]').isDisabled(),false,'a disabled server feature must not trap the tab in pilot mode');
     await page.locator('[data-copro-enable]').click();assert.equal(await page.evaluate(()=>PC_CoProEmail.active()),false);
-    console.log('CoPro browser: exact external test recipient, preview, saved announcement, combined completion, same thread and no duplicate — MOCK providers only.');
+    console.log((ownerMode?'Gmail owner (no Microsoft): ':'')+'CoPro browser: exact external test recipient, preview, saved announcement, combined completion, same thread and no duplicate — MOCK providers only.');
   }finally{await browser.close();DB.db.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

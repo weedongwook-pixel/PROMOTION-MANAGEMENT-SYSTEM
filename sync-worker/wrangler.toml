@@ -3,10 +3,11 @@ main = "worker.js"
 compatibility_date = "2026-07-02"
 
 [vars]
-EMAIL_CONNECTION_ENABLED = "false"
-EMAIL_COPRO_ENABLED = "false"
+EMAIL_AUTH_MODE = "gmail_owner"
+EMAIL_CONNECTION_ENABLED = "true"
+EMAIL_COPRO_ENABLED = "true"
 EMAIL_TEST_SEND_ENABLED = "false"
-EMAIL_SEND_ENABLED = "false"
+EMAIL_SEND_ENABLED = "true"
 
 [triggers]
 crons = ["* * * * *"]
