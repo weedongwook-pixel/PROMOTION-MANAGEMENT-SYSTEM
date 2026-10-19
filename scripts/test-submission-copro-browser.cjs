@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
- try{for(const scenario of [{copro:false,history:false},{copro:false,history:true},{copro:true,history:false}]){
+ try{for(const scenario of [{copro:false,history:false},{copro:false,history:true},{copro:true,history:false},{copro:true,history:true}]){
   const {copro,history}=scenario;
   const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',route=>{assert.equal(new URL(route.request().url()).origin,'http://copro.test','test must never send external requests');return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});});
@@ -40,8 +40,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    assert.equal(await page.evaluate(()=>emailCalls.length),1);assert.equal(await page.evaluate(()=>emailCalls[0].campaign),'Co-Promo test');
    assert.equal(await page.evaluate(()=>ordinarySaves),0);
   }
-  if(!copro){await page.getByText('ส่งและบันทึกข้อมูลสำเร็จ',{exact:true}).waitFor();await page.locator(history?'.swal2-confirm':'.swal2-cancel').click();}
+  await page.getByText('ส่งและบันทึกข้อมูลสำเร็จ',{exact:true}).waitFor();await page.locator(history?'.swal2-confirm':'.swal2-cancel').click();
   assert.equal(await page.evaluate(()=>result),true);assert.deepEqual(await page.evaluate(()=>navigation),history?['SubmissionLog']:[]);assert.deepEqual(errors,[]);
-  console.log(`Verified Co-Promo=${copro}, history=${history}: navigation choices only after No; no external sends`);await page.close();
+  console.log(`Verified Co-Promo=${copro}, history=${history}: final navigation choices after CoPromo decision/completion; no external sends`);await page.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

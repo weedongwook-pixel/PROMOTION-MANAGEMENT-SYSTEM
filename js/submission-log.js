@@ -185,8 +185,9 @@
     if (ok && typeof options.onAfter === 'function') {
       try {
         var followUp = await options.onAfter();
-        if (followUp && followUp.coPromo === false && window.Swal) {
+        if (followUp && (followUp.coPromo === false || followUp.completed === true) && window.Swal) {
           var next = await Swal.fire({ icon: 'success', title: 'ส่งและบันทึกข้อมูลสำเร็จ',
+            text: followUp.coPromo ? 'บันทึก Co-Promotion แล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง' : '',
             showCancelButton: true, confirmButtonText: 'ดูประวัติการแจ้งโปรฯ',
             cancelButtonText: 'ทำงานต่อ', confirmButtonColor: '#2e934a'
           });

@@ -36,13 +36,15 @@
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
     }).then(function (res) {
       if (!res.isConfirmed) return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
-      return openFormsSequential(campaigns.slice());
+      return openFormsSequential(campaigns.slice()).then(function (completed) {
+        return completed ? { coPromo: true, completed: true } : undefined;
+      });
     });
   }
   function openFormsSequential(list) {
-    if (!list.length) return;
+    if (!list.length) return Promise.resolve(true);
     var c = list.shift();
-    return openForm(c, null, { requireEmail: true }).then(function () { return openFormsSequential(list); });
+    return openForm(c, null, { requireEmail: true }).then(function (saved) { return saved === true ? openFormsSequential(list) : undefined; });
   }
 
   function openForm(campaign, existing, options) {
@@ -205,12 +207,12 @@
           }
           return useEmail ? window.PC_CoProEmailUI.save(rec, requireEmail ? {mode:'production'} : {}) : run("saveCoPromotion", rec);
         });
-        operation.then(function (result) {
+        operation.then(async function (result) {
           if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> ' + saveLabel;return;}
           if(result.status==='error')throw new Error(result.message||'บันทึกไม่สำเร็จ');
           if(requireEmail && result.mailStatus!=='queued') throw Error('ยังไม่ได้รับการยืนยันว่าอีเมลเข้าคิวส่ง กรุณาให้ผู้ดูแลตรวจสถานะก่อนทำซ้ำ');
           host.remove();
-          if (window.Swal) Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
+          if (window.Swal) await Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
           resolve(true);
         }).catch(function (e) {
           btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> ' + saveLabel;
