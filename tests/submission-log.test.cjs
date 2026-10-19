@@ -335,3 +335,14 @@ test('all promotion forms show save success only after complete Cloud readback',
   if(ok)assert.equal(dialogs.find(d=>d.icon==='success').title,'ส่งและบันทึกข้อมูลสำเร็จ');
  }
 });
+
+test('only an explicit non-CoPromo decision offers history or continue after the question',async()=>{
+ for(const choice of [true,false]){
+  const f=setup(),events=[],rows=[{campaign:'TOTO',shortName:'Discount'}];
+  const plan=f.log.prepare('Bill Discount',rows);f.setTracking(rows);f.setRemote({TOTO:rows});
+  f.context.document={getElementById(){return null;}};f.context.loadPage=()=>events.push('history');
+  f.context.Swal={showLoading(){},fire:async o=>{if(o.showCancelButton){events.push('choices');return {isConfirmed:choice};}return {};}};
+  await f.log.afterSave(plan,{onAfter:async()=>{events.push('copro-no');return {coPromo:false};}});
+  assert.deepEqual(events,['copro-no','choices',...(choice?['history']:[])]);
+ }
+});

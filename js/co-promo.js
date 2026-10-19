@@ -35,7 +35,7 @@
       showCancelButton: true, confirmButtonText: '<i class="fas fa-handshake"></i> ใช่ · เตรียมส่งเมลเข้าลูป',
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
     }).then(function (res) {
-      if (!res.isConfirmed) return;
+      if (!res.isConfirmed) return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
       return openFormsSequential(campaigns.slice());
     });
   }

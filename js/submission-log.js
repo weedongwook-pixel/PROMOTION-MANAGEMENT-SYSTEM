@@ -183,7 +183,16 @@
     }
     // Finish the post-save Co-Promo decision before leaving the submitted form.
     if (ok && typeof options.onAfter === 'function') {
-      try { await options.onAfter(); }
+      try {
+        var followUp = await options.onAfter();
+        if (followUp && followUp.coPromo === false && window.Swal) {
+          var next = await Swal.fire({ icon: 'success', title: 'ส่งและบันทึกข้อมูลสำเร็จ',
+            showCancelButton: true, confirmButtonText: 'ดูประวัติการแจ้งโปรฯ',
+            cancelButtonText: 'ทำงานต่อ', confirmButtonColor: '#2e934a'
+          });
+          navigateToLog = !!next.isConfirmed;
+        }
+      }
       catch (error) {
         if (window.Swal) await Swal.fire({ icon:'warning', title:'บันทึกโปรฯ แล้ว แต่เปิดขั้นตอนถัดไปไม่สำเร็จ',
           text:'ไม่ต้องส่งโปรฯ ซ้ำ กรุณาเปิด Co-Promotion เพื่อตรวจข้อมูลเพิ่มเติม: ' + String(error && error.message || error) });
