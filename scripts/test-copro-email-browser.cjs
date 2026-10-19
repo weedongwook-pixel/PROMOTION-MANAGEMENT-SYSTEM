@@ -44,8 +44,25 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     const attachment={name:process.env.EMAIL_ATTACHMENT_FIXTURE?path.basename(process.env.EMAIL_ATTACHMENT_FIXTURE):'original.xlsx',mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base64:(process.env.EMAIL_ATTACHMENT_FIXTURE?fs.readFileSync(process.env.EMAIL_ATTACHMENT_FIXTURE):Buffer.from('mock original')).toString('base64')};
     const row={attachment:'file:original',campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
     const receipt=await page.evaluate(async ({row,attachment})=>PC_CoProEmail.registerPrimary({submissionId:'batch-test-1234',actor:'Test staff',expectedButtons:2,writes:[{key:'promo::c::Email%20UOB%20test',expectedUpdatedAt:null,value:JSON.stringify({m:{'2026-10':[row,{...row,shortName:'Button B',codePromotion:'IC002'}]},w:[]})},{key:'pc_promo_files',expectedUpdatedAt:null,value:JSON.stringify({original:attachment})}]}),{row,attachment});
-    const operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
-    await page.locator('#coproTestTo').fill('external-test@example.net');
+    let operation;
+    if(process.argv.includes('--form')){
+      await page.addScriptTag({path:path.join(process.cwd(),'js/co-promo.js')});
+      await page.evaluate(()=>{
+        const run={withSuccessHandler(fn){this.success=fn;return this;},withFailureHandler(){return this;},getCoPromoContext(){this.success({campaign:'Email UOB test',buttons:[{buttonName:'Button A',codePromotion:'IC001'}]});}};
+        window.google={script:{run}};
+        window.formDone=PC_CoPromo.openForm('Email UOB test',null,{requireEmail:true});
+      });
+      await page.locator('#cpBrand').fill('Test partner');
+      await page.locator('#cpDesc').fill('Test details <script>not HTML</script>');
+      await page.locator('#cpBill').fill('Test billing');await page.locator('#cpSo').fill('SO123');
+      await page.locator('#cpCond').fill('30 days');await page.locator('#cpRemark').fill('Internal only');
+      await page.evaluate(()=>PC_CoProEmail.disable());
+      await page.locator('#cpfSave').click();
+      operation=page.evaluate(()=>formDone);operation.catch(()=>{});
+    }else{
+      operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
+    }
+    await page.locator('#coproTestTo').fill('external-test@example.net',{timeout:5000});
     const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});
     const brands=await emptyBrand.all();assert.equal(brands.length,2);
     const blank=[];for(const brand of brands)if(!await brand.inputValue())blank.push(brand);assert.equal(blank.length,1,'no silent copying to another button');await blank[0].fill('Partner B');

@@ -203,7 +203,7 @@
             if (!window.PC_CoProEmail || !window.PC_CoProEmailUI) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาติดต่อผู้ดูแล');
             var caps = await window.PC_CoProEmail.capabilities();
             if (!caps.coproEnabled || !caps.sendingEnabled) throw Error('ยังไม่ได้เปิดบริการส่งอีเมลหรือเชื่อมบัญชีผู้ส่ง กรุณาติดต่อผู้ดูแล');
-            if (!window.PC_CoProEmail.active()) throw Error('ยังไม่ได้ยืนยันสิทธิ์อีเมลสำหรับรายการนี้ กรุณาให้ผู้ดูแลตรวจสอบ');
+            if (!window.PC_CoProEmail.active()) await window.PC_CoProEmail.enable();
           }
           return useEmail ? window.PC_CoProEmailUI.save(rec, requireEmail ? {mode:'production'} : {}) : run("saveCoPromotion", rec);
         });
