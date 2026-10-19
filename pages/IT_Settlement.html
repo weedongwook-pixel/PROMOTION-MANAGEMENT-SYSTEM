@@ -1251,7 +1251,7 @@
                 <input type="text" class="form-control form-control-sm f-cate-remark border-0 bg-light fw-bold" placeholder="ประเภท Item Set..." value="${(function(){ var _pt=String(first.promoType||first.typePromotion||'').toUpperCase(); var _isV=_pt.indexOf('VOUCHER')>=0||_pt.indexOf('E-COUPON')>=0||_pt.indexOf('COUPON')>=0||String(first.proposalKind||'').toLowerCase()==='ecoupon'; if(first.cateRemark) return first.cateRemark; if(_isV){ var _allMode=campTasks.every(function(t){ var c=String(t.itemCode||'').trim(); return !c||/^ALL/i.test(c); }); return _allMode?'สินค้าที่ร่วมรายการ':'เฉพาะสินค้าที่กำหนดเท่านั้น'; } try{ for(var _i=0;_i<campTasks.length;_i++){ var _ic=String(campTasks[_i].itemCode||'').trim(); if(!_ic||/^ALL/i.test(_ic)) continue; var _m=(window.PC_ITEM_MASTER||[]).find(function(x){return String(x.itemCode)===_ic;}); if(_m&&_m.category) return _m.category; } }catch(e){} return (_pt.indexOf('ITEM SET')>=0)?'':'Standard-Exclude Non'; })()}" oninput="window.itSyncCateOnRemark&&window.itSyncCateOnRemark(this)" style="font-size: 0.75rem; height: 28px;">
               </div>
               <div class="col-md-1 text-end">
-                <button class="btn btn-outline-danger border-0" title="ลบออกจากการแสดงผล" onclick="window.deleteCampaign('${itJsArg(campName)}','${itJsArg(month)}')"><i class="fas fa-trash-alt fa-lg"></i></button>
+                <button class="btn btn-outline-danger border-0" title="ยกเลิกงาน / ลบงานที่ยังไม่ขึ้นปุ่มและคืนโค้ด" onclick="window.deleteCampaign('${itJsArg(campName)}','${itJsArg(month)}')"><i class="fas fa-trash-alt fa-lg"></i></button>
               </div>
             </div>
           </div>
@@ -1964,14 +1964,14 @@
       var refundable = policy.returnable.map(function (x) { return itEsc(x.code); }).join(', ');
       var kept = policy.kept.length ? '<div class="small mt-2">ไม่คืนรหัสที่มีการอ้างอิง / ใช้ร่วมกับงานอื่น หรือไม่ได้จองให้แคมเปญนี้: <b>' + policy.kept.map(itEsc).join(', ') + '</b></div>' : '';
       var choice = await Swal.fire({
-        title: policy.canCancel ? 'ยกเลิกงานที่ยังไม่บันทึก?' : 'ซ่อนงานออกจากหน้านี้?',
+        title: policy.canCancel ? 'ลบงานที่ยังไม่ขึ้นปุ่มและคืนโค้ด?' : 'ซ่อนงานออกจากหน้านี้?',
         html: '<div class="text-start"><b>' + itEsc(campName) + '</b><div class="small mt-2">' +
-          (policy.canCancel ? 'ยังไม่เคยบันทึกจาก IT Settlement แม้ยืนยันรหัสไว้แล้วก็เลือกคืนรหัสที่ยังไม่ใช้ได้<br>คืนโค้ด: <b>' + (refundable || 'ไม่มีรหัสที่คืนได้') + '</b><br>ลบงานนี้ครบทุกเดือนออกจากรายการใช้งาน เพื่อกรอกโปรฯ ใหม่ได้ เก็บประวัติแยกในถังขยะ' : itEsc(policy.reason) + '<br>ซ่อนได้โดยไม่คืนโค้ดและไม่ลบข้อมูล') + '</div>' + kept + '</div>',
-        icon: policy.canCancel ? 'warning' : 'question',showCancelButton:true,showDenyButton:policy.canCancel,
-        confirmButtonText:policy.canCancel ? 'ยกเลิกงาน + คืนโค้ด' : 'ซ่อน ไม่คืนโค้ด',denyButtonText:'ซ่อน ไม่คืนโค้ด',cancelButtonText:'กลับ',
+          (policy.canCancel ? 'งานนี้ยังไม่เคยบันทึกขึ้นปุ่มเสร็จ การยกเลิกจะลบข้อมูลออกจากรายการใช้งานและคืนโค้ดที่จองไว้ แม้เคยกดยืนยันรหัสแล้ว<br>คืนโค้ด: <b>' + (refundable || 'ไม่มีรหัสที่คืนได้') + '</b><br>ลบงานนี้ครบทุกเดือนออกจากรายการใช้งาน เพื่อกรอกโปรฯ ใหม่ได้ เก็บประวัติแยกในถังขยะ' : itEsc(policy.reason) + '<br>ซ่อนได้โดยไม่คืนโค้ดและไม่ลบข้อมูล') + '</div>' + kept + '</div>',
+        icon: policy.canCancel ? 'warning' : 'question',showCancelButton:true,showDenyButton:false,
+        confirmButtonText:policy.canCancel ? 'ลบงาน + คืนโค้ด' : 'ซ่อน ไม่คืนโค้ด',cancelButtonText:'กลับ',
         confirmButtonColor:policy.canCancel ? '#c0392b' : '#6c757d',denyButtonColor:'#6c757d'
       });
-      if (choice.isDenied || (!policy.canCancel && choice.isConfirmed)) { hideOnly(); return; }
+      if (!policy.canCancel && choice.isConfirmed) { hideOnly(); return; }
       if (!choice.isConfirmed) return;
       Swal.fire({title:'กำลังยกเลิกและยืนยันการบันทึก…',allowOutsideClick:false,didOpen:function(){Swal.showLoading();}});
       var res = await new Promise(function (resolve,reject) { google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).cancelUnsettledITCampaign(campName,month); });

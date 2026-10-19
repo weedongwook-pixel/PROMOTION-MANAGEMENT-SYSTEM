@@ -74,11 +74,23 @@ test('member coupons and co-promotion references prevent cancellation from retur
  const res=c.PC_API.cancelUnsettledITCampaign('New campaign','2026-10');
  assert.equal(res.status,'success');assert.equal(res.returned.length,0);assert.equal(c.PC_COUNTER.entryOf('P9001').status,'CONFIRMED');
 });
-test('IT cancellation dialog offers return or hide, and hide never mutates data or reservations',async()=>{
+test('pending IT cancellation offers only delete-and-return or go back',async()=>{
   const {c,data}=setup();let removed=false,dialogs=[];c.document.getElementById=()=>null;
-  c.itEsc=String;c.itCardOf=()=>({remove(){removed=true;}});c.Swal={fire(opts){dialogs.push(opts);return Promise.resolve({isDenied:true});}};
+  c.itEsc=String;c.itCardOf=()=>({remove(){removed=true;}});c.Swal={fire(opts){dialogs.push(opts);return Promise.resolve({isConfirmed:false});}};
   const page=fs.readFileSync('pages/IT_Settlement.html','utf8');
   vm.runInContext(page.slice(page.indexOf('  window.deleteCampaign ='),page.indexOf('  window.extendCampaignPopup =')),c);
   const before=data.get('pc_mock_store_v28');await c.deleteCampaign('New campaign','2026-10');
-  assert.equal(dialogs[0].showDenyButton,true);assert.equal(removed,true);assert.equal(data.get('pc_mock_store_v28'),before);assert.equal(c.PC_COUNTER.entryOf('P9001').status,'CONFIRMED');
+  assert.equal(dialogs[0].showDenyButton,false);assert.equal(removed,false);assert.equal(data.get('pc_mock_store_v28'),before);assert.equal(c.PC_COUNTER.entryOf('P9001').status,'CONFIRMED');
+});
+test('confirming pending IT cancellation deletes the job and returns both codes before success',async()=>{
+  const {c}=setup();const dialogs=[];let reloads=0;
+  c.itEsc=String;c.itCardOf=()=>({dataset:{}});c.loadITTasks=()=>reloads++;
+  c.Swal={showLoading(){},fire(opts){dialogs.push(opts);return Promise.resolve({isConfirmed:true});}};
+  c.google={script:{run:{withSuccessHandler(fn){this.ok=fn;return this;},withFailureHandler(fn){this.fail=fn;return this;},cancelUnsettledITCampaign(name,month){this.ok(c.PC_API.cancelUnsettledITCampaign(name,month));}}}};
+  const page=fs.readFileSync('pages/IT_Settlement.html','utf8');
+  vm.runInContext(page.slice(page.indexOf('  window.deleteCampaign ='),page.indexOf('  window.extendCampaignPopup =')),c);
+  await c.deleteCampaign('New campaign','2026-10');
+  assert.equal(c.PC_API.checkCampaignName('New campaign'),false);
+  assert.equal(c.PC_COUNTER.entryOf('P9001'),null);assert.equal(c.PC_COUNTER.entryOf('1079001'),null);
+  assert.equal(dialogs.at(-1).icon,'success');assert.equal(reloads,1);
 });
