@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function fixture({ codes = [], dupSystem = 6001, readError = false } = {}) {
+function fixture({ confirmed = true, codes = [], dupSystem = 6001, readError = false } = {}) {
   const events = [], dialogs = [];
   const field = value => ({ value, scrollIntoView() {}, focus() {} });
   const file = { scrollIntoView() {}, focus() {}, files: [{ name: 'mapping.csv', type: 'text/csv' }] };
@@ -22,7 +22,7 @@ function fixture({ codes = [], dupSystem = 6001, readError = false } = {}) {
     getElementById: id => field(id === 'globalMonth' ? '2026-10' : 'MKT'), querySelectorAll: () => [card],
   }, FileReader: class {
     readAsDataURL() { if (readError) this.onerror(); else this.onload({ target: { result: 'data:text/csv;base64,Y29kZQ==' } }); }
-  }, Swal: { close() {}, fire(...args) { dialogs.push(args); return Promise.resolve({ isConfirmed: true }); } },
+  }, Swal: { close() {}, fire(...args) { dialogs.push(args); if (args[0].title === 'ยืนยันส่งข้อมูลให้ IT ขึ้นปุ่ม') events.push('confirm'); return Promise.resolve({ isConfirmed: confirmed }); } },
   PC_CodeConvert: {
     async inspectFromInput() { events.push('inspect-start'); await Promise.resolve(); events.push('inspect-end'); return { codes, dup: 0, invalid: 0, dupSystem }; },
     registerCodes(codes) { events.push('register'); return { codes }; },
@@ -36,16 +36,17 @@ function fixture({ codes = [], dupSystem = 6001, readError = false } = {}) {
   return { context, events, dialogs };
 }
 
-test('submit proceeds without confirmation or duplicate details then continues from verified save to CoPromo', async () => {
+test('submit confirms campaign name without duplicate details then continues from verified save to CoPromo', async () => {
   const f = fixture(); await f.context.submitAllData();
-  assert.deepEqual(f.events, ['inspect-start', 'inspect-end', 'submit', 'saved', 'copro']);
+  assert.deepEqual(f.events, ['inspect-start', 'inspect-end', 'confirm', 'submit', 'saved', 'copro']);
   assert.equal(f.context.successNote, undefined);
-  assert.equal(f.dialogs.some(d => d[0].showCancelButton || /ยืนยันส่งข้อมูล/.test(d[0].title || '')), false);
+  assert.equal(f.dialogs[0][0].text, 'Campaign Name: Campaign');
+  assert.equal(f.dialogs[0][0].html,undefined);
   assert.equal(f.dialogs.some(d=>d[0].title==='ยืนยันการบันทึก?'), false);
 });
-test('new mapping codes register after inspection before submitting', async () => {
+test('new mapping codes register only after campaign confirmation', async () => {
   const f = fixture({ codes: ['NEW001'], dupSystem: 0 }); await f.context.submitAllData();
-  assert.deepEqual(f.events, ['inspect-start', 'inspect-end', 'register', 'submit', 'saved', 'copro']);
+  assert.deepEqual(f.events, ['inspect-start', 'inspect-end', 'confirm', 'register', 'submit', 'saved', 'copro']);
 });
 test('file reading errors are shown without submitting or hanging', async () => {
   const f = fixture({ readError: true }); await f.context.submitAllData();
@@ -62,3 +63,5 @@ test('inspection or registration failures show an error and do not submit', asyn
     assert.match(f.dialogs.at(-1)[1], /Mapping failed/);
   }
 });
+
+test('cancelling campaign confirmation registers no codes and submits no job',async()=>{const f=fixture({confirmed:false,codes:['NEW001']});await f.context.submitAllData();assert.deepEqual(f.events,['inspect-start','inspect-end','confirm']);});
