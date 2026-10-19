@@ -253,6 +253,34 @@ class D1{
   if(process.argv.includes('--structural')){
    const added=saved.m[month].at(-1),manual=process.argv.includes('--manual-codes');assert.equal(added.shortName,'NEW STRUCTURE');assert.equal(added.itStatus,'PENDING');assert.equal(added.codeItemSet,form==='Proposal'?(manual?'1079600':'1079501'):'');assert.equal(added.codePromotion,(manual?{Coupon:'IC9501',BillDiscountProposal:'BD9501',VoucherProposal:'VC9501',Proposal:'P9600'}:{Coupon:'IC1001',BillDiscountProposal:'BD1001',VoucherProposal:'VC1001',Proposal:'P9501'})[form]);
    await page.locator('.swal2-confirm').click();await page.locator('#trackingTableBody').waitFor();
+   if(process.argv.includes('--it-codes')){
+    await page.evaluate(()=>{Swal.close();PC_PromotionEdit.clear();localStorage.setItem('pc_role','IT');window.loadPage('IT_Settlement');});
+    await page.waitForFunction(()=>window.__itAllTasks?.some(r=>r.revisionPending));
+    await page.evaluate(()=>{Swal.close();window.itSetTab('EDITED');window.renderGroupedTasks(PC_API.getITTasks('ALL'));});
+    const target=page.locator(process.argv.includes('--existing-it-codes')?'.it-row-item[data-short-name="FRIES TEST"]':'.it-row-item[data-short-name="NEW STRUCTURE"]').first();
+    await target.locator('.it-code-mode').first().waitFor();
+    assert.ok(await page.locator('.it-row-item[data-short-name="FRIES TEST"] .it-code-mode').count()>0);
+    for(const slot of (form==='Proposal'?['promotion','itemset']:['promotion'])){
+      const controls=target.locator('.it-revision-code[data-slot="'+slot+'"]');
+      const manual=slot==='itemset'?'1079800':{Proposal:'P9800',Coupon:'IC9800',BillDiscountProposal:'BD9800',VoucherProposal:'VC9800'}[form];
+      await controls.locator('select').selectOption('manual');await controls.locator('.it-manual-code').fill(manual);await controls.locator('button').click();
+      await controls.locator('[role="status"]').filter({hasText:'บันทึกรหัส '+manual+' แล้ว'}).waitFor();
+      assert.equal(await target.locator(slot==='itemset'?'.f-itempromo':'.f-code').inputValue(),manual);
+      await controls.locator('select').selectOption('auto');await controls.locator('button').click();
+      const expected=manual.slice(0,-4)+'9801';
+      await controls.locator('[role="status"]').filter({hasText:'บันทึกรหัส '+expected+' แล้ว'}).waitFor();
+      assert.equal(await target.locator(slot==='itemset'?'.f-itempromo':'.f-code').inputValue(),expected);
+    }
+    for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await target.locator('.it-code-mode').first().scrollIntoViewIfNeeded();await page.screenshot({path:'/private/tmp/it-revision-code-'+form+'-'+width+'.png'});}
+    if(form==='Proposal'){
+      await target.locator('.it-itemset-actions button').click();
+      await page.getByText('ยืนยันรหัสแล้ว',{exact:true}).waitFor();
+      assert.equal(await target.locator('.f-itempromo').getAttribute('data-it-confirmed'),'1');
+    }
+    const after=JSON.parse(db.db.prepare('SELECT v FROM promo_store WHERE k=?').get(key).v);
+    assert.equal(after.m[month][0].codePromotion,process.argv.includes('--existing-it-codes')?({Proposal:'P9801',Coupon:'IC9801',BillDiscountProposal:'BD9801',VoucherProposal:'VC9801'}[form]):'IC0688');assert.ok(posts.includes('/promo/it-button-code'));
+    await page.close();console.log('Browser verified IT code selection '+form+': manual and automatic allocation saved; previous codes retained in history.');continue;
+   }
    await page.evaluate(async({campaign,month})=>PC_PromotionEdit.open(campaign,month),{campaign,month});await page.locator('#promotionEditBanner').waitFor();
    assert.equal(await page.locator('.pos-button-block .btn-sn').last().inputValue(),'NEW STRUCTURE');
    assert.equal(await page.locator('.pos-button-block').last().getAttribute('data-edit-id'),added.editButtonId);

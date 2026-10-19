@@ -165,6 +165,53 @@ async function receiptFor(db, submissionId) {
     .bind(submissionId).first();
 }
 
+// IT may replace codes on a pending revision, including previously live buttons.
+// Retain the old code and audit; allocation and the job use one D1 transaction.
+async function commitITButtonCode(db, body, env) {
+  if(!body || !SUBMISSION_KEY.test(String(body.requestId||'')) || !['promotion','itemset'].includes(body.slot) || !['auto','manual'].includes(body.mode) || typeof body.actor!=='string' || !body.actor.trim() || body.actor.length>200 || typeof body.campaign!=='string' || body.campaign.length>120 || !/^\d{4}-\d{2}$/.test(body.month||'') || !Number.isSafeInteger(body.expectedUpdatedAt) || typeof body.buttonId!=='string' || typeof body.revisionId!=='string')return json({ok:false,error:'bad_request'},env,400);
+  const key=CAMPAIGN_PREFIX+encodeURIComponent(body.campaign),hash=await hashSubmission({submissionId:body.requestId,actor:body.actor,expectedButtons:1,writes:[{key,value:JSON.stringify(body),expectedUpdatedAt:body.expectedUpdatedAt}]});
+  const previous=await receiptFor(db,body.requestId);
+  if(previous)return previous.request_hash===hash?json({...JSON.parse(previous.response_json),replayed:true},env):json({ok:false,error:'submission_id_reused'},env,409);
+  const record=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind(key).first();
+  if(!record||record.updated_at!==body.expectedUpdatedAt)return json({ok:false,error:'version_conflict'},env,409);
+  const block=JSON.parse(record.v),rows=(block.m?.[body.month]||[]).filter(r=>r.editButtonId===body.buttonId);
+  if(!rows.length || !body.revisionId || rows.some(r=>r.revisionId!==body.revisionId || !r.revisionPending || r.itDoneDate || r.itSettlementSavedAt || ['COMPLETE','DONE'].includes(String(r.itStatus).toUpperCase()) || ['CANCELLED','EXTENDED','REDUCED'].includes(String(r.changeStatus).toUpperCase())))return json({ok:false,error:'code_locked',message:'เปลี่ยนรหัสได้เฉพาะงานแก้ไขที่ยังรอ IT ดำเนินการ'},env,409);
+  const first=rows[0],kind=globalThis.PC_PromotionEditModel.toForm(block,body.month).form;
+  if(body.slot==='itemset'&&kind!=='Proposal')return json({ok:false,error:'invalid_slot'},env,400);
+  const type=body.slot==='itemset'?'itemset':({Coupon:'coupon',BillDiscountProposal:'bill',VoucherProposal:'voucher'}[kind]||(/e[-\s]?voucher/i.test(first.cate||first.cateRemark||'')?'coupon':'promo'));
+  const counterRecord=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind('pc_code_counter_v1').first();
+  if(!counterRecord)return json({ok:false,error:'counter_missing'},env,409);
+  const counter=JSON.parse(counterRecord.v),used=new Set([...(globalThis.PC_EditCodeCatalog||[]),...(globalThis.PC_Email?.settlementCatalog?.codes||[])].map(String));
+  const records=await db.prepare("SELECT k,v,updated_at FROM promo_store WHERE k LIKE 'promo::c::%' OR k IN ('promo::meta','pc_product_promo','pc_itemset_comp','pc_co_promotions','pc_code_requests','pc_member_cards','pc_member_coupons','pc_bill_discount_confirmed','promo::deleted')").all();
+  const codeKeys=new Set(['code','button','itemCode','codePromotion','codeItemSet','itemPromotion','builderCode','prCode','promoCode']);
+  function scan(v){if(!v||typeof v!=='object')return;for(const [k,x] of Object.entries(v)){if(k==='codes'&&Array.isArray(x))x.filter(c=>typeof c==='string').forEach(c=>used.add(c.trim().toUpperCase()));if(codeKeys.has(k)&&x!=null&&typeof x!=='object')used.add(String(x).trim().toUpperCase());if(/^(?:107\d+|P\d+|IC\d+|BD\d+|VC\d+)$/.test(k))used.add(k);if(x&&typeof x==='object')scan(x);}}
+  for(const rec of records.results||[]){const v=JSON.parse(rec.v);if(rec.k==='promo::deleted'){if(Number(v[body.campaign])>0&&Number(v[body.campaign])>=(Number(block._ts)||0))return json({ok:false,error:'campaign_deleted'},env,409);}else if(rec.k.startsWith(CAMPAIGN_PREFIX))scan(v.m);else if(rec.k==='promo::meta')scan({npd:v.npd,npdProducts:v.npdProducts,recipeCustom:v.recipeCustom});else scan(v);}
+  const now=Date.now(),at=new Date(now).toISOString(),column=body.slot==='itemset'?'codeItemSet':'codePromotion';let code;
+  try{code=globalThis.PC_FormCodeAllocation.reserveFormCode(counter,{type,tag:'ITRevision',campaign:body.campaign,shortName:first.shortName,fieldId:'ITRevision|'+body.requestId,actor:body.actor,at,usedCodes:used,...(body.mode==='manual'?{manualCode:body.code??''}:{})}).code;}catch(e){return json({ok:false,error:'invalid_code',message:e.message},env,400);}
+  // Use the same field identity as IT confirmation, so a reserved code can be confirmed later.
+  counter.reservations[type+'::'+code].field='itccf-'+type+'-'+encodeURIComponent(JSON.stringify([body.campaign,first.shortName,body.month]));
+  const oldCode=first[column]||'';
+  if(/^[A-Z]{0,3}\d+$/i.test(oldCode)){
+    let retained=Object.values(counter.reservations).find(e=>e&&String(e.code).toUpperCase()===String(oldCode).toUpperCase());
+    if(!retained){retained={code:oldCode,type,status:'CONFIRMED',where:body.campaign,field:'RetainedIT|'+body.buttonId,by:body.actor,at};counter.reservations[type+'::'+String(oldCode).toUpperCase()]=retained;}
+    retained.retainForHistory=true;retained.retainedByEditId=body.requestId;if(retained.status==='RELEASED')retained.status='CONFIRMED';
+  }
+  function apply(row){row[column]=code;row.posReady=false;if(body.slot==='itemset'){row.itemPromotion=code;}row.itCodeAllocationAt=at;row.itCodeAllocationBy=body.actor;}
+  rows.forEach(apply);(block.w||[]).filter(r=>r.month===body.month&&r.editButtonId===body.buttonId).forEach(apply);block._ts=now;
+  const version=Math.max(now,record.updated_at+1),counterVersion=Math.max(now,counterRecord.updated_at+1),receipt={ok:true,kind:'IT_BUTTON_CODE',submissionId:body.requestId,code,slot:body.slot,savedAt:now,versions:{[key]:version,pc_code_counter_v1:counterVersion}};
+  const activity={id:'ACT-'+body.requestId,date:new Date(now+7*60*60*1000).toISOString().slice(0,10),at,user:body.actor,kind:'IT_CODE_ASSIGNED',campaign:body.campaign,month:body.month,buttons:[first.shortName],slot:body.slot,oldCode,code,mode:body.mode};
+  const statements=[
+    db.prepare("INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN NOT EXISTS(SELECT 1 FROM promo_store p,json_each(p.v) t WHERE p.k='promo::deleted' AND t.key=?1 AND CAST(t.value AS INTEGER)>0 AND CAST(t.value AS INTEGER)>=?2) THEN 1 ELSE 0 END)").bind(body.campaign,Number(JSON.parse(record.v)._ts)||0),db.prepare('DELETE FROM promo_commit_guard WHERE id=1'),
+  ];
+  statements.push(db.prepare("INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN NOT EXISTS(SELECT 1 FROM promo_store p,json_tree(CASE WHEN p.k LIKE 'promo::c::%' THEN json_extract(p.v,'$.m') WHEN p.k='promo::meta' THEN json_object('npd',json_extract(p.v,'$.npd'),'npdProducts',json_extract(p.v,'$.npdProducts'),'recipeCustom',json_extract(p.v,'$.recipeCustom')) ELSE p.v END) t WHERE (p.k LIKE 'promo::c::%' OR p.k IN ('promo::meta','pc_product_promo','pc_itemset_comp','pc_co_promotions','pc_code_requests','pc_member_cards','pc_member_coupons','pc_bill_discount_confirmed')) AND (((t.key IN ('code','button','itemCode','codePromotion','codeItemSet','itemPromotion','builderCode','prCode','promoCode') OR t.path LIKE '%.codes') AND UPPER(TRIM(CAST(t.atom AS TEXT)))=?1) OR UPPER(CAST(t.key AS TEXT))=?1)) THEN 1 ELSE 0 END)").bind(code));
+  statements.push(db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
+  for(const [k,v,ver,expected] of [[key,block,version,record.updated_at],['pc_code_counter_v1',counter,counterVersion,counterRecord.updated_at]]){
+    statements.push(db.prepare('UPDATE promo_store SET v=?2,updated_at=?3 WHERE k=?1 AND updated_at=?4').bind(k,JSON.stringify(v),ver,expected),db.prepare('INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN changes()=1 THEN 1 ELSE 0 END)'),db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
+  }
+  statements.push(db.prepare('INSERT INTO promo_store(k,v,updated_at) VALUES(?1,?2,?3)').bind('promo::activity::'+activity.date+'::'+activity.id,JSON.stringify(activity),now),db.prepare('INSERT INTO promo_submission_receipts(submission_id,request_hash,response_json,actor,expected_buttons,created_at) VALUES(?1,?2,?3,?4,1,?5)').bind(body.requestId,hash,JSON.stringify(receipt),body.actor,now));
+  try{await db.batch(statements);return json(receipt,env);}catch(e){const raced=await receiptFor(db,body.requestId);if(raced&&raced.request_hash===hash)return json({...JSON.parse(raced.response_json),replayed:true},env);if(/constraint|CHECK|UNIQUE/i.test(String(e?.message||e)))return json({ok:false,error:'version_conflict'},env,409);throw e;}
+}
+
 async function commitCampaignEdit(db, body, env) {
   if (!body || !SUBMISSION_KEY.test(String(body.editId || '')) || typeof body.actor !== 'string' || !body.actor.trim() || body.actor.length > 200 || typeof body.campaign !== 'string' || body.campaign.length > 120 || !/^\d{4}-\d{2}$/.test(body.month || '') || !Number.isSafeInteger(body.expectedUpdatedAt) || !body.form || JSON.stringify(body.form).length > 2_000_000)
     return json({ok:false,error:'bad_edit'},env,400);
@@ -323,6 +370,11 @@ export default {
         const meta = {};
         for (const row of rows.results || []) meta[row.k] = row.updated_at;
         return json({ ok: true, meta }, env);
+      }
+      if(path==='/promo/it-button-code'&&request.method==='POST'){
+        if(env.CLOUD_FIRST_ENABLED!=='true')return json({ok:false,error:'not_enabled'},env,404);
+        let body;try{body=await request.json();}catch{return json({ok:false,error:'bad_json'},env,400);}
+        return commitITButtonCode(env.DB,body,env);
       }
       if (path === '/promo/campaign-edits' && request.method === 'POST') {
         if(env.CLOUD_FIRST_ENABLED!=='true')return json({ok:false,error:'not_enabled'},env,404);

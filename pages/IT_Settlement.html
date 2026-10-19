@@ -956,6 +956,54 @@
   }
   // Extended/reduced jobs can contain an older duplicate header for the same
   // button. Only reuse a code when all matching rows agree on one real code.
+  function itCanAssignRevisionCode(it) {
+    return !!(it.revisionPending && it.revisionId && it.editButtonId && !it.itDoneDate && !['CANCELLED','EXTENDED','REDUCED'].includes(String(it.changeStatus||'').toUpperCase()));
+  }
+  function itRevisionCodeControls(it, slot) {
+    if(!itCanAssignRevisionCode(it))return '';
+    var label=slot==='itemset'?'Code Item Set':'Code Promotion';
+    return `<div class="it-revision-code mt-2" data-slot="${slot}"><label class="small fw-bold d-block">กำหนดรหัสปุ่ม<select class="form-select form-select-sm it-code-mode mt-1" aria-label="วิธีกำหนด ${label}" onchange="window.itRevisionCodeMode(this)"><option value="">เลือกวิธีกำหนดรหัส</option><option value="manual">ใส่โค้ดเอง</option><option value="auto">ให้ระบบจองโค้ด</option></select></label><input class="form-control form-control-sm it-manual-code mt-1" type="text" maxlength="20" aria-label="กรอก ${label} ใหม่" placeholder="กรอกรหัสใหม่" hidden disabled><button type="button" class="btn btn-sm btn-outline-success mt-1 it-code-apply" onclick="window.itAssignRevisionCode(this)" disabled>บันทึกรหัส</button><span class="it-code-result small d-block mt-1" role="status" aria-live="polite"></span></div>`;
+  }
+  window.itRevisionCodeMode = function(select) {
+    var box=select.closest('.it-revision-code'),input=box.querySelector('.it-manual-code'),button=box.querySelector('.it-code-apply');
+    input.hidden=select.value!=='manual';input.disabled=input.hidden;button.disabled=!select.value;
+    button.textContent=select.value==='auto'?'จองรหัส':'บันทึกรหัส';
+    if(!input.hidden)input.focus();
+  };
+  window.itAssignRevisionCode = async function(button) {
+    var box=button.closest('.it-revision-code'),tr=button.closest('tr.it-row-item'),card=tr.closest('.card');
+    var select=box.querySelector('.it-code-mode'),manual=box.querySelector('.it-manual-code'),status=box.querySelector('.it-code-result');
+    var slot=box.dataset.slot,code=String(manual.value||'').trim().toUpperCase();
+    if(!select.value)return;
+    if(select.value==='manual'&&!code){status.textContent='กรุณากรอกรหัส';manual.focus();return;}
+    if(!window.PC_CLOUD?.assignITButtonCode){status.textContent='ระบบกำหนดรหัสยังไม่พร้อม กรุณารีเฟรช';return;}
+    var campaign=card.getAttribute('data-campaign'),month=card.getAttribute('data-month'),buttonId=tr.getAttribute('data-edit-button-id');
+    var signature=JSON.stringify([select.value,code]);
+    button.disabled=true;select.disabled=true;manual.disabled=true;status.textContent='กำลังตรวจและบันทึกรหัส…';
+    try {
+      if(!box._codeRequest||box._codeSignature!==signature){
+        var record=await PC_CLOUD.readCloudKey('promo::c::'+encodeURIComponent(campaign)),block=JSON.parse(record.value||'{}');
+        var current=(block.m?.[month]||[]).find(r=>r.editButtonId===buttonId),expected=tr.getAttribute(slot==='itemset'?'data-original-code-itemset':'data-original-promo-code')||'';
+        if(!current||String(current[slot==='itemset'?'codeItemSet':'codePromotion']||'')!==expected)throw new Error('รหัสเปลี่ยนแล้ว กรุณาโหลดงานล่าสุดก่อนกำหนดใหม่');
+        box._codeRequest={campaign,month,buttonId,revisionId:tr.getAttribute('data-revision-id'),expectedUpdatedAt:record.updatedAt,slot,mode:select.value,code,actor:localStorage.getItem('pc_userName')||'IT'};box._codeSignature=signature;
+      }
+      var receipt=await PC_CLOUD.assignITButtonCode(box._codeRequest);
+      // Keep other unsaved IT fields intact; only refresh this button's saved code.
+      await PC_CLOUD.pull();
+      if(window.PC_API?.reloadFromStorage)PC_API.reloadFromStorage();
+      if(window.PC_COUNTER?.reloadFromStorage)PC_COUNTER.reloadFromStorage();
+      card.querySelectorAll('tr.it-row-item').forEach(row=>{
+        if(row.getAttribute('data-edit-button-id')!==buttonId)return;
+        row.setAttribute(slot==='itemset'?'data-original-code-itemset':'data-original-promo-code',receipt.code);
+        var input=row.querySelector(slot==='itemset'?'.f-itempromo':'.f-code');
+        if(input&&!input.disabled){input.value=receipt.code;input.setAttribute('data-cc-code',receipt.code);}
+        if(slot==='itemset'){row.setAttribute('data-original-item-promotion',receipt.code);row.setAttribute('data-builder-code',receipt.code);row.setAttribute('data-pos-ready','0');if(input&&!input.disabled)window.itItemSetChanged(input);}
+      });
+      manual.value='';box._codeRequest=null;status.textContent='บันทึกรหัส '+receipt.code+' แล้ว';
+    } catch(e) {status.textContent=String(e.message||e);}
+    finally {button.disabled=false;select.disabled=false;manual.disabled=select.value!=='manual';}
+  };
+
   function itUniqueButtonCode(tasks, shortName, fields, pattern) {
     if (!shortName) return '';
     var found = new Set();
@@ -1207,7 +1255,7 @@
           ${first.extendCodeNote ? `<div class="px-4 py-2 d-flex align-items-start gap-2" style="background:#fff8e1;border-bottom:1px solid #f0d98a"><i class="fas fa-note-sticky text-warning mt-1"></i><span style="font-size:.85rem;line-height:1.4"><b>Noted (MKT → IT):</b> ${String(first.extendCodeNote).replace(/</g,'&lt;')}</span></div>` : ''}
           ${anyDateChange ? `<div class="px-4 py-2 small fw-bold" style="background:#eaf7ff;color:#15506b;border-bottom:1px solid #b8dfee"><i class="fas fa-calendar-check me-2"></i>งานลด/ขยายเวลา: ตรวจและปรับวันใน POS ตามที่แจ้ง แล้วกดปิดงาน · ใช้รหัส/สินค้าเดิม ไม่จองรหัสใหม่</div>` : ''}
           ${window.PC_CustomerGroup?.mappingListHTML?PC_CustomerGroup.mappingListHTML(campTasks):(window.PC_CustomerGroup?.mappingHTML?PC_CustomerGroup.mappingHTML(first):'')}
-          ${first.revisionPending ? `<div class="px-4 py-3 bg-light border-bottom"><strong>รอ IT ดำเนินการแก้ไข</strong><div class="small">ผู้แก้ไข: ${itEsc(first.revisionRequestedBy||'')} · ${itEsc(first.revisionRequestedAt||'')}</div><div style="white-space:pre-wrap">${itEsc(first.revisionReason||'')}</div><div class="small">จุดที่แก้: ${itEsc((first.revisionChanges||[]).join(' · ')||'ตรวจตามเหตุผลที่แจ้ง')} · ใช้รหัสเดิม ไม่จองใหม่ · ปิดงานแล้วส่ง OP ตรวจซ้ำ</div></div>` : ''}
+          ${first.revisionPending ? `<div class="px-4 py-3 bg-light border-bottom"><strong>รอ IT ดำเนินการแก้ไข</strong><div class="small">ผู้แก้ไข: ${itEsc(first.revisionRequestedBy||'')} · ${itEsc(first.revisionRequestedAt||'')}</div><div style="white-space:pre-wrap">${itEsc(first.revisionReason||'')}</div><div class="small">จุดที่แก้: ${itEsc((first.revisionChanges||[]).join(' · ')||'ตรวจตามเหตุผลที่แจ้ง')} · เลือกกรอกรหัสเองหรือจองรหัสได้ด้านล่าง · เก็บรหัสเดิมไว้ในประวัติ · ปิดงานแล้วส่ง OP ตรวจซ้ำ</div></div>` : ''}
           <div class="px-4 py-2 d-flex align-items-center gap-2 flex-wrap" style="background:#fffdf5;border-bottom:1px solid #f0d98a">
             <span class="fw-bold text-uppercase" style="font-size:.72rem;color:#9a6700;white-space:nowrap"><i class="fas fa-bullhorn me-1"></i>ป้ายหมายเหตุเด่น (โชว์บนการ์ดสาขา)</span>
             <input type="text" class="form-control form-control-sm f-branch-note" style="max-width:440px;font-size:.8rem" placeholder="พิมพ์ข้อความเน้นให้สาขาเห็นชัด — เว้นว่าง = ไม่โชว์ป้าย" value="${(first.branchNote||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="window.itBranchNotePrev(this)">
@@ -1302,7 +1350,7 @@
                     const _pcRaw = _pcOwn && !/^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(_pcOwn)
                       ? _pcOwn : (itUniqueButtonCode(campTasks, it.shortName, ['promoCode'], /^[A-Z]{1,3}\d+$/i) || _pcOwn);
                     const _isPlaceholderCode = _pcRaw === '' || /^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(_pcRaw);
-                    const _isChange = _dateChange || _chg === 'CANCELLED' || !!it.revisionPending;   // คงรหัสเดิม ไม่จองใหม่
+                    const _isChange = _dateChange || _chg === 'CANCELLED' || (!!it.revisionPending && !itCanAssignRevisionCode(it));   // คงรหัสเดิม ไม่จองใหม่
                     const _keepExisting = isHeader && !_fromCounter && (!_isPlaceholderCode || _isChange);   // มีโค้ดจริงแล้ว หรือเป็นงาน ลด/ขยาย/ยกเลิก → ใช้โค้ดเดิม ไม่ autorun
                     const _preset = _fromCounter || _keepExisting;
                     const _presetCode = _dateChange ? _pcOwn : (_fromCounter ? _ccCode : _pcRaw);
@@ -1347,13 +1395,14 @@
                     const _itemSetInputAttr = _dateChange ? `data-it-cate="${_isCate}"` : `${_isAttr} data-cc-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-cate="${_isCate}" data-it-confirmed="${_isConfirmed ? '1' : '0'}"`;
                     const naAttr = 'disabled title="ไม่ใช้กับโปรประเภทนี้ — เฉพาะ Item Set" style="background-color:#f1f3f5; color:#adb5bd; border:none; text-align:center;"';
                     return `
-                      <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-email-campaign-id="${itEsc(it.emailCampaignId||'')}" data-email-button-id="${itEsc(it.emailButtonId||'')}" data-email-row-id="${itEsc(it.emailRowId||'')}" data-revision-id="${itEsc(it.revisionId||'')}" data-row-idx="${it.rowIdx}" data-short-name="${itEsc(it.shortName || '')}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-is-itemset="${isItemSet ? '1' : '0'}" data-change-status="${_chg}" data-change-only="${_dateChange ? '1' : '0'}" data-original-end-date="${itEsc(it.endDate || '')}" data-original-promo-code="${itEsc(it.promoCode || '')}" data-original-code-itemset="${itEsc(it.builderCode || '')}" data-original-item-promotion="${itEsc(it.itemPromo || '')}" data-original-item-code="${itEsc(it.itemCode || '')}">
+                      <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-email-campaign-id="${itEsc(it.emailCampaignId||'')}" data-email-button-id="${itEsc(it.emailButtonId||'')}" data-email-row-id="${itEsc(it.emailRowId||'')}" data-revision-id="${itEsc(it.revisionId||'')}" data-edit-button-id="${itEsc(it.editButtonId||'')}" data-row-idx="${it.rowIdx}" data-short-name="${itEsc(it.shortName || '')}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-is-itemset="${isItemSet ? '1' : '0'}" data-change-status="${_chg}" data-change-only="${_dateChange ? '1' : '0'}" data-original-end-date="${itEsc(it.endDate || '')}" data-original-promo-code="${itEsc(it.promoCode || '')}" data-original-code-itemset="${itEsc(it.builderCode || '')}" data-original-item-promotion="${itEsc(it.itemPromo || '')}" data-original-item-code="${itEsc(it.itemCode || '')}">
                         <td>${isHeader ? `<select class="form-select form-select-sm f-type text-center" title="เลือกประเภทโปรโมชั่น" onchange="window.itSyncCateOnType&&window.itSyncCateOnType(this)" ${_dateChange ? 'disabled' : ''}>${_typeOptsHtml}</select>` : `<input type="text" class="form-control form-control-sm f-type text-center" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}${(isHeader && badButtons[it.shortName]) ? `<span class="badge bg-danger mt-1 d-block" style="cursor:pointer;font-size:.6rem;" onclick="window.itBtnReject('${itJsArg(campName)}','${month}','${(it.shortName||'').replace(/'/g,"\\'")}')"><i class="fas fa-triangle-exclamation me-1"></i>ไม่ถูกต้อง </span>` : ''}</td>
                         <td>
                           <div class="input-group input-group-sm">
                             <input type="text" class="form-control f-code border-warning fw-bold text-center" ${_fcodeAttr} value="${itEsc(_fcodeVal)}" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'');window.itCheckCode&&window.itCheckCode(this)" ${!isHeader ? 'disabled style="background-color:#e9ecef; color:transparent; border:none;"' : (_dateChange ? 'readonly' : '')}>
                             ${isHeader ? (_dateChange ? `<button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion เดิม" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>` : `<button class="btn btn-warning f-code-done" type="button" data-done="0" title="กดเมื่อกรอกเสร็จ — กดอีกครั้งเพื่อแก้ไข" onclick="window.toggleCodeDone(this)"><i class="fas fa-check"></i></button><button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion" style="display:none" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>`) : ''}
                           </div>
+                          ${isHeader ? itRevisionCodeControls(it, 'promotion') : ''}
                           ${(isHeader && _fromCounter && !_dateChange) ? `<span class="badge bg-info text-dark mt-1 d-block" style="font-size:.6rem;font-weight:700" title="โค้ดนี้ถูกจอง+ยืนยันที่หน้าโค้ดกลางแล้ว — IT แค่ตรวจ+บันทึก"><i class="fas fa-bookmark me-1"></i>จองจากหน้าโค้ดกลาง</span>` : ''}
                         </td>
                         <td>${!isHeader
@@ -1366,7 +1415,7 @@
                                   : `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="" placeholder="รอรหัสจากตัวนับ" oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}"><div class="it-itemset-actions"><span class="it-itemset-status small text-warning">ยังไม่ยืนยัน</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`)
                               : (_legacyPriceExtension
                                   ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" value="${itEsc(it.itemCode)}" readonly title="รหัสสินค้าหลักเดิม — งานขยายเวลานี้ไม่จอง Item Set ใหม่"><span class="small text-muted">รหัสสินค้าหลักเดิม · ไม่จองใหม่</span></div>`
-                                  : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`))}</td>
+                                  : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`))}${isHeader && isItemSet ? itRevisionCodeControls(it, 'itemset') : ''}</td>
                         <td>${!isHeader
                           ? `<input type="text" class="form-control form-control-sm f-kitchen" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
                           : (isItemSet

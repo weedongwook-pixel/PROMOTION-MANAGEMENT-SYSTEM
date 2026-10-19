@@ -481,6 +481,18 @@
     return receipt;
   }
 
+  async function assignITButtonCode(context) {
+    if(!context.requestId)context.requestId='it-code-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
+    var response,ack;
+    try { response=await api('/promo/it-button-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(context)}); }
+    catch(e){var recovered=await submissionReceipt(context.requestId).catch(function(){return null;});if(recovered&&recovered.kind==='IT_BUTTON_CODE')return recovered;throw new Error('ยังยืนยันการจองรหัสไม่ได้ กรุณาลองอีกครั้ง');}
+    ack=await response.json();
+    if(!response.ok)throw new Error(ack.message||(response.status===409?'ข้อมูลเปลี่ยนระหว่างกำหนดรหัส กรุณาโหลดงานล่าสุด':'กำหนดรหัสไม่สำเร็จ ('+response.status+')'));
+    var receipt=await submissionReceipt(context.requestId);
+    if(!ack.ok||!receipt||receipt.kind!=='IT_BUTTON_CODE')throw new Error('ยังตรวจผลการกำหนดรหัสไม่ได้ กรุณาลองอีกครั้ง');
+    return receipt;
+  }
+
   async function submissionReceipt(submissionId) {
     if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
     var response = await api('/promo/submissions/' + encodeURIComponent(submissionId), { cache: 'no-store' });
@@ -1320,7 +1332,7 @@
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
     readCloudKey: readCloudKey, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
-    loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit,
+    loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,
     readCampaignRows: readCampaignRows,

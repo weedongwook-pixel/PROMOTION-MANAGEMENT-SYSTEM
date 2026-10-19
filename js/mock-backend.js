@@ -3174,6 +3174,7 @@
           price: r.gross, discount: r.discount, netPrice: r.netPrice, detail: r.detail,
           mechanic: r.mechanic, fileUrl: r.attachment || "", itStatus: status,
           changeStatus: chg, cateRemark: r.cateRemark || "", rejectReason: String(r.rejectReason || ""),
+          editButtonId:r.editButtonId||'',
           revisionPending: !!r.revisionPending, revisionId:r.revisionId||'', revisionReason:r.revisionReason||'', revisionRequestedBy:r.revisionRequestedBy||'', revisionRequestedAt:r.revisionRequestedAt||'', revisionChanges:r.revisionChanges||[],
           extendCodeNote: r.extendCodeNote || "",
           customerGroup:r.customerGroup||'',crmTargetName:r.crmTargetName||'',...crmMappingFields(r),
