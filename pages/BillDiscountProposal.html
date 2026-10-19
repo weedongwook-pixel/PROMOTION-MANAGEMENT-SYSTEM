@@ -916,8 +916,7 @@ window._legacyOpenBranchModal = function(campId) {
 
 if (!isValid) return;
 
-    // Inspect before saving; duplicate summaries belong in the verified success message.
-    const mappingWarnings = [];
+    // Inspect before saving and silently skip codes already registered.
     try {
         const seenCodes = new Set();
         for (const job of mappingJobs) {
@@ -925,15 +924,12 @@ if (!isValid) return;
                 throw new Error('ตัวอ่าน Mapping Code ยังไม่พร้อม กรุณารีเฟรชแล้วลองอีกครั้ง');
             }
             const checked = await PC_CodeConvert.inspectFromInput(job.fileEl, job);
-            let duplicates = checked.dupSystem + checked.dup;
             job.codes = checked.codes.filter(code => {
                 const key = String(code).toUpperCase();
-                if (seenCodes.has(key)) { duplicates++; return false; }
+                if (seenCodes.has(key)) return false;
                 seenCodes.add(key); return true;
             });
-            if (duplicates || checked.invalid) {
-                mappingWarnings.push(`ปุ่ม ${job.button}: ลงทะเบียนรหัสใหม่ ${job.codes.length} รหัส ข้ามรหัสซ้ำ ${duplicates} รหัส และรูปแบบผิด ${checked.invalid} รหัส`);
-            }
+
         }
     } catch (e) {
         Swal.fire('ตรวจไฟล์ไม่ได้', String(e.message || e), 'error'); return;
@@ -968,7 +964,6 @@ if (!isValid) return;
                 };
                 var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
                 if (_submissionPlan) PC_SubmissionLog.afterSave(_submissionPlan, {
-                    successNote: mappingWarnings.join('\n'),
                     onDone: function (ok) { if (ok) _complete(); },
                     onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_c); }
                 });

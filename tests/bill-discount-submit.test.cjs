@@ -39,7 +39,7 @@ function fixture({ confirmed = true, codes = [], dupSystem = 6001, readError = f
 test('submit skips duplicate confirmation and continues from verified save to CoPromo', async () => {
   const f = fixture(); await f.context.submitAllData();
   assert.deepEqual(f.events, ['inspect-start', 'inspect-end', 'submit', 'saved', 'copro']);
-  assert.match(f.context.successNote, /6001/);
+  assert.equal(f.context.successNote, undefined);
   assert.equal(f.dialogs.some(d=>d[0].title==='ยืนยันการบันทึก?'), false);
 });
 test('new mapping codes register when submitting without a second confirmation', async () => {
