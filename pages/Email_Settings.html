@@ -1,0 +1,35 @@
+<!-- Email connection extends the existing green settings UI. Connection only;
+     verified server status is authoritative. No message sending controls. -->
+<section class="pc-workspace pc-email-settings" id="pc-email-settings" aria-labelledby="email-title">
+  <h1 id="email-title" data-th="ตั้งค่าอีเมล" data-en="Email Settings">ตั้งค่าอีเมล</h1>
+  <p data-th="เชื่อมบัญชี Gmail สำหรับระบบแจ้งโปรโมชั่น" data-en="Connect Gmail for promotion notifications">เชื่อมบัญชี Gmail สำหรับระบบแจ้งโปรโมชั่น</p>
+  <p class="pc-email-notice" data-th="ระยะนี้เชื่อมบัญชีเท่านั้น ยังไม่เปิดส่งอีเมล" data-en="Account connection only. Email sending is disabled.">ระยะนี้เชื่อมบัญชีเท่านั้น ยังไม่เปิดส่งอีเมล</p>
+  <h2 data-th="บัญชีผู้ส่ง" data-en="Sender account">บัญชีผู้ส่ง</h2>
+  <p class="pc-email-address">it@rocks-foods.com</p>
+  <p data-email-status role="status" aria-live="polite">กำลังตรวจสอบ / Checking…</p>
+  <ul data-email-missing aria-label="Configuration checklist"></ul>
+  <div class="pc-email-actions">
+    <button type="button" class="btn btn-success" data-email-verify hidden data-th="ยืนยันสิทธิ์ผู้ดูแลด้วย Microsoft" data-en="Verify administrator with Microsoft">ยืนยันสิทธิ์ผู้ดูแลด้วย Microsoft</button>
+    <button type="button" class="btn btn-success" data-email-connect disabled data-th="เชื่อม Gmail" data-en="Connect Gmail">เชื่อม Gmail</button>
+    <button type="button" class="btn btn-outline-danger" data-email-disconnect hidden data-th="ยกเลิกการเชื่อมต่อ" data-en="Disconnect">ยกเลิกการเชื่อมต่อ</button>
+    <button type="button" class="btn btn-outline-success" data-email-refresh data-th="ตรวจสอบอีกครั้ง" data-en="Check again">ตรวจสอบอีกครั้ง</button>
+  </div>
+  <p class="pc-email-help" data-th="เชื่อม Gmail โดยเจ้าของบัญชี หลังผู้ดูแลตั้งค่าระบบครบ การยกเลิกที่นี่ลบข้อมูลเชื่อมต่อในระบบ แต่ต้องถอนสิทธิ์ Google แยกต่างหาก" data-en="The mailbox owner authorizes Gmail after administrator setup. Disconnect removes local credentials; Google access must be revoked separately.">เชื่อม Gmail โดยเจ้าของบัญชี หลังผู้ดูแลตั้งค่าระบบครบ การยกเลิกที่นี่ลบข้อมูลเชื่อมต่อในระบบ แต่ต้องถอนสิทธิ์ Google แยกต่างหาก</p>
+  <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer" data-th="จัดการสิทธิ์บัญชี Google" data-en="Manage Google account access">จัดการสิทธิ์บัญชี Google</a>
+  <div class="mt-4 pt-3 border-top" data-copro-settings></div>
+</section>
+<style>
+  .pc-email-settings {box-sizing:border-box;padding:clamp(20px,4vw,40px);max-width:960px;margin:auto;min-height:65vh;}
+  .pc-email-settings h1 {font-size:1.75rem;margin:0 0 12px;}
+  .pc-email-settings h2 {font-size:1.2rem;margin:32px 0 8px;}
+  .pc-email-settings p {max-width:70ch;overflow-wrap:anywhere;}
+  .pc-email-settings .pc-email-notice {padding:16px;background:var(--workspace-soft);color:var(--workspace-action);}
+  .pc-email-address {font-weight:600;}
+  .pc-email-actions {display:flex;flex-wrap:wrap;gap:12px;margin:24px 0;}
+  .pc-email-actions button {min-height:44px;white-space:normal;}
+  .pc-email-settings [hidden] {display:none!important;}
+  .pc-email-settings :focus-visible {outline:3px solid var(--workspace-action);outline-offset:3px;}
+  @media(max-width:480px) {.pc-email-actions {flex-direction:column;}.pc-email-actions button {width:100%;}}
+</style>
+<script src="js/email-auth.js"></script>
+<script src="js/email-settings.js"></script>

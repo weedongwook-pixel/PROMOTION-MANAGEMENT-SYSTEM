@@ -2,6 +2,7 @@
   var memoData = [];
   var memoBtns = [];   // [{name,kitchen,price,net}]  price=ราคาปกติ (gross) · net=ราคาหลังลด
   var memoLinked = null;  // ชื่อแคมเปญในระบบที่ memo นี้ผูกอยู่ (สำหรับยืนยันส่ง/เช็คสถานะ)
+  var memoSourceDetailLines = []; // ข้อความต้นฉบับจากหน้าแจ้งโปรฯ สำหรับตรวจเทียบก่อนส่ง Memo
   var MEMO_BLOCKS = [
     { id:'header',    label:'หัวเอกสาร', on:true, note:'' },
     { id:'supersede', label:'หมายเหตุยกเลิก', on:false, note:'' },
@@ -16,6 +17,133 @@
 
   var TH_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   function memoEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
+  function memoDetailLines(value) {
+    return String(value || '').replace(/\r\n?/g, '\n').split('\n')
+      .map(s => s.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+  }
+  function memoIsDetailNote(line) {
+    var plain = line.replace(/\u00a0/g, ' ').trim();
+    var parenthetical = /^\([^()]{1,160}\)$/.test(plain);
+    var markedNote = /^\((?:จากแคมเปญ|หมายเหตุ|อ้างอิง|ลูกค้าจ่าย)/i.test(plain)
+      || /^(?:หมายเหตุ|Note)\s*[:：]/i.test(plain);
+    var offerLike = /(?:ลด\s*\d|ซื้อ\s*\d|\d+\s*(?:บาท|%)|ฟรี|แถม|BOGO|COMBO|เซ็ต|โปรโมชัน|โปรโมชั่น)/i.test(plain);
+    return markedNote || (parenthetical && !offerLike);
+  }
+  function memoNumberDetailText(value, nextLine) {
+    var lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
+    var count = 0;
+    return lines.map(function (line, index) {
+      var content = line.replace(/^\s*\d+[.)]\s*/, '').trimStart();
+      if (!content.trim()) return nextLine && index === lines.length - 1 ? (count + 1) + '. ' : '';
+      if (count && memoIsDetailNote(content)) return content;
+      count += 1;
+      return count + '. ' + content;
+    }).join('\n');
+  }
+  function memoSetNumberedDetail(field, nextLine) {
+    var original = field.value;
+    var start = typeof field.selectionStart === 'number' ? field.selectionStart : original.length;
+    var end = typeof field.selectionEnd === 'number' ? field.selectionEnd : start;
+    var numbered = memoNumberDetailText(original, nextLine);
+    if (numbered !== original) {
+      var newStart = memoNumberDetailText(original.slice(0, start), nextLine).length;
+      var newEnd = memoNumberDetailText(original.slice(0, end), nextLine).length;
+      field.value = numbered;
+      if (typeof field.setSelectionRange === 'function') field.setSelectionRange(newStart, newEnd);
+    }
+  }
+  var memoDetailPreviousValue = '';
+  window.memoDetailFocus = function (field) {
+    if (!field.value.trim()) {
+      field.value = '1. ';
+      if (typeof field.setSelectionRange === 'function') field.setSelectionRange(3, 3);
+    }
+    memoDetailPreviousValue = field.value;
+  };
+  window.memoDetailInput = function (field, event) {
+    if (event && (event.isComposing || event.inputType === 'insertCompositionText')) return;
+    var previousLines = (memoDetailPreviousValue.match(/\n/g) || []).length;
+    var currentLines = (field.value.match(/\n/g) || []).length;
+    if (previousLines !== currentLines || (event && /^(?:insertFromPaste|historyUndo|historyRedo)$/.test(event.inputType || ''))) {
+      memoSetNumberedDetail(field, /\n$/.test(field.value));
+    }
+    memoDetailPreviousValue = field.value;
+    window.memoBuild();
+  };
+  window.memoDetailBlur = function (field) {
+    field.value = memoDetailLines(field.value).length ? memoNumberDetailText(field.value, false).replace(/\n+$/, '') : '';
+    memoDetailPreviousValue = field.value;
+    window.memoBuild();
+  };
+  function memoDetailEntries(value) {
+    var entries = [];
+    memoDetailLines(value).forEach(function (line) {
+      // A standalone parenthetical or explicit note belongs to the prior offer,
+      // not to a new numbered promotion. Keep the original wording untouched.
+      if (memoIsDetailNote(line) && entries.length) entries[entries.length - 1].notes.push(line);
+      else entries.push({ text: line, notes: [] });
+    });
+    return entries;
+  }
+  function memoOfferCandidate(line, campaign) {
+    var plain = String(line || '').replace(/^\s*\d+[.)]\s*/, '').replace(/^[-•]\s*/, '').trim();
+    if (!plain || plain.toLowerCase() === String(campaign || '').trim().toLowerCase() || memoIsDetailNote(plain)) return false;
+    if (/^(?:ประเภท(?:ปุ่ม)?โปร(?:โมชั่น|โมชัน)|code\b|ชื่อปุ่ม|รายละเอียดโปรโมชั่น|สาขาที่เข้าร่วม|แคมเปญเริ่ม|คูปองใช้ได้|mechanic\b|เงื่อนไข|หมายเหตุ|ช่องทางขาย|วันที่|เลือกทรัฟเฟิล|ไม่สามารถ|เฉพาะ|\d+\s*สิทธิ์)/i.test(plain)) return false;
+    if (/^\d+\s*[.)]\s*\S/.test(String(line || ''))) return true; // รายการที่ผู้ส่งระบุเลขไว้ชัดเจน
+    if (/^\([^()]*\)$/.test(plain) && /(?:ลด\s*\d|ซื้อ\s*\d|BOGO|COMBO|ฟรี|แถม)/i.test(plain)) return true;
+    if (/^(?:ลด\s*\d|ลดทันที|BOGO\b|ซื้อครบ\s*\d|ซื้อ\s*\d|เมื่อซื้อ.+(?:รับฟรี|แลกซื้อ)|(?:รับฟรี|แลกซื้อ)\s)/i.test(plain)) return true;
+    return /(?:เพียง|ราคา)\s*\d+(?:[.,]\d+)?\s*บาท/i.test(plain);
+  }
+  function memoExtractOffers(campaign) {
+    var blocks = (campaign.buttons || []).map(function (b) { return String(b.detail || '').trim(); }).filter(Boolean);
+    if (!blocks.length && campaign.detail) blocks = [String(campaign.detail).trim()];
+    var seenBlocks = {}, seenLines = {}, lines = [], offers = [], pending = '';
+    blocks.forEach(function (block) {
+      if (seenBlocks[block]) return;
+      seenBlocks[block] = true;
+      block.replace(/\r\n?/g, '\n').split('\n').forEach(function (raw) {
+        var line = raw.replace(/^\s*\d+[.)]\s*/, '').trim();
+        if (!line || seenLines[line]) return;
+        seenLines[line] = true;
+        lines.push(line);
+        if (/^1\s*แถม\s*1$/i.test(line)) { pending = line; return; }
+        if (memoOfferCandidate(raw, campaign.campaign)) {
+          offers.push((pending ? pending + ' — ' : '') + line);
+          pending = '';
+        } else if (memoIsDetailNote(line) && offers.length) {
+          offers.push(line);
+        } else {
+          pending = '';
+        }
+      });
+      pending = '';
+    });
+    return { lines: lines, offers: offers };
+  }
+  window.memoRenderSourceDetail = function () {
+    var panel = document.getElementById('memoDetailReview');
+    var status = document.getElementById('memoDetailReviewStatus');
+    var list = document.getElementById('memoDetailSourceLines');
+    if (!panel || !status || !list) return;
+    panel.hidden = !memoSourceDetailLines.length;
+    if (!memoSourceDetailLines.length) return;
+    var field = document.getElementById('memoDetail');
+    var selected = memoDetailLines(field ? field.value : '');
+    status.textContent = 'ระบบแยกได้ ' + memoDetailEntries(field ? field.value : '').length + ' ข้อ · โปรดตรวจเทียบข้อความต้นฉบับก่อนส่ง Memo';
+    list.innerHTML = memoSourceDetailLines.map(function (line, index) {
+      var included = selected.indexOf(line) !== -1 || selected.some(function (s) { return s.indexOf(' — ' + line) !== -1 || s.indexOf(line + ' — ') === 0; });
+      return '<div class="memo-source-row"><span>' + memoEsc(line) + '</span><button type="button" class="btn btn-sm btn-outline-success" onclick="window.memoAddSourceDetail(' + index + ')"' + (included ? ' disabled' : '') + '>' + (included ? 'เพิ่มแล้ว' : 'เพิ่มเป็นข้อ') + '</button></div>';
+    }).join('');
+  };
+  window.memoAddSourceDetail = function (index) {
+    var line = memoSourceDetailLines[index];
+    var field = document.getElementById('memoDetail');
+    if (!line || !field || memoDetailLines(field.value).some(function (s) { return s === line || s.indexOf(' — ' + line) !== -1 || s.indexOf(line + ' — ') === 0; })) return;
+    field.value = memoNumberDetailText([field.value.trim(), line].filter(Boolean).join('\n'), false);
+    memoDetailPreviousValue = field.value;
+    window.memoRenderSourceDetail();
+    window.memoBuild();
+  };
   function parseISO(s){ var m=String(s||'').match(/(\d{4})-(\d{2})-(\d{2})/); if(!m) return null; return { y:+m[1], mo:+m[2], d:+m[3] }; }
   function thDate(s){ var p=parseISO(s); if(!p) return String(s||''); return p.d+' '+TH_MONTH[p.mo-1]+' '+(p.y+543); }
   function thRange(a,b){ var pa=parseISO(a), pb=parseISO(b); if(!pa&&!pb) return ''; if(!pa) return thDate(b); if(!pb) return thDate(a);
@@ -24,16 +152,17 @@
   function ddmmyyyy(d){ var p=(d instanceof Date)? {d:d.getDate(),mo:d.getMonth()+1,y:d.getFullYear()} : parseISO(d); if(!p) return '-'; return String(p.d).padStart(2,'0')+'/'+String(p.mo).padStart(2,'0')+'/'+p.y; }
 
   window.initMemo = function () {
+    memoBtns = [{name:'',kitchen:'',price:'',net:''}];
+    window.memoRenderBlocks();
+    window.memoRenderBtnRows();
+    window.memoBuild();
+    window.memoRenderStatus();
+    // Show the Memo itself on first open; campaign queries only enrich the form.
     google.script.run.withSuccessHandler(function (sum) {
       const m = document.getElementById('memoMonth');
       if (m) m.innerHTML = '<option value="ALL">ทุกเดือน</option>' + (sum || []).map(s => `<option value="${s.month}">Promotion ${s.month}</option>`).join('');
     }).getMonthlySubmitSummary();
-    memoBtns = [{name:'',kitchen:'',price:'',net:''}];
-    window.memoRenderBlocks();
-    window.memoRenderBtnRows();
     window.memoLoadCampaigns();
-    window.memoBuild();
-    window.memoRenderStatus();
   };
 
   window.memoLoadCampaigns = function (cb) {
@@ -71,15 +200,13 @@
     const stores = (c.storeData || []);
     set('memoBranches', stores.length ? (stores.length + ' สาขาที่ร่วมรายการ') : 'ทุกสาขาที่ร่วมรายการ');
     set('memoBtnType', c.promoType || '');
-    // รายละเอียดโปรโมชั่น: ดึงรายละเอียด "ทุกปุ่ม" มาเรียงเป็นข้อ (ไม่เบียดในตาราง)
-    var detailLines = (c.buttons||[])
-      .map(b=>String(b.detail||'').replace(/\r/g,'').replace(/\n+/g,' ').trim())
-      .filter(Boolean);
-    // fallback ถ้าปุ่มไม่มี detail → ใช้ detail ระดับแคมเปญ
-    if (!detailLines.length && c.detail) detailLines = String(c.detail).replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean);
-    // ตัดเลขนำหน้าเดิมออก + ตัดซ้ำ (คงลำดับ)
-    var seen={}; detailLines = detailLines.map(s=>s.replace(/^\s*\d+[\.\)]\s*/,'').trim()).filter(s=>{ if(seen[s])return false; seen[s]=1; return true; });
-    set('memoDetail', detailLines.join('\n'));
+    // รายละเอียดจากหน้าแจ้งโปรฯ อาจมีชื่อแคมเปญ/ประเภทปุ่ม/เงื่อนไขปนอยู่
+    // เลือกอัตโนมัติเฉพาะข้อเสนอที่ชัดเจน และเก็บทุกบรรทัดให้ตรวจ/เพิ่มเองได้
+    var extracted = memoExtractOffers(c);
+    memoSourceDetailLines = extracted.lines;
+    set('memoDetail', memoNumberDetailText(extracted.offers.join('\n'), false));
+    memoDetailPreviousValue = (document.getElementById('memoDetail') || {}).value || '';
+    window.memoRenderSourceDetail();
     // เงื่อนไข: ดึง mechanic/condition ทุกปุ่ม (ตัด note ภายใน [STAGE]/[TEST]) → ต่อท้ายส่วนรายละเอียด
     var condLines = (c.buttons||[])
       .map(b=>String(b.condition||b.mechanic||'').replace(/\r/g,'').replace(/\n+/g,' ').trim())
@@ -168,13 +295,10 @@
     const toWhom = v('memoTo') || 'หน้าร้านทุกสาขาที่มีจำหน่าย';
     const posNote = v('memoPosNote');
     const effRaw = v('memoEff');
-    const items = String(v('memoDetail')).replace(/\r/g,'').split('\n').map(s=>s.replace(/^\s*\d+[\.\)]\s*/,'').trim()).filter(Boolean);
+    const items = memoDetailEntries(v('memoDetail'));
     const conds = String(v('memoCondition')).replace(/\r/g,'').split('\n').map(s=>s.replace(/^\s*\d+[\.\)]\s*/,'').trim()).filter(Boolean);
     const specials = String(v('memoSpecial')).replace(/\r/g,'').split('\n').map(s=>s.replace(/^\s*\d+[\.\)]\s*/,'').trim()).filter(Boolean);
     const btns = memoBtns.filter(b => b.name || b.kitchen || b.price || b.net);
-
-    const anything = subject||supersede||period||channels||branches||btnType||items.length||conds.length||specials.length||btns.length;
-    if (!anything) { paper.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-pen me-1"></i> เริ่มพิมพ์ด้านซ้าย หรือกด “ดึงข้อมูลจากแคมเปญ”</div>'; return; }
 
     // สร้าง HTML ของแต่ละกล่องเก็บไว้ใน parts แล้วประกอบ "ตามลำดับ MEMO_BLOCKS" (ตามที่ผู้ใช้จัดเรียง)
     const parts = {};
@@ -197,7 +321,7 @@
       if (rows.length) parts.keys = `<table class="mp-keys" style="margin-bottom:16px;"><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${memoEsc(r[1])}</td></tr>`).join('')}</tbody></table>`;
     }
 
-    if (items.length) parts.detail = `<div class="mp-sect">รายละเอียดโปรโมชั่น</div><ol class="mp-list" style="margin-bottom:16px;">${items.map(t=>`<li>${memoEsc(t)}</li>`).join('')}</ol>`;
+    if (items.length) parts.detail = `<div class="mp-sect">รายละเอียดโปรโมชั่น</div><ol class="mp-list" style="margin-bottom:16px;">${items.map(item=>`<li>${memoEsc(item.text)}${item.notes.map(note=>`<div class="mp-item-note">${memoEsc(note)}</div>`).join('')}</li>`).join('')}</ol>`;
 
     if (conds.length) parts.condition = `<div class="mp-sect">เงื่อนไข</div><ol class="mp-list" style="margin-bottom:16px;">${conds.map(t=>`<li>${memoEsc(t)}</li>`).join('')}</ol>`;
 
@@ -281,6 +405,7 @@
       + '.mp-list{margin:0;padding-left:0;list-style:none;counter-reset:mp;}'
       + '.mp-list li{counter-increment:mp;position:relative;padding:6px 0 6px 34px;font-size:.95rem;line-height:1.5;border-bottom:1px solid #f1f3f5;}'
       + '.mp-list li::before{content:counter(mp);position:absolute;left:0;top:6px;width:23px;height:23px;background:#2e934a;color:#fff;border-radius:50%;font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center;}'
+      + '.mp-item-note{color:#5a616b;font-size:.88rem;line-height:1.45;margin-top:3px;overflow-wrap:anywhere;}'
       + '.mp-note{font-size:.9rem;line-height:1.5;background:#f6f8f5;border-radius:8px;padding:10px 14px;}'
       + '.mp-btns{width:100%;border-collapse:collapse;font-size:.86rem;}'
       + '.mp-btns thead th{background:#1a1d20;color:#fff;font-weight:600;padding:8px 10px;text-align:center;}'

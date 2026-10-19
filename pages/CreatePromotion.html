@@ -17,7 +17,7 @@
   #cp2-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; position:relative; min-height:82vh; }
 </style>
 
-<div id="cp2-page">
+<div id="cp2-page" class="pc-workspace">
   <div class="cp2-head">
     <div class="ic"><i class="fas fa-bullhorn"></i></div>
     <div>
@@ -40,6 +40,7 @@
     { pg:'Coupon',               icon:'fa-ticket-alt',    en:'Coupon Proposal',         th:'เสนอคูปอง' },
     { pg:'BillDiscountProposal', icon:'fa-calculator',    en:'Bill Discount Proposal',  th:'เสนอ Bill Discount' },
     { pg:'VoucherProposal',      icon:'fa-gift',          en:'Voucher Proposal',        th:'เสนอ Voucher' },
+    { pg:'SubmissionLog',        icon:'fa-clipboard-check', en:'My Submissions',        th:'งานที่ฉันส่ง' },
     { pg:'Memo',                 icon:'fa-file-lines',    en:'Create Memo',             th:'สร้าง MEMO' },
   ];
   function allowed(pg) {
@@ -68,6 +69,7 @@
 
   window.cp2Go = function (pg) {
     if (pg === curSub) return;
+    if(window.PC_PromotionEdit && PC_PromotionEdit.current() && PC_PromotionEdit.current().mounted){PC_PromotionEdit.switchForm(pg);return;}
     curSub = pg;
     try { localStorage.setItem('pc_createpromo_sub', pg); } catch (e) {}
     renderRail();
@@ -76,7 +78,7 @@
     else main.innerHTML = '<div class="p-4 text-danger">loader missing</div>';
   };
 
-  window.disposeCreatePromotion = function () { curSub = null; };
+  window.disposeCreatePromotion = function () { curSub = null; if(window.PC_PromotionEdit)PC_PromotionEdit.clear(); };
 
   window.initCreatePromotion = function () {
     try { var saved = localStorage.getItem('pc_createpromo_sub'); if (saved) curSub = saved; } catch (e) {}

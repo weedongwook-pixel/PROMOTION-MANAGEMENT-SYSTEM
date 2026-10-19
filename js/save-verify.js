@@ -32,7 +32,15 @@
     },
     campaign: async function (key) {
       var l = await run('getAllCampaignData') || [];
-      return l.some(function (x) { return String(x.campaign || '').trim() === String(key).trim(); });
+      var expected = Array.isArray(key) ? key : [key];
+      return expected.length > 0 && expected.every(function (item) {
+        var campaign = typeof item === 'object' ? item.campaign : item;
+        var buttons = typeof item === 'object' && Array.isArray(item.shortNames) ? item.shortNames : [];
+        var rows = l.filter(function (x) { return String(x.campaign || '').trim() === String(campaign).trim(); });
+        return rows.length > 0 && buttons.every(function (name) {
+          return rows.some(function (row) { return String(row.shortName || '').trim() === String(name).trim(); });
+        });
+      });
     }
   };
 

@@ -337,10 +337,12 @@
         gross: discIsText ? "" : total.toFixed(2), discount: discIsText ? f.discount : "", netPrice: "",
         detail: f.detail, mechanic: f.mechanic, attachment: f.attachment || "",
         updatedBy: f.updatedBy || "", updatedDate: f.updatedDate || "", cancelReason: f.cancelReason || "",
+        editedBy: f.editedBy || "", editedAt: f.editedAt || "",
         cateRemark: f.cateRemark || "", minAmount: f.minAmount || 0, memoUrl: f.memoUrl || "",
         changeStatus: f.changeStatus || "", reason: f.reason || "", submittedDate: f.submittedDate || "",
-        itDoneDate: f.itDoneDate || "", opDoneDate: f.opDoneDate || "", posReady: !!f.posReady,
+        itDoneDate: f.itDoneDate || "", itSettlementSavedAt: f.itSettlementSavedAt || "", opDoneDate: f.opDoneDate || "", posReady: !!f.posReady,
         itemSetReuse: f.itemSetReuse || null,
+        revisionId:f.revisionId||'', revisionPending:!!f.revisionPending, revisionReason:f.revisionReason||'', revisionRequestedBy:f.revisionRequestedBy||'', revisionRequestedAt:f.revisionRequestedAt||'', revisionChanges:f.revisionChanges||[],
         /* FX-P45 — สถานะที่ต้องรอดจากการ rebuild (เดิมหาย → หน้าสาขา/ยกเลิกอ่านค่าผิด) */
         wentLive: !!f.wentLive, cancelHandled: !!f.cancelHandled, cancelAction: f.cancelAction || "",
         cancelHandledDate: f.cancelHandledDate || "", removedFromPos: !!f.removedFromPos,
@@ -356,7 +358,9 @@
         txnDate: f.txnDate || f.submittedDate || f.timestamp || "",
         submittedBy: f.submittedBy || f.reporter || "",
         reporter: f.reporter || f.submittedBy || "",
-        customerGroup: f.customerGroup || "", crmTarget: f.crmTarget || "", crmTargetName: f.crmTargetName || "",
+        submissionId: f.submissionId || "", submissionBatchId: f.submissionBatchId || "",
+        submissionForm: f.submissionForm || "", submissionExpectedButtons: f.submissionExpectedButtons || 0,
+        customerGroup: f.customerGroup || "", crmTarget: f.crmTarget || "", crmTargetName: f.crmTargetName || "", ...crmMappingFields(f),
       };
     });
   }
@@ -933,6 +937,12 @@
     });
   }
 
+  function crmMappingFields(data){
+    const yes=data.customerGroup==='crm'&&data.crmMappingRequired==='yes';
+    const code=yes?String(data.crmMappingCode||'').trim():'',detail=yes?String(data.crmMappingDetail||'').trim():'';
+    if(yes&&(!code||code.length>200||detail.length>2000))throw Error('กรุณาระบุรหัส Mapping Code / Value Design ให้ถูกต้อง');
+    return {crmMappingRequired:data.customerGroup==='crm'?(yes?'yes':'no'):'',crmMappingCode:code,crmMappingDetail:detail};
+  }
   function addButtonGroup(s, cfg) {
     const ts = NOW();
     if (!s.months[cfg.month]) s.months[cfg.month] = [];
@@ -943,13 +953,15 @@
         saleMode: cfg.saleMode, typePromotion: cfg.typePromotion, promoType: cfg.promoType || cfg.typePromotion || "",
         codePromotion: cfg.codePromotion || "", codeItemSet: cfg.codeItemSet || "", itemPromotion: cfg.itemPromotion || "",
         kitchen: cfg.kitchen || "", shortName: cfg.shortName, catCode: it.catCode || "",
-        itemCode: it.itemCode, itemNameEN: it.itemNameEN, qty: it.qty,
+        itemCode: it.itemCode, itemNameEN: it.itemNameEN, qty: it.qty, selectionMode: it.selectionMode || '', couponGroupMode: it.couponGroupMode===true||it.selectionMode==='CATE',
         gross: it.gross, discount: (it.discount !== undefined ? it.discount : (idx === 0 ? it.discount : 0)), netPrice: it.netPrice,
         isSubset: it.isSubset || "", chooseMin: it.chooseMin || "", chooseMax: it.chooseMax || "",
         detail: cfg.detail, mechanic: cfg.mechanic,
         itStatus: cfg.itStatus, opStatus: cfg.opStatus, changeStatus: cfg.changeStatus || "",
         /* audit: เก็บค่าจากฟอร์มไว้ระดับ row เพื่อ rebuild working/ส่งขึ้น Cloud ได้ครบ */
         reporter: cfg.reporter || cfg.submittedBy || "", submittedBy: cfg.submittedBy || cfg.reporter || "",
+        submissionId: cfg.submissionId || "", submissionBatchId: cfg.submissionBatchId || "",
+        submissionForm: cfg.submissionForm || "", submissionExpectedButtons: cfg.submissionExpectedButtons || 0,
         txnDate: cfg.txnDate || cfg.submittedDate || ts,
         updatedBy: "seed@rocks-foods.com", timestamp: ts,
         attachment: cfg.attachment || "", memoUrl: "", updatedDate: ts,
@@ -960,7 +972,7 @@
         proposalKind: cfg.proposalKind || "",
         codeChannel: cfg.codeChannel || "",   /* FX-P85 — Online/Normal/Offline ของฟอร์ม (Code Promotion เก็บเลขจริง) */
         submittedDate: cfg.submittedDate || ts, itDoneDate: cfg.itDoneDate || "", opDoneDate: cfg.opDoneDate || "",
-        customerGroup: cfg.customerGroup || "", crmTarget: cfg.crmTarget || "", crmTargetName: cfg.crmTargetName || "",
+        customerGroup: cfg.customerGroup || "", crmTarget: cfg.crmTarget || "", crmTargetName: cfg.crmTargetName || "", ...crmMappingFields(cfg),
       });
     });
   }
@@ -969,6 +981,13 @@
    * SERVER FUNCTIONS  (named exactly as in Code.gs)
    * ========================================================================== */
   const API = {};
+  // Cloud pull replaces localStorage after this module has already booted. Keep
+  // the in-memory source of truth in step with it before another save can run.
+  API.reloadFromStorage = () => {
+    store = loadStore();
+    rebuildWorking(store);
+    return true;
+  };
 
   /* ---- Add on → IT สร้าง Subset ใหม่จากรายการที่ MKT กรอก แล้วผูกกับสินค้าในชุด ---- */
   API.createSubsetFromAddon = (campaign, shortName, addons, opts) => {
@@ -1053,11 +1072,38 @@
 
   API.getAppUrl = () => location.href.split("#")[0];
 
-  // SPA page loader — fetches the page partial (returns a Promise; runner awaits it)
-  API.getPageContent = (filename) =>
-    fetch("pages/" + filename + ".html", { cache: "no-store" })
-      .then(r => { if (!r.ok) throw new Error("not found"); return r.text(); })
-      .catch(() => `<div class="p-5 text-center text-danger"><h4>\u274c \u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e2b\u0e19\u0e49\u0e32: ${filename}</h4></div>`);
+  // Static page partials can be reused during this tab's session. Cloud data is
+  // fetched separately by each page and is never cached here.
+  const pageContentCache = new Map();
+  API.getPageContent = (filename) => {
+    if (!/^[A-Za-z0-9_-]+$/.test(String(filename))) return Promise.reject(new Error("Invalid page name"));
+    if (!pageContentCache.has(filename)) {
+      const request = (async () => {
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch("pages/" + filename + ".html?v=p5-20261008-resilient-boot", {
+              cache: "no-cache", signal: controller.signal,
+            });
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const html = await response.text();
+            if (!html.trim()) throw new Error("Empty page response");
+            return html;
+          } catch (error) {
+            lastError = error;
+            if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+          } finally {
+            clearTimeout(timer);
+          }
+        }
+        throw lastError;
+      })().catch(error => { pageContentCache.delete(filename); throw error; });
+      pageContentCache.set(filename, request);
+    }
+    return pageContentCache.get(filename);
+  };
   API.include = () => "";
 
   /* ===========================================================================
@@ -1918,9 +1964,30 @@
   /* ---- POS Button Setup: persist Code Item Set + mark button POS-ready ----
      Writes codeItemSet to both the month rows and the working row so IT_Settlement
      (Code Item Set field) reflects it. posReady=true lets IT save & close the work. */
+  // Older completed Price Promotions stored their 107 Item Set as itemCode,
+  // before codeItemSet was introduced. Treat that existing product as a reuse
+  // source without rewriting the historical campaign or its product master.
+  const legacyItemSetCode = row => {
+    if (!row || String(row.codeItemSet || '').trim()) return '';
+    if (!/price promotion/i.test(String(row.typePromotion || row.promoType || ''))) return '';
+    if (String(row.itStatus || '').toUpperCase() !== 'COMPLETE') return '';
+    // The derived `working` view has no itemCode. Read its month item rows,
+    // and only accept an unambiguous 107 product from that exact button.
+    const codes = new Set();
+    const take = r => {
+      const code = String(r && r.itemCode || '').trim();
+      if (/^107\d{3,}$/.test(code)) codes.add(code);
+    };
+    take(row);
+    (store.months[row.month] || []).forEach(r => {
+      if (r.campaign === row.campaign && r.shortName === row.shortName) take(r);
+    });
+    return codes.size === 1 ? [...codes][0] : '';
+  };
+  const reusableItemSetCode = row => String(row && row.codeItemSet || '').trim() || legacyItemSetCode(row);
   const itemSetReuseSource = (campaign, shortName, code, fromCamp, fromShort, requireTargetCode = true) => {
     if (!/^107\d{3,}$/.test(String(code || "")) || !fromCamp || !fromShort || (campaign === fromCamp && shortName === fromShort)) return null;
-    const source = store.working.find(w => w.campaign === fromCamp && w.shortName === fromShort && String(w.codeItemSet || "").trim() === String(code));
+    const source = store.working.find(w => w.campaign === fromCamp && w.shortName === fromShort && reusableItemSetCode(w) === String(code));
     const target = store.working.find(w => w.campaign === campaign && w.shortName === shortName);
     // The explicit "use existing Item Set" action means both buttons share one
     // 107 code. Different campaign item rows do not make that code a new SKU.
@@ -1957,16 +2024,31 @@
   };
   API.getItemSetButtons = () => {
     return store.working
-      .filter(w => String(w.typePromotion || w.promoType || "").toLowerCase().indexOf("item set") !== -1 || w._wasItemSet)
+      .filter(w => String(w.typePromotion || w.promoType || "").toLowerCase().indexOf("item set") !== -1 || w._wasItemSet || !!legacyItemSetCode(w))
       .map(w => ({
         campaign: w.campaign, shortName: w.shortName, month: w.month,
         start: w.start || "", end: w.end || "",
-        codeItemSet: w.codeItemSet || "", itemSetReuse: itemSetReuseFor(w.campaign, w.shortName, w.codeItemSet), kitchen: w.kitchen || "", saleMode: w.saleMode || "",
+        codeItemSet: reusableItemSetCode(w), itemSetReuse: itemSetReuseFor(w.campaign, w.shortName, w.codeItemSet), kitchen: w.kitchen || "", saleMode: w.saleMode || "",
         cateRemark: w.cateRemark || w.postCate || "",
         branchNote: w.branchNote || "",
         typeSel: w.typeSel || "",
         itStatus: String(w.itStatus || "PENDING").toUpperCase(), opStatus: String(w.opStatus || "WAITING").toUpperCase(), changeStatus: String(w.changeStatus || "").toUpperCase(), posReady: !!w.posReady,
       }));
+  };
+  // POS Button Setup needs every proposal line for this exact button. The
+  // campaign-detail view intentionally de-duplicates rows across months and
+  // therefore cannot be used as the source of Item Set components.
+  API.getItemSetProposalRows = (campaign, shortName, month) => {
+    const matching = rows => (rows || []).filter(r => r.campaign === campaign && r.shortName === shortName);
+    const selectedMonth = month || ((store.working || []).find(w => w.campaign === campaign && w.shortName === shortName) || {}).month;
+    let rows = matching(store.months[selectedMonth]);
+    if (!rows.length) {
+      const months = Object.keys(store.months || {}).sort().reverse();
+      for (const m of months) { rows = matching(store.months[m]); if (rows.length) break; }
+    }
+    return rows.map(r => ({ shortName: r.shortName, itemCode: r.itemCode || "", itemNameEn: r.itemNameEN || "",
+      qty: r.qty || 0, price: r.gross || 0, isSubset: r.isSubset || "",
+      chooseMin: r.chooseMin || "", chooseMax: r.chooseMax || "" }));
   };
   API.savePosCampaign = (campaign, codeMap) => {
     // codeMap: { shortName: codeItemSet }  — set all buttons of a campaign at once
@@ -2002,19 +2084,65 @@
     if (!persist()) { store = before; return { status: "error", message: "บันทึกรหัส Item Set ไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" }; }
     return { status: "success", updated: n, codeItemSet };
   };
-  // ล้าง Code Item Set ของปุ่ม (คืนสถานะเป็น "ยังไม่ได้รับรหัส") — ไม่แตะเลขจองในตัวนับกลาง
+  // Only an open IT job may refresh its Builder binding. The counter entry
+  // confirmed for this exact button/month is authoritative, not the old POS code.
+  API.getPosConfirmedCode = (campaign, shortName, cloudCounterState) => {
+    const w = store.working.find(r => r.campaign === campaign && r.shortName === shortName);
+    if (!w || /^(COMPLETE|CANCELLED)$/i.test(String(w.itStatus || '')) || /^CANCELLED$/i.test(String(w.changeStatus || ''))) return '';
+    let counter = window.PC_COUNTER;
+    try { if (!counter && window.top) counter = window.top.PC_COUNTER; } catch (e) {}
+    if (!cloudCounterState && (!counter || !counter.findForField)) return '';
+    const category = String(w.cateRemark || w.postCate || '').toLowerCase();
+    const cat = /combo/.test(category) ? '105' : /value/.test(category) ? '106' : /voucher/.test(category) ? '109' : '107';
+    const type = cat === '107' ? 'itemset' : 'item';
+    const field = 'itccf-' + (type === 'itemset' ? type : 'item-' + cat) + '-' + encodeURIComponent(JSON.stringify([campaign, shortName, w.month]));
+    if (!cloudCounterState && counter.reloadFromStorage) counter.reloadFromStorage();
+    const entry = cloudCounterState
+      ? Object.values(cloudCounterState.reservations || {}).find(e => e && e.status === 'CONFIRMED' && e.type === type && String(e.where || '') === campaign && String(e.field || '') === field)
+      : counter.findForField(type, type === 'item' ? cat : null, campaign, field);
+    return entry && entry.status === 'CONFIRMED' ? String(entry.code || '').trim() : '';
+  };
+  // IT confirmation must update the button data too, not just the counter.
+  // Keep this separate from Builder save: a changed code needs button review.
+  API.applyConfirmedItemSetCode = (campaign, shortName, month, code) => {
+    code = String(code || '').trim();
+    if (!code || API.getPosConfirmedCode(campaign, shortName) !== code) {
+      return { status:'error', message:'ไม่พบรหัสที่ยืนยันล่าสุดสำหรับปุ่มนี้' };
+    }
+    const before = JSON.parse(JSON.stringify(store));
+    let updated = 0;
+    const apply = r => {
+      if (r.campaign !== campaign || r.shortName !== shortName) return;
+      const changed = String(r.codeItemSet || '').trim() !== code;
+      r.codeItemSet = code; r.itemPromotion = code; r.itemPromoCode = code;
+      if (changed) r.posReady = false;
+      if (r.itemSetReuse && String(r.itemSetReuse.code || '') !== code) delete r.itemSetReuse;
+      r.updatedDate = NOW(); updated++;
+    };
+    (store.months[month] || []).forEach(apply);
+    if (!updated) return { status:'error', message:'ไม่พบใบงานสำหรับรหัสที่ยืนยัน' };
+    store.working.filter(r => String(r.month || '') === String(month)).forEach(apply);
+    if (!persist()) { store = before; return { status:'error', message:'บันทึกรหัสล่าสุดลงใบงานไม่สำเร็จ' }; }
+    return { status:'success', codeItemSet:code, updated:updated };
+  };
+  // Clear the Builder binding BEFORE IT replaces its confirmed reservation.
+  // Do not release or alter the counter entry: IT can still see its old code.
   API.clearPosButtonCode = (campaign, shortName) => {
+    const code = API.getPosConfirmedCode(campaign, shortName);
+    if (!code) return { status: 'error', message: 'ต้องมีงานที่ยังเปิดอยู่และรหัสที่ยืนยันแล้วใน IT Settlement ก่อน' };
     const before = JSON.parse(JSON.stringify(store));
     let n = 0;
     const apply = (r) => {
-      if (r.campaign === campaign && (!shortName || r.shortName === shortName)) {
-        r.codeItemSet = ""; r.itemPromotion = ""; r.itemPromoCode = ""; r.posReady = false; delete r.itemSetReuse; r.updatedDate = NOW(); n++;
+      if (r.campaign === campaign && r.shortName === shortName) {
+        r.codeItemSet = ''; r.itemPromotion = ''; r.itemPromoCode = ''; r.posReady = false;
+        delete r.itemSetReuse;
+        r.updatedDate = NOW(); n++;
       }
     };
     store.working.forEach(apply);
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
     if (!persist()) { store = before; return { status: "error", message: "ล้างรหัสไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม" }; }
-    return { status: "success", updated: n };
+    return { status: "success", updated: n, codeItemSet: '' };
   };
   // หมายเหตุเด่นหน้าสาขา (branchNote) — IT ใส่ที่หน้าทำปุ่ม → โชว์เป็นป้ายเด่นบนการ์ดสาขา
   API.savePosButtonNote = (campaign, shortName, note) => {
@@ -2027,12 +2155,12 @@
     return { status: "success", updated: n };
   };
   // หมายเหตุเด่นระดับแคมเปญ — ป้ายเดียวใช้ทั้งแคมเปญ (ทุกปุ่ม) · เรียกจากหน้า IT Settlement
-  API.savePosButtonNoteCampaign = (campaign, note) => {
+  API.savePosButtonNoteCampaign = (campaign, note, month) => {
     const nv = String(note == null ? "" : note);
     let n = 0;
-    const apply = (r) => { if (r.campaign === campaign) { r.branchNote = nv; r.updatedDate = NOW(); n++; } };
+    const apply = (r) => { if (r.campaign === campaign && (!month||r.month===month)) { r.branchNote = nv; r.updatedDate = NOW(); n++; } };
     store.working.forEach(apply);
-    Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
+    Object.keys(store.months).forEach(m => {if(!month||m===month)store.months[m].forEach(r=>{if(r.campaign===campaign){r.branchNote=nv;r.updatedDate=NOW();n++;}});});
     persist();
     return { status: "success", updated: n };
   };
@@ -2218,14 +2346,16 @@
       var rows = [];
       items.forEach(function (it) {
         var c = String(it.itemCode || "").trim(); if (!c) return;
-        if (rows.some(function (r) { return r.code === c; })) return;
+        var q = parseInt(it.qty, 10); if (!q || q < 1) q = 1;
+        var existing = rows.find(function (r) { return r.code === c; });
         if (it.isSubset === "Y" || /^SS/i.test(c)) {
           var mn = parseInt(it.chooseMin, 10); if (!mn || mn < 1) mn = 1;
           var mx = parseInt(it.chooseMax, 10); if (!mx || mx < mn) mx = mn;
-          rows.push({ code: c, min: mn, max: mx, _itemset: tag });
+          if (existing) { existing.min += mn * q; existing.max += mx * q; }
+          else rows.push({ code: c, min: mn * q, max: mx * q, _itemset: tag });
         } else {
-          var q = parseInt(it.qty, 10); if (!q || q < 1) q = 1;
-          rows.push({ code: c, min: q, max: q, _itemset: tag });
+          if (existing) { existing.min += q; existing.max += q; }
+          else rows.push({ code: c, min: q, max: q, _itemset: tag });
         }
       });
       if (!rows.length) return;
@@ -2274,9 +2404,96 @@
     } catch (err) { return fallback; }
   }
 
+  // Cloud-first form staging reads the current shared counter/file versions and
+  // changes only in-memory copies. The campaign, counter, files, and receipt are
+  // then committed by one D1 transaction; none is written to localStorage first.
+  async function cloudFormContext(needsCounter, needsFiles) {
+    if (!window.PC_CLOUD || !PC_CLOUD.readCloudKey || !PC_CLOUD.savePreparedCampaignRows)
+      throw new Error('ระบบ Cloud-first ยังไม่พร้อม');
+    const ctx = { counter: null, counterVersion: null, counterChanged: false,
+      files: null, filesVersion: null, filesChanged: false };
+    if (needsCounter) {
+      const item = await PC_CLOUD.readCloudKey('pc_code_counter_v1');
+      if (!item) throw new Error('ไม่พบทะเบียนจองรหัสบน Cloud');
+      ctx.counter = JSON.parse(item.value);
+      ctx.counterVersion = item.updatedAt;
+      if (!ctx.counter || !ctx.counter.types || !ctx.counter.reservations) throw new Error('ทะเบียนจองรหัสบน Cloud ไม่ถูกต้อง');
+    }
+    if (needsFiles) {
+      const item = await PC_CLOUD.readCloudKey('pc_promo_files');
+      ctx.files = item ? JSON.parse(item.value) : {};
+      ctx.filesVersion = item ? item.updatedAt : null;
+      if (!ctx.files || typeof ctx.files !== 'object' || Array.isArray(ctx.files)) throw new Error('ทะเบียนไฟล์แนบบน Cloud ไม่ถูกต้อง');
+    }
+    return ctx;
+  }
+
+  function cloudReserveFormCode(ctx, type, tag, campaign, shortName) {
+    if(window.PC_FormCodeAllocation){
+      const result=window.PC_FormCodeAllocation.reserveFormCode(ctx.counter,{type,tag,campaign,shortName,actor:currentUser(),at:NOW()});
+      if(result.changed)ctx.counterChanged=true;
+      return result.code;
+    }
+    // Compatibility for older cached shells; current shells load the shared allocator.
+    const state = ctx.counter, field = tag + '|' + String(campaign || '') + '|' + String(shortName || '');
+    const found = Object.values(state.reservations).find(e => e && e.type === type && e.status === 'RESERVED' &&
+      String(e.where || '') === String(campaign || '') && String(e.field || '') === field);
+    if (found) return found.code;
+    const t = state.types[type];
+    if (!t || !t.seeded || !Number.isSafeInteger(Number(t.cursor))) throw new Error('ทะเบียนรหัส ' + type + ' ยังไม่พร้อมบน Cloud');
+    const format = { coupon: ['IC', 4], bill: ['BD', 3], voucher: ['VC', 4] }[type];
+    if (!format) throw new Error('ประเภทรหัสไม่ถูกต้อง');
+    let n = Number(t.cursor), code;
+    do { n++; code = format[0] + String(n).padStart(format[1], '0'); }
+    while (state.reservations[type + '::' + code.toUpperCase()]);
+    t.cursor = n;
+    const at = NOW();
+    state.reservations[type + '::' + code.toUpperCase()] = {
+      code, type, num: n, status: 'RESERVED', where: campaign, field,
+      by: currentUser(), at, confirmedAt: '', releasedAt: '',
+    };
+    state.log = state.log || [];
+    state.log.unshift({ t: at, act: 'RESERVE', type, code, where: campaign, by: currentUser() });
+    if (state.log.length > 400) state.log.length = 400;
+    ctx.counterChanged = true;
+    return code;
+  }
+
+  function cloudStageUpload(ctx, f, label) {
+    if (!f || !f.base64) return '';
+    const name = f.fileName || label || 'attachment';
+    if (String(f.base64).length > 3600000) throw new Error('ไฟล์แนบใหญ่เกินไป: ' + name);
+    const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    ctx.files[id] = { base64: f.base64, mime: f.mimeType || 'application/octet-stream', name, savedAt: Date.now() };
+    ctx.filesChanged = true;
+    return 'file:' + id;
+  }
+
+  async function cloudCommitFormDraft(draft, ctx, batchId, actor) {
+    const rows = Object.keys(draft.months || {}).reduce((out, month) => out.concat(draft.months[month]), []);
+    if (!batchId || !rows.length || rows.some(r => r.submissionBatchId !== batchId))
+      throw new Error('รหัสอ้างอิงการส่งงานไม่ครบ');
+    const extra = [];
+    if (ctx.counterChanged) extra.push({ key: 'pc_code_counter_v1', value: JSON.stringify(ctx.counter), expectedUpdatedAt: ctx.counterVersion });
+    if (ctx.filesChanged) extra.push({ key: 'pc_promo_files', value: JSON.stringify(ctx.files), expectedUpdatedAt: ctx.filesVersion });
+    const receipt = await PC_CLOUD.savePreparedCampaignRows(rows, batchId, actor, extra);
+    try { await PC_CLOUD.pull({ force: true }); }
+    catch (e) { window.__PC_CLOUD_CACHE_WARNING = String(e && e.message || e); }
+    return receipt;
+  }
+
   /* ---- SAVE: Item Set (saveBulkProposal) ---- */
-  API.saveBulkProposal = (allData) => {
+  API.saveBulkProposal = (allData, cloudCtx) => {
     if (!allData || !allData.length) return "❌ Error: ไม่มีข้อมูลส่งมา";
+    if (allData.some(d => d.netPrice == null || String(d.netPrice).trim() === '' ||
+        !Number.isFinite(Number(d.netPrice)) || Number(d.netPrice) < 0 || !Number.isInteger(Number(d.netPrice))))
+      return "บันทึกไม่ได้ — กรุณากรอก Net Price เป็นจำนวนเต็มตั้งแต่ 0 บาทขึ้นไปทุกปุ่ม";
+    const cloudFirst = window.PC_CLOUD_FIRST_FORMS === true;
+    if (cloudFirst && (!window.PC_CLOUD || !PC_CLOUD.savePreparedCampaignRows))
+      return "บันทึกไม่ได้ — ระบบ Cloud-first ยังไม่พร้อม";
+    if (cloudFirst && !cloudCtx && allData.some(d => /e[-\s]?voucher/i.test(String(d.postCate || d.cateRemark || ""))))
+      return cloudFormContext(true, false).then(ctx => API.saveBulkProposal(allData, ctx));
+    const target = cloudFirst ? { months: {} } : store;
     const month = allData[0].monthYear;
     const groups = {};
     allData.forEach(d => {
@@ -2295,7 +2512,9 @@
          จองแบบ RESERVED ด้วย identity เดียวกันทุกครั้ง → เรียกซ้ำ/ส่งซ้ำ ไม่ได้เลขใหม่ · IT แค่ตรวจ+ยืนยัน */
       const _isEV = /e[-\s]?voucher/i.test(String(info.postCate || info.cateRemark || ""));
       let _evCode = "";
-      if (_isEV && window.PC_COUNTER) {
+      if (_isEV && cloudFirst) {
+        _evCode = cloudReserveFormCode(cloudCtx, "coupon", "ItemSet EV", info.campaign, info.shortName);
+      } else if (_isEV && window.PC_COUNTER) {
         const _fld = "ItemSet EV|" + String(info.campaign || "") + "|" + String(info.shortName || "");
         try {
           const _ex = PC_COUNTER.findReservedFor ? PC_COUNTER.findReservedFor("coupon", null, info.campaign, _fld) : null;
@@ -2305,8 +2524,10 @@
       }
       const totalGross = g.items.reduce((a, it) => a + (parseFloat(it.originalPrice) || 0) * (parseInt(it.qty) || 1), 0);
       const net = Number(info.netPrice) || 0;
-      addButtonGroup(store, {
+      addButtonGroup(target, {
         month, campaign: info.campaign, reporter: info.submittedBy || currentUser(), submittedBy: info.submittedBy || currentUser(),
+        submissionId: info.submissionId, submissionBatchId: info.submissionBatchId,
+        submissionForm: info.submissionForm, submissionExpectedButtons: info.submissionExpectedButtons,
         txnDate: info.txnDate || NOW(), submittedDate: info.txnDate || NOW(), promoType: ptype, typePromotion: ptype,
         // ⛔ ไม่ pre-gen Code Item Set — ปล่อยว่างให้หน้า IT autorun (จอง 107 จาก PC_COUNTER + ป้าย "รอ IT ยืนยันเลข")
         codePromotion: _evCode, codeItemSet: "", itemPromotion: "",
@@ -2314,7 +2535,7 @@
         itStatus: "PENDING", opStatus: "WAITING", kitchen: info.kitchenName, shortName: info.shortName,
         detail: info.promotionDetail, mechanic: info.mechanic, minAmount: Number(info.minSpendAmount) || 0,
         cateRemark: info.cateRemark || "", cate: info.postCate || "",
-        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "",
+        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "", ...crmMappingFields(info),
         items: g.items.map((it, i) => ({
           catCode: it.cateCode, itemCode: it.itemCode, itemNameEN: it.itemNameEN, qty: it.qty,
           gross: parseFloat(it.originalPrice) || 0, discount: i === 0 ? (totalGross - net).toFixed(2) : 0,
@@ -2325,13 +2546,75 @@
       });
       // ⛔ ปุ่มสินค้าในตารางสินค้า สร้างตอน IT ยืนยัน Code Item Set (saveSettlementBatch) — ไม่ใช่ตอน MKT ส่ง
     });
+    if (cloudFirst) {
+      const rows = Object.keys(target.months).reduce((out, monthKey) => out.concat(target.months[monthKey]), []);
+      const batchId = String(allData[0].submissionBatchId || "");
+      if (!batchId || rows.some(row => row.submissionBatchId !== batchId))
+        return "บันทึกไม่ได้ — รหัสอ้างอิงการส่งงานไม่ครบ";
+      const actor = String(allData[0].submittedBy || currentUser());
+      const extra = cloudCtx && cloudCtx.counterChanged
+        ? [{ key: 'pc_code_counter_v1', value: JSON.stringify(cloudCtx.counter), expectedUpdatedAt: cloudCtx.counterVersion }]
+        : [];
+      return PC_CLOUD.savePreparedCampaignRows(rows, batchId, actor, extra).then(async () => {
+        // The D1 receipt is already confirmed. Cache refresh is best effort;
+        // a full browser localStorage must never turn a committed save into a
+        // false failure or encourage a duplicate submission.
+        try { await PC_CLOUD.pull({ force: true }); }
+        catch (e) { window.__PC_CLOUD_CACHE_WARNING = String(e && e.message || e); }
+        return "SUCCESS";
+      });
+    }
     if (!persist()) return "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม (ข้อมูลยังไม่เข้าระบบ) — กดสำรองข้อมูล/รีเฟรช แล้วส่งอีกครั้ง";
     try { if (window.PC_notify) { const cs=[...new Set(allData.map(d=>d.campaign).filter(Boolean))]; window.PC_notify("proposal_submitted", { text: 'ส่งโปรโมชัน (Item Set) เสนออนุมัติ: ' + cs.join(', ') + ' — รอ OP ตรวจสอบ' }); } } catch (e) {}
     return "SUCCESS";
   };
 
   /* ---- SAVE: Coupon (submitCouponProposal) ---- */
+  async function submitCouponCloud(payload) {
+    if (!payload || !payload.length) return { status: 'error', message: 'ไม่พบข้อมูลที่ส่งมา' };
+    const ctx = await cloudFormContext(true, payload.some(r => r.fileInfo && r.fileInfo.base64));
+    const draft = { months: {} }, month = payload[0].monthYear, groups = {};
+    payload.forEach(row => {
+      const key = row.campaignName + '_' + row.shortNamePOS;
+      if (!groups[key]) groups[key] = { info: row, items: [] };
+      groups[key].items.push(row);
+    });
+    Object.keys(groups).forEach(key => {
+      const g = groups[key], info = g.info;
+      addButtonGroup(draft, {
+        month, campaign: info.campaignName, reporter: info.submittedBy || currentUser(), submittedBy: info.submittedBy || currentUser(),
+        txnDate: info.txnDate || NOW(), submittedDate: info.txnDate || NOW(),
+        submissionId: info.submissionId, submissionBatchId: info.submissionBatchId,
+        submissionForm: info.submissionForm, submissionExpectedButtons: info.submissionExpectedButtons,
+        promoType: (String(info.couponType) === 'Online' ? 'Item Coupon Online' : 'Item Coupon'),
+        typePromotion: 'Coupon',
+        codePromotion: cloudReserveFormCode(ctx, 'coupon', 'CouponForm', info.campaignName, info.shortNamePOS),
+        codeChannel: info.couponType || '',
+        start: info.startDate, end: info.endDate, stores: info.stores, saleMode: info.saleModes,
+        itStatus: 'PENDING', opStatus: 'WAITING', kitchen: '', shortName: info.shortNamePOS,
+        detail: info.promotionDetail, mechanic: info.promotionCondition,
+        customerGroup: info.customerGroup || '', crmTarget: info.crmTarget || '', crmTargetName: info.crmTargetName || '', ...crmMappingFields(info),
+        attachment: cloudStageUpload(ctx, info.fileInfo, 'COUPON_' + info.shortNamePOS),
+        items: g.items.map(it => ({
+          catCode: it.cateCode, itemCode: it.itemCode, itemNameEN: it.itemName, qty: it.qty,
+          selectionMode: it.selectionMode || 'ITEM', couponGroupMode:it.couponGroupMode===true||it.selectionMode==='CATE', gross: it.couponGroupMode===true||it.selectionMode==='CATE'?'':Number(it.grossValue), discount: fmtUnit(it.discountValue, it.couponGroupMode===true||it.selectionMode==='CATE'?it.discountUnit:'CUR'), netPrice: it.couponGroupMode===true||it.selectionMode==='CATE'?'':Number(it.netPrice),
+        })),
+      });
+    });
+    await cloudCommitFormDraft(draft, ctx, payload[0].submissionBatchId, payload[0].submittedBy || currentUser());
+    return { status: 'success', message: 'บันทึกข้อมูลคูปองลง Cloud เรียบร้อยแล้ว' };
+  }
   API.submitCouponProposal = (payload) => {
+    if(Array.isArray(payload)){
+      const modes=new Map();
+      for(const row of payload){
+        const key=JSON.stringify([row.campaignName,row.shortNamePOS]),mode=(row.couponGroupMode===true||row.selectionMode==='CATE'?'GROUP:':'NORMAL:')+(row.selectionMode==='CATE'?'CATE':'ITEM');
+        if(modes.has(key)&&modes.get(key)!==mode)return {status:'error',message:'ไม่สามารถเลือกหมวดสินค้าและสินค้ารายตัวในปุ่มเดียวกัน'};
+        if(row.selectionMode==='CATE'&&(!row.cateCode||String(row.cateCode)!==String(row.itemCode)))return {status:'error',message:'กรุณาเลือกหมวดสินค้า'};
+        modes.set(key,mode);
+      }
+    }
+    if (window.PC_CLOUD_FIRST_FORMS === true) return submitCouponCloud(payload);
     if (!payload || !payload.length) return { status: "error", message: "ไม่พบข้อมูลที่ส่งมา" };
     const month = payload[0].monthYear;
     const groups = {};
@@ -2343,17 +2626,21 @@
     Object.keys(groups).forEach(k => {
       const g = groups[k], info = g.info;
       addButtonGroup(store, {
-        month, campaign: info.campaignName, reporter: currentUser(), promoType: (String(info.couponType) === "Online" ? "Item Coupon Online" : "Item Coupon"),
+        month, campaign: info.campaignName, reporter: info.submittedBy || currentUser(), submittedBy: info.submittedBy || currentUser(),
+        txnDate: info.txnDate || NOW(), submittedDate: info.txnDate || NOW(),
+        submissionId: info.submissionId, submissionBatchId: info.submissionBatchId,
+        submissionForm: info.submissionForm, submissionExpectedButtons: info.submissionExpectedButtons,
+        promoType: (String(info.couponType) === "Online" ? "Item Coupon Online" : "Item Coupon"),
         typePromotion: "Coupon", codePromotion: reserveFormCode("coupon", "CouponForm", info.campaignName, info.shortNamePOS, info.couponType),
         codeChannel: info.couponType || "",   /* FX-P85 — เก็บ Online/Normal/Offline ไว้ต่างหาก (ช่องโค้ดเป็นเลขจริงแล้ว) */
         start: info.startDate, end: info.endDate, stores: info.stores, saleMode: info.saleModes,
         itStatus: "PENDING", opStatus: "WAITING", kitchen: "", shortName: info.shortNamePOS,
         detail: info.promotionDetail, mechanic: info.promotionCondition,
-        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "",
+        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "", ...crmMappingFields(info),
         attachment: pcSaveUpload(info.fileInfo, "COUPON_" + info.shortNamePOS),
         items: g.items.map(it => ({
           catCode: it.cateCode, itemCode: it.itemCode, itemNameEN: it.itemName, qty: it.qty,
-          gross: Number(it.grossValue), discount: fmtUnit(it.discountValue, "CUR"), netPrice: Number(it.netPrice),
+          selectionMode: it.selectionMode || 'ITEM', couponGroupMode:it.couponGroupMode===true||it.selectionMode==='CATE', gross: it.couponGroupMode===true||it.selectionMode==='CATE'?'':Number(it.grossValue), discount: fmtUnit(it.discountValue, it.couponGroupMode===true||it.selectionMode==='CATE'?it.discountUnit:'CUR'), netPrice: it.couponGroupMode===true||it.selectionMode==='CATE'?'':Number(it.netPrice),
         })),
       });
     });
@@ -2363,7 +2650,45 @@
   };
 
   /* ---- SAVE: Bill Discount (submitBillDiscountProposal) ---- */
+  async function submitBillDiscountCloud(payload) {
+    const campaigns = (payload && payload.campaigns) || [];
+    if (!payload || !payload.globalMonth || !campaigns.length) return { status: 'error', message: 'ไม่พบข้อมูล Bill Discount ที่จะส่ง' };
+    const ctx = await cloudFormContext(true, campaigns.some(c => (c.buttons || []).some(b => b.fileData && b.fileData.base64)));
+    const draft = { months: {} };
+    campaigns.forEach(camp => {
+      (camp.buttons || []).forEach(btn => {
+        const discText = fmtUnit(btn.discountValue, btn.discountUnit);
+        let items = (btn.items || []).map(it => ({
+          catCode: it.selectionMode === 'CATE' ? (it.itemCode || it.targetCode || '') : '',
+          itemCode: it.selectionMode === 'CATE' ? (it.itemCode || 'ALL ITEMS') : (it.itemCode || it.targetCode || ''),
+          itemNameEN: it.itemName || it.targetValue || '', qty: 'All', gross: 'All',
+          discount: discText, netPrice: '',
+        }));
+        if (!items.length) items = [{ catCode: '', itemCode: 'ALL ITEMS', itemNameEN: 'All products', qty: 'All', gross: 'All', discount: discText, netPrice: '' }];
+        addButtonGroup(draft, {
+          month: payload.globalMonth, campaign: camp.name,
+          reporter: camp.submittedBy || currentUser(), submittedBy: camp.submittedBy || currentUser(),
+          txnDate: camp.txnDate || NOW(), submittedDate: camp.txnDate || NOW(),
+          submissionId: camp.submissionId, submissionBatchId: camp.submissionBatchId,
+          submissionForm: camp.submissionForm, submissionExpectedButtons: camp.submissionExpectedButtons,
+          promoType: (String(btn.couponType) === 'Online' ? 'Bill Discount Online' : 'Bill Discount'),
+          typePromotion: 'Bill Discount',
+          codePromotion: cloudReserveFormCode(ctx, 'bill', 'BillForm', camp.name, btn.shortName),
+          codeChannel: btn.couponType || '',
+          start: camp.start, end: camp.end, stores: camp.stores, saleMode: camp.saleModes,
+          itStatus: 'PENDING', opStatus: 'WAITING', kitchen: '', shortName: btn.shortName,
+          detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
+          customerGroup: payload.customerGroup || '', crmTarget: payload.crmTarget || '', crmTargetName: payload.crmTargetName || '', ...crmMappingFields(payload),
+          attachment: cloudStageUpload(ctx, btn.fileData, 'BILL_' + btn.shortName),
+          discountText: discText, items,
+        });
+      });
+    });
+    await cloudCommitFormDraft(draft, ctx, campaigns[0].submissionBatchId, campaigns[0].submittedBy || currentUser());
+    return { status: 'success', message: 'บันทึกข้อมูล Bill Discount ลง Cloud เรียบร้อยแล้ว' };
+  }
   API.submitBillDiscountProposal = (payload) => {
+    if (window.PC_CLOUD_FIRST_FORMS === true) return submitBillDiscountCloud(payload);
     const month = payload.globalMonth;
     (payload.campaigns || []).forEach(camp => {
       (camp.buttons || []).forEach(btn => {
@@ -2377,13 +2702,17 @@
         }));
         if (!items.length) items = [{ catCode: "", itemCode: "ALL ITEMS", itemNameEN: "All products", qty: "All", gross: "All", discount: discText, netPrice: "" }];
         addButtonGroup(store, {
-          month, campaign: camp.name, reporter: currentUser(), promoType: (String(btn.couponType) === "Online" ? "Bill Discount Online" : "Bill Discount"),
+          month, campaign: camp.name, reporter: camp.submittedBy || currentUser(), submittedBy: camp.submittedBy || currentUser(),
+          txnDate: camp.txnDate || NOW(), submittedDate: camp.txnDate || NOW(),
+          submissionId: camp.submissionId, submissionBatchId: camp.submissionBatchId,
+          submissionForm: camp.submissionForm, submissionExpectedButtons: camp.submissionExpectedButtons,
+          promoType: (String(btn.couponType) === "Online" ? "Bill Discount Online" : "Bill Discount"),
           typePromotion: "Bill Discount", codePromotion: reserveFormCode("bill", "BillForm", camp.name, btn.shortName, btn.couponType),
           codeChannel: btn.couponType || "",   /* FX-P85 */
           start: camp.start, end: camp.end, stores: camp.stores, saleMode: camp.saleModes,
           itStatus: "PENDING", opStatus: "WAITING", kitchen: "", shortName: btn.shortName,
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: payload.customerGroup || "", crmTarget: payload.crmTarget || "", crmTargetName: payload.crmTargetName || "",
+          customerGroup: payload.customerGroup || "", crmTarget: payload.crmTarget || "", crmTargetName: payload.crmTargetName || "", ...crmMappingFields(payload),
           attachment: pcSaveUpload(btn.fileData, "BILL_" + btn.shortName),
           discountText: discText, items,
         });
@@ -2395,11 +2724,59 @@
   };
   API.processBillDiscount = (arr) => {
     const r = API.submitBillDiscountProposal({ globalMonth: arr.length ? arr[0].month : "", campaigns: arr });
+    if (r && typeof r.then === 'function') return r.then(result => result.status === 'success' ? 'Success' : result.message);
     return r.status === "success" ? "Success" : r.message;
   };
 
   /* ---- SAVE: Voucher (submitVoucherProposal / processVoucher) ---- */
+  async function submitVoucherCloud(payload) {
+    const month = payload && payload.globalMonth;
+    const campaigns = (payload && payload.campaigns) || [];
+    if (!month) return { status: 'error', message: 'Missing Target Month Data' };
+    if (!campaigns.length) return { status: 'error', message: 'ไม่มีข้อมูล Voucher ที่จะส่ง' };
+    let expectedButtons = 0, needsFiles = false;
+    for (const camp of campaigns) for (const btn of (camp.buttons || [])) {
+      expectedButtons++;
+      if (String(btn.voucherType) === 'Online' && !(btn.fileData && btn.fileData.base64))
+        return { status: 'error', message: 'Voucher Online ต้องแนบไฟล์ Mapping Code' };
+      if (btn.fileData && btn.fileData.base64) needsFiles = true;
+    }
+    if (!expectedButtons) return { status: 'error', message: 'ไม่มีปุ่ม Voucher ที่จะส่ง' };
+    const ctx = await cloudFormContext(true, needsFiles);
+    const draft = { months: {} };
+    campaigns.forEach(camp => {
+      (camp.buttons || []).forEach(btn => {
+        const grossValue = fmtUnit(btn.discountValue, btn.discountUnit);
+        let items = (btn.items || []).map(it => ({
+          catCode: '', itemCode: it.itemCode || 'ALL ITEMS', itemNameEN: it.itemName || 'All Products',
+          qty: it.qty || 'All', gross: grossValue, discount: '', netPrice: '',
+        }));
+        if (!items.length) items = [{ catCode: '', itemCode: 'ALL ITEMS', itemNameEN: 'All products', qty: 'All', gross: grossValue, discount: '', netPrice: '' }];
+        addButtonGroup(draft, {
+          month, campaign: camp.name, reporter: camp.submittedBy || currentUser(), submittedBy: camp.submittedBy || currentUser(),
+          submissionId: camp.submissionId, submissionBatchId: camp.submissionBatchId,
+          submissionForm: camp.submissionForm, submissionExpectedButtons: camp.submissionExpectedButtons,
+          txnDate: camp.txnDate || NOW(), submittedDate: camp.txnDate || NOW(),
+          promoType: (String(btn.voucherType) === 'Online' ? 'Voucher Online' : 'Voucher'),
+          typePromotion: 'Voucher',
+          codePromotion: cloudReserveFormCode(ctx, 'voucher', 'VoucherForm', camp.name, btn.shortName),
+          codeChannel: btn.voucherType || '',
+          proposalKind: camp.proposalKind || 'voucher',
+          start: camp.start, end: camp.end, stores: camp.stores, saleMode: camp.saleModes,
+          itStatus: 'PENDING', opStatus: 'WAITING', kitchen: '', shortName: btn.shortName,
+          cateRemark: btn.cateRemark || '', detail: camp.detail, mechanic: camp.condition,
+          minAmount: Number(btn.minSpendAmount) || 0,
+          customerGroup: camp.customerGroup || '', crmTarget: camp.crmTarget || '', crmTargetName: camp.crmTargetName || '', ...crmMappingFields(camp),
+          attachment: cloudStageUpload(ctx, btn.fileData, 'VOUCHER_' + btn.shortName),
+          items,
+        });
+      });
+    });
+    await cloudCommitFormDraft(draft, ctx, campaigns[0].submissionBatchId, campaigns[0].submittedBy || currentUser());
+    return { status: 'success', message: 'บันทึก Voucher ลง Cloud เรียบร้อยแล้ว' };
+  }
   API.submitVoucherProposal = (payload) => {
+    if (window.PC_CLOUD_FIRST_FORMS === true) return submitVoucherCloud(payload);
     const month = payload.globalMonth;
     if (!month) return { status: "error", message: "Missing Target Month Data" };
     if (!(payload.campaigns || []).length) return { status: "error", message: "ไม่มีข้อมูล Voucher ที่จะส่ง" };
@@ -2432,6 +2809,8 @@
         if (!items.length) items = [{ catCode: "", itemCode: "ALL ITEMS", itemNameEN: "All products", qty: "All", gross: gv, discount: "", netPrice: "" }];
         addButtonGroup(draft, {
           month, campaign: camp.name, reporter: camp.submittedBy || currentUser(), submittedBy: camp.submittedBy || currentUser(),
+          submissionId: camp.submissionId, submissionBatchId: camp.submissionBatchId,
+          submissionForm: camp.submissionForm, submissionExpectedButtons: camp.submissionExpectedButtons,
           txnDate: camp.txnDate || NOW(), submittedDate: camp.txnDate || NOW(),
           promoType: (String(btn.voucherType) === "Online" ? "Voucher Online" : "Voucher"),
           typePromotion: "Voucher", codePromotion: reserveFormCode("voucher", "VoucherForm", camp.name, btn.shortName, btn.voucherType),
@@ -2441,7 +2820,7 @@
           itStatus: "PENDING", opStatus: "WAITING", kitchen: "", shortName: btn.shortName,
           cateRemark: btn.cateRemark || "",
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: camp.customerGroup || "", crmTarget: camp.crmTarget || "", crmTargetName: camp.crmTargetName || "",
+          customerGroup: camp.customerGroup || "", crmTarget: camp.crmTarget || "", crmTargetName: camp.crmTargetName || "", ...crmMappingFields(camp),
           attachment,
           items,
         });
@@ -2463,6 +2842,7 @@
   API.processVoucher = (arr) => {
     if (!arr || !arr.length) return "No Data Selected";
     const result = API.submitVoucherProposal({ globalMonth: arr[0].month, campaigns: arr });
+    if (result && typeof result.then === 'function') return result.then(r => r.status === 'success' ? 'Success' : r.message);
     return result.status === "success" ? "Success" : result.message;
   };
 
@@ -2779,6 +3159,7 @@
         if ((status === "COMPLETE" || status === "DONE") && !cancelJob) return;
         tasks.push({
           sourceSheet: "Promotion " + month, month, rowIdx: i + 2, campaign: r.campaign,
+          emailCampaignId:r.emailCampaignId||'',emailButtonId:r.emailButtonId||'',emailRowId:r.emailRowId||'',
           startDate: r.start, endDate: r.end, store: r.stores, storeData: resolveStores(r.stores),
           saleMode: r.saleMode, promoType: r.promoType || r.typePromotion, promoCode: r.codePromotion,
           typeSel: r.typeSel || "", _wasItemSet: r._wasItemSet || false,
@@ -2786,13 +3167,16 @@
           builderCode: String(r.codeItemSet || ""), itemSetReuse: itemSetReuseFor(r.campaign, r.shortName, r.codeItemSet), posReady: !!r.posReady,
           /* เคยขึ้นปุ่มบน POS แล้วหรือยัง — ตัวตัดสินว่าคืนโค้ดได้ไหมเวลายกเลิก */
           wentLive: !!r.wentLive, everLive: (!!r.wentLive || !!r.posReady || status === "COMPLETE" || !!r.itDoneDate),
+          itDoneDate: r.itDoneDate || "",
           cancelReason: r.cancelReason || "", cancelHandled: !!r.cancelHandled,
           removedFromPos: !!r.removedFromPos, codesReturned: r.codesReturned || [],
           catCode: r.catCode, itemCode: r.itemCode, itemNameEN: r.itemNameEN, qty: r.qty,
           price: r.gross, discount: r.discount, netPrice: r.netPrice, detail: r.detail,
           mechanic: r.mechanic, fileUrl: r.attachment || "", itStatus: status,
           changeStatus: chg, cateRemark: r.cateRemark || "", rejectReason: String(r.rejectReason || ""),
+          revisionPending: !!r.revisionPending, revisionId:r.revisionId||'', revisionReason:r.revisionReason||'', revisionRequestedBy:r.revisionRequestedBy||'', revisionRequestedAt:r.revisionRequestedAt||'', revisionChanges:r.revisionChanges||[],
           extendCodeNote: r.extendCodeNote || "",
+          customerGroup:r.customerGroup||'',crmTargetName:r.crmTargetName||'',...crmMappingFields(r),
           addons: r.addons || "", addonSubset: r.addonSubset || "",
         });
       });
@@ -2970,7 +3354,7 @@
     // net / normal-price lookup per (campaign|shortName) from month item rows
     const priceMap = {};
     Object.keys(store.months).forEach(mo => store.months[mo].forEach(r => {
-      const key = r.campaign + "|" + r.shortName;
+      const key = r.campaign + "|" + mo + "|" + r.shortName;
       if (!priceMap[key]) priceMap[key] = { gross: 0, net: 0 };
       priceMap[key].gross += (parseFloat(r.gross) || 0) * (parseFloat(r.qty) || 1);
       const n = parseFloat(r.netPrice) || 0;
@@ -2979,23 +3363,25 @@
     const byCamp = {};
     const codeMap = {};
     Object.keys(store.months).forEach(mo => store.months[mo].forEach(r => {
-      const key = r.campaign + "|" + r.shortName;
+      const key = r.campaign + "|" + mo + "|" + r.shortName;
       (codeMap[key] = codeMap[key] || {})[String(r.itemCode || "").trim()] = 1;
     }));
     rows.forEach(w => {
-      if (!byCamp[w.campaign]) byCamp[w.campaign] = {
+      const campaignMonth=w.campaign+'|'+w.month;
+      if (!byCamp[campaignMonth]) byCamp[campaignMonth] = {
         campaign: w.campaign, month: w.month, promoType: w.promoType, start: w.start, end: w.end,
         saleMode: w.saleMode, stores: w.stores, storeData: resolveStores(w.stores),
         detail: w.detail, mechanic: w.mechanic, attachment: w.attachment || "", memoUrl: w.memoUrl || "",
         cateRemark: w.cateRemark || "", promoTypeFull: w.promoType || w.typePromotion || "",
         proposalKind: w.proposalKind || "",
         submittedDate: w.submittedDate || "", timestamp: w.timestamp || "", updatedDate: w.updatedDate || "",
-        customerGroup: w.customerGroup || "", crmTargetName: w.crmTargetName || "",
+        customerGroup: w.customerGroup || "", crmTargetName: w.crmTargetName || "", ...crmMappingFields(w),
         branchNote: w.branchNote || "",
         wentLive: !!w.wentLive,
+        revisionId:w.revisionId||'', revisionPending:!!w.revisionPending,
         itStatus: U(w.itStatus), opStatus: U(w.opStatus), changeStatus: U(w.changeStatus), buttons: [],
       };
-      const pm = priceMap[w.campaign + "|" + w.shortName] || { gross: 0, net: 0 };
+      const pm = priceMap[w.campaign + "|" + w.month + "|" + w.shortName] || { gross: 0, net: 0 };
       // ราคาปกติ (gross): รวมจาก item rows > ค่าใน working > 0=ว่าง (ไม่โชว์ "0.00" หลอก ๆ)
       let grossN = (parseFloat(pm.gross) || 0) || (parseFloat(w.gross) || 0);
       // ราคาหลังลด (net): header netPrice > คำนวณจากส่วนลด (ราคาปกติ − ส่วนลด) ถ้ามีทั้งคู่
@@ -3007,14 +3393,14 @@
       }
       const memoGross = grossN > 0 ? +grossN.toFixed(2) : "";
       const memoNet = netN > 0 ? +netN.toFixed(2) : "";
-      byCamp[w.campaign].buttons.push({
+      byCamp[campaignMonth].buttons.push({
         shortName: w.shortName, kitchen: w.kitchen, promoCode: w.codePromotion || w.codeItemSet || "",
         codePro: w.codePromotion || "", itemSetCode: w.codeItemSet || "",
         discount: w.discount, minAmount: w.minAmount,
         branchNote: w.branchNote || "",
         detail: w.detail || "", mechanic: w.mechanic || "", condition: w.condition || "",
         gross: memoGross, net: memoNet,
-        itemCodes: Object.keys(codeMap[w.campaign + "|" + w.shortName] || {}).filter(Boolean),
+        itemCodes: Object.keys(codeMap[w.campaign + "|" + w.month + "|" + w.shortName] || {}).filter(Boolean),
       });
     });
     return Object.keys(byCamp).map(k => byCamp[k]);
@@ -3033,6 +3419,7 @@
     const branchReady = (c) => {
       const op = String(c.opStatus || "").toUpperCase();
       const it = String(c.itStatus || "").toUpperCase();
+      if(c.revisionId)return !c.revisionPending&&op==='CONFIRMED'&&it==='COMPLETE';
       return c.wentLive === true || (op === "CONFIRMED" && it === "COMPLETE");
     };
     return API.getMemoCampaigns(month).filter(c => branchReady(c) && inStore(c.stores));
@@ -3041,6 +3428,52 @@
   /* ---- IT save settlement (saveSettlementBatch) ---- */
   API.saveSettlementBatch = (month, updates) => {
     if (!updates || !updates.length) return "NO_DATA";
+    const revisionUpdates=new Set();
+    for(const u of updates){
+      const r=(store.months[u.month||month]||[])[parseInt(u.rowIdx,10)-2];
+      if((u.revisionId||r?.revisionId)&&(!r||String(u.revisionId||'')!==String(r.revisionId||'')||String(u.itemCode||'')!==String(r.itemCode||'')))return 'REVISION_CODE_CONFLICT';
+      if(!r||!r.revisionPending)continue;
+      if(r.campaign!==u.campaign||String(r.shortName||'')!==String(u.sourceShortName||u.shortName||'')||String(r.codePromotion||'')!==String(u.promoCode||'')||String(r.codeItemSet||r.itemPromotion||'')!==String(u.itemPromo||''))return 'REVISION_CODE_CONFLICT';
+      revisionUpdates.add(u);
+    }
+    // An EXTENDED/REDUCED task is an IT acknowledgement of a POS date change,
+    // never a new promotion or Item Set setup. Preserve every existing field
+    // except the IT completion/audit fields; do not touch code counters/products.
+    if (updates.some(u => u.changeOnly)) {
+      if (!updates.every(u => u.changeOnly)) return "CHANGE_CONFLICT";
+      const targets = [];
+      const seen = new Set();
+      for (const u of updates) {
+        if (String(u.month || '') !== String(month || '')) return "CHANGE_CONFLICT";
+        const sheet = store.months[month];
+        const index = parseInt(u.rowIdx, 10) - 2;
+        const row = sheet && sheet[index];
+        const identity = String(month) + '|' + index;
+        if (seen.has(identity) || !row || row.campaign !== u.campaign || String(row.shortName || '') !== String(u.sourceShortName || '')
+          || !['EXTENDED', 'REDUCED'].includes(String(row.changeStatus || '').toUpperCase())
+          || ['COMPLETE', 'DONE'].includes(String(row.itStatus || '').toUpperCase())
+          || String(row.end || '') !== String(u.originalEndDate || '')
+          || String(row.codePromotion || '') !== String(u.originalPromoCode || '')
+          || String(row.codeItemSet || '') !== String(u.originalCodeItemSet || '')
+          || String(row.itemPromotion || '') !== String(u.originalItemPromotion || '')
+          || String(row.itemCode || '') !== String(u.originalItemCode || '')) return "CHANGE_CONFLICT";
+        seen.add(identity);
+        targets.push(row);
+      }
+      const prior = targets.map(row => ({ itStatus: row.itStatus, itDoneDate: row.itDoneDate, itSettlementSavedAt: row.itSettlementSavedAt, updatedDate: row.updatedDate }));
+      targets.forEach(row => {
+        row.itStatus = 'COMPLETE'; row.itDoneDate = TODAY(); row.itSettlementSavedAt = row.itSettlementSavedAt || NOW(); row.updatedDate = NOW();
+      });
+      if (persist()) return 'SUCCESS';
+      targets.forEach((row, i) => {
+        row.itStatus = prior[i].itStatus;
+        row.itDoneDate = prior[i].itDoneDate;
+        row.itSettlementSavedAt = prior[i].itSettlementSavedAt;
+        row.updatedDate = prior[i].updatedDate;
+      });
+      rebuildWorking(store);
+      return 'STORAGE_ERROR';
+    }
     // cross-campaign duplicate check for Code Promotion / Code Item Set
     const campsInBatch = new Set(updates.map(u => u.campaign));
     const existPromo = {}, existItemSet = {};
@@ -3048,16 +3481,18 @@
       if (campsInBatch.has(w.campaign)) return; // skip the campaigns being saved now
       if (w.codePromotion) {
         const code = String(w.codePromotion).trim().toUpperCase();
-        (existPromo[code] = existPromo[code] || []).push({ campaign: w.campaign, itemSet: String(w.codeItemSet || "").trim().toUpperCase() });
+        (existPromo[code] = existPromo[code] || []).push({ campaign: w.campaign, itemSet: reusableItemSetCode(w).toUpperCase() });
       }
-      if (w.codeItemSet) existItemSet[String(w.codeItemSet).trim().toUpperCase()] = w.campaign;
+      const occupiedItemSet = reusableItemSetCode(w);
+      if (occupiedItemSet) existItemSet[occupiedItemSet.toUpperCase()] = w.campaign;
     });
     const completedButtons = new Map();
     store.working.forEach(w => {
-      if (w.itDoneDate && w.codeItemSet) completedButtons.set(w.campaign + "||" + w.shortName + "||" + String(w.codeItemSet).trim().toUpperCase(), String(w.codePromotion || "").trim().toUpperCase());
+      if ((w.itDoneDate || w.revisionPending) && w.codeItemSet) completedButtons.set(w.campaign + "||" + w.shortName + "||" + String(w.codeItemSet).trim().toUpperCase(), String(w.codePromotion || "").trim().toUpperCase());
     });
     const completedCode = (u, code) => completedButtons.has(u.campaign + "||" + (u.sourceShortName || u.shortName) + "||" + code);
     for (const u of updates) {
+      if(revisionUpdates.has(u))continue;
       const pc = String(u.promoCode || "").trim();
       if (!pc) continue;
       // Owners from this same campaign are already excluded above, so an
@@ -3107,6 +3542,8 @@
         row.itemPromotion = upd.itemPromo; row.kitchen = upd.kitchenName;
         row.shortName = upd.shortName; row.itStatus = "COMPLETE"; row.cateRemark = upd.cateRemark;
         row.itDoneDate = TODAY();
+        row.itSettlementSavedAt = row.itSettlementSavedAt || NOW();
+        if(revisionUpdates.has(upd)){row.revisionPending=false;row.itSettlementSavedAt=NOW();row.opStatus='WAITING';row.opDoneDate='';}
         // Item Set + Code Promotion = P-code (Pxxx จากฟอร์ม Item Set) → เปลี่ยน Type เป็น Price Promotion (ตามที่ผูกใน Backoffice) · เก็บ flag _wasItemSet ให้ Builder/Recipe ยังเห็น
         if (/item set/i.test(String(upd.promoType || "")) && /^P\s*\d/i.test(String(upd.promoCode || "").trim())) {
           row.promoType = "Price Promotion"; row.typePromotion = "Price Promotion"; row._wasItemSet = true;
@@ -3117,11 +3554,13 @@
       store.working.forEach(w => {
         // A campaign can contain several POS buttons with different Item Set
         // codes. Update only the button represented by this settlement row.
-        if (w.campaign === upd.campaign && w.shortName === (upd.sourceShortName || upd.shortName)) {
+        if (w.campaign === upd.campaign && w.shortName === (upd.sourceShortName || upd.shortName) && (!revisionUpdates.has(upd)||String(w.month||'')===String(upd.month||month))) {
           const _wWasIS = /item set/i.test(String(w.typePromotion || w.promoType || "")) || !!w.codeItemSet || /^107/.test(String(w.itemPromotion || ""));
           w.itStatus = "COMPLETE"; if (upd.promoType) { w.promoType = upd.promoType; w.typePromotion = upd.promoType; w.typeSel = upd.promoType; if (_wWasIS) w._wasItemSet = true; } w.codePromotion = upd.promoCode;
           w.codeItemSet = upd.itemPromo; w.cateRemark = upd.cateRemark; w.updatedDate = NOW();
           w.itDoneDate = TODAY();
+          w.itSettlementSavedAt = w.itSettlementSavedAt || NOW();
+          if(revisionUpdates.has(upd)){w.revisionPending=false;w.itSettlementSavedAt=NOW();w.opStatus='WAITING';w.opDoneDate='';}
           if (/item set/i.test(String(upd.promoType || "")) && /^P\s*\d/i.test(String(upd.promoCode || "").trim())) {
             w.promoType = "Price Promotion"; w.typePromotion = "Price Promotion"; w._wasItemSet = true;
           }
@@ -3138,15 +3577,20 @@
       const code = String(u.itemPromo || "").trim();
       if (!code) return;
       const gk = u.campaign + "|" + u.shortName;
-      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, promoCode: u.promoCode || "", netPrice: u.netPrice || "", reused: API.isPosReuseConfirmed(u.campaign, u.sourceShortName || u.shortName, code) || completedCode(u, code.toUpperCase()), items: [] };
-      _isGroups[gk].items.push({ originalPrice: u.price, qty: u.qty, itemCode: u.itemCode, itemNameEN: u.itemNameEN });
+      if (!_isGroups[gk]) _isGroups[gk] = { code, campaign: u.campaign, shortName: u.shortName, month:u.month||month, promoCode: u.promoCode || "", netPrice: u.netPrice || "", reused: API.isPosReuseConfirmed(u.campaign, u.sourceShortName || u.shortName, code) || (!revisionUpdates.has(u)&&completedCode(u, code.toUpperCase())), items: [] };
+      // The IT form does not send Subset choice limits. Read them from the
+      // original proposal row before linking this button to product data.
+      const proposalSheet = store.months[u.month] || store.months[month] || [];
+      const proposalRow = proposalSheet[parseInt(u.rowIdx, 10) - 2] || {};
+      _isGroups[gk].items.push({ originalPrice: u.price, qty: u.qty, itemCode: u.itemCode, itemNameEN: u.itemNameEN,
+        isSubset: proposalRow.isSubset || "", chooseMin: proposalRow.chooseMin || "", chooseMax: proposalRow.chooseMax || "" });
     });
     Object.keys(_isGroups).forEach(gk => {
       const grp = _isGroups[gk];
       // header info จาก month rows (source of truth — มี cate/saleMode/stores ครบ)
       let hdr = null;
       Object.keys(store.months).forEach(m => (store.months[m] || []).forEach(r => {
-        if (!hdr && String(r.campaign) === grp.campaign && String(r.shortName) === grp.shortName) hdr = r;
+        if (!hdr && m===grp.month && String(r.campaign) === grp.campaign && String(r.shortName) === grp.shortName) hdr = r;
       }));
       hdr = hdr || {};
       const info = {
@@ -3206,7 +3650,9 @@
 
   /* ---- extend / reduce (extendCampaign) — sets changeStatus marker, keeps IT completion ---- */
   API.extendCampaign = (campaignName, newEndDate, extendNote) => {
+    if (!store.working.some(w => w.campaign === campaignName)) return { status: "error", message: "ไม่พบแคมเปญ" };
     let mode = "EXTENDED";
+    const oldEnds = [...new Set(store.working.filter(w => w.campaign === campaignName).map(w => w.end).filter(Boolean))];
     store.working.forEach(w => {
       if (w.campaign === campaignName && new Date(newEndDate) < new Date(w.end)) mode = "REDUCED";
     });
@@ -3217,27 +3663,30 @@
     store.working.forEach(w => {
       if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; w.end = newEndDate; w.changeStatus = mode; w.itStatus = "PENDING"; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); if (note) w.extendCodeNote = note; }
     });
-    persist();
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     try { syncCoPromoDates(campaignName, { end: newEndDate, lifecycle: mode }); } catch (e) {}
     const label = mode === "REDUCED" ? "ลดระยะเวลา" : "ขยายระยะเวลา";
     sendMail("it@rocks-foods.com", "[" + label + "] " + campaignName, "MKT โปรดทราบ: แคมเปญ \"" + campaignName + "\" " + label + " เป็นวันที่ " + newEndDate + (note ? "\nหมายเหตุถึง IT: " + note : ""));
     try { if (window.PC_notify) window.PC_notify(mode === "REDUCED" ? "promo_reduced" : "promo_extended", { threadKey: campaignName, text: label + 'โปร “' + campaignName + '” — สิ้นสุดใหม่ ' + newEndDate + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ " + label + "เรียบร้อย และส่งเมลแจ้ง MKT แล้ว (" + mode + ")" };
+    return { status: "success", message: "✅ " + label + "เรียบร้อย และส่งเมลแจ้ง MKT แล้ว (" + mode + ")",
+      _activity: { kind: mode, campaign: campaignName, scope: 'campaign', before: oldEnds.join(', '), after: newEndDate, note: note } };
   };
 
   /* ---- cancel (cancelCampaign) — sets CANCELLED marker, keeps record visible ---- */
   API.cancelCampaign = (campaignName, reason) => {
+    if (!store.working.some(w => w.campaign === campaignName)) return { status: "error", message: "ไม่พบแคมเปญ" };
     Object.keys(store.months).forEach(m => store.months[m].forEach(r => {
       if (r.campaign === campaignName) { if (String(r.opStatus||"").toUpperCase()==="CONFIRMED") r.wentLive = true; r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; }
     }));
     store.working.forEach(w => {
       if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; w.changeStatus = "CANCELLED"; w.cancelReason = reason || ""; w.reason = reason || ""; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); }
     });
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     sendMail("it@rocks-foods.com", "[ยกเลิกโปรโมชั่น] " + campaignName, "MKT โปรดทราบ: แคมเปญ \"" + campaignName + "\" ถูกยกเลิก\nเหตุผล: " + (reason || "-") + "\nปุ่มถูกนำออกจาก POS แล้ว (ข้อมูลยังคงอยู่ในระบบเพื่อการติดตาม)");
-    persist();
     try { syncCoPromoDates(campaignName, { lifecycle: "CANCELLED" }); } catch (e) {}
     try { if (window.PC_notify) window.PC_notify("promo_cancelled", { threadKey: campaignName, text: 'ยกเลิกโปร “' + campaignName + '”' + (reason ? ' — ' + reason : '') + ' · โปรดนำปุ่มออกจาก POS · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ ยกเลิกแคมเปญเรียบร้อย · นำปุ่มออกจาก POS · ส่งเมลแจ้ง MKT แล้ว" };
+    return { status: "success", message: "✅ ยกเลิกแคมเปญเรียบร้อย · นำปุ่มออกจาก POS · ส่งเมลแจ้ง MKT แล้ว",
+      _activity: { kind: 'CANCELLED', campaign: campaignName, scope: 'campaign', note: String(reason || '').trim() } };
   };
 
   /* ---- IT ปิดงานยกเลิก: ลบปุ่มออกจาก POS + คืนโค้ด (itRemoveCancelled) ----
@@ -3624,8 +4073,9 @@
       rows.push(row); added++;
     });
     if (!added) return { status: "error", message: dup ? "มีสินค้านี้ในชุดอยู่แล้ว" : "ไม่พบปุ่มที่ระบุ" };
-    persist();
-    return { status: "success", rows: added, message: "เพิ่มสินค้า " + code + " เข้าชุด " + sn + " แล้ว " + added + " แถว" };
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
+    return { status: "success", rows: added, message: "เพิ่มสินค้า " + code + " เข้าชุด " + sn + " แล้ว " + added + " แถว",
+      _activity: { kind: 'ADDED', campaign: c, scope: 'button', buttons: [sn], items: [code] } };
   };
 
   /* ---- PER-BUTTON lifecycle (ขยาย/ลด/ยกเลิก เฉพาะปุ่มที่เลือก) ----
@@ -3654,6 +4104,7 @@
     if (!Object.keys(snSet).length) return { status: "error", message: "ไม่ได้เลือกปุ่ม" };
     const note = String(extendNote || "").trim();
     const modeSeen = {};
+    const oldEnds = [...new Set(Object.keys(store.months).reduce((out, m) => out.concat((store.months[m] || []).filter(r => r.campaign === campaignName && snSet[String(r.shortName || '').trim()]).map(r => r.end).filter(Boolean)), []))];
     const apply = (r) => {
       if (r.campaign !== campaignName || !snSet[String(r.shortName || "").trim()]) return;
       const mode = (r.end && new Date(newEndDate) < new Date(r.end)) ? "REDUCED" : "EXTENDED";
@@ -3664,14 +4115,16 @@
     };
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
     store.working.forEach(apply);
-    persist();
+    if (!Object.keys(modeSeen).length) return { status: "error", message: "ไม่พบปุ่มที่เลือก" };
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     const label = (modeSeen.REDUCED && !modeSeen.EXTENDED) ? "ลดระยะเวลา" : "ขยายระยะเวลา";
     try { syncCoPromoDates(campaignName, { end: newEndDate, lifecycle: (modeSeen.REDUCED && !modeSeen.EXTENDED) ? "REDUCED" : "EXTENDED" }); } catch (e) {}
     const n = Object.keys(snSet).length;
     sendMail("it@rocks-foods.com", "[" + label + " (รายปุ่ม)] " + campaignName,
       "ปุ่มที่ " + label + " (" + n + " ปุ่ม): " + Object.keys(snSet).join(", ") + "\nวันสิ้นสุดใหม่: " + newEndDate + (note ? "\nหมายเหตุถึง IT: " + note : ""));
     try { if (window.PC_notify) window.PC_notify((modeSeen.REDUCED && !modeSeen.EXTENDED) ? "promo_reduced" : "promo_extended", { text: label + ' “' + campaignName + '” ' + n + ' ปุ่ม (' + Object.keys(snSet).join(', ') + ') — สิ้นสุด ' + newEndDate + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ " + label + " " + n + " ปุ่มเรียบร้อย (" + Object.keys(modeSeen).join("/") + ") · รอ OP ยืนยัน", buttons: Object.keys(snSet), mode: Object.keys(modeSeen).join("/") };
+    return { status: "success", message: "✅ " + label + " " + n + " ปุ่มเรียบร้อย (" + Object.keys(modeSeen).join("/") + ") · รอ OP ยืนยัน", buttons: Object.keys(snSet), mode: Object.keys(modeSeen).join("/"),
+      _activity: { kind: Object.keys(modeSeen).join('/'), campaign: campaignName, scope: 'buttons', buttons: Object.keys(snSet), before: oldEnds.join(', '), after: newEndDate, note: note } };
   };
 
   API.cancelButtons = (campaignName, shortNames, reason) => {
@@ -3682,14 +4135,17 @@
       if (String(r.opStatus || "").toUpperCase() === "CONFIRMED") r.wentLive = true;
       r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.reason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; r.updatedDate = NOW();
     };
+    const found = Object.keys(store.months).some(m => store.months[m].some(r => r.campaign === campaignName && snSet[String(r.shortName || '').trim()]));
+    if (!found) return { status: "error", message: "ไม่พบปุ่มที่เลือก" };
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
     store.working.forEach(apply);
-    persist();
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     const n = Object.keys(snSet).length;
     try { syncCoPromoDates(campaignName, { lifecycle: "CANCELLED" }); } catch (e) {}
     sendMail("it@rocks-foods.com", "[ยกเลิก (รายปุ่ม)] " + campaignName, "ปุ่มที่ยกเลิก (" + n + "): " + Object.keys(snSet).join(", ") + "\nเหตุผล: " + (reason || "-"));
     try { if (window.PC_notify) window.PC_notify("promo_cancelled", { text: 'ยกเลิก ' + n + ' ปุ่มของ “' + campaignName + '” (' + Object.keys(snSet).join(', ') + ')' + (reason ? ' — ' + reason : '') + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ ยกเลิก " + n + " ปุ่มเรียบร้อย · รอ OP ยืนยัน", buttons: Object.keys(snSet) };
+    return { status: "success", message: "✅ ยกเลิก " + n + " ปุ่มเรียบร้อย · รอ OP ยืนยัน", buttons: Object.keys(snSet),
+      _activity: { kind: 'CANCELLED', campaign: campaignName, scope: 'buttons', buttons: Object.keys(snSet), note: String(reason || '').trim() } };
   };
 
   /* ---- tracking table (getAllCampaignData) ---- */
@@ -3714,8 +4170,15 @@
     Object.keys(btnTotals).forEach(k => { if (btnTotals[k] > max) max = btnTotals[k]; });
     return max;
   }
-  API.getAllCampaignData = () =>
-    store.working.map((r, index) => ({
+  API.getAllCampaignData = () => {
+    const editBlocks = Object.create(null), editPolicies = Object.create(null);
+    Object.entries(store.months).forEach(([month, rows]) => (rows || []).forEach(r => {
+      const name = String(r.campaign || '');
+      const block = editBlocks[name] || (editBlocks[name] = {m:{}});
+      (block.m[month] || (block.m[month] = [])).push(r);
+    }));
+    const actor = localStorage.getItem('pc_userName') || '';
+    return store.working.map((r, index) => ({
       rowIdx: index + 2, timestamp: fmtDate(r.timestamp), month: String(r.month || ""),
       campaign: String(r.campaign || "No Name"), promoType: String(r.promoType || ""),
       startDate: fmtDate(r.start), endDate: fmtDate(r.end), store: String(r.stores || "All Stores"),
@@ -3726,23 +4189,37 @@
       mechanic: String(r.mechanic || ""), attachment: String(r.attachment || ""), memoUrl: String(r.memoUrl || ""),
       changeStatus: String(r.changeStatus || "").toUpperCase(), cancelReason: String(r.cancelReason || r.reason || ""),
       rejectReason: String(r.rejectReason || ""), extendCodeNote: String(r.extendCodeNote || ""),
-      customerGroup: String(r.customerGroup || ""), crmTargetName: String(r.crmTargetName || ""),
+      customerGroup: String(r.customerGroup || ""), crmTargetName: String(r.crmTargetName || ""), ...crmMappingFields(r),
       txnDate: String(r.txnDate || r.submittedDate || r.timestamp || ""),
       submittedBy: String(r.submittedBy || r.reporter || r.rd || ""),
       reporter: String(r.reporter || r.submittedBy || r.rd || ""),
+      submissionId: String(r.submissionId || ""), submissionBatchId: String(r.submissionBatchId || ""),
+      submissionForm: String(r.submissionForm || ""), submissionExpectedButtons: Number(r.submissionExpectedButtons) || 0,
       opDoneDate: String(r.opDoneDate || ""),
+      revisionId:r.revisionId||'', revisionPending:!!r.revisionPending,
+      revisionReason:r.revisionReason||'', revisionRequestedBy:r.revisionRequestedBy||'', revisionRequestedAt:r.revisionRequestedAt||'',
+      editedBy:r.editedBy||'', editedAt:r.editedAt||'', updatedDate:r.updatedDate||'',
+      itDoneDate:r.itDoneDate||'', itSettlementSavedAt:r.itSettlementSavedAt||'',
+      promotionEditPolicy: (() => {
+        const key = JSON.stringify([r.campaign,r.month]);
+        return editPolicies[key] || (editPolicies[key] = window.PC_PromotionEditModel
+          ? window.PC_PromotionEditModel.policy(editBlocks[String(r.campaign || '')],actor,String(r.month || ''))
+          : {allowed:false});
+      })(),
       totalPrice: campGrossTotal(r.campaign, r.shortName),
     })).filter(x => x.campaign && x.campaign !== "No Name").reverse();
+  };
 
   /* ---- detail drill-down (getPromoDetails) ---- */
-  API.getPromoDetails = (campaignName) => {
-    const w = store.working.find(r => String(r.campaign || "").trim() === String(campaignName).trim());
+  API.getPromoDetails = (campaignName, scope) => {
+    const selectedMonth=typeof scope==='string'?scope:scope&&scope.month;
+    const w = store.working.find(r => String(r.campaign || "").trim() === String(campaignName).trim()&&(!selectedMonth||r.month===selectedMonth));
     if (!w) return { status: "error", message: "ไม่พบแคมเปญ: " + campaignName };
     const fileUrl = w.attachment ? String(w.attachment).trim() : "";
     // gather buttons across ALL months for this campaign (grouped campaigns may span months)
     const monthRows = [];
     Object.keys(store.months).forEach(mo => (store.months[mo] || []).forEach(r => {
-      if (String(r.campaign).trim() === String(campaignName).trim()) monthRows.push(r);
+      if ((!selectedMonth||mo===selectedMonth)&&String(r.campaign).trim() === String(campaignName).trim()) monthRows.push(r);
     }));
     const anyFile = fileUrl !== "" || monthRows.some(r => r.attachment && String(r.attachment).trim() !== "");
     // ตัดซ้ำ: แคมเปญที่จัดกลุ่มข้ามเดือน ต้องไม่โชว์ปุ่ม/บรรทัดสินค้าเดิมซ้ำตามจำนวนเดือน
@@ -3823,13 +4300,44 @@
   API.updateCampaignPrices = (campaignName, lines, cateRemark) => {
     campaignName = String(campaignName || "").trim();
     const idx = {};
-    (lines || []).forEach(l => { idx[String(l.code || "") + "||" + String(l.item || "")] = l; });
+    const sourceRows = Object.keys(store.months).reduce((all, m) => all.concat((store.months[m] || []).filter(r => String(r.campaign || "").trim() === campaignName)), []);
+    const newRows = new Set();
+    const addedDetails = [];
+    for (const l of (lines || [])) {
+      const oldItem = String(l.item || "").trim();
+      const oldCode = String(l.code || "").trim();
+      const oldShortRaw = String(l._short || "").trim();
+      const oldShort = oldShortRaw === "-" ? "" : oldShortRaw;
+      if (/^__new_/.test(oldItem)) {
+        const newItem = String(l.itemCode || "").trim();
+        const newShort = String(l.shortName || oldShort).trim();
+        if (newItem && newShort) {
+          const key = newShort + "||" + newItem;
+          if (newRows.has(key) || sourceRows.some(r => String(r.shortName || "").trim() === newShort && String(r.itemCode || "").trim() === newItem))
+            return { status: "error", message: "ปุ่ม/สินค้านี้มีอยู่ในแคมเปญแล้ว กรุณารีเฟรชก่อนบันทึก: " + newShort + " · " + newItem };
+          newRows.add(key);
+        }
+        continue;
+      }
+      // data-code ในหน้าแก้ไขอาจเก่าเมื่อ IT เปลี่ยนรหัสแล้ว: จับแถวเดิมด้วย item + ชื่อเดิมก่อน ไม่สร้างปุ่มซ้ำ
+      let matches = sourceRows.filter(r => String(r.codePromotion || "").trim() === oldCode && String(r.itemCode || "").trim() === oldItem);
+      if (oldShort) matches = matches.filter(r => String(r.shortName || "").trim() === oldShort);
+      if (!matches.length && oldItem) {
+        matches = sourceRows.filter(r => String(r.itemCode || "").trim() === oldItem && (!oldShort || String(r.shortName || "").trim() === oldShort));
+      }
+      const identities = new Set(matches.map(r => String(r.codePromotion || "").trim() + "||" + String(r.itemCode || "").trim() + "||" + String(r.shortName || "").trim()));
+      if (identities.size !== 1) return { status: "error", message: "ข้อมูลแถวแคมเปญเปลี่ยนหรือระบุไม่ชัดเจน กรุณารีเฟรชแล้วบันทึกใหม่" };
+      const r = matches[0];
+      const key = String(r.codePromotion || "").trim() + "||" + String(r.itemCode || "").trim();
+      if (idx[key] && idx[key] !== l) return { status: "error", message: "พบรายการแก้ไขปุ่มซ้ำ กรุณารีเฟรชแล้วบันทึกใหม่" };
+      idx[key] = l;
+    }
     let count = 0; const setCate = (cateRemark != null);
     Object.keys(store.months).forEach(m => (store.months[m] || []).forEach(r => {
       if (String(r.campaign || "").trim() !== campaignName) return;
       if (setCate) { r.cateRemark = String(cateRemark); r.updatedDate = NOW(); }
       const l = idx[String(r.codePromotion || "") + "||" + String(r.itemCode || "")];
-      if (!l) return;
+      if (!l || (l._short && String(l._short).trim() !== "-" && String(r.shortName || "").trim() !== String(l._short).trim())) return;
       l._matched = true;
       // ราคา
       if (l.gross !== "" && l.gross != null && !isNaN(parseFloat(l.gross))) { r.gross = parseFloat(l.gross); r.price = parseFloat(l.gross); }
@@ -3894,6 +4402,7 @@
       nr.netPrice = (l.net != null && l.net !== "" && !isNaN(parseFloat(l.net))) ? parseFloat(l.net) : 0;
       nr.updatedDate = NOW();
       store.months[mk].push(nr); count++;
+      addedDetails.push({ shortName: sn, itemCode: ic, newButton: isNewButton });
     });
     if (!count && !setCate) return { status: "error", message: "ไม่พบรายการที่ตรงกัน" };
     // เขียนตารางสินค้า (pc_product_promo) ต่อ itemCode ที่ map แล้ว → ให้บันทึกแล้ววิ่งเข้าหน้าสินค้าเหมือนหน้าทำปุ่ม
@@ -3919,8 +4428,11 @@
       }));
       if (ppCh) localStorage.setItem("pc_product_promo", JSON.stringify(pp));
     } catch (e) {}
-    persist();
-    return { status: "success", message: "บันทึกแล้ว " + count + " รายการ" + (setCate ? " + หมวด POS" : "") + (ppWritten ? " · เข้าตารางสินค้า " + ppWritten : "") };
+    if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
+    return { status: "success", message: "บันทึกแล้ว " + count + " รายการ" + (setCate ? " + หมวด POS" : "") + (ppWritten ? " · เข้าตารางสินค้า " + ppWritten : ""),
+      _activity: addedDetails.length ? { kind: 'ADDED', campaign: campaignName, scope: 'buttons',
+        buttons: [...new Set(addedDetails.map(x => x.shortName))], items: [...new Set(addedDetails.map(x => x.itemCode))],
+        note: addedDetails.some(x => x.newButton) ? 'เพิ่มปุ่ม/สินค้า' : 'เพิ่มสินค้าในปุ่มเดิม' } : null };
   };
 
   /* ---- ลบ "แถวกำพร้า" — แถวที่ไม่มีชื่อแคมเปญ ----
@@ -4117,6 +4629,92 @@
   API.isProtectedCampaign = (name) => !!PROTECTED_SET[normCampName(name)];
   window.PC_isProtectedCampaign = API.isProtectedCampaign;
   window.PC_PROTECTED_CAMPAIGNS = PROTECTED_CAMPAIGNS.slice();
+
+  /* The Settlement trash button must distinguish confirming a number from
+     actually saving/closing IT work. Evaluate authoritative month rows again
+     at execution time, not just the current counter status or Builder flag. */
+  API.getITCancellationPolicy = (campaignName, month) => {
+    const campaign = String(campaignName || '').trim(), mo = String(month || '').trim();
+    // Cancellation is campaign-wide: a pending multi-month submission is one
+    // job, not independent jobs whose remaining months can block resubmission.
+    const scoped = r => String(r.campaign || '').trim() === campaign;
+    const target = [], outside = [];
+    Object.keys(store.months || {}).forEach(m => (store.months[m] || []).forEach(r => (scoped(r,m) ? target : outside).push(r)));
+    const saved = r => !!(r.itSettlementSavedAt || r.itDoneDate || r.wentLive || r.codeBurned || r.rejectCount || r.opDoneDate) ||
+      /^(COMPLETE|DONE)$/i.test(String(r.itStatus || '')) || /^(CONFIRMED|REJECTED)$/i.test(String(r.opStatus || ''));
+    const selectedExists = !mo || mo === 'ALL' || (store.months[mo] || []).some(scoped);
+    const canCancel = selectedExists && !!target.length && !target.some(saved) && !API.isProtectedCampaign(campaign);
+    const codesOf = r => [r.codePromotion,r.codeItemSet,r.itemPromotion].map(cgClean).filter(c => c && !cgPlaceholder(c));
+    const candidates = new Set(); target.forEach(r => codesOf(r).forEach(c => candidates.add(c)));
+    const counter = window.PC_COUNTER, entries = counter && counter.list ? counter.list({}) : [];
+    const coversAll = !outside.some(r => String(r.campaign || '').trim() === campaign);
+    entries.forEach(e => {
+      if (String(e.where || '').trim() !== campaign || e.status === 'RELEASED') return;
+      let sameMonth = false;
+      try { const match = String(e.field || '').match(/(%5B.*)$/i); const id = match && JSON.parse(decodeURIComponent(match[1])); sameMonth = id && id[0] === campaign && (mo === 'ALL' || !mo || id[2] === mo); } catch (_) {}
+      if (coversAll || sameMonth) candidates.add(String(e.code));
+    });
+    const used = new Set();
+    (window.PC_PROMO_CODES || []).forEach(p => { [p.code,p.button].filter(Boolean).forEach(c => used.add(String(c))); });
+    Object.keys(store.recipeCustom || {}).forEach(c => used.add(c));
+    outside.forEach(r => { codesOf(r).forEach(c => used.add(c)); if (r.itemCode) used.add(String(r.itemCode)); });
+    (SEED.items || []).concat(store.npdProducts || []).forEach(p => { if (p.itemCode) used.add(String(p.itemCode)); });
+    (store.npd || []).forEach(n => (n.items || []).forEach(p => { if (p.code) used.add(String(p.code)); }));
+    // Keep codes referenced by product/formula tables. Do not delete a shared
+    // product or relationship just to recycle a pending job's reservation.
+    ['pc_product_promo','pc_itemset_comp'].forEach(k => {
+      try { const table = JSON.parse(localStorage.getItem(k) || '{}'); Object.keys(table).forEach(code => {
+        used.add(code); const rows = Array.isArray(table[code]) ? table[code] : [table[code]];
+        rows.forEach(r => { if (r) [r.code,r.itemCode,r.prCode,r.promoCode,r.codePromotion,r.codeItemSet].filter(Boolean).forEach(c => used.add(String(c))); });
+      }); } catch (_) { candidates.forEach(c => used.add(c)); }
+    });
+    const scanShared = value => {
+      if (!value || typeof value !== 'object') return;
+      Object.entries(value).forEach(([key,v]) => {
+        if (['code','button','itemCode','codePromotion','codeItemSet','itemPromotion','prCode','promoCode'].includes(key) && v != null && typeof v !== 'object') used.add(String(v).trim().toUpperCase());
+        if (v && typeof v === 'object') scanShared(v);
+      });
+    };
+    ['pc_co_promotions','pc_member_coupons','pc_member_cards','pc_bill_discount_confirmed','pc_code_requests'].forEach(key => {
+      try { scanShared(JSON.parse(localStorage.getItem(key) || 'null')); } catch (_) { candidates.forEach(c => used.add(c)); }
+    });
+    [window.PC_CODE_PROMOS,window.PC_VOUCHER_COUPON_CONFIRMED,window.PC_BILL_DISCOUNT_CONFIRMED].forEach(scanShared);
+    const returnable = [], kept = [];
+    candidates.forEach(code => {
+      const entry = entries.find(e => String(e.code) === code && e.status !== 'RELEASED');
+      if (used.has(code) || !entry || String(entry.where || '').trim() !== campaign) kept.push(code);
+      else returnable.push({code:code,type:entry.type});
+    });
+    return { canCancel:canCancel, rows:target.length, returnable:returnable, kept:kept,
+      reason: !selectedExists || !target.length ? 'ไม่พบงานเดือนที่เลือก' : target.some(saved) ? 'งานนี้มีปุ่มที่เคยบันทึกจาก IT Settlement หรือมีประวัติใช้งานแล้ว (ตรวจทุกเดือน)' : API.isProtectedCampaign(campaign) ? 'แคมเปญนี้ถูกล็อกห้ามลบ' : '' };
+  };
+  API.cancelUnsettledITCampaign = (campaignName, month) => {
+    const campaign = String(campaignName || '').trim(), mo = String(month || '').trim();
+    const policy = API.getITCancellationPolicy(campaign,mo);
+    if (!policy.canCancel) return {status:'error',message:policy.reason};
+    if (policy.returnable.length && (!window.PC_COUNTER || !PC_COUNTER.returnCode)) return {status:'error',message:'ระบบเลขกลางยังไม่พร้อม'};
+    const before = JSON.parse(JSON.stringify(store)), counterBefore = localStorage.getItem('pc_code_counter_v1');
+    const snap = {id:'TRASH' + Date.now().toString(36).toUpperCase(),deletedAt:NOW(),deletedBy:localStorage.getItem('pc_userName') || '',campaigns:[campaign],months:{},pp:{},comp:{},npd:[],cr:[],codes:policy.returnable.map(x => x.code),source:'IT Settlement (ยังไม่บันทึก)'};
+    Object.keys(store.months).forEach(m => {
+      const removed = store.months[m].filter(r => String(r.campaign || '').trim() === campaign);
+      if (removed.length) snap.months[m] = JSON.parse(JSON.stringify(removed));
+      store.months[m] = store.months[m].filter(r => String(r.campaign || '').trim() !== campaign);
+      if (!store.months[m].length) delete store.months[m];
+    });
+    store.trash = [snap].concat(store.trash || []).slice(0,100);
+    if (!persist()) { store = before; return {status:'error',message:'บันทึกการยกเลิกไม่สำเร็จ — ยังไม่คืนโค้ด'}; }
+    try {
+      policy.returnable.forEach(x => { const result = PC_COUNTER.returnCode(x.code,x.type,'IT Settlement (ยกเลิกงานที่ยังไม่บันทึก)',true); if (!result || !result.returned) throw Error('คืนโค้ด ' + x.code + ' ไม่สำเร็จ'); });
+      const savedCounter = JSON.parse(localStorage.getItem('pc_code_counter_v1') || '{}');
+      const remaining = Object.values(savedCounter.reservations || {});
+      if (policy.returnable.some(x => remaining.some(e => String(e.code) === x.code && e.status !== 'RELEASED'))) throw Error('บันทึกการคืนโค้ดไม่สำเร็จ');
+    } catch (e) {
+      store = before;
+      try { if (counterBefore == null) localStorage.removeItem('pc_code_counter_v1'); else localStorage.setItem('pc_code_counter_v1',counterBefore); PC_COUNTER.reloadFromStorage(); } catch (_) {}
+      persist(); return {status:'error',message:String(e.message || e)};
+    }
+    return {status:'success',returned:policy.returnable.map(x => x.code),kept:policy.kept,trashId:snap.id,message:'ลบงานที่ยังไม่บันทึกครบทุกเดือนแล้ว — กรอกชื่อเดิมใหม่ได้ และเก็บประวัติแยกในถังขยะ'};
+  };
 
   API.deleteCampaigns = (names) => {
     const set = {}; const blocked = [];
@@ -4404,7 +5002,9 @@
   };
 
   /* ---- OP approve / reject (for Op Tracking page) ---- */
-  API.setOpStatus = (campaignName, opStatus, note) => {
+  API.setOpStatus = (campaignName, opStatus, note, scope) => {
+    const selected=Object.entries(store.months).flatMap(([month,rows])=>(rows||[]).filter(r=>r.campaign===campaignName&&(!scope?.month||scope.month===month)));
+    if(selected.some(r=>r.revisionId&&(r.revisionPending||!['COMPLETE','DONE'].includes(String(r.itStatus).toUpperCase())||!scope||r.revisionId!==scope.revisionId)))return {status:'error',message:'ข้อมูลมีการแก้ไข กรุณารอ IT ปิดงานและโหลดข้อมูลใหม่ก่อนตรวจสอบ'};
     const stamp = opStatus === "CONFIRMED" ? TODAY() : "";
     const reject = opStatus === "REJECTED";
     // tally reject issues parsed from the "[a · b · c]\ndetail" note
@@ -4415,14 +5015,14 @@
         .forEach(iss => { store.rejectIssues[iss] = (store.rejectIssues[iss] || 0) + 1; });
     }
     Object.keys(store.months).forEach(m => store.months[m].forEach(r => {
-      if (r.campaign === campaignName) {
+      if (r.campaign === campaignName && (!scope?.month||m===scope.month)) {
         r.opStatus = opStatus;
         if (stamp) { r.opDoneDate = stamp; r.wentLive = true; }
         if (reject) { r.itStatus = "PENDING"; r.rejectReason = note || ""; r.itDoneDate = ""; r.opDoneDate = ""; r.rejectCount = (r.rejectCount || 0) + 1; }
       }
     }));
     store.working.forEach(w => {
-      if (w.campaign === campaignName) {
+      if (w.campaign === campaignName && (!scope?.month||w.month===scope.month)) {
         w.opStatus = opStatus;
         if (stamp) { w.opDoneDate = stamp; w.wentLive = true; }
         if (reject) { w.itStatus = "PENDING"; w.rejectReason = note || ""; w.itDoneDate = ""; w.opDoneDate = ""; w.rejectCount = (w.rejectCount || 0) + 1; }
@@ -4442,21 +5042,22 @@
     return { status: "success", message: msg };
   };
 
-  /* ⭐ FX-P87 — ชื่อสินค้าห้ามเกิน 20 ตัวอักษร
-     EN = ชื่อที่ไปโผล่บน "บิลครัว" · TH = ชื่อบน "ปุ่ม POS" — ยาวกว่านี้เครื่องตัดทิ้ง พนักงานอ่านไม่ออก
+  /* ⭐ FX-P87 — NPD Item Name EN/TH และชื่อผงไม่เกิน 20
+     EN = ชื่อที่ไปโผล่บน "บิลครัว" · TH = ชื่อบน "ปุ่ม POS"
      ตรวจทั้งชื่อสินค้า (items) และชื่อผงใน Subset (powders/flavors) */
-  var NAME_MAX = 20;
+  var NAME_MAX_EN = 20;
+  var NAME_MAX_TH = 20;
   function nameTooLong(payload) {
     var bad = [];
-    var chk = function (v, label) {
+    var chk = function (v, label, max) {
       v = String(v == null ? "" : v).trim();
-      if (v.length > NAME_MAX) bad.push(label + " \"" + v + "\" = " + v.length + " ตัว");
+      if (v.length > max) bad.push(label + " \"" + v + "\" = " + v.length + "/" + max + " ตัว");
     };
-    (payload.items || []).forEach(function (it) { chk(it.name, "ชื่อ (EN)"); chk(it.th, "ชื่อ (TH)"); chk(it.itemNameEN, "ชื่อ (EN)"); chk(it.itemNameTH, "ชื่อ (TH)"); });
-    (payload.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { chk(p.eng, "ชื่อผง (EN)"); chk(p.th, "ชื่อผง (TH)"); }); });
-    (payload.groups || []).forEach(function (g) { (g.flavors || []).forEach(function (f) { chk(f.eng, "ชื่อผง (EN)"); chk(f.th, "ชื่อผง (TH)"); }); });
+    (payload.items || []).forEach(function (it) { chk(it.name, "ชื่อ (EN)", NAME_MAX_EN); chk(it.th, "ชื่อ (TH)", NAME_MAX_TH); chk(it.itemNameEN, "ชื่อ (EN)", NAME_MAX_EN); chk(it.itemNameTH, "ชื่อ (TH)", NAME_MAX_TH); });
+    (payload.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { chk(p.eng, "ชื่อผง (EN)", NAME_MAX_TH); chk(p.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
+    (payload.groups || []).forEach(function (g) { (g.flavors || []).forEach(function (f) { chk(f.eng, "ชื่อผง (EN)", NAME_MAX_TH); chk(f.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
     if (!bad.length) return "";
-    return "ชื่อสินค้ายาวเกิน " + NAME_MAX + " ตัวอักษร (EN = บิลครัว · TH = ปุ่ม POS) — กรุณาย่อให้สั้นลง:\n• " +
+    return "ชื่อยาวเกินกำหนด (NPD Item Name EN/TH และชื่อผงไม่เกิน " + NAME_MAX_EN + " ตัวอักษร) — กรุณาย่อให้สั้นลง:\n• " +
       bad.slice(0, 6).join("\n• ") + (bad.length > 6 ? "\n…และอีก " + (bad.length - 6) + " รายการ" : "");
   }
 
@@ -4934,7 +5535,7 @@
     if (!store.flavor) store.flavor = [];
     const seen = idemSeen(submitKey);
     if (seen) return { status: "success", message: "ส่งแบบฟอร์มผงรสชาติเรียบร้อย (รายการเดิม)", id: seen.id, duplicate: true };
-    const _lfv = nameTooLong(payload || {});   /* FX-P87 — ชื่อไม่เกิน 20 ตัวอักษร */
+    const _lfv = nameTooLong(payload || {});   /* FX-P87 — ชื่อผงไม่เกิน 20 */
     if (_lfv) return dupError(_lfv);
     store._flvSeq = (store._flvSeq || store.flavor.length) + 1;
     const id = "FLV-" + new Date().getFullYear() + String(store._flvSeq).padStart(3, "0");
@@ -5091,10 +5692,19 @@
         if (typeof API[prop] === "function") {
           return function (...args) {
             const genAtCall = (window.__pageGen || 0); // capture page generation at call time
-            setTimeout(() => {
+            setTimeout(async () => {
               // drop callbacks whose page was navigated away (prevents null-DOM writes)
               if ((window.__pageGen || 0) !== genAtCall) return;
+              // Tracking is a read too: wait for hydration and never flush an
+              // unrelated pending write just to show campaigns or details.
+              const cloudRead = ['getITTasks', 'getITWorkSummary', 'getAllCampaignData', 'getPromoDetails'].includes(prop);
+              if (cloudRead && window.PC_CLOUD && PC_CLOUD.enabled && PC_CLOUD.enabled()) {
+                try { if (PC_CLOUD.whenReady) await PC_CLOUD.whenReady(); }
+                catch (e) { if ((window.__pageGen || 0) === genAtCall && target._fail) target._fail(e); return; }
+                if ((window.__pageGen || 0) !== genAtCall) return;
+              }
               let res, ok = false;
+              const persistFailureBefore = window.__PC_PERSIST_FAIL;
               // 1) run the server fn — real failures go to the failure handler
               try {
                 res = API[prop].apply(null, args);
@@ -5105,13 +5715,65 @@
               }
               if (!ok) return;
               // 2) deliver result — a throwing success handler is the PAGE's bug, surface it as-is
+              const deliver = (value) => {
+                const emailPersisted=value&&value._emailPersisted===true;
+                if(emailPersisted&&Object.prototype.hasOwnProperty.call(value,'value'))value=value.value;
+                if(prop==='setOpStatus'&&value&&value.status==='error'){if(target._fail)target._fail(new Error(value.message));else if(window.Swal)Swal.fire('ยังบันทึกผลตรวจไม่ได้',value.message,'warning');return;}
+                // Static page loading and Memo lookups are reads. A pending
+                // write elsewhere must never turn them into a Cloud write or
+                // prevent the user from opening the page.
+                const independentRead = cloudRead || emailPersisted || prop === 'getCoPromotions' || prop === 'getPageContent' ||
+                  prop === 'getMonthlySubmitSummary' || prop === 'getMemoCampaigns' ||
+                  prop === 'getMasterDataExtended' || prop === 'getExistingCampaignNames';
+                // A Cloud-first form has already received its D1 receipt. A
+                // later browser-cache quota error must not turn that committed
+                // write into a false failure or encourage a duplicate send.
+                const cloudFirstSubmission = window.PC_CLOUD_FIRST_FORMS === true &&
+                  ['saveBulkProposal', 'submitCouponProposal', 'submitBillDiscountProposal',
+                    'submitVoucherProposal', 'processBillDiscount', 'processVoucher'].includes(prop);
+                if (!independentRead && !cloudFirstSubmission && window.__PC_PERSIST_FAIL && window.__PC_PERSIST_FAIL !== persistFailureBefore) {
+                  const error = new Error('พื้นที่เก็บข้อมูลในเครื่องเต็ม — งานยังไม่บันทึก กรุณาสำรองข้อมูลก่อนลองใหม่');
+                  if (target._fail) target._fail(error); else console.error('[mock] local save failed:', prop, error);
+                  return;
+                }
+                // A local write is not a completed save. The UI may display
+                // success only after the Cloud adapter verifies the write.
+                const cloud = window.PC_CLOUD;
+                if (!independentRead && !cloud && window.location && /(?:^|\.)workers\.dev$/i.test(String(window.location.hostname || ''))) {
+                  const error = new Error('Cloud adapter ยังไม่พร้อม — ยังไม่ยืนยันการบันทึก');
+                  if (target._fail) target._fail(error); else console.error('[mock] cloud unavailable:', prop, error);
+                  return;
+                }
+                const finish = async () => {
+                  if (value && value.status === 'success' && value._activity) {
+                    try {
+                      if (!cloud || !cloud.appendActivity || !window.PC_SubmissionLog || !PC_SubmissionLog.createActivity)
+                        throw new Error('ระบบประวัติยังไม่พร้อม');
+                      const event = PC_SubmissionLog.createActivity(value._activity);
+                      try { await cloud.appendActivity(event); }
+                      catch (firstError) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await cloud.appendActivity(event); // idempotent retry of the same event
+                      }
+                    } catch (e) {
+                      // The campaign may already be saved. Never report that it
+                      // failed (which would encourage a duplicate submission).
+                      value._activityWarning = String(e && e.message || e);
+                      value.message += ' · แต่ยังบันทึกประวัติไม่ได้ กรุณาแจ้ง IT ก่อนทำซ้ำ';
+                    }
+                  }
+                  if (target._ok) target._ok(value);
+                };
+                if (!independentRead && !cloudFirstSubmission && cloud && cloud.enabled && cloud.enabled() && cloud.hasPending && cloud.hasPending()) {
+                  cloud.syncNow().then(finish)
+                    .catch(e => { if (target._fail) target._fail(e); else console.error('[mock] cloud save failed:', prop, e); });
+                } else finish().catch(e => { if (target._fail) target._fail(e); else console.error('[mock] audit delivery failed:', prop, e); });
+              };
               if (res && typeof res.then === "function") {
-                res.then(v => { if (target._ok) target._ok(v); })
+                res.then(deliver)
                    .catch(e => { if (target._fail) target._fail(e); else console.error("[mock] server fn failed:", prop, e); });
-              } else if (target._ok) {
-                target._ok(res); // not wrapped — real handler errors throw to the console with correct stack
-              }
-            }, 140 + Math.random() * 160); // mimic network latency
+              } else deliver(res);
+            }, prop === "getPageContent" ? 0 : 140 + Math.random() * 160); // static partials need no simulated network delay
             return proxy;
           };
         }

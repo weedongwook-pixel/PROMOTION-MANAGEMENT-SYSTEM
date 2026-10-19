@@ -119,7 +119,8 @@
     (sub.powders || []).forEach(function (w) {
       ['eng', 'th'].forEach(function (k) {
         var base = stripSuffix(w[k], oldN2).replace(/\s+$/, '');
-        w[k] = (base && newN2) ? base + ' ' + newN2 : base;
+        var alreadySuffixed = newN2 && (base === newN2 || base.slice(-(newN2.length + 1)) === ' ' + newN2);
+        w[k] = (base && newN2 && !alreadySuffixed) ? base + ' ' + newN2 : base;
       });
     });
   }
@@ -279,7 +280,7 @@
     var rows = (p.formulas || []).map(function (f, i) {
       var s = resolveFormulaSub(f.subId);
       var max = (s && s.count) ? s.count : 0;
-      var inForm = state.subsets.filter(function (x) { return x.registered; }).map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
+      var inForm = state.subsets.filter(function (x) { return x.registered || x.id === f.subId; }).map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
       var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
       var opts = '<option value="">— เลือก Subset —</option>' +
         (inForm ? '<optgroup label="ชุดใหม่ในฟอร์มนี้">' + inForm + '</optgroup>' : '') +
@@ -342,8 +343,8 @@
       '<div class="p-3">' +
         '<div class="row g-3 mb-3">' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="— IT —"></div>' +
-        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,40)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/40</div></div>' +
-        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Name (TH) <span class="it-tag" style="background:#198754;color:#fff">ปุ่ม POS</span></label><input class="form-control border-dark" value="' + esc(p.th) + '" oninput="RD.setP(\'' + p.id + '\',\'th\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.th || '').length + '/20</div></div>' +
+        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/20</div></div>' +
+        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Name (TH) <span class="it-tag" style="background:#198754;color:#fff">ปุ่ม POS</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.th) + '" oninput="RD.setP(\'' + p.id + '\',\'th\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.th || '').length + '/20</div></div>' +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode (ช่องทางขาย)</div>' +
         '<div class="d-flex flex-wrap gap-2 mb-3">' + allPills + salePills + '</div>' +
@@ -412,9 +413,9 @@
   /* Item Code ปุ่มสินค้า — รันตามหมวดที่เลือก (reserveCat(cateCode) = CATECODE+running) · คืนเลขตอนลบ/เปลี่ยนหมวด */
   /* FX-P81 — เลขที่ตัวนับคืนเข้าคลัง (freed) อาจถูกใช้ไปแล้วโดยงานอื่น/ข้อมูลหลัก
      → จองแล้วต้องเช็คซ้ำก่อนใช้ ถ้าชนให้ข้ามไปเลขถัดไป (สูงสุด 25 รอบ) */
-  function npdCodeTaken(code) {
+  function npdCodeTaken(code, reservationOwner) {
     code = String(code || '').trim(); if (!code) return false;
-    try { if (window.PC_API && PC_API.checkCode) { var r = PC_API.checkCode('item', code); if (r && r.status === 'dup') return true; } } catch (e) {}
+    try { if (window.PC_API && PC_API.checkCode) { var r = PC_API.checkCode('item', code, reservationOwner || ''); if (r && r.status === 'dup') return true; } } catch (e) {}
     try { var MD = (window.PC_API && PC_API.getMasterDataExtended) ? (PC_API.getMasterDataExtended().items || []) : []; if (MD.some(function (m) { return String(m.itemCode) === code; })) return true; } catch (e) {}
     return false;
   }
@@ -425,7 +426,7 @@
       for (var i = 0; i < 25; i++) {
         var e = PC_COUNTER.reserveCat(String(cat), { where: 'NPD (RD ปุ่มสินค้า · หมวด ' + cat + ')' });
         if (!e || !e.code) break;
-        if (!npdCodeTaken(e.code)) {
+        if (!npdCodeTaken(e.code, 'NPD (RD ปุ่มสินค้า · หมวด ' + cat + ')')) {
           /* เลขที่ข้ามไป = ถูกใช้จริงแล้ว ปล่อยค้างไว้ไม่ต้องคืน (กันแจกซ้ำอีก) */
           if (skipped.length && window.Swal) Swal.fire({ toast: true, position: 'top-end', timer: 3500, showConfirmButton: false, icon: 'info', title: 'ข้ามเลขที่ถูกใช้แล้ว ' + skipped.length + ' เลข', text: 'ได้เลข ' + e.code });
           return e.code;
@@ -457,6 +458,8 @@
   }
   function renderStores() {
     var lbl = document.getElementById('npStoreLabel'); if (!lbl) return;
+    if (window.PC_NpdExcelUI) window.PC_NpdExcelUI.renderReview();
+    if (state.importSource && state.storeMode === 'SELECT' && !state.storeConds.length) { lbl.innerHTML = '<span class="text-danger">กรุณาเลือกสาขาตามเงื่อนไขใน Excel ก่อนส่ง</span>'; return; }
     if (state.storeMode === 'ALL' || !state.storeConds.length) { lbl.innerHTML = '<i class="fas fa-store me-1 text-success"></i>ทุกสาขา (ALL STORES)'; return; }
     var nBranch = condBranchCount(state.storeConds);
     var byType = {};
@@ -475,8 +478,8 @@
       '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:.74rem" onclick="RD.storeClearAll()" title="ล้างทั้งหมด"><i class="fas fa-trash-alt me-1"></i>ล้าง</button>' +
       '</div></div>';
   }
-  RD.storeRemoveType = function (t) { state.storeConds = state.storeConds.filter(function (c) { return c.type !== t; }); state.storeMode = state.storeConds.length ? 'SELECT' : 'ALL'; renderStores(); };
-  RD.storeClearAll = function () { state.storeConds = []; state.storeMode = 'ALL'; renderStores(); };
+  RD.storeRemoveType = function (t) { state.storeConds = state.storeConds.filter(function (c) { return c.type !== t; }); state.storeMode = state.storeConds.length ? 'SELECT' : 'ALL'; if (state.importSource) state.importSource.storesReviewed = false; renderStores(); };
+  RD.storeClearAll = function () { state.storeConds = []; state.storeMode = 'ALL'; if (state.importSource) state.importSource.storesReviewed = false; renderStores(); };
   RD.storeDetail = function () {
     var conds = state.storeConds;
     var set = {}; conds.forEach(function (c) { (c.ids || []).forEach(function (id) { set[id] = 1; }); });
@@ -552,6 +555,7 @@
     var _allSet = {}; state.storeConds.forEach(function (c) { (c.ids || []).forEach(function (id) { _allSet[id] = 1; }); });
     if (BRANCHES.length && Object.keys(_allSet).length >= BRANCHES.length) { state.storeConds = []; state.storeMode = 'ALL'; }
     else state.storeMode = state.storeConds.length ? 'SELECT' : 'ALL';
+    if (state.importSource) state.importSource.storesReviewed = false;
     renderStores();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('storeModal')).hide();
   };
@@ -720,11 +724,13 @@
       project: getVal('npProject'), start: getVal('npStart'), end: getVal('npEnd'),
       store: storeStr, storeMode: state.storeMode || 'ALL', storeConds: storeConds, remark: '', rd: getVal('npRd') || loginUser(),
       category: state.category || '', cateCode: state.cateCode || '', depCode: depCode, department: deptName(depCode),
+      importSource: state.importSource || null,
       subsets: subsets, items: items
     };
   }
 
   RD.resetNew = function () {
+    state.importSource = null;
     state.subsets = []; state.products = [mkProduct({ recipes: [mkRecipe()] })];
     state.storeConds = []; state.storeMode = 'ALL'; state.category = ''; state.cateCode = '';
     var pj = document.getElementById('npProject'); if (pj) pj.value = '';
@@ -786,6 +792,7 @@
     return {
       project: getVal('npProject'), start: getVal('npStart'), end: getVal('npEnd'), rd: getVal('npRd'),
       category: state.category || '', cateCode: state.cateCode || '', dept: state.dept || '',
+      importSource: state.importSource || null,
       storeMode: state.storeMode || 'ALL', storeConds: state.storeConds || [],
       subsets: state.subsets || [], products: state.products || [], savedAt: Date.now()
     };
@@ -800,9 +807,11 @@
     return true;
   };
   RD.clearDraft = function () { try { localStorage.removeItem(NPD_DRAFT_KEY); } catch (e) {} };
-  function npdRestoreSnapshot(d) {
+  function npdRestoreSnapshot(d, keepReservations) {
     try {
       state.category = d.category || ''; state.cateCode = d.cateCode || ''; state.dept = d.dept || '';
+      state.importSource = d.importSource || null;
+      if (keepReservations) npdKeepCodes = true;
       state.storeMode = d.storeMode || 'ALL'; state.storeConds = d.storeConds || [];
       state.subsets = d.subsets || [];
       state.products = (d.products && d.products.length) ? d.products : [mkProduct({ recipes: [mkRecipe()] })];
@@ -811,7 +820,7 @@
       var en = document.getElementById('npEnd'); if (en && d.end) en.value = d.end;
       var catEl = document.getElementById('npCategory'); if (catEl) catEl.value = state.category;
       var ccEl = document.getElementById('npCateCode'); if (ccEl) ccEl.value = state.cateCode;
-      renderDeptList(); renderStores(); renderAll();
+      renderDeptList(); renderCatList(); renderStores(); renderAll();
     } catch (e) {}
   }
   window.disposeNPD = function () {
@@ -845,6 +854,7 @@
 
   RD.submit = function (which) {
     if (which === 'new') {
+      if (state.importSource && (!state.importSource.storesReviewed || (state.storeMode !== 'ALL' && !condBranchCount(state.storeConds)))) return warnFill('กรุณาเลือกสาขาและยืนยันว่าได้ตรวจเงื่อนไขสาขาจาก Excel แล้วก่อนส่ง');
       var project = getVal('npProject'), start = getVal('npStart'), end = getVal('npEnd');
       if (!project) return warnFill('กรุณาระบุชื่อชุดสินค้า / Project');
       if (!start) return warnFill('กรุณาระบุวันที่เริ่ม');
@@ -993,6 +1003,7 @@
       CAT_LIST.push({ code: code, name: nm });
       state.category = nm; state.cateCode = code;
       renderCatList();
+      if (window.PC_NpdExcelUI) PC_NpdExcelUI.refreshCategories(code);
       var cc = document.getElementById('npCateCode'); if (cc) cc.value = code;
       npdSyncItemCodes(); renderProducts();
       Swal.fire({ icon: 'success', title: 'เพิ่มหมวดแล้ว', html: 'หมวด: <b>' + esc(nm) + '</b><br>รหัสหมวด (auto · แผนก ' + state.dept + '): <b>' + esc(code) + '</b>', timer: 2200, showConfirmButton: false });
@@ -1056,7 +1067,7 @@
             showCancelButton: true, confirmButtonColor: '#2e934a',
             confirmButtonText: '<i class="fas fa-folder-open me-1"></i>ทำต่อจากร่าง', cancelButtonText: 'เริ่มใหม่'
           }).then(function (r) {
-            if (r.isConfirmed) { npdRestoreSnapshot(d); }
+            if (r.isConfirmed) { npdRestoreSnapshot(d, true); }
             else { npdReturnSnapshotCodes(d); RD.clearDraft(); }
             window.__npdBaseline = npdSig();
           });
@@ -1065,6 +1076,63 @@
     } catch (e) {}
   }
 
+  /* Excel integration is a draft-only adapter. It never submits the imported
+     workbook; normal NPD validation and the Cloud-acknowledged submit stay in use. */
+  RD.getExcelImportOptions = function () {
+    return { categories: CAT_LIST.filter(function (c) { return c.code && npdCatShown(c.name); }).map(function (c) { return { code: c.code, name: c.name }; }),
+      selectedCategoryCode: state.cateCode || '',
+      channels: npdChannels(), subsetMaster: subsetMaster(), hasData: npdHasData() || !!getVal('npProject') || state.subsets.length > 0 || state.products.some(function (p) { return !!String(p.name || '').trim(); }) };
+  };
+  RD.getExcelImportReview = function () { return state.importSource || null; };
+  RD.reviewImportStores = function (checked) {
+    if (state.importSource) state.importSource.storesReviewed = !!checked;
+  };
+  RD.importExcelPlan = function (plan, options) {
+    if (!window.PC_NpdExcel) throw Error('ตัวอ่าน Excel ยังไม่พร้อม กรุณาเปิดหน้า NPD อีกครั้ง');
+    if (!window.PC_COUNTER) throw Error('ระบบเลขกลางยังไม่พร้อม กรุณาเปิดหน้า NPD อีกครั้ง');
+    var o = options || {}, current = RD.getExcelImportOptions();
+    if (!o.category || !current.categories.some(function (c) { return c.code === o.category.code && c.name === o.category.name; })) throw Error('กรุณาเลือกหมวดที่เปิดใช้งานในระบบ');
+    Object.keys(o.channelMap || {}).forEach(function (ch) { var mapped = o.channelMap[ch]; if (mapped !== '__skip__' && current.channels.indexOf(mapped) < 0) throw Error('ช่องทาง ' + mapped + ' ไม่ได้เปิดใช้งานในฟอร์ม NPD'); });
+    var before = npdSnapshot(), draft = PC_NpdExcel.createDraft(plan, {
+      category: o.category, channelMap: o.channelMap, subsetMaster: current.subsetMaster,
+      reserve: function (type, cat) { return type === 'ss' ? npdReserveSS() : (cat === '103' ? npdReserveCMPOS() : npdReserveItem(cat)); },
+      release: function (type, code) { if (type === 'ss') npdReturnSS(code); else npdReturnItem(code); }
+    });
+    draft.project = o.project || plan.sheet;
+    draft.importSource.file = String(o.fileName || '');
+    try {
+      state.category = draft.category; state.cateCode = draft.cateCode; state.dept = draft.dept;
+      state.products = draft.products; state.subsets = draft.subsets;
+      state.storeMode = draft.storeMode; state.storeConds = draft.storeConds; state.importSource = draft.importSource;
+      ['npProject','npStart','npEnd','npCateCode'].forEach(function (id, i) { var el = document.getElementById(id); if (el) el.value = [draft.project,draft.start,draft.end,draft.cateCode][i]; });
+      renderDeptList(); renderCatList(); renderStores(); renderAll();
+    } catch (e) {
+      npdReturnSnapshotCodes(draft); npdRestoreSnapshot(before); throw e;
+    }
+    // Only return reservations belonging to the form that was replaced. Never
+    // return the new draft's codes or codes already confirmed downstream.
+    npdReturnSnapshotCodes(before);
+    npdKeepCodes = false;
+    return { products: draft.products.length, subsets: draft.subsets.length };
+  };
+  RD.importExcelSubsetPlan = function (plan, options) {
+    if (!window.PC_NpdExcel || !window.PC_COUNTER) throw Error('ตัวอ่าน Excel หรือระบบเลขกลางยังไม่พร้อม กรุณาเปิดหน้า NPD อีกครั้ง');
+    var o = options || {}, before = state.subsets.slice();
+    var draft = PC_NpdExcel.createSubsetDraft(plan, {
+      subsetMaster: subsetMaster(), existingSubsets: before,
+      reserve: function (type) { return type === 'ss' ? npdReserveSS() : npdReserveCMPOS(); },
+      release: function (type,code) { if (type === 'ss') npdReturnSS(code); else npdReturnCMPOS(code); }
+    });
+    draft.subsets.forEach(function (s) { s.importSource = {file:String(o.fileName || ''),sheet:plan.sheet}; });
+    try {
+      state.subsets = before.concat(draft.subsets);
+      renderAll();
+      // A previously saved draft owns its reservations. Keep it consistent
+      // when appending groups, without changing the user's saved baseline.
+      if (npdKeepCodes) localStorage.setItem(NPD_DRAFT_KEY,JSON.stringify(npdSnapshot()));
+    } catch (e) { state.subsets = before; npdReturnSnapshotCodes(draft); renderAll(); throw e; }
+    return { subsets: draft.subsets.length, powders: draft.subsets.reduce(function (n,s) { return n + s.powders.length; },0) };
+  };
   window.RD = RD;
   window.initNPD = init;
   /* หน่วย (Unit) ล้อตามเมนูสลับภาษา TH/EN — เมื่อสลับภาษา รีเฟรช datalist หน่วยให้ตรงภาษา */

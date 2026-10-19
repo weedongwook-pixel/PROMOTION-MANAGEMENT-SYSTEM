@@ -7,7 +7,7 @@
  * =========================================================================== */
 (function () {
   var THEMES = [
-    { id:'classic',  nm:'Classic',      desc:'ดำ-เหลือง (แบรนด์)', glass:false, pal:{ bg:'#eef2ef', sb:'#1a1d20', sbtx:'#ffffff', accent:'#2e934a', logotx:'#1a1d20', navon:'rgba(46,147,74,.16)', hd:'#2e934a', hdtx:'#ffffff', card:'#ffffff', cb:'#e2e7e3', tx:'#1a1d20', sub:'#8a9099', thbg:'#1a1d20', thtx:'#ffffff' } },
+    { id:'classic',  nm:'Classic Green', desc:'เขียวอ่อน · อ่านง่าย', glass:false, pal:{ bg:'#f7faf7', sb:'#ffffff', sbtx:'#25382c', accent:'#1b5e20', logotx:'#ffffff', navon:'#e8f5e9', hd:'#1b5e20', hdtx:'#ffffff', card:'#ffffff', cb:'#d5e3d7', tx:'#25382c', sub:'#53685a', thbg:'#e8f5e9', thtx:'#1b5e20' } },
     { id:'light',    nm:'Light',        desc:'สว่าง', glass:false, pal:{ bg:'#f5f7f9', sb:'#ffffff', sbtx:'#1a1d20', accent:'#2e934a', logotx:'#ffffff', navon:'rgba(46,147,74,.1)', hd:'#ffffff', hdtx:'#1a1d20', card:'#ffffff', cb:'#e7ebee', tx:'#1a1d20', sub:'#8a9099', thbg:'#eef2f4', thtx:'#1a1d20' } },
     { id:'dark',     nm:'Dark',         desc:'มืด', glass:false, pal:{ bg:'#16181b', sb:'#0e0f11', sbtx:'#e6e8ea', accent:'#2e934a', logotx:'#1a1d20', navon:'rgba(46,147,74,.14)', hd:'#1f2226', hdtx:'#f0f1f2', card:'#22262b', cb:'#2c3035', tx:'#e6e8ea', sub:'#9aa0a6', thbg:'#2a2f35', thtx:'#e6e8ea' } },
     { id:'glass',    nm:'Liquid Glass', desc:'กระจกโปร่งแสง', glass:true, pal:{ bg:'linear-gradient(150deg,#a8c8ef,#d3e6f5 45%,#c2ead9)', sb:'rgba(20,30,50,.82)', sbtx:'#ffffff', accent:'#0a84ff', logotx:'#ffffff', navon:'rgba(10,132,255,.16)', hd:'rgba(255,255,255,.42)', hdtx:'#14334f', card:'rgba(255,255,255,.55)', cb:'rgba(255,255,255,.65)', tx:'#16314e', sub:'#5c768f', thbg:'rgba(20,40,70,.78)', thtx:'#ffffff' } },
@@ -65,6 +65,14 @@
     r.setProperty('--pc-navon', p.navon);
     r.setProperty('--pc-logo-tx', p.logotx);
     r.setProperty('--pc-card', p.card);
+    r.setProperty('--workspace-canvas', p.bg);
+    r.setProperty('--workspace-surface', p.card);
+    r.setProperty('--workspace-text', p.tx);
+    r.setProperty('--workspace-muted', p.sub);
+    r.setProperty('--workspace-border', p.cb);
+    r.setProperty('--workspace-soft', p.thbg);
+    r.setProperty('--workspace-head-text', p.thtx);
+    r.setProperty('--workspace-action', p.accent);
     document.documentElement.setAttribute('data-pc-theme', id);
     document.documentElement.setAttribute('data-pc-glass', t.glass ? '1' : '0');
     return t;

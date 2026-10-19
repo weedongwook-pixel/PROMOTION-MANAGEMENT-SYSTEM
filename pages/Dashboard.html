@@ -176,7 +176,7 @@
 .dash2.dark .d2donut .ctr-v{ fill:#eef2f6; } .dash2.dark .d2ring text{ fill:#eef2f6; }
 </style>
 
-<div class="dash2">
+<div class="dash2 pc-workspace">
   <div class="d-head">
     <div>
       <div class="eyebrow">Potato Corner · Operations</div>
@@ -418,14 +418,14 @@
       <div class="col-md-4">
         <div class="dept" onclick="window.showDeptTiming('it')">
           <div class="dh"><div class="dico" style="background:rgba(63,111,209,.12);color:#3f6fd1;"><i class="fas fa-microchip"></i></div><div><b>IT</b><small>ตั้งค่าปุ่ม POS</small></div></div>
-          <div class="body">${d2Ring(itPct, '#3f6fd1')}<div class="figs"><div class="big num">${s.it.complete}/${s.it.complete + s.it.pending}<small>ทำเสร็จ / ทั้งหมด</small></div></div></div>
+          <div class="body">${d2Ring(itPct, 'var(--d-blue)')}<div class="figs"><div class="big num">${s.it.complete}/${s.it.complete + s.it.pending}<small>ทำเสร็จ / ทั้งหมด</small></div></div></div>
           <div class="meta"><span style="color:#c98a1e;font-weight:600;">ค้าง ${s.it.pending}</span><span>เฉลี่ย ${leadTime(s.avgItDays)}</span></div>
         </div>
       </div>
       <div class="col-md-4">
         <div class="dept" onclick="window.showDeptTiming('op')">
           <div class="dh"><div class="dico" style="background:rgba(31,138,78,.12);color:#1f8a4e;"><i class="fas fa-clipboard-check"></i></div><div><b>OP</b><small>ตรวจสอบ</small></div></div>
-          <div class="body">${d2Ring(opPct, '#1f8a4e')}<div class="figs"><div class="big num">${s.op.approved}/${s.op.approved + s.op.waiting}<small>ตรวจแล้ว / ทั้งหมด</small></div></div></div>
+          <div class="body">${d2Ring(opPct, 'var(--d-green)')}<div class="figs"><div class="big num">${s.op.approved}/${s.op.approved + s.op.waiting}<small>ตรวจแล้ว / ทั้งหมด</small></div></div></div>
           <div class="meta"><span style="color:#1f8a4e;font-weight:600;">ผ่าน ${s.op.cleanPass}</span><span style="color:#cf4a52;font-weight:600;">ตีกลับ ${s.op.rejects}</span></div>
         </div>
       </div>`;
@@ -581,9 +581,9 @@
       const totB = rows.reduce((a, r) => a + r.buttons, 0), totI = rows.reduce((a, r) => a + r.itDone, 0), totO = rows.reduce((a, r) => a + r.opOk, 0);
       box.innerHTML = `
         <div class="d2legend">
-          <span class="lg"><span class="sw" style="background:#c5cdd6;"></span> ปุ่มทั้งหมด (${totB})</span>
-          <span class="lg"><span class="sw" style="background:#3f6fd1;"></span> IT ทำเสร็จ (${totI})</span>
-          <span class="lg"><span class="sw" style="background:#1f8a4e;"></span> OP ยืนยัน (${totO})</span>
+          <span class="lg"><span class="sw" style="background:#a5d6a7;"></span> ปุ่มทั้งหมด (${totB})</span>
+          <span class="lg"><span class="sw" style="background:var(--d-blue);"></span> IT ทำเสร็จ (${totI})</span>
+          <span class="lg"><span class="sw" style="background:var(--d-green);border-bottom:2px dashed currentColor;"></span> OP ยืนยัน (${totO})</span>
           <span class="lg" style="margin-left:auto;color:var(--d-faint);">คลิกเดือนเพื่อเจาะ · เดือนนี้ไฮไลต์</span>
         </div>
         <div class="d2chart-outer" id="d2chartOuter"><div class="d2chart-scroll" id="d2chartScroll">${window.d2ComboChart(rows, cur)}</div><div class="d2tt" id="d2tt"></div></div>`;
@@ -604,9 +604,9 @@
         <span class="ovsub">Promotion ${val} · ${r.campaigns} แคมเปญ · ${r.buttons} ปุ่ม</span>
       </div>
       <div class="funnel">
-        ${fr('ปุ่มทั้งหมด', r.buttons, '#9aa6b4', 0)}
-        ${fr('IT ทำเสร็จ', r.itDone, '#3f6fd1', r.buttons)}
-        ${fr('OP ยืนยัน', r.opOk, '#1f8a4e', r.buttons)}
+        ${fr('ปุ่มทั้งหมด', r.buttons, '#a5d6a7', 0)}
+        ${fr('IT ทำเสร็จ', r.itDone, 'var(--d-blue)', r.buttons)}
+        ${fr('OP ยืนยัน', r.opOk, 'var(--d-green)', r.buttons)}
       </div>
       ${r.buttons === 0 ? '<div class="empty" style="padding:16px 0 0;"><i class="far fa-folder-open me-1"></i>เดือนนี้ยังไม่มีการแจ้งปุ่ม</div>' : ''}`;
   };

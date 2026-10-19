@@ -1,0 +1,14 @@
+name = "potato-promo-sync"
+main = "worker.js"
+compatibility_date = "2026-07-02"
+
+[vars]
+EMAIL_CONNECTION_ENABLED = "false"
+EMAIL_COPRO_ENABLED = "false"
+EMAIL_TEST_SEND_ENABLED = "false"
+EMAIL_SEND_ENABLED = "false"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "potato-promo"
+database_id = "40a82f9e-703e-4816-9822-dcf8fd461f06"

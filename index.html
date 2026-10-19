@@ -1,1 +1,53 @@
-<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Potato Corner · Promotion Management System</title><style>html,body{margin:0;height:100%;background:#0e1116;color:#e8eaee;font-family:Kanit,system-ui,sans-serif}#sp{position:fixed;inset:0;display:grid;place-items:center;gap:14px;grid-auto-flow:row;text-align:center}#sp b{font-size:20px;letter-spacing:.5px}#sp small{opacity:.6}iframe{border:0;width:100%;height:100%;display:block}</style></head><body><div id="sp"><div><b>Potato Corner</b><br><small>กำลังโหลดระบบโปรโมชัน…</small></div></div><iframe id="app" src="Potato Corner Promotion System.html?v=p2-20260820c" title="Potato Corner Promotion System"></iframe><script>document.getElementById('app').addEventListener('load',()=>{const s=document.getElementById('sp');if(s)s.remove()});if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js?v=p2-20260820c'));</script></body></html>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Potato Corner · Promotion Management System</title>
+  <style>
+    html,body{margin:0;height:100%;background:#f7faf7;color:#1b5e20;font-family:Tahoma,system-ui,sans-serif}
+    #sp{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:20px}
+    #sp b{font-size:20px;letter-spacing:.5px}
+    #sp small{opacity:.7}
+    #slow[hidden]{display:none}
+    #slow{margin-top:18px;line-height:1.5}
+    #slow button,#slow a{display:inline-block;margin:10px 4px 0;padding:8px 13px;border:1px solid #1b5e20;border-radius:8px;background:#ffffff;color:#1b5e20;font:inherit;cursor:pointer;text-decoration:none}
+    #slow button:focus-visible,#slow a:focus-visible{outline:3px solid #1b5e20;outline-offset:3px}
+    iframe{border:0;width:100%;height:100%;display:block}
+  </style>
+</head>
+<body>
+  <div id="sp">
+    <div>
+      <b>Potato Corner</b><br>
+      <div id="slow" hidden role="status" aria-live="polite">
+        โหลดนานกว่าปกติ กรุณาตรวจสอบการเชื่อมต่อ<br>
+        <button id="retry" type="button">ลองโหลดอีกครั้ง</button>
+        <a href="Potato Corner Promotion System.html?v=p6-20261018-login-boot">เปิดเว็บโดยตรง</a>
+      </div>
+    </div>
+  </div>
+  <iframe id="app" title="Potato Corner Promotion System"></iframe>
+  <script>
+  (function () {
+    const frame = document.getElementById('app');
+    const splash = document.getElementById('sp');
+    // MSAL in the opener reads this response hash. Do not boot another app,
+    // modify the hash, or register a service worker in the callback popup.
+    if (window.opener && /(?:^#|&)(?:code|error)=/.test(window.location.hash)) {
+      frame.hidden = true;
+      splash.remove();
+      return;
+    }
+    const slowTimer = setTimeout(() => { document.getElementById('slow').hidden = false; }, 15000);
+    frame.addEventListener('load', () => { clearTimeout(slowTimer); splash.remove(); });
+    frame.src = 'Potato Corner Promotion System.html?v=p6-20261018-login-boot';
+    document.getElementById('retry').addEventListener('click', () => {
+      document.getElementById('slow').hidden = true;
+      frame.src = 'Potato Corner Promotion System.html?v=p6-20261018-login-boot&retry=' + Date.now();
+    });
+    if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=p5-20261008-resilient-boot'));
+  }());
+  </script>
+</body>
+</html>

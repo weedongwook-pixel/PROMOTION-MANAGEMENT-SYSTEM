@@ -4,8 +4,27 @@ node_modules/
 .github/
 .agents/
 .codex/
+.gitignore
+README.md
+wrangler.toml
+src/
 tests/
+scripts/
+docs/superpowers/
+docs/gmail-connection-setup.md
+PRODUCT.md
+client_secret*.json
+*.credentials.json
+sync-worker/
+backup-worker/
+recovery-evidence-*/
+private-backups/
+.wrangler/
+.dev.vars
+.env*
+*.sql
 
 # Local/editor artefacts
 .DS_Store
 *.log
+/.superpowers/**

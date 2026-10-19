@@ -81,6 +81,13 @@
   if (!state.log) state.log = [];
 
   function save() { if (!CounterStore.write(state)) return false; fire(); return true; }
+  function reloadFromStorage() {
+    var stored = CounterStore.read();
+    if (stored && stored.reservations && stored.types) {
+      state = stored;
+      if (!state.log) state.log = [];
+    }
+  }
 
   /* seed each type's cursor from the highest real number in the file.
    * cursor = "highest number ever issued". It can only move UP. */
@@ -141,6 +148,11 @@
      → ก่อนหยิบเลขจากคลังต้องเช็กกับระบบก่อน ชนแล้วตัดออกจากคลังถาวร */
   function codeInUse(code, type) {
     code = String(code || "").trim(); if (!code) return false;
+    if (type === 'itemset' || type === 'item') {
+      try {
+        if (window.PC_API && PC_API.getNpdProducts && PC_API.getNpdProducts().some(function(p){return String(p.itemCode || '').trim() === code;})) return true;
+      } catch(e) { return true; }
+    }
     var tries = type ? [type] : [];
     /* เลขหมวดสินค้า (105/106/109/1xx) อาจอยู่ทั้งช่อง Code Item Set และข้อมูลหลักสินค้า → เช็กทั้ง 2 ทาง */
     if (type === "item" || !type) tries.push("itemset");
@@ -312,6 +324,7 @@
      stable field; replacing a field burns its former code instead of recycling
      a number that may already have reached POS/Backoffice. */
   function claimExact(type, code, opts) {
+    reloadFromStorage();
     opts = opts || {};
     code = String(code == null ? "" : code).trim().toUpperCase();
     var where = String(opts.where || ""), field = String(opts.field || "");
@@ -320,13 +333,14 @@
       : type === "item" && /^(105|106|109)\d{3,}$/.test(code) && code.indexOf(cat) === 0;
     if (!valid || !where || !field) return { ok: false, reason: "invalid" };
     var existing = findByCode(code, type);
-    if (existing && existing.status === STATUS.RELEASED) return { ok: false, reason: "released" };
+    var reclaim = existing && existing.status === STATUS.RELEASED;
+    if (reclaim && (!opts.allowReleased || !window.PC_API || !PC_API.checkCode || codeInUse(code, type))) return { ok: false, reason: "released" };
     var ownField = existing && String(existing.where || "") === where &&
       (String(existing.field || "") === field ||
        (opts.legacyField && String(existing.field || "") === String(opts.legacyField)));
     var ownBuilder = existing && String(existing.where || "") === "ItemSet Builder" &&
       opts.builderField && String(existing.field || "") === String(opts.builderField);
-    if (existing && !ownField && !ownBuilder) {
+    if (existing && !reclaim && !ownField && !ownBuilder) {
       return { ok: false, reason: "taken", where: existing.where || "", field: existing.field || "" };
     }
     if (existing && existing.status === STATUS.CONFIRMED && ownField && String(existing.field || "") === field) {
@@ -346,6 +360,7 @@
     t.freed = (t.freed || []).filter(function (n) { return Number(n) !== seq; });
     var entry = existing || { code: code, type: type, num: seq, cat: cat || undefined, at: now(), by: currentUser() };
     entry.where = where; entry.field = field; entry.status = STATUS.CONFIRMED;
+    if (reclaim) state.log.unshift({ t: now(), act: 'RECLAIM', type: type, code: code, where: where, by: currentUser(), previousWhere: before.reservations[key(type, code)].where, previousField: before.reservations[key(type, code)].field });
     entry.confirmedAt = now(); entry.releasedAt = "";
     state.reservations[key(type, code)] = entry;
     state.log.unshift({ t: now(), act: existing ? "CONFIRM" : "CLAIM", type: type, code: code, where: where, by: currentUser() });
@@ -392,6 +407,7 @@
    * and must stay burned to avoid collisions. */
   function returnCode(code, type, src, force) {
     var e = findByCode(code, type); if (!e) return null;
+    if(e.retainForHistory && !force)return null;
     if (e.status === STATUS.RELEASED) return null;             // already burned
     if (e.status === STATUS.CONFIRMED && !force) return null;  // used → cannot reuse (unless explicitly forced)
     var seq = e.num;
@@ -435,6 +451,7 @@
    * ไม่ยุ่ง · inUse = รายการโค้ดที่ระบบงานยังอ้างถึง (จาก PC_API.getInUseCodes) — โค้ด
    * RESERVED ที่ไม่อยู่ใน inUse = งานถูกลบ/ฟอร์มถูกทิ้ง → คืนเลขกลับ (free-list/ถอย cursor). */
   function returnOrphans(inUse, opts) {
+    reloadFromStorage();
     opts = opts || {};
     var keep = {};
     (inUse || []).forEach(function (c) { var k = String(c == null ? "" : c).trim().toUpperCase(); if (k) keep[k] = 1; });
@@ -443,6 +460,7 @@
     var freed = [], kept = [];
     Object.keys(state.reservations).slice().forEach(function (k) {
       var e = state.reservations[k];
+      if(e && e.retainForHistory){kept.push(e.code);return;}
       if (!e || e.status !== STATUS.RESERVED) return;                 // เฉพาะที่จองค้าง
       if (keep[String(e.code).toUpperCase()]) { kept.push(e.code); return; } // ยังถูกใช้งานจริง → คงไว้
       if (minAge) { var t = Date.parse(e.at || ""); if (t && (nowMs - t) < minAge) { kept.push(e.code); return; } } // เพิ่งจอง → ยังไม่คืน
@@ -703,6 +721,7 @@
     returnOrphans: returnOrphans,
     statusOf: statusOf, entryOf: entryOf, reservedHit: reservedHit, findReservedFor: findReservedFor,
     findForField: findForField, claimExact: claimExact,
+    reloadFromStorage: reloadFromStorage,
     list: list, badgeHTML: badgeHTML, chipHTML: chipHTML,
     onChange: onChange, reset: reset,
     _save: save,

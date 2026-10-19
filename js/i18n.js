@@ -13,7 +13,42 @@
    page load (async tables, SweetAlert modals, etc.).
    ============================================================ */
 (function () {
-  var DICT = window.PC_I18N_DICT || {};
+  var DICT = Object.assign({}, window.PC_I18N_DICT || {}, {
+    'กรุณาเลือกว่าต้องตั้งค่า Mapping Code หรือไม่':'Select whether code mapping is required',
+    'กรุณาระบุรหัส Mapping Code / Value Design สำหรับ IT':'Enter the Mapping Code / Value Design code for IT',
+    'ข้อมูล Mapping Code ยาวเกินกำหนด':'The code mapping information exceeds the length limit',
+    'ต้องมีปุ่มอย่างน้อย 1 ปุ่ม':'At least one promotion button is required',
+    'ลบปุ่มนี้จากรายการ?':'Remove this button from the campaign?',
+    'รหัสที่เคยใช้งานจะไม่ถูกคืนอัตโนมัติ การเปลี่ยนแปลงมีผลเมื่อบันทึกสำเร็จ':'Previously assigned codes will not be returned automatically. Changes apply only after a successful save.',
+    'ลบปุ่ม':'Remove button','เลื่อนขึ้น':'Move up','เลื่อนลง':'Move down',
+    'เลือกไฟล์ใหม่เพื่อแทนไฟล์แนบเดิม':'Choose a new file to replace the existing attachment',
+    'อ่านไฟล์แนบไม่สำเร็จ ข้อมูลในฟอร์มยังอยู่':'Unable to read the attachment. Your form is still available.',
+    'ข้อมูลรวมไฟล์แนบใหญ่เกินไป กรุณาลดขนาดไฟล์แล้วลองใหม่ ข้อมูลในฟอร์มยังอยู่':'The form and attachments are too large. Reduce the file sizes and try again. Your form is still available.',
+    'แคมเปญ / ผู้ส่งงาน': 'Campaign / Submitted by',
+    'ค้นหาชื่อแคมเปญ': 'Search campaign name',
+    'ค้นหาชื่อผู้ส่งงาน': 'Search submitter name',
+    'ค้นหาชื่อแคมเปญ / ชื่อปุ่ม / Code...': 'Search campaign / button / code...',
+    'กรองชื่อแคมเปญ': 'Filter campaign name',
+    'ชื่อแคมเปญ เลื่อนเพื่ออ่านชื่อเต็ม': 'Campaign name; scroll to read the full name',
+    'ผู้ส่งงาน': 'Submitted by', 'สถานะปัจจุบัน': 'Current status',
+    'ผู้แจ้ง': 'Reported by', 'ผู้แจ้ง:': 'Reported by:',
+    'แคมเปญ / ผู้แจ้ง': 'Campaign / Reported by', 'ค้นหาชื่อผู้แจ้ง': 'Search reporter name',
+    'ความคืบหน้า': 'Progress', 'อัปเดตล่าสุด': 'Last updated',
+    'ขั้นตอนงาน:': 'Workflow:', 'โชว์ทั้งหมด': 'Show all',
+    'รอ IT': 'Awaiting IT', 'รอ OP': 'Awaiting OP',
+    'รอ OP ตรวจสอบ': 'Awaiting OP review', 'ต้องแก้ไข': 'Needs changes',
+    'ตรวจสอบครบแล้ว': 'Fully reviewed', 'ส่งกลับให้ IT แก้ไข': 'Returned to IT',
+    'รอ IT ขึ้นปุ่ม': 'Awaiting IT button setup', 'รอ IT แก้ไขปุ่ม': 'Awaiting IT corrections',
+    'OP ตรวจสอบแล้ว': 'OP review completed',
+    'รอดำเนินการโดย': 'Assigned to', 'ไม่ค้างดำเนินการ': 'No pending action',
+    'รายการที่แสดง': 'Displayed campaigns', 'อยู่ระหว่างดำเนินการ': 'In progress',
+    'IT และ OP ตรวจสอบครบ': 'IT and OP completed',
+    'OP ตรวจเสร็จ': 'OP reviewed on', 'วันที่ทำรายการ': 'Submitted on',
+    'ใช้งานวันที่เลือก': 'Active on selected date', 'วันที่เริ่ม': 'Start date',
+    'วันที่สิ้นสุด': 'End date', '15 แถว': '15 rows', '30 แถว': '30 rows', '50 แถว': '50 rows',
+    'พิมพ์ที่เลือก': 'Print selected', 'ผู้ส่ง:': 'Submitted by:',
+    'มีการแก้ไข': 'Revised', 'ถึง ': 'To '
+  });
   var THAI = /[\u0E00-\u0E7F]/;
 
   /* exact full-string map (any length) + long-key substring list (len >= 4) */
@@ -61,6 +96,7 @@
   var ORIGATTR = new WeakMap();  // element  -> { attr: authored string }
 
   function applyTextNode(n) {
+    if (n.parentElement && n.parentElement.closest('[translate="no"]')) return;
     if (!ORIG.has(n)) ORIG.set(n, n.nodeValue);
     var orig = ORIG.get(n);
     var v = (window.PC_LANG === 'EN') ? toEN(orig) : toTH(orig);
@@ -79,6 +115,7 @@
 
   /* elements that carry their own bilingual copy (sidebar nav, tagged chrome) */
   function applyDataAttr(el) {
+    if (el.closest('[translate="no"]')) return;
     var v = (window.PC_LANG === 'EN')
       ? el.getAttribute('data-en')
       : (el.getAttribute('data-th') || el.getAttribute('data-en'));
@@ -91,12 +128,14 @@
     if (node.nodeType === 3) { applyTextNode(node); return; }
     if (node.nodeType !== 1) return;
     if (SKIP[node.nodeName]) return;
+    if (node.getAttribute('translate') === 'no') return;
     if (node.hasAttribute('data-en') || node.hasAttribute('data-th')) {
       applyDataAttr(node);
       return; // owns its own text
     }
     if (node.hasAttribute('placeholder')) applyAttr(node, 'placeholder');
     if (node.hasAttribute('title')) applyAttr(node, 'title');
+    if (node.hasAttribute('aria-label')) applyAttr(node, 'aria-label');
     var c = node.firstChild;
     while (c) { var next = c.nextSibling; walk(c); c = next; }
   }

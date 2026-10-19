@@ -149,6 +149,7 @@
   var META_CLOUDKEY = 'promo::meta';
   var _snap = {};              // cloudKey -> ค่าที่ซิงค์ล่าสุด (รู้ว่าเครื่องนี้เคยเห็นแคมเปญไหน)
   var _migrateLegacy = false;  // true ถ้า cloud ยังเก็บแบบก้อนเดียว (ต้อง migrate ตอน push)
+  var _hydrated = false;       // ห้ามส่งข้อมูลจากแท็บเก่าก่อนอ่าน Cloud สำเร็จ
 
   /* `working` สร้างได้จาก `months` อยู่แล้ว จึงไม่เก็บซ้ำใน localStorage.
      รองรับ backup/ข้อมูล cloud รุ่นเก่าที่ยังมี field นี้โดยตัดออกก่อนเขียนลงเครื่อง. */
@@ -159,6 +160,31 @@
       var disk = Object.assign({}, s); delete disk.working;
       return JSON.stringify(disk);
     } catch (e) { return typeof raw === 'string' ? raw : JSON.stringify(raw); }
+  }
+  // Keep a recoverable copy before a Cloud pull replaces the browser store.
+  // IndexedDB is used because localStorage is already close to its quota.
+  function archiveBeforeReplace(raw) {
+    if (!raw) return Promise.resolve();
+    if (!window.indexedDB) return Promise.reject(new Error('Cannot archive local data before Cloud pull'));
+    return new Promise(function (resolve, reject) {
+      var open = indexedDB.open('pc_sync_history', 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore('snapshots', { autoIncrement: true }); };
+      open.onerror = function () { reject(open.error || new Error('History database unavailable')); };
+      open.onsuccess = function () {
+        var db = open.result, tx = db.transaction('snapshots', 'readwrite'), bucket = tx.objectStore('snapshots');
+        bucket.add({ at: new Date().toISOString(), reason: 'before-cloud-pull', store: raw });
+        tx.oncomplete = function () {
+          var cleanup = db.transaction('snapshots', 'readwrite'), object = cleanup.objectStore('snapshots');
+          var keys = object.getAllKeys();
+          keys.onsuccess = function () { (keys.result || []).slice(0, -12).forEach(function (key) { object.delete(key); }); };
+          cleanup.oncomplete = function () { db.close(); };
+          cleanup.onerror = function () { db.close(); };
+          resolve();
+        };
+        tx.onerror = function () { db.close(); reject(tx.error || new Error('History archive failed')); };
+        tx.onabort = function () { db.close(); reject(tx.error || new Error('History archive aborted')); };
+      };
+    });
   }
 
   /* Cloud ยังเก็บ working เพื่อให้ client รุ่นก่อนหน้าทำงานต่อได้; ถ้า local disk รุ่นใหม่
@@ -198,6 +224,8 @@
         branchNote: f.branchNote || '', _wasItemSet: f._wasItemSet || false, typeSel: f.typeSel || '',
         txnDate: f.txnDate || f.submittedDate || f.timestamp || '', submittedBy: f.submittedBy || f.reporter || '',
         reporter: f.reporter || f.submittedBy || '',
+        submissionId: f.submissionId || '', submissionBatchId: f.submissionBatchId || '',
+        submissionForm: f.submissionForm || '', submissionExpectedButtons: f.submissionExpectedButtons || 0,
         customerGroup: f.customerGroup || '', crmTarget: f.crmTarget || '', crmTargetName: f.crmTargetName || ''
       };
     });
@@ -213,6 +241,67 @@
       (s.months[mk] || []).forEach(function (r) { var c = campOf(r); (camps[c] = camps[c] || { w: [], m: {} }); (camps[c].m[mk] = camps[c].m[mk] || []).push(r); });
     });
     return { meta: meta, camps: camps };
+  }
+
+  // Build the D1 compare-and-swap payload from item-grain form rows without
+  // touching the browser store. The caller adds any code/file key writes and
+  // sends the complete payload with commitSubmission().
+  async function prepareCampaignWrites(rows, submissionId) {
+    if (!Array.isArray(rows) || !rows.length) throw new Error('ไม่มีรายการปุ่มที่จะบันทึก');
+    if (!submissionId) throw new Error('ไม่พบรหัสการส่งงาน');
+    var byCampaign = {};
+    rows.forEach(function (row) {
+      if (!row || !String(row.campaign || '').trim() || !String(row.month || '').trim() ||
+          !String(row.shortName || '').trim() || String(row.submissionBatchId || row.submissionId || '') !== submissionId) {
+        throw new Error('ข้อมูลแคมเปญสำหรับบันทึก Cloud ไม่ครบ');
+      }
+      var name = String(row.campaign).trim();
+      (byCampaign[name] = byCampaign[name] || []).push(row);
+    });
+    var writes = [];
+    for (var campaign of Object.keys(byCampaign)) {
+      var key = campCloudKey(campaign);
+      var remote = await readCloudKey(key);
+      var block = remote ? JSON.parse(remote.value) : { w: [], m: {}, _ts: 0 };
+      if (!block || typeof block !== 'object' || !block.m || typeof block.m !== 'object') throw new Error('ข้อมูลแคมเปญบน Cloud ไม่ถูกต้อง');
+      if (!Array.isArray(block.w)) block.w = workingForStore({ months: block.m });
+      var newMonths = {};
+      byCampaign[campaign].forEach(function (row) {
+        var month = String(row.month);
+        (newMonths[month] = newMonths[month] || []).push(row);
+      });
+      var newButtons = workingForStore({ months: newMonths });
+      newButtons.forEach(function (button) {
+        if (block.w.some(function (old) {
+          return old && old.month === button.month && old.shortName === button.shortName;
+        })) throw new Error('ปุ่มนี้มีอยู่ในแคมเปญบน Cloud แล้ว: ' + button.shortName);
+      });
+      Object.keys(newMonths).forEach(function (month) {
+        if (block.m[month] != null && !Array.isArray(block.m[month])) throw new Error('ข้อมูลเดือนบน Cloud ไม่ถูกต้อง');
+        block.m[month] = (block.m[month] || []).concat(newMonths[month]);
+      });
+      block.w = block.w.concat(newButtons);
+      block._ts = Math.max(Date.now(), (Number(block._ts) || 0) + 1);
+      writes.push({ key: key, value: JSON.stringify(block), expectedUpdatedAt: remote ? remote.updatedAt : null });
+    }
+    return writes;
+  }
+
+  async function savePreparedCampaignRows(rows, batchId, actor, extraWrites) {
+    var writes = await prepareCampaignWrites(rows, batchId);
+    (extraWrites || []).forEach(function (write) { writes.push(write); });
+    var buttons = new Set(rows.map(function (row) {
+      return [row.campaign, row.month, row.shortName].join('\u0000');
+    }));
+    var submission={submissionId: batchId, actor: actor, expectedButtons: buttons.size, writes: writes};
+    if(window.PC_CoProEmail&&window.PC_CoProEmail.active()){
+      if(!_hydrated||_inFlight||Object.keys(_pending).length)throw new Error('Cloud ยังไม่พร้อมสำหรับงานทดสอบอีเมล');
+      var pilot=await window.PC_CoProEmail.registerPrimary(submission);
+      var proof=await submissionReceipt(batchId);
+      if(!proof||proof.savedAt!==pilot.savedAt||proof.savedButtons!==buttons.size)throw new Error('ยังยืนยันหลักฐานการบันทึกไม่ได้ กรุณาตรวจสถานะก่อนส่งซ้ำ');
+      return proof;
+    }
+    return commitSubmission(submission);
   }
   /* รายการงานที่อยู่ใน meta (นอก months/working) — ต้อง MERGE ไม่ทับ
      เดิม pull เอา meta จากคลาวด์ทับทั้งก้อน → งานที่เพิ่งกดบันทึกในเครื่อง (ยัง push ไม่ทัน) หายทันที
@@ -242,6 +331,7 @@
      ตอนนี้: จำเวลาที่ "ก้อนของแคมเปญในเครื่องเปลี่ยน" ไว้ แล้วแนบ _ts ไปกับก้อนที่ push
        ตอน pull เทียบ _ts — ของใครใหม่กว่าชนะ · ถ้าในเครื่องใหม่กว่า ให้คงไว้แล้ว push ตาม */
   var CAMP_TS_KEY = 'pc_camp_edit_v2';
+  var _localStoreEdited = false;
   /* ---- ทะเบียนแคมเปญที่ถูกลบ (tombstone) — FX-P64 -----------------------------
      เดิม: แคมเปญที่ "มีเฉพาะในเครื่อง" = ถือว่าเพิ่งแจ้งเข้ามา → คงไว้ + push ขึ้นคลาวด์
        → แคมเปญที่เครื่องอื่นลบไปแล้ว โดนเครื่องที่ยังมีอยู่ "ดันกลับขึ้นใหม่" ทุกรอบ (ลบไม่หายสักที)
@@ -250,16 +340,18 @@
   var _tombs = {};
   function campTs() { try { var m = JSON.parse(localStorage.getItem(CAMP_TS_KEY) || '{}') || {}; if (_migSig(m)) saveCampTs(m); return m; } catch (e) { return {}; } }
   function saveCampTs(m) { try { localStorage.setItem(CAMP_TS_KEY, JSON.stringify(m)); } catch (e) {} }
+  function campSig(camp) { return _sig(JSON.stringify((camp && camp.m) || {})); }
   /* ประทับเวลาให้แคมเปญที่เนื้อหาในเครื่องต่างจากก้อนที่ซิงค์ล่าสุด (= มีคนแก้ในเครื่องนี้) */
   function noteLocalEdits(camps) {
     var m = campTs(), now = Date.now(), dirty = false;
     Object.keys(camps || {}).forEach(function (c) {
-      var sig = _sig(JSON.stringify(camps[c]));
+      var sig = campSig(camps[c]);
       var e2 = m[c];
       if (e2 && e2.sig === sig) return;           /* เนื้อหาเดิม → คงเวลาเดิม (ไม่ push ซ้ำ) */
-      /* ⭐ เพิ่งเห็นแคมเปญนี้ครั้งแรก (ไม่รู้ว่าของในเครื่องเก่าหรือใหม่) = ตั้ง ts 0 → ให้คลาวด์ชนะ
-         กันเครื่องที่ถือข้อมูลเก่าค้าง พออัปโค้ดใหม่ครั้งแรกแล้วหลงนึกว่าตัวเองเพิ่งแก้ → ดันของเก่าทับ */
-      m[c] = { ts: (e2 ? now : 0), sig: sig }; dirty = true;
+      /* A campaign submitted after a successful Cloud pull is a real local edit,
+         even when this browser has never seen its name before. Giving it ts=0
+         lets an older deletion tombstone hide a newly submitted campaign. */
+      m[c] = { ts: (_hydrated && _localStoreEdited ? now : 0), sig: sig }; dirty = true;
     });
     if (dirty) saveCampTs(m);
     return m;
@@ -267,24 +359,12 @@
   function localTsOf(m, c) { return (m[c] && Number(m[c].ts)) || 0; }
   function reassembleFromCloud(keys) {
     var meta = {}; try { meta = JSON.parse(keys[META_CLOUDKEY] || '{}'); } catch (e) {}
-    var local = {}; try { local = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) {}
     var store = {}; Object.keys(meta).forEach(function (k) { store[k] = meta[k]; });
-    /* คีย์รายการงาน: รวม local + cloud (ตัวที่ stamp ใหม่กว่าชนะ) */
-    META_LIST_KEYS.forEach(function (k) {
-      if (!Array.isArray(local[k]) && !Array.isArray(meta[k])) return;
-      store[k] = mergeMetaList(local[k], meta[k]);
-      /* FX-P84 — ผลรวมมีของที่คลาวด์ยังไม่มี (เครื่องนี้เพิ่งเพิ่ม) → ดันขึ้นให้เครื่องอื่นเห็นด้วย */
-      try { if (JSON.stringify(store[k]) !== JSON.stringify(meta[k] || [])) queuePush(STORE_KEY); } catch (e) {}
-    });
-    /* ตัวนับเลขเอกสาร: ใช้ค่ามากสุด กันออกเลขซ้ำเมื่อ 2 เครื่องส่งพร้อมกัน */
-    ['_flvSeq', '_npdSeq', '_revSeq'].forEach(function (k) {
-      var a = Number(local[k]) || 0, b = Number(meta[k]) || 0;
-      if (a || b) store[k] = Math.max(a, b);
-    });
+    // A poll only runs when no local write is pending. Cloud is authoritative
+    // here; silently unioning old browser rows revives deleted campaigns and
+    // can later push an obsolete whole-store snapshot back to D1.
     store.working = []; store.months = {};
-    var localCamps = splitStore(local).camps;
-    var tsMap = noteLocalEdits(localCamps);
-    var seenCamp = {};
+    var cloudTs = {};
     var putBlock = function (b) {
       (b.w || []).forEach(function (r) { store.working.push(r); });
       Object.keys(b.m || {}).forEach(function (mk) { (store.months[mk] = store.months[mk] || []); (b.m[mk] || []).forEach(function (r) { store.months[mk].push(r); }); });
@@ -293,59 +373,54 @@
       if (ck.indexOf(CAMP_PREFIX) !== 0) return;
       var b; try { b = JSON.parse(keys[ck]); } catch (e) { return; }
       var c = null; try { c = decodeURIComponent(ck.slice(CAMP_PREFIX.length)); } catch (e) {}
-      if (c != null) seenCamp[c] = 1;
       /* Cloud อาจยังมีก้อนเก่าจากแท็บที่ค้างอยู่ แต่ทะเบียนลบใหม่กว่าแล้ว
          tombstone ต้องชนะเสมอ ไม่เช่นนั้นเปิดเว็บใหม่แล้วโปรที่ลบจะฟื้นกลับมา. */
       if (c != null && Number(_tombs[c]) >= (Number(b._ts) || 0) && Number(_tombs[c])) {
-        queuePush(STORE_KEY); // รอบถัดไปจะลบ key เก่าบน Cloud ตาม _snap
         return;
       }
-      /* ⭐ ของในเครื่องใหม่กว่าก้อนบนคลาวด์ → คงของในเครื่อง แล้วดันขึ้นแทน (กันงานที่เพิ่งบันทึกถูกทับ) */
-      if (c != null && localCamps[c]) {
-        var lt = localTsOf(tsMap, c), ct = Number(b._ts) || 0;
-        var same = JSON.stringify({ w: b.w || [], m: b.m || {} }) === JSON.stringify(localCamps[c]);
-        if (!same && lt > ct) { putBlock(localCamps[c]); queuePush(STORE_KEY); return; }
-      }
       putBlock(b);
+      if (c != null) cloudTs[c] = { ts: Number(b._ts) || 0, sig: campSig(b) };
     });
-    /* ⭐ แคมเปญที่มีเฉพาะในเครื่อง (เพิ่งแจ้งเข้ามา ยัง push ไม่ขึ้น) ต้องคงไว้ ไม่ใช่ถูกล้างทิ้ง
-       เดิมประกอบ working/months จากคลาวด์ล้วน → งานโปรที่เพิ่งบันทึกหายตอน poll (ทุก 15 วิ) */
-    Object.keys(localCamps).forEach(function (c) {
-      if (seenCamp[c]) return;                       /* คลาวด์มีแล้ว → จัดการไปแล้วด้านบน */
-      /* ⭐ FX-P64 — ถ้าเครื่องอื่นลบแคมเปญนี้ทิ้งหลังการแก้ครั้งสุดท้ายของเครื่องนี้ → ลบตาม ไม่ดันกลับขึ้น */
-      var tomb = Number(_tombs[c]) || 0;
-      if (tomb && tomb >= localTsOf(tsMap, c)) { queuePush(STORE_KEY); return; }
-      var b = localCamps[c];
-      (b.w || []).forEach(function (r) { store.working.push(r); });
-      Object.keys(b.m || {}).forEach(function (mk) { (store.months[mk] = store.months[mk] || []); (b.m[mk] || []).forEach(function (r) { store.months[mk].push(r); }); });
-      queuePush(STORE_KEY);                          /* ดันขึ้นคลาวด์ให้เครื่องอื่นเห็นด้วย */
-    });
+    saveCampTs(cloudTs);
     return store;
   }
   /* push งานโปรแบบราย campaign: เขียนเฉพาะแคมเปญที่เปลี่ยน + ลบเฉพาะที่เครื่องนี้เคยรู้จักแล้วหายไป */
   async function pushStore() {
+    if (!_hydrated) throw new Error('CLOUD_NOT_READY');
     var raw = localStorage.getItem(STORE_KEY); if (raw == null) return;
     var store; try { store = JSON.parse(raw); } catch (e) { return; }
     var sp = splitStore(store);
     var tsMap = noteLocalEdits(sp.camps);
     var desired = {}; desired[META_CLOUDKEY] = JSON.stringify(sp.meta);
     Object.keys(sp.camps).forEach(function (c) {
-      desired[campCloudKey(c)] = JSON.stringify({ w: sp.camps[c].w, m: sp.camps[c].m, _ts: localTsOf(tsMap, c) });
+      var ck = campCloudKey(c), previous = null;
+      try { previous = JSON.parse(_snap[ck] || 'null'); } catch (e) {}
+      // `working` is a derived view and may serialize differently after a
+      // reload. Reuse the exact Cloud block when the authoritative month rows
+      // did not change, so an unrelated save cannot resend 267 campaigns.
+      if (previous && JSON.stringify(previous.m || {}) === JSON.stringify(sp.camps[c].m || {})) {
+        desired[ck] = _snap[ck];
+      } else {
+        desired[ck] = JSON.stringify({ w: sp.camps[c].w, m: sp.camps[c].m, _ts: localTsOf(tsMap, c) });
+      }
     });
     var body = {}; Object.keys(desired).forEach(function (ck) { if (_snap[ck] !== desired[ck]) body[ck] = desired[ck]; });
     /* แคมเปญที่เครื่องนี้เคยรู้จักแล้วหายไป = ถูกลบ → เขียนทะเบียนขึ้นคลาวด์ด้วย */
     var gone = Object.keys(_snap).filter(function (ck) { return ck.indexOf(CAMP_PREFIX) === 0 && !desired[ck]; });
     if (gone.length) {
       var now = Date.now(), changedTomb = false;
-      gone.forEach(function (ck) { try { var c = decodeURIComponent(ck.slice(CAMP_PREFIX.length)); if (!_tombs[c]) { _tombs[c] = now; changedTomb = true; } } catch (e) {} });
+      gone.forEach(function (ck) { try { var c = decodeURIComponent(ck.slice(CAMP_PREFIX.length)); _tombs[c] = now; changedTomb = true; } catch (e) {} });
       if (changedTomb) body[DEL_CLOUDKEY] = JSON.stringify(_tombs);
     }
     if (Object.keys(body).length) {
-      await api('/promo/store', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      var deleteVersions={};gone.forEach(function(ck){deleteVersions[ck]=Number(_cloudMtime[ck]);});
+      await writeChecked(body,deleteVersions);
     }
     var dels = Object.keys(_snap).filter(function (ck) { return ck.indexOf(CAMP_PREFIX) === 0 && !desired[ck]; });
-    for (var i = 0; i < dels.length; i++) { try { await api('/promo/store/' + encodeURIComponent(dels[i]), { method: 'DELETE' }); } catch (e) {} }
-    if (_migrateLegacy) { try { await api('/promo/store/' + encodeURIComponent(STORE_KEY), { method: 'DELETE' }); } catch (e) {} _migrateLegacy = false; }
+    for (var i = 0; i < dels.length; i++) await deleteChecked(dels[i]);
+    // Keep the legacy whole-store key as an additional recovery copy. Deleting
+    // it is not needed for the split-key reader and makes incidents harder to recover.
+    _migrateLegacy = false;
     _snap = {}; Object.keys(desired).forEach(function (ck) { _snap[ck] = desired[ck]; });
   }
 
@@ -363,8 +438,197 @@
     return fetch(base() + path, opts);
   }
 
+  // Cloud-first contract for new form submissions. These functions never write
+  // localStorage; the form keeps its unsent draft in memory until D1 commits.
+  async function readCloudKey(key) {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    var response = await api('/promo/store/' + encodeURIComponent(key), { cache: 'no-store' });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('อ่านข้อมูลจาก Cloud ไม่สำเร็จ (' + response.status + ')');
+    var item = await response.json();
+    if (!item || !item.ok || typeof item.value !== 'string' || !Number.isSafeInteger(Number(item.updated_at))) throw new Error('ข้อมูลจาก Cloud ไม่ถูกต้อง');
+    return { value: item.value, updatedAt: item.updated_at };
+  }
+
+  async function loadCampaignEdit(campaign, month, actor) {
+    var model=window.PC_PromotionEditModel;
+    if(!model)throw new Error('ระบบแก้ไขยังไม่พร้อม กรุณารีเฟรช');
+    var record=await readCloudKey(campCloudKey(campaign));
+    if(!record)throw new Error('ไม่พบแคมเปญบน Cloud');
+    var block=JSON.parse(record.value), deleted=await readCloudKey(DEL_CLOUDKEY);
+    if(deleted && Number(JSON.parse(deleted.value)[campaign]) >= (Number(block._ts)||0) && Number(JSON.parse(deleted.value)[campaign]))throw new Error('แคมเปญนี้ถูกลบแล้ว');
+    var policy=model.policy(block,actor,month);if(!policy.allowed)throw new Error(policy.reason);
+    var structuralEdits=false;
+    try{var caps=await api('/promo/edit-capabilities',{cache:'no-store'});if(caps.ok)structuralEdits=(await caps.json()).structuralEdits===true;}catch(e){}
+    return {campaign:campaign,month:month,actor:actor,structuralEdits:structuralEdits,expectedUpdatedAt:Number(record.updatedAt),original:block,form:model.toForm(block,month)};
+  }
+  async function saveCampaignEdit(context, form) {
+    if(!context || !context.original)throw new Error('ไม่พบข้อมูลอ้างอิงงานเดิม กรุณาเปิดแก้ไขใหม่');
+    var serialized=JSON.stringify(form);
+    if(context._editPayload!==serialized){context._editPayload=serialized;context._editId='edit-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);}
+    var id=context._editId;
+    var body={editId:id,actor:context.actor,campaign:context.campaign,month:context.month,expectedUpdatedAt:context.expectedUpdatedAt,form:form};
+    var response,ack;
+    try { response=await api('/promo/campaign-edits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
+    catch(e){var recovered=await submissionReceipt(id).catch(function(){return null;});if(recovered && recovered.kind==='CAMPAIGN_EDIT')return recovered;throw new Error('ยังยืนยันการแก้ไขไม่ได้ ข้อมูลยังอยู่ในฟอร์ม กรุณาลองบันทึกอีกครั้ง');}
+    ack=await response.json();
+    if(!response.ok){
+      if(response.status===409)throw new Error(ack.message||'มีการเปลี่ยนข้อมูลระหว่างแก้ไข กรุณาเปิดงานล่าสุดอีกครั้ง ข้อมูลที่กรอกยังอยู่ในฟอร์ม');
+      throw new Error(ack.message||'บันทึกการแก้ไขไม่สำเร็จ ('+response.status+')');
+    }
+    var receipt=await submissionReceipt(id);
+    if(!ack.ok||!receipt||receipt.kind!=='CAMPAIGN_EDIT'||receipt.editId!==id)throw new Error('ยังตรวจยืนยันผลบันทึกไม่ได้ กรุณาลองอีกครั้งโดยไม่กรอกใหม่');
+    return receipt;
+  }
+
+  async function submissionReceipt(submissionId) {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    var response = await api('/promo/submissions/' + encodeURIComponent(submissionId), { cache: 'no-store' });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('ตรวจหลักฐานการบันทึกจาก Cloud ไม่สำเร็จ (' + response.status + ')');
+    var receipt = await response.json();
+    if (!receipt || !receipt.ok || receipt.submissionId !== submissionId) throw new Error('หลักฐานจาก Cloud ไม่ถูกต้อง');
+    return receipt;
+  }
+
+  async function commitSubmission(submission) {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    if (!_hydrated) throw new Error('Cloud ยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่');
+    if (_inFlight || Object.keys(_pending).length) throw new Error('ยังมีข้อมูลเก่าค้างส่งขึ้น Cloud กรุณาแก้การซิงก์ก่อนส่งงานใหม่');
+    if (!submission || !submission.submissionId) throw new Error('ไม่พบรหัสการส่งงาน');
+    var response;
+    try {
+      response = await api('/promo/submissions', {
+        method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submission)
+      });
+    } catch (networkError) {
+      // The request may have committed before its response was lost. Resolve by
+      // the same idempotency key; never generate another submission ID on retry.
+      try {
+        var found = await submissionReceipt(submission.submissionId);
+        if (found) return found;
+      } catch (receiptError) {}
+      var unknown = new Error('ยังยืนยันผล Cloud ไม่ได้ โปรดตรวจสถานะด้วยรหัสการส่งเดิมก่อนส่งซ้ำ');
+      unknown.code = 'CLOUD_OUTCOME_UNKNOWN';
+      throw unknown;
+    }
+    var result;
+    try { result = await response.json(); } catch (e) { result = null; }
+    if (!response.ok || !result || !result.ok) {
+      // A server error can also happen after commit. The receipt is authoritative.
+      if (response.status >= 500 || response.ok) {
+        try { var saved = await submissionReceipt(submission.submissionId); if (saved) return saved; } catch (e) {}
+      }
+      if (response.ok) {
+        var unknownResponse = new Error('Cloud ตอบกลับไม่ครบ โปรดตรวจสถานะด้วยรหัสการส่งเดิมก่อนส่งซ้ำ');
+        unknownResponse.code = 'CLOUD_OUTCOME_UNKNOWN';
+        throw unknownResponse;
+      }
+      var error = new Error(result && result.error === 'version_conflict'
+        ? 'ข้อมูลบน Cloud เปลี่ยนระหว่างส่งงาน กรุณาโหลดข้อมูลล่าสุดแล้วตรวจอีกครั้ง'
+        : 'Cloud ไม่รับการบันทึก (' + response.status + ')');
+      error.code = result && result.error || 'CLOUD_SAVE_FAILED';
+      error.detail = result || null;
+      throw error;
+    }
+    if (result.submissionId !== submission.submissionId || result.savedButtons !== submission.expectedButtons) {
+      var mismatch = new Error('Cloud ตอบรับข้อมูลไม่ตรงกับงานที่ส่ง กรุณาตรวจหลักฐานก่อนส่งซ้ำ');
+      mismatch.code = 'CLOUD_RECEIPT_MISMATCH';
+      throw mismatch;
+    }
+    // A successful HTTP response is not enough for the user-facing success
+    // state. Read the immutable receipt back from D1 before clearing the form.
+    var confirmed;
+    try { confirmed = await submissionReceipt(submission.submissionId); }
+    catch (e) {
+      var checkFailed = new Error('บันทึกอาจสำเร็จแล้ว แต่ยังอ่านหลักฐานจาก Cloud ไม่ได้ โปรดตรวจสถานะก่อนส่งซ้ำ');
+      checkFailed.code = 'CLOUD_OUTCOME_UNKNOWN';
+      throw checkFailed;
+    }
+    if (!confirmed || confirmed.savedButtons !== submission.expectedButtons || confirmed.savedAt !== result.savedAt) {
+      var receiptMismatch = new Error('หลักฐานบน Cloud ไม่ตรงกับงานที่ส่ง โปรดแจ้ง IT ก่อนส่งซ้ำ');
+      receiptMismatch.code = 'CLOUD_RECEIPT_MISMATCH';
+      throw receiptMismatch;
+    }
+    return confirmed;
+  }
+
+  // Read the campaign key directly from D1 when checking a submission receipt.
+  // This does not trust the browser's cached tracking rows as Cloud proof.
+  async function readCampaignRows(campaign) {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    var key = CAMP_PREFIX + encodeURIComponent(String(campaign || '').trim());
+    var response = await api('/promo/store/' + encodeURIComponent(key), { cache: 'no-store' });
+    if (!response.ok) throw new Error('อ่านแคมเปญจาก Cloud ไม่สำเร็จ (' + response.status + ')');
+    var item = await response.json();
+    if (!item || !item.ok || typeof item.value !== 'string') throw new Error('ข้อมูลแคมเปญจาก Cloud ไม่ถูกต้อง');
+    var block = JSON.parse(item.value), rows = [];
+    // A campaign key can exist in D1 yet be hidden by a newer deletion record.
+    // The receipt must not call that a successful, visible submission.
+    var deletedResponse = await api('/promo/store/' + encodeURIComponent(DEL_CLOUDKEY), { cache: 'no-store' });
+    if (deletedResponse.ok) {
+      var deletedItem = await deletedResponse.json();
+      if (!deletedItem || !deletedItem.ok || typeof deletedItem.value !== 'string') throw new Error('ทะเบียนลบจาก Cloud ไม่ถูกต้อง');
+      var deleted = JSON.parse(deletedItem.value);
+      var deletedAt = Number(deleted[String(campaign || '').trim()]) || 0;
+      if (deletedAt && deletedAt >= (Number(block._ts) || 0)) throw new Error('แคมเปญถูกซ่อนด้วยทะเบียนลบเก่า');
+    } else if (deletedResponse.status !== 404) {
+      throw new Error('อ่านทะเบียนลบจาก Cloud ไม่สำเร็จ (' + deletedResponse.status + ')');
+    }
+    Object.keys(block.m || {}).forEach(function (month) { (block.m[month] || []).forEach(function (row) { rows.push(row); }); });
+    return rows;
+  }
+
+  // One immutable Cloud key per action avoids losing an audit entry when two
+  // people change different campaigns at the same time. Do not use the large
+  // campaign store or a shared localStorage array for this history.
+  var ACTIVITY_PREFIX = 'promo::activity::';
+  async function readActivity(date) {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) throw new Error('วันที่ไม่ถูกต้อง');
+    var prefix = ACTIVITY_PREFIX + date + '::';
+    var meta = await remoteMeta();
+    var names = Object.keys(meta).filter(function (k) { return k.indexOf(prefix) === 0; });
+    var records = [];
+    for (var i = 0; i < names.length; i += 8) {
+      var batch = await Promise.all(names.slice(i, i + 8).map(async function (key) {
+        var response = await api('/promo/store/' + encodeURIComponent(key), { cache: 'no-store' });
+        if (!response.ok) throw new Error('อ่านประวัติจาก Cloud ไม่สำเร็จ (' + response.status + ')');
+        var item = await response.json();
+        if (!item || !item.ok || typeof item.value !== 'string') throw new Error('ข้อมูลประวัติจาก Cloud ไม่ถูกต้อง');
+        return JSON.parse(item.value);
+      }));
+      records.push.apply(records, batch);
+    }
+    return records;
+  }
+  async function appendActivity(event) {
+    if (!enabled() || !_hydrated) throw new Error('Cloud ยังไม่พร้อมบันทึกประวัติ');
+    var date = String(event && event.date || ''), id = String(event && event.id || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('ข้อมูลประวัติไม่ถูกต้อง');
+    var key = ACTIVITY_PREFIX + date + '::' + id, value = JSON.stringify(event);
+    var response = await api('/promo/store/' + encodeURIComponent(key), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: value, expectedUpdatedAt: null })
+    });
+    if (response.status === 409) {
+      var existing = await api('/promo/store/' + encodeURIComponent(key), { cache: 'no-store' });
+      var saved = existing.ok ? await existing.json() : null;
+      if (saved && saved.ok && saved.value === value) return true; // retry of the same event
+      throw new Error('ประวัติรายการนี้มีข้อมูลไม่ตรงกัน');
+    }
+    if (!response.ok) throw new Error('บันทึกประวัติลง Cloud ไม่สำเร็จ (' + response.status + ')');
+    var ack = await response.json();
+    var check = await api('/promo/store/' + encodeURIComponent(key), { cache: 'no-store' });
+    var item = check.ok ? await check.json() : null;
+    if (!ack || !ack.ok || !item || !item.ok || item.value !== value) throw new Error('ตรวจยืนยันประวัติใน Cloud ไม่สำเร็จ');
+    return true;
+  }
+
   /* ---- pull: cloud → localStorage (คืน changed=true ถ้ามีอะไรต่างจากในเครื่อง) ---- */
   var _etag = null;
+  var _writeEpoch = 0;
   /* ---- FX-P65: ดึงข้อมูลแบบรายคีย์ (meta-driven) ------------------------------
      อาการ: `GET /promo/store` (ก้อนเดียวทั้งฐาน ~หลาย MB) เริ่มล้มที่ Worker → เบราว์เซอร์ได้
        "Failed to fetch" ทั้งที่ /health ปกติ → ซิงค์ตายทั้งระบบ ข้อมูลค้างของเก่า
@@ -374,37 +638,146 @@
   async function fetchKeysViaMeta(force) {
     var r = await api('/promo/meta');
     if (!r.ok) throw new Error('meta ' + r.status);
-    var d = await r.json(); var meta = d.meta || {};
-    var names = Object.keys(meta);
-    var need = names.filter(function (k) { return force || _cloudCache[k] == null || _cloudMtime[k] !== meta[k]; });
+    var d = await r.json();
+    if (!d || !d.ok || !d.meta || typeof d.meta !== 'object') throw new Error('invalid cloud meta');
+    var meta = d.meta;
+    // Audit events are read on demand by the Log page. Eagerly downloading
+    // every historical event on every poll would slow all other screens.
+    var names = Object.keys(meta).filter(function (k) { return k.indexOf(ACTIVITY_PREFIX) !== 0; });
+    var cache = Object.assign({}, _cloudCache), mtime = Object.assign({}, _cloudMtime);
+    var need = names.filter(function (k) { return force || cache[k] == null || mtime[k] !== meta[k]; });
     for (var i = 0; i < need.length; i += 8) {
       var batch = need.slice(i, i + 8);
       await Promise.all(batch.map(function (k) {
         return api('/promo/store/' + encodeURIComponent(k)).then(function (res) {
-          if (!res.ok) return null;
-          return res.json().then(function (j) { if (j && j.ok) { _cloudCache[k] = j.value; _cloudMtime[k] = meta[k]; } });
-        }).catch(function () { });
+          if (!res.ok) throw new Error('key ' + k + ' ' + res.status);
+          return res.json().then(function (j) {
+            if (!j || !j.ok || typeof j.value !== 'string') throw new Error('invalid key ' + k);
+            cache[k] = j.value; mtime[k] = meta[k];
+          });
+        });
       }));
     }
-    Object.keys(_cloudCache).forEach(function (k) { if (!(k in meta)) { delete _cloudCache[k]; delete _cloudMtime[k]; } });
-    var keys = {}; names.forEach(function (k) { if (_cloudCache[k] != null) keys[k] = _cloudCache[k]; });
-    return keys;
+    Object.keys(cache).forEach(function (k) { if (names.indexOf(k) === -1) { delete cache[k]; delete mtime[k]; } });
+    var keys = {}; names.forEach(function (k) { if (cache[k] != null) keys[k] = cache[k]; });
+    return { keys: keys, meta: mtime, cache: cache };
   }
-  async function pull(opt) {
+  async function remoteMeta() {
+    var r = await api('/promo/meta');
+    if (!r.ok) throw new Error('meta ' + r.status);
+    var d = await r.json();
+    if (!d || !d.ok || !d.meta || typeof d.meta !== 'object') throw new Error('invalid cloud meta');
+    return d.meta;
+  }
+  function sameVersion(a, b) { return (a == null ? null : Number(a)) === (b == null ? null : Number(b)); }
+  async function assertFresh(names) {
+    var current = await remoteMeta();
+    names.forEach(function (k) {
+      if (!sameVersion(current[k], _cloudMtime[k])) throw new Error('CLOUD_CONFLICT:' + k);
+    });
+    return current;
+  }
+  async function writeChecked(body, deleteVersions) {
+    var names = Object.keys(body); if (!names.length) return;
+    await assertFresh(names);
+    for (var i = 0; i < names.length; i++) {
+      var k = names[i], expected = _cloudMtime[k] == null ? null : Number(_cloudMtime[k]);
+      var r = await api('/promo/store/' + encodeURIComponent(k), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: body[k], expectedUpdatedAt: expected,
+          ...(k===DEL_CLOUDKEY&&deleteVersions&&Object.keys(deleteVersions).length?{deletedCampaignVersions:deleteVersions}:{}) })
+      });
+      if (r.status === 409) throw new Error('CLOUD_CONFLICT:' + k);
+      if (!r.ok) throw new Error('push ' + r.status);
+      var ack = await r.json();
+      if (!ack || !ack.ok || !Number.isSafeInteger(Number(ack.updated_at))) throw new Error('invalid cloud acknowledgment ' + k);
+      // A 2xx response alone does not prove the exact value is still there.
+      var check = await api('/promo/store/' + encodeURIComponent(k));
+      if (!check.ok) throw new Error('verify ' + k + ' ' + check.status);
+      var item = await check.json();
+      if (!item || !item.ok || item.value !== body[k] || Number(item.updated_at) !== Number(ack.updated_at)) {
+        throw new Error('verify mismatch ' + k);
+      }
+      // Persist the acknowledged version per key; a later key in this batch
+      // can still fail, so a retry must not resend a previously saved key as stale.
+      _cloudMtime[k] = Number(ack.updated_at); _cloudCache[k] = body[k];
+      (ack.deletedKeys||[]).forEach(function(deleted){delete _snap[deleted];delete _cloudMtime[deleted];delete _cloudCache[deleted];});
+    }
+  }
+  async function deleteChecked(k) {
+    await assertFresh([k]);
+    var r = await api('/promo/store/' + encodeURIComponent(k), {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedUpdatedAt: _cloudMtime[k] == null ? null : Number(_cloudMtime[k]) })
+    });
+    if (r.status === 409) throw new Error('CLOUD_CONFLICT:' + k);
+    if (!r.ok) throw new Error('delete ' + k + ' ' + r.status);
+    var meta = await remoteMeta();
+    if (meta[k] != null) throw new Error('delete verify ' + k);
+    delete _cloudMtime[k]; delete _cloudCache[k];
+  }
+  var _pullPromise = null, _readyPromise = null;
+  function pull(opt) {
+    // Startup, page reads and polling must share the same hydration request.
+    if (_pullPromise) return _pullPromise;
+    var request = pullOnce(opt);
+    _pullPromise = request;
+    var clear = function () { if (_pullPromise === request) _pullPromise = null; };
+    request.then(clear, clear);
+    return request;
+  }
+  function whenReady() {
+    if (!enabled() || _hydrated) return Promise.resolve();
+    if (_readyPromise) return _readyPromise;
+    var timer;
+    var loading = (async function () {
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try { await pull(); if (_hydrated) return; throw new Error('Cloud ยังไม่พร้อม'); }
+        catch (e) {
+          // Do not retry over a concurrent local edit or an invalid empty DB.
+          if (attempt === 2 || /LOCAL_CHANGED_DURING_PULL|CLOUD_EMPTY_NEEDS_ADMIN|archive|History /i.test(String(e && e.message || e))) throw e;
+          await new Promise(function (resolve) { setTimeout(resolve, 250 * (attempt + 1)); });
+        }
+      }
+    })();
+    var request = Promise.race([loading, new Promise(function (_, reject) {
+      timer = setTimeout(function () { reject(new Error('เชื่อมต่อ Cloud ใช้เวลานาน กรุณาลองโหลดข้อมูลอีกครั้ง')); }, 45000);
+    })]);
+    _readyPromise = request;
+    var clear = function () { clearTimeout(timer); if (_readyPromise === request) _readyPromise = null; };
+    request.then(clear, clear);
+    return request;
+  }
+  async function pullOnce(opt) {
     if (!enabled()) return { changed: false, reason: 'not-configured' };
-    var keys = null;
+    var epochAtStart = _writeEpoch;
+    var wasHydrated = _hydrated;
+    _hydrated = false; // a partial/failed pull must never authorize a later push
+    var keys = null, incomingMeta = null, incomingCache = null, incomingEtag = null;
     /* ⭐ ถ้าคลาวด์ยังเป็นก้อนเดิม (ETag ตรง) → ตอบ 304 ไม่ต้องโหลดข้อมูล 2-3MB ซ้ำทุกรอบ */
-    var hdr = (_etag && !(opt && opt.force)) ? { 'If-None-Match': _etag } : {};
+    var hdr = (_etag && wasHydrated && !(opt && opt.force)) ? { 'If-None-Match': _etag } : {};
     try {
       var r = await api('/promo/store', { headers: hdr });
-      if (r.status === 304) return { changed: false, keys: 0, cached: true };
+      if (r.status === 304) { _hydrated = wasHydrated; return { changed: false, keys: 0, cached: true }; }
       if (!r.ok) throw new Error('pull ' + r.status);
-      try { var et = r.headers.get('ETag'); if (et) _etag = et; } catch (e) {}
-      var d = await r.json(); keys = d.keys || {};
+      try { incomingEtag = r.headers.get('ETag'); } catch (e) {}
+      var d = await r.json();
+      if (!d || !d.ok || !d.keys || !d.meta) throw new Error('invalid cloud response');
+      keys = d.keys;
+      Object.keys(d.meta).forEach(function (k) { if (typeof keys[k] !== 'string') throw new Error('missing cloud key ' + k); });
+      incomingMeta = d.meta; incomingCache = Object.assign({}, keys);
     } catch (bulkErr) {
-      keys = await fetchKeysViaMeta(!!(opt && opt.force));   // ก้อนใหญ่ล้ม → ดึงรายคีย์แทน
-      _etag = null;
+      var fetched = await fetchKeysViaMeta(!!(opt && opt.force));
+      keys = fetched.keys; incomingMeta = fetched.meta; incomingCache = fetched.cache;
     }
+    // A user may have saved while the network request was running. Never
+    // replace that write with the response from an earlier read.
+    if (_writeEpoch !== epochAtStart) {
+      _hydrated = wasHydrated; // no Cloud value has been applied yet
+      if (_hydrated && Object.keys(_pending).length && !_timer) _timer = setTimeout(flush, 1200);
+      throw new Error('LOCAL_CHANGED_DURING_PULL');
+    }
+    if (keys[META_CLOUDKEY] == null && keys[STORE_KEY] == null) throw new Error('CLOUD_EMPTY_NEEDS_ADMIN');
     var changed = false, n = 0;
     // (1) งานโปร: ประกอบร่างจาก key ราย campaign (promo::c::*) + meta
     var campKeys = Object.keys(keys).filter(function (k) { return k.indexOf(CAMP_PREFIX) === 0; });
@@ -414,12 +787,22 @@
       var store = reassembleFromCloud(keys);
       var newStr = JSON.stringify(store);
       var compactStr = compactStoreRaw(newStr);
-      if (localStorage.getItem(STORE_KEY) !== compactStr) { _set(STORE_KEY, compactStr); changed = true; }
+      if (localStorage.getItem(STORE_KEY) !== compactStr) {
+        await archiveBeforeReplace(localStorage.getItem(STORE_KEY));
+        _set(STORE_KEY, compactStr);
+        if (window.PC_API && window.PC_API.reloadFromStorage) window.PC_API.reloadFromStorage();
+        changed = true;
+      }
       _snap = {}; if (hasMeta) _snap[META_CLOUDKEY] = keys[META_CLOUDKEY]; campKeys.forEach(function (ck) { _snap[ck] = keys[ck]; });
       _migrateLegacy = (keys[STORE_KEY] != null); // ถ้ายังมีก้อนเก่าค้าง → ลบตอน push ถัดไป
     } else if (keys[STORE_KEY] != null) {
       // รุ่นเก่า: cloud ยังเก็บก้อนเดียว → โหลดมาใช้ แล้ว migrate ตอน push แรก
-      if (localStorage.getItem(STORE_KEY) !== keys[STORE_KEY]) { _set(STORE_KEY, keys[STORE_KEY]); changed = true; }
+      if (localStorage.getItem(STORE_KEY) !== keys[STORE_KEY]) {
+        await archiveBeforeReplace(localStorage.getItem(STORE_KEY));
+        _set(STORE_KEY, keys[STORE_KEY]);
+        if (window.PC_API && window.PC_API.reloadFromStorage) window.PC_API.reloadFromStorage();
+        changed = true;
+      }
       _snap = {}; _migrateLegacy = true;
     }
     // (2) key อื่น ๆ (ตั้งค่า/สิทธิ์): ยังใช้ทั้งก้อน (แก้พร้อมกันน้อย)
@@ -464,13 +847,17 @@
     ['pc_subset_custom', 'pc_subset_deleted', 'pc_addon_subsets'].forEach(function (k) {
       if (keys[k] == null && localStorage.getItem(k) != null) queuePush(k);
     });
+    _cloudMtime = incomingMeta; _cloudCache = incomingCache; _etag = incomingEtag;
+    if(keys.pc_code_counter_v1!=null&&window.PC_COUNTER&&PC_COUNTER.reloadFromStorage)PC_COUNTER.reloadFromStorage();
+    _hydrated = true; _localStoreEdited = false;
+    if (Object.keys(_pending).length && !_timer && !_inFlight) _timer = setTimeout(flush, 1200);
     return { changed: changed, keys: n };
   }
 
   /* ---- push: localStorage → cloud (debounced auto-push + pushAll) ---- */
-  var _pending = {}, _timer = null, _inFlight = false, _fails = 0, _retryTimer = null;
+  var _pending = {}, _timer = null, _inFlight = false, _inFlightPromise = null, _fails = 0, _retryTimer = null, _lastError = null;
   var RETRY_MS = [4000, 12000, 30000];
-  function queuePush(k) { _pending[k] = 1; if (_timer || _inFlight) return; _timer = setTimeout(flush, 1200); }
+  function queuePush(k) { _pending[k] = 1; if (!_hydrated || _timer || _inFlight) return; _timer = setTimeout(flush, 1200); }
   /* ⭐ เน็ตสะดุด/เวิร์กเกอร์ตอบช้า 1 ครั้ง = ไม่ใช่ "ซิงค์มีปัญหา" — ลองใหม่ให้เองก่อน
      ขึ้นชิปแดงเมื่อพลาดติดกัน 3 ครั้ง (หรือเครื่องออฟไลน์) เท่านั้น */
   function failSoft(keys) {
@@ -484,77 +871,67 @@
   }
   function failReset() { _fails = 0; if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; } }
   async function flush() {
-    _timer = null; if (!enabled()) { _pending = {}; return; }
-    if (_inFlight) { if (!_timer) _timer = setTimeout(flush, 1500); return; }   // กันยิงทับกันจนเวิร์กเกอร์ตอบไม่ทัน
+    _timer = null;
+    if (!enabled() || !_hydrated) return false;
+    if (_inFlight) return _inFlightPromise; // รอ request เดิมก่อน ไม่ยิงซ้อน
     var pend = Object.keys(_pending); _pending = {};
-    if (!pend.length) return;
+    if (!pend.length) return true;
     _inFlight = true; setStatus('sync');
-    try {
-      if (pend.indexOf(STORE_KEY) !== -1) await pushStore();   // งานโปร → แยกราย campaign
-      var body = {}; pend.forEach(function (k) { if (k === STORE_KEY) return; var v = localStorage.getItem(k); if (v != null) body[k] = v; });
-      withKeyTs(body);
-      if (Object.keys(body).length) {
-        var res = await api('/promo/store', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!res.ok) throw new Error('push ' + res.status);
-      }
-      _etag = null;                       // ของเราเพิ่งเปลี่ยน → ให้ poll รอบหน้าโหลดของจริง
-      failReset(); setStatus('ok');
-    } catch (e) { failSoft(pend); }
-    finally { _inFlight = false; if (Object.keys(_pending).length && !_timer && !_retryTimer) _timer = setTimeout(flush, 1500); }
-  }
-  /* ---- flush ทันทีตอนปิด/ซ่อนหน้า (ไม่รอ debounce 1.2 วิ) — กันงานที่เพิ่งกดหายตอนรีเฟรช ---- */
-  function flushSync() {
-    if (!enabled()) return;
-    var pend = Object.keys(_pending); if (!pend.length) return;
-    _pending = {}; if (_timer) { clearTimeout(_timer); _timer = null; }
-    var body = {};
-    pend.forEach(function (k) { if (k === STORE_KEY) return; var v = localStorage.getItem(k); if (v != null) body[k] = v; });
-    if (pend.indexOf(STORE_KEY) !== -1) {
+    _inFlightPromise = (async function () {
       try {
-        var sp = splitStore(JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
-        var tsMap = noteLocalEdits(sp.camps);
-        body[META_CLOUDKEY] = JSON.stringify(sp.meta);
-        /* ⚠️ ต้องแนบ _ts ทุกครั้ง — เดิม flushSync (ตอนปิด/รีเฟรชหน้า) ดันก้อนแคมเปญขึ้นแบบไม่มีเวลา
-           → ของเก่าในแท็บนั้นทับของใหม่บนคลาวด์ได้ (ต้นเหตุเดียวกับ FX-P60) */
-        Object.keys(sp.camps).forEach(function (c) {
-          body[campCloudKey(c)] = JSON.stringify({ w: sp.camps[c].w, m: sp.camps[c].m, _ts: localTsOf(tsMap, c) });
-        });
-        /* ปิด/รีเฟรชทันทีหลังลบ: keepalive ส่ง DELETE ราย key ไม่แน่นอน
-           จึงส่ง tombstone ไปพร้อม request นี้ เพื่อให้เครื่องที่เปิดใหม่ไม่ดึงโปรเก่ากลับมา. */
-        var gone = Object.keys(_snap).filter(function (ck) {
-          if (ck.indexOf(CAMP_PREFIX) !== 0) return false;
-          try { return !sp.camps[decodeURIComponent(ck.slice(CAMP_PREFIX.length))]; } catch (e) { return false; }
-        });
-        if (gone.length) {
-          var changedTomb = false, now = Date.now();
-          gone.forEach(function (ck) {
-            try {
-              var c = decodeURIComponent(ck.slice(CAMP_PREFIX.length));
-              if (!_tombs[c]) { _tombs[c] = now; changedTomb = true; }
-            } catch (e) {}
-          });
-          if (changedTomb) body[DEL_CLOUDKEY] = JSON.stringify(_tombs);
+        if (pend.indexOf(STORE_KEY) !== -1) await pushStore();
+        var body = {}; pend.forEach(function (k) { if (k === STORE_KEY) return; var v = localStorage.getItem(k); if (v != null) body[k] = v; });
+        withKeyTs(body);
+        if (Object.keys(body).length) await writeChecked(body);
+        _etag = null;
+        _lastError = null; failReset(); setStatus('ok');
+        return true;
+      } catch (e) {
+        _lastError = e;
+        if (/^CLOUD_CONFLICT:/.test(String(e && e.message || e))) {
+          pend.forEach(function (k) { _pending[k] = 1; });
+          setStatus('err'); // หยุด retry: ต้องตรวจความขัดแย้งก่อน
+        } else failSoft(pend);
+        return false;
+      } finally {
+        _inFlight = false;
+        if (Object.keys(_pending).length && !_timer && !_retryTimer && !/^CLOUD_CONFLICT:/.test(String(_lastError && _lastError.message || ''))) {
+          _timer = setTimeout(flush, 1500);
         }
-      } catch (e) {}
-    }
-    if (!Object.keys(body).length) return;
-    try {
-      fetch(base() + '/promo/store', { method: 'POST', keepalive: true,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (cfg().token || '') },
-        body: JSON.stringify(body) });
-    } catch (e) {}
+      }
+    })();
+    return _inFlightPromise;
   }
+  async function syncNow() {
+    if (!enabled()) throw new Error('Cloud ไม่ได้เชื่อมต่อ');
+    if (!_hydrated) throw new Error('Cloud ยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่');
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    for (var attempt = 0; attempt < 4; attempt++) {
+      if (_inFlight) await _inFlightPromise;
+      if (!Object.keys(_pending).length) return true;
+      if (!(await flush())) throw (_lastError || new Error('Cloud ยังไม่ยืนยันการบันทึก'));
+    }
+    throw (_lastError || new Error('Cloud ยังมีข้อมูลค้างส่ง'));
+  }
+  // Never send a whole database with an unverified keepalive request on tab
+  // close. A normal foreground save waits for Cloud; hidden tabs may only try
+  // the regular checked path while the browser still permits it to complete.
   try {
-    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushSync(); });
-    window.addEventListener('pagehide', flushSync);
-    window.addEventListener('beforeunload', flushSync);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && _hydrated && Object.keys(_pending).length) flush(); });
+    window.addEventListener('beforeunload', function (event) {
+      if (_inFlight || Object.keys(_pending).length) { event.preventDefault(); event.returnValue = ''; }
+    });
   } catch (e) {}
 
   async function pushAll() {
-    if (!enabled()) return false;
+    if (!enabled() || !_hydrated) return false;
     await pushStore();  // งานโปร → แยกราย campaign (+ migrate ก้อนเก่า)
-    var body = {}; TRACKED.forEach(function (k) { if (k === STORE_KEY) return; var v = localStorage.getItem(k); if (v != null) body[k] = v; });
-    if (Object.keys(body).length) { var r = await api('/promo/store', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.ok; }
+    var body = {}; TRACKED.forEach(function (k) {
+      if (k === STORE_KEY) return;
+      var v = localStorage.getItem(k);
+      if (v != null && v !== _cloudCache[k]) body[k] = v;
+    });
+    if (Object.keys(body).length) await writeChecked(withKeyTs(body));
     return true;
   }
 
@@ -579,7 +956,11 @@
         reclaim();
         try { _set(k, v); } catch (e2) { window.__PC_QUOTA_FULL = { at: new Date().toISOString(), key: k }; throw e2; }
       }
-      if (TRACKED.indexOf(k) !== -1 && enabled()) queuePush(k);
+      if (TRACKED.indexOf(k) !== -1 && enabled()) {
+        _writeEpoch++;
+        if (k === STORE_KEY && _hydrated) _localStoreEdited = true;
+        queuePush(k);
+      }
     };
   } catch (e) {}
 
@@ -625,6 +1006,27 @@
     a.download = name; document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   }
+  function exportLatestHistory() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) return reject(new Error('เบราว์เซอร์ไม่รองรับประวัติอัตโนมัติ'));
+      var open = indexedDB.open('pc_sync_history', 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore('snapshots', { autoIncrement: true }); };
+      open.onerror = function () { reject(open.error || new Error('เปิดประวัติไม่ได้')); };
+      open.onsuccess = function () {
+        var db = open.result, tx = db.transaction('snapshots', 'readonly');
+        var request = tx.objectStore('snapshots').openCursor(null, 'prev');
+        request.onsuccess = function () {
+          db.close();
+          var item = request.result && request.result.value;
+          if (!item) return reject(new Error('ยังไม่มีสำเนาก่อน Cloud ดึงข้อมูล'));
+          var filename = 'potato-promo-local-history-' + String(item.at || '').replace(/[^0-9]/g, '').slice(0, 14) + '.json';
+          downloadFallback(JSON.stringify({ kind: 'local-before-cloud-pull', at: item.at, store: item.store }), filename);
+          resolve(filename);
+        };
+        request.onerror = function () { db.close(); reject(request.error || new Error('อ่านประวัติไม่ได้')); };
+      };
+    });
+  }
   async function exportFile(opts) {
     opts = opts || {};
     var text = backupJson(), name = backupName();
@@ -667,6 +1069,11 @@
     return n;
   }
   function importFilePick() {
+    if (enabled()) {
+      var warning = 'ระบบปิดการกู้ไฟล์เก่าทับ Cloud โดยตรง เพื่อไม่ให้ข้อมูลล่าสุดของคนอื่นหาย กรุณาส่งไฟล์ให้ IT เทียบและกู้เฉพาะรายการ';
+      if (window.Swal) Swal.fire('ต้องตรวจไฟล์ก่อนกู้', warning, 'warning'); else alert(warning);
+      return;
+    }
     var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
     inp.onchange = function () {
       var f = inp.files && inp.files[0]; if (!f) return;
@@ -682,7 +1089,7 @@
     };
     inp.click();
   }
-  function reloadOnce() { try { sessionStorage.setItem('pc_cloud_pulled', '1'); } catch (e) {} location.reload(); }
+  function reloadOnce() { try { sessionStorage.setItem('pc_cloud_pulled', String(Date.now())); } catch (e) {} location.reload(); }
 
   /* ---- ทดสอบ + บันทึกการตั้งค่า cloud ---- */
   async function testAndSave(url, token) {
@@ -690,8 +1097,9 @@
     if (!url || !token) throw new Error('กรอก URL และ Token ให้ครบ');
     var r = await fetch(url.replace(/\/+$/, '') + '/health'); if (!r.ok) throw new Error('เชื่อมต่อ Worker ไม่ได้ (health ' + r.status + ')');
     saveCfg({ url: url, token: token });
-    // ครั้งแรก: ดัน localStorage ที่มีอยู่ขึ้น cloud แล้วดึงกลับให้ตรงกัน
-    await pushAll();
+    // Connecting to a Cloud account must not upload an old browser snapshot.
+    _hydrated = false; _snap = {}; _cloudCache = {}; _cloudMtime = {}; _etag = null;
+    await pull({ force: true });
     return true;
   }
 
@@ -767,7 +1175,7 @@
         '<div class="d-flex gap-2">' +
         '<button type="button" class="btn btn-outline-dark btn-sm flex-grow-1" onclick="window.PC_CLOUD.backupNow()"><i class="fas fa-download me-1"></i>สำรองเป็นไฟล์</button>' +
         '<button type="button" class="btn btn-outline-dark btn-sm flex-grow-1" onclick="window.PC_CLOUD.importFilePick()"><i class="fas fa-upload me-1"></i>กู้จากไฟล์</button>' +
-        '</div>' +
+        '</div><button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="window.PC_CLOUD.exportLatestHistory().then(function(n){alert(\'ดาวน์โหลด \'+n+\' แล้ว — ส่งให้ IT ตรวจสอบก่อนนำเข้าระบบ\')}).catch(function(e){alert(e.message)})">ดาวน์โหลดสำเนาอัตโนมัติก่อน Cloud ดึงข้อมูล</button>' +
         '<div class="d-flex align-items-center gap-2 mt-2"><span class="small text-muted flex-grow-1" id="pcBkDir">โฟลเดอร์สำรอง: —</span>' +
         '<button type="button" class="btn btn-link btn-sm p-0" onclick="window.PC_CLOUD.backupNow(true)">เปลี่ยนโฟลเดอร์</button></div></div>',
       showCancelButton: true, confirmButtonText: '<i class="fas fa-plug"></i> เชื่อมต่อ + ซิงค์', confirmButtonColor: '#2e934a', cancelButtonText: 'ปิด',
@@ -790,9 +1198,14 @@
     if (!enabled()) return;
     try {
       var r = await pull();
-      if (r.changed && !sessionStorage.getItem('pc_cloud_pulled')) { reloadOnce(); return; }
+      var lastReload = 0;
+      try { lastReload = Number(sessionStorage.getItem('pc_cloud_pulled')) || 0; } catch (e) {}
+      // Chrome Restore can preserve sessionStorage from the previous day. A
+      // short-lived marker prevents reload loops without hiding new Cloud data.
+      if (r.changed && Date.now() - lastReload > 30000) { reloadOnce(); return; }
+      try { sessionStorage.removeItem('pc_cloud_pulled'); } catch (e) {}
       // หลัง pull เสร็จ (cloud→local) → บังคับแก้ข้อมูล Co-Promo ที่ต้องอัปเดต แล้ว push กลับ cloud ให้คงอยู่
-      try { if (window.PC_applyCoPromoFixes && window.PC_applyCoPromoFixes()) { await pushAll(); } } catch (e) {}
+      try { if (window.PC_applyCoPromoFixes && window.PC_applyCoPromoFixes()) await syncNow(); } catch (e) { setStatus('err'); return; }
       setStatus('ok');
     } catch (e) { setStatus('err'); }
     startPolling();
@@ -806,6 +1219,21 @@
     if (!enabled() || pendingLocal() || document.hidden || _polling) return;   // อย่าดึงทับตอนกำลังพิมพ์/แท็บถูกซ่อน/รอบก่อนยังไม่จบ
     _polling = true;
     try {
+      // The sync Worker does not provide 304/ETag for /promo/store. Polling
+      // that endpoint would transfer and parse the whole database every 20s.
+      // Compare lightweight key versions first; a real change still uses the
+      // normal guarded pull so storage reload/conflict behavior stays intact.
+      try {
+        var latestMeta = await remoteMeta();
+        var latestKeys = Object.keys(latestMeta), knownKeys = Object.keys(_cloudMtime);
+        if (_hydrated && latestKeys.length === knownKeys.length &&
+          latestKeys.every(function (k) { return sameVersion(latestMeta[k], _cloudMtime[k]); })) {
+          failReset(); setStatus('ok'); return;
+        }
+      } catch (metaError) {
+        // Older Worker or temporary meta failure: preserve the existing full
+        // pull fallback instead of silently skipping external changes.
+      }
       var r = await pull();
       failReset();
       if (r.changed) showRefreshPill();
@@ -883,13 +1311,24 @@
         if (TRACKED.indexOf(k) !== -1 && n >= JANITOR.warnKB) big.push(k + ' = ' + n + 'KB');
       }
     } catch (e) {}
-    return { usedKB: used, limitKB: 5120, pct: Math.round(used / 5120 * 100), bigCloudKeys: big, lastFail: window.__PC_QUOTA_FULL || null };
+    return { usedKB: used, limitKB: 5120, pct: Math.round(used / 5120 * 100), bigCloudKeys: big,
+      lastFail: window.__PC_QUOTA_FULL || null, cloudReady: _hydrated, pending: Object.keys(_pending),
+      lastSyncError: _lastError ? String(_lastError.message || _lastError) : null };
   }
 
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
-    enabled: enabled, pull: pull, pushAll: pushAll,
-    exportFile: exportFile, exportInfo: exportInfo, backupNow: backupNow, importFilePick: importFilePick, openConfig: openConfig,
+    enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
+    readCloudKey: readCloudKey, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit,
+    prepareCampaignWrites: prepareCampaignWrites,
+    savePreparedCampaignRows: savePreparedCampaignRows,
+    readCampaignRows: readCampaignRows,
+    readActivity: readActivity, appendActivity: appendActivity,
+    hasPending: function () { return _inFlight || Object.keys(_pending).length > 0; },
+    ready: function () { return _hydrated; }, whenReady: whenReady,
+    exportFile: exportFile, exportInfo: exportInfo, backupNow: backupNow, exportLatestHistory: exportLatestHistory,
+    importFilePick: importFilePick, openConfig: openConfig,
     janitor: janitor, health: health,
     TRACKED: TRACKED,
   };

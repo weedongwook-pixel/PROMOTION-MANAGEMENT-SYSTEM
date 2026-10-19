@@ -22,7 +22,7 @@
   <!-- status tabs -->
   <div class="it-tabbar d-flex gap-4 mb-3" id="itTabs" style="border-bottom:2px solid #e0e0e0; overflow-x:auto;">
     <button class="it-tab" data-tab="NEW" onclick="window.itSetTab('NEW')"><i class="fas fa-circle-plus me-1"></i>New</button>
-    <button class="it-tab" data-tab="EDITED" onclick="window.itSetTab('EDITED')"><i class="fas fa-pen me-1"></i>Edited</button>
+    <button class="it-tab" data-tab="EDITED" onclick="window.itSetTab('EDITED')"><i class="fas fa-pen me-1"></i>งานแก้ไข</button>
     <button class="it-tab" data-tab="CHANGED" onclick="window.itSetTab('CHANGED')"><i class="fas fa-calendar-days me-1"></i>Extended / Reduced</button>
     <button class="it-tab" data-tab="CANCELLED" onclick="window.itSetTab('CANCELLED')"><i class="fas fa-ban me-1"></i>Cancelled</button>
     <button class="it-tab active" data-tab="ALL" onclick="window.itSetTab('ALL')"><i class="fas fa-list me-1"></i>All</button>
@@ -85,10 +85,11 @@
   var itemMasterMap = {};
 
   function itClassify(t) {
-    if (t.rejectReason && String(t.rejectReason).trim()) return 'EDITED';
     const chg = String(t.changeStatus || '').toUpperCase();
+    if(t.revisionPending)return 'EDITED';
     if (chg === 'CANCELLED') return 'CANCELLED';
     if (chg === 'EXTENDED' || chg === 'REDUCED') return 'CHANGED';
+    if (t.rejectReason && String(t.rejectReason).trim()) return 'EDITED';
     return 'NEW';
   }
   /* ค้นหาชื่อแคมเปญ + กรองประเภทงาน — re-render จากชุด task เต็มที่ cache ไว้ (toolbar ไม่ถูก re-render จึงไม่เสีย focus) */
@@ -214,7 +215,6 @@
     var _fd=document.getElementById('filterDateIT'); if(_fd) _fd.value=''; var _fdc=document.getElementById('itDateClear'); if(_fdc) _fdc.style.display='none';
     var _fdm=document.getElementById('itDateMode'); if(_fdm) _fdm.value='ACTIVE';
     itTab='ALL';
-    window.loadITDashboard();
     var _t=0;
     (function _go(){ _t++;
       if(document.getElementById('campaignGroupContainer')){ window.loadITTasks(); }
@@ -556,8 +556,8 @@
       '<div class="p-3">' +
         '<div class="row g-2 mb-2">' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤20</span></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/20</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.category || '') + '" oninput="window.itItem(' + i + ',\'category\',this.value)"></div>' +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode</div><div class="mb-2">' + salePills + '</div>' +
@@ -954,6 +954,20 @@
     var C = window.PC_COUNTER;
     return C && C.findForField ? C.findForField(type, cat, campaign, field) : null;
   }
+  // Extended/reduced jobs can contain an older duplicate header for the same
+  // button. Only reuse a code when all matching rows agree on one real code.
+  function itUniqueButtonCode(tasks, shortName, fields, pattern) {
+    if (!shortName) return '';
+    var found = new Set();
+    tasks.forEach(function (task) {
+      if (String(task.shortName || '').trim() !== String(shortName).trim()) return;
+      fields.forEach(function (field) {
+        var code = String(task[field] || '').trim();
+        if (pattern.test(code)) found.add(code);
+      });
+    });
+    return found.size === 1 ? Array.from(found)[0] : '';
+  }
   window.itItemSetChanged = function(inp) {
     inp.value = String(inp.value || '').replace(/[^0-9]/g, '');
     inp.setAttribute('data-it-confirmed', '0');
@@ -975,10 +989,6 @@
     if (!new RegExp('^' + cate + '\\d{3,}$').test(code)) {
       inp.classList.add('is-invalid');
       Swal.fire('รูปแบบรหัสไม่ถูกต้อง', 'รหัสของหมวดนี้ต้องขึ้นต้นด้วย ' + cate + ' และตามด้วยตัวเลขอย่างน้อย 3 หลัก', 'warning'); return;
-    }
-    var builderCode = (tr.getAttribute('data-builder-code') || '').trim();
-    if (builderCode && builderCode !== code) {
-      Swal.fire('ปุ่มนี้รับรหัสไปแล้ว', 'หน้า Item Set ใช้รหัส ' + builderCode + ' อยู่ กรุณาล้างรหัสที่หน้านั้นก่อนเปลี่ยนเป็น ' + code, 'warning'); return;
     }
     var reuse = PC_API.getItemSetReuse && PC_API.getItemSetReuse(camp, shortName, code);
     if (reuse) {
@@ -1011,7 +1021,20 @@
       inp.classList.add('is-invalid');
       Swal.fire('รหัสนี้ถูกใช้แล้ว', code + ' อยู่ที่ปุ่ม ' + usedBy.shortName + ' ในแคมเปญ ' + usedBy.campaign, 'error'); return;
     }
+    if (PC_COUNTER.reloadFromStorage) PC_COUNTER.reloadFromStorage();
     var current = PC_COUNTER.entryOf(code, type);
+    var allowReleased = false;
+    if (current && current.status === 'RELEASED') {
+      var releasedCheck = PC_API.checkCode && PC_API.checkCode(type, code);
+      if (!releasedCheck || releasedCheck.status === 'dup') {
+        Swal.fire('ยืนยันไม่ได้', 'รหัสที่คืนแล้วนี้ยังมีข้อมูลใช้งานในระบบ กรุณาตรวจสอบก่อน', 'error'); return;
+      }
+      var reclaimAnswer = await Swal.fire({ icon:'warning', title:'ยืนยันนำรหัสที่คืนแล้วกลับมาใช้?',
+        text:code + ' เคยถูกคืนจากงานเดิม กรุณายืนยันว่ารหัสนี้ยังไม่เคยใช้งานใน POS หรือ Backoffice',
+        showCancelButton:true, confirmButtonText:'ยืนยันว่าไม่เคยใช้', cancelButtonText:'ยกเลิก', confirmButtonColor:'#b7791f' });
+      if (!reclaimAnswer.isConfirmed) return;
+      allowReleased = true;
+    }
     var ownEntry = current && (
       (String(current.where || '') === camp && (String(current.field || '') === inp.id ||
         (inp.getAttribute('data-it-legacy-field') && String(current.field || '') === inp.getAttribute('data-it-legacy-field')))) ||
@@ -1030,7 +1053,7 @@
     try {
       var res = PC_COUNTER.claimExact(type, code, {
         where: camp, field: inp.id, cat: type === 'item' ? cate : '',
-        legacyField: inp.getAttribute('data-it-legacy-field') || '', builderField: camp + '|' + shortName
+        legacyField: inp.getAttribute('data-it-legacy-field') || '', builderField: camp + '|' + shortName, allowReleased: allowReleased
       });
       if (!res || !res.ok) {
         var msg = res && res.reason === 'taken' ? 'รหัสนี้ถูกจองให้ช่องอื่นแล้ว: ' + (res.where || '')
@@ -1039,7 +1062,19 @@
           : 'ตรวจสอบรหัสและลองอีกครั้ง';
         inp.classList.add('is-invalid'); Swal.fire('ยืนยันไม่สำเร็จ', msg, 'error'); return;
       }
+      var applied = PC_API.applyConfirmedItemSetCode && PC_API.applyConfirmedItemSetCode(camp, shortName, month, code);
+      if (!applied || applied.status !== 'success') throw new Error((applied && applied.message) || 'บันทึกรหัสลงใบงานไม่สำเร็จ');
+      if (window.PC_CLOUD && PC_CLOUD.syncNow) await PC_CLOUD.syncNow();
+      if (window.PC_CLOUD && PC_CLOUD.readCloudKey) {
+        var savedCounter = await PC_CLOUD.readCloudKey('pc_code_counter_v1');
+        var savedState = JSON.parse(savedCounter.value || '{}');
+        var savedEntry = Object.values(savedState.reservations || {}).find(function(e){ return e && e.code === code && e.status === 'CONFIRMED' && e.where === camp && e.field === inp.id; });
+        if (!savedEntry) throw new Error('Cloud ยังไม่พบรหัสที่ยืนยัน');
+      }
       inp.value = code; inp.setAttribute('data-cc-code', code); inp.setAttribute('data-it-confirmed', '1');
+      tr.setAttribute('data-builder-code', code);
+      var latestButton = PC_API.getItemSetButtons().find(function(b){return b.campaign===camp && b.shortName===shortName && String(b.month || '')===month;});
+      tr.setAttribute('data-pos-ready', latestButton && latestButton.posReady ? '1' : '0');
       inp.classList.remove('is-invalid'); inp.classList.add('is-valid');
       var status = inp.closest('td').querySelector('.it-itemset-status');
       if (status) { status.className = 'it-itemset-status small text-success'; status.textContent = 'ยืนยันแล้ว'; }
@@ -1087,6 +1122,8 @@
         legacyCounts[old] = (legacyCounts[old] || 0) + 1;
       });
       const chg = (first.changeStatus || '').toUpperCase();
+      const allDateChange = campTasks.every(t => ['EXTENDED', 'REDUCED'].includes(String(t.changeStatus || '').toUpperCase()));
+      const anyDateChange = campTasks.some(t => ['EXTENDED', 'REDUCED'].includes(String(t.changeStatus || '').toUpperCase()));
       let lastShortName = "";
       // parse OP per-button reject details: "▸ shortName [issues]\n   detail"
       const badButtons = {};
@@ -1168,6 +1205,9 @@
           </div>
 
           ${first.extendCodeNote ? `<div class="px-4 py-2 d-flex align-items-start gap-2" style="background:#fff8e1;border-bottom:1px solid #f0d98a"><i class="fas fa-note-sticky text-warning mt-1"></i><span style="font-size:.85rem;line-height:1.4"><b>Noted (MKT → IT):</b> ${String(first.extendCodeNote).replace(/</g,'&lt;')}</span></div>` : ''}
+          ${anyDateChange ? `<div class="px-4 py-2 small fw-bold" style="background:#eaf7ff;color:#15506b;border-bottom:1px solid #b8dfee"><i class="fas fa-calendar-check me-2"></i>งานลด/ขยายเวลา: ตรวจและปรับวันใน POS ตามที่แจ้ง แล้วกดปิดงาน · ใช้รหัส/สินค้าเดิม ไม่จองรหัสใหม่</div>` : ''}
+          ${window.PC_CustomerGroup?.mappingListHTML?PC_CustomerGroup.mappingListHTML(campTasks):(window.PC_CustomerGroup?.mappingHTML?PC_CustomerGroup.mappingHTML(first):'')}
+          ${first.revisionPending ? `<div class="px-4 py-3 bg-light border-bottom"><strong>รอ IT ดำเนินการแก้ไข</strong><div class="small">ผู้แก้ไข: ${itEsc(first.revisionRequestedBy||'')} · ${itEsc(first.revisionRequestedAt||'')}</div><div style="white-space:pre-wrap">${itEsc(first.revisionReason||'')}</div><div class="small">จุดที่แก้: ${itEsc((first.revisionChanges||[]).join(' · ')||'ตรวจตามเหตุผลที่แจ้ง')} · ใช้รหัสเดิม ไม่จองใหม่ · ปิดงานแล้วส่ง OP ตรวจซ้ำ</div></div>` : ''}
           <div class="px-4 py-2 d-flex align-items-center gap-2 flex-wrap" style="background:#fffdf5;border-bottom:1px solid #f0d98a">
             <span class="fw-bold text-uppercase" style="font-size:.72rem;color:#9a6700;white-space:nowrap"><i class="fas fa-bullhorn me-1"></i>ป้ายหมายเหตุเด่น (โชว์บนการ์ดสาขา)</span>
             <input type="text" class="form-control form-control-sm f-branch-note" style="max-width:440px;font-size:.8rem" placeholder="พิมพ์ข้อความเน้นให้สาขาเห็นชัด — เว้นว่าง = ไม่โชว์ป้าย" value="${(first.branchNote||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="window.itBranchNotePrev(this)">
@@ -1223,7 +1263,15 @@
                     const _ptU = (it.promoType || '').toUpperCase();
                     const _typeStr = ((it.typeSel || '') + ' ' + (it.promoType || '')).toUpperCase();
                     const _bcRaw = String(it.builderCode||'').trim();   // Code Item Set ที่หน้า POS Button Setup จอง+เซฟไว้ (codeItemSet)
-                    const _isIS = _ptU.indexOf('ITEM SET') >= 0 || _typeStr.indexOf('PRICE') >= 0 || !!it._wasItemSet || /^10[5-9]/.test(String(it.itemPromo||'')) || /^10[5-9]/.test(_bcRaw) || (!!it.posReady && !!_bcRaw);   // Item Set + Price Promotion (ระบบนี้ Price Promotion = โครงปุ่ม Item Set บน POS · map ITEM SET→'Price Promotion') · จับ builderCode 105-109 ด้วย ไม่งั้นรหัส Item Set หาย/แก้ไม่ได้
+                    const _chg = String(it.changeStatus || '').toUpperCase();
+                    const _dateChange = _chg === 'EXTENDED' || _chg === 'REDUCED';
+                    // Old Price Promotions have a 107 product in the item line,
+                    // but never had a separate Code Item Set/Kitchen reservation.
+                    // An extension must show that original product without creating a new set.
+                    const _legacyPriceExtension = isHeader && _dateChange
+                      && _typeStr.indexOf('PRICE') >= 0 && !!it.itDoneDate && /^107\d{3,}$/.test(String(it.itemCode || ''))
+                      && !String(it.itemPromo || '').trim() && !_bcRaw && !String(it.kitchenName || '').trim();
+                    const _isIS = !_legacyPriceExtension && (_ptU.indexOf('ITEM SET') >= 0 || _typeStr.indexOf('PRICE') >= 0 || !!it._wasItemSet || /^10[5-9]/.test(String(it.itemPromo||'')) || /^10[5-9]/.test(_bcRaw) || (!!it.posReady && !!_bcRaw));   // Item Set + Price Promotion (ระบบนี้ Price Promotion = โครงปุ่ม Item Set บน POS · map ITEM SET→'Price Promotion') · จับ builderCode 105-109 ด้วย ไม่งั้นรหัส Item Set หาย/แก้ไม่ได้
                     const _isOnline = /ONLINE/.test(_ptU) || String(it.promoCode || '').toUpperCase() === 'ONLINE';
                     // ประเภทโค้ดตาม cate ที่เลือกจากฟอร์ม (Type Promo) — เช็ค E-Voucher/Coupon/Bill/Voucher ก่อน item-set default
                     // Promotion set/Combo/Value set (Item Set ปกติ)/Price → P · E-Voucher → VC · Item Coupon → IC · Bill → BD
@@ -1240,23 +1288,25 @@
                     const _promoField = _ccType ? itCodeFieldId(_ccType, campName, it.shortName || '', month) : '';
                     // ป้าย "มาจากหน้าจองเลข" — จับเฉพาะโค้ด "ประเภทเดียวกัน" (Code Promotion = promo เท่านั้น · ห้ามเอาเลข itemset/bill/voucher มาใส่ช่องนี้)
                     let _fromCounter = false, _ccCode = '';
-                    try { if (isHeader && window.PC_COUNTER && _ccType) {
+                    try { if (isHeader && !it.revisionPending && window.PC_COUNTER && _ccType) {
                       const _PCx = window.PC_COUNTER;
                       let _ce = null;
                       const _byCode = _PCx.entryOf && _PCx.entryOf(it.promoCode);
                       if (_byCode && _byCode.status === 'CONFIRMED' && _byCode.type === _ccType && String(_byCode.where || '') === String(campName)) _ce = _byCode;
                       if (!_ce) _ce = itFieldEntry(_ccType, null, campName, _promoField);
+                      if (!_ce && _legacyUnique) _ce = itFieldEntry(_ccType, null, campName, itOldCodeFieldId(_ccType, campName, it.shortName || '', month));
                       if (_ce && _ce.status === 'CONFIRMED') { _fromCounter = true; _ccCode = _ce.code; }
                     } } catch (e) {}
                     // คงโค้ดเดิมไว้ถ้ามีโค้ดจริงอยู่แล้ว (เช่น โปรที่ "ขยายเวลา" — codePromotion เดิมต้องไม่เปลี่ยน · ไม่ autorun เลขใหม่ทับ)
-                    const _pcRaw = String(it.promoCode || '').trim();
-                    const _isPlaceholderCode = _pcRaw === '' || /^(ONLINE|NORMAL|OFFLINE)$/i.test(_pcRaw);
-                    const _chg = String(it.changeStatus || '').toUpperCase();
-                    const _isChange = _chg === 'EXTENDED' || _chg === 'REDUCED' || _chg === 'CANCELLED';   // งานแก้ไข = เด้งมาเตือนให้ IT ไปแก้ในระบบจริง · ห้ามจองโค้ดใหม่
+                    const _pcOwn = String(it.promoCode || '').trim();
+                    const _pcRaw = _pcOwn && !/^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(_pcOwn)
+                      ? _pcOwn : (itUniqueButtonCode(campTasks, it.shortName, ['promoCode'], /^[A-Z]{1,3}\d+$/i) || _pcOwn);
+                    const _isPlaceholderCode = _pcRaw === '' || /^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(_pcRaw);
+                    const _isChange = _dateChange || _chg === 'CANCELLED' || !!it.revisionPending;   // คงรหัสเดิม ไม่จองใหม่
                     const _keepExisting = isHeader && !_fromCounter && (!_isPlaceholderCode || _isChange);   // มีโค้ดจริงแล้ว หรือเป็นงาน ลด/ขยาย/ยกเลิก → ใช้โค้ดเดิม ไม่ autorun
                     const _preset = _fromCounter || _keepExisting;
-                    const _presetCode = _fromCounter ? _ccCode : _pcRaw;
-                    const _fcodeAttr = isHeader ? (_preset ? `data-cg-ignore='${itEsc(campName)}'` : (_ccType ? `id="${_promoField}" data-cc-reserve="${_ccType}" data-cc-where='${itEsc(campName)}' ${_legacyUnique ? `data-cc-legacy-field="itccf-${_ccType}-${_oldKey}"` : ''} data-cg-ignore='${itEsc(campName)}'` : `data-cg="promo" data-cg-ignore='${itEsc(campName)}'`)) : '';
+                    const _presetCode = _dateChange ? _pcOwn : (_fromCounter ? _ccCode : _pcRaw);
+                    const _fcodeAttr = isHeader ? ((_dateChange || _preset) ? `data-cg-ignore='${itEsc(campName)}'` : (_ccType ? `id="${_promoField}" data-cc-reserve="${_ccType}" data-cc-where='${itEsc(campName)}' ${_legacyUnique ? `data-cc-legacy-field="itccf-${_ccType}-${_oldKey}"` : ''} data-cg-ignore='${itEsc(campName)}'` : `data-cg="promo" data-cg-ignore='${itEsc(campName)}'`)) : '';
                     const _fcodeVal = isHeader ? (_preset ? _presetCode : (_ccType ? '' : (it.promoCode || ''))) : '';
                     // ช่อง File: ถ้าแคมเปญนี้มีโค้ดที่ MKT แนบมา (แกะเข้าระบบแล้ว) → ปุ่มดาวน์โหลดไฟล์ Backoffice (ProID/ProStatus/ProExpire) ตาม format ของฟอร์ม · ไม่มีโค้ดแต่มีไฟล์แนบดิบ → คลิปเปิดดู
                     const _itCodeCnt = (isHeader && window.PC_CodeConvert) ? (function(){ try { return PC_CodeConvert.codeCountForButton(campName, it.shortName); } catch(e){ return 0; } })() : 0;
@@ -1275,7 +1325,7 @@
                     // (where='ItemSet Builder', field=camp|shortName) → แคมเปญ/ปุ่มเดียวกัน 2 หน้าได้ "เลขเดียวกันเสมอ"
                     // READ-ONLY: อ่านเลขที่หน้า POS Button Setup จองไว้เท่านั้น — ไม่จองเลขใหม่เอง (กันสร้างเลขซ้ำ/กระโดดตอน re-render)
                     // จับคู่ด้วยชื่อปุ่ม (short name) แบบไม่สนช่องว่าง/tab → ทน field ที่ต่างกันเล็กน้อยระหว่าง 2 หน้า
-                    const _sharedIS = (isItemSet && !(String(it.itemPromo||'').trim() || _bcRaw) && isHeader && window.PC_COUNTER) ? (function(){
+                    const _sharedIS = (!_dateChange && isItemSet && !(String(it.itemPromo||'').trim() || _bcRaw) && isHeader && window.PC_COUNTER) ? (function(){
                       try{ var C=window.PC_COUNTER; var sn=String(it.shortName||'').replace(/\s+/g,''); if(!sn||!C.list) return '';
                         var hits=C.list({status:'RESERVED'}).filter(function(e){ return String(e.where||'')==='ItemSet Builder' && String(e.field||'').replace(/\s+/g,'').endsWith('|'+sn); });
                         if(hits.length){ hits.sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); }); return hits[0].code; }
@@ -1284,34 +1334,39 @@
                     })() : '';
                     const _isType = _isCate === '107' ? 'itemset' : 'item';
                     const _isField = itCodeFieldId(_isType === 'itemset' ? 'itemset' : 'item-' + _isCate, campName, it.shortName || '', month);
-                    const _isEntry = itFieldEntry(_isType, _isType === 'item' ? _isCate : null, campName, _isField);
-                    const _isVal = String(it.itemPromo||'').trim() || _bcRaw || (_isEntry && _isEntry.code) || _sharedIS;
+                    const _isLegacyField = 'itccf-' + (_isType === 'itemset' ? 'itemset' : 'item-' + _isCate) + '-' + _oldKey;
+                    const _isEntry = itFieldEntry(_isType, _isType === 'item' ? _isCate : null, campName, _isField)
+                      || (_legacyUnique ? itFieldEntry(_isType, _isType === 'item' ? _isCate : null, campName, _isLegacyField) : null);
+                    const _isVal = String(it.itemPromo||'').trim() || _bcRaw || (_dateChange ? '' : (itUniqueButtonCode(campTasks, it.shortName, ['itemPromo', 'builderCode'], /^10[5-9]\d{3,}$/) || (_isEntry && _isEntry.code) || _sharedIS));
                     const _reuseConfirmed = !!(isHeader && _isVal && window.PC_API && PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, it.shortName || '', _isVal));
                     const _isConfirmed = _reuseConfirmed || !!(_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal);
                     const _isAttr = (_isCate === '107')
                       ? `id="${_isField}" data-cc-reserve="itemset" data-cc-where='${itEsc(campName)}'`
                       : `id="${_isField}" data-cc-reserve="item" data-cc-cat="${_isCate}" data-cc-where='${itEsc(campName)}'`;
-                    const _isLegacyField = 'itccf-' + (_isType === 'itemset' ? 'itemset' : 'item-' + _isCate) + '-' + _oldKey;
                     const _canMigrateLegacy = _legacyUnique || (_bcRaw && _bcRaw === _isVal);
-                    const _itemSetInputAttr = `${_isAttr} data-cc-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-cate="${_isCate}" data-it-confirmed="${_isConfirmed ? '1' : '0'}"`;
+                    const _itemSetInputAttr = _dateChange ? `data-it-cate="${_isCate}"` : `${_isAttr} data-cc-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-legacy-field="${_canMigrateLegacy ? _isLegacyField : ''}" data-it-cate="${_isCate}" data-it-confirmed="${_isConfirmed ? '1' : '0'}"`;
                     const naAttr = 'disabled title="ไม่ใช้กับโปรประเภทนี้ — เฉพาะ Item Set" style="background-color:#f1f3f5; color:#adb5bd; border:none; text-align:center;"';
                     return `
-                      <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-row-idx="${it.rowIdx}" data-short-name="${itEsc(it.shortName || '')}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-is-itemset="${isItemSet ? '1' : '0'}" data-change-status="${_chg}">
-                        <td>${isHeader ? `<select class="form-select form-select-sm f-type text-center" title="เลือกประเภทโปรโมชั่น" onchange="window.itSyncCateOnType&&window.itSyncCateOnType(this)">${_typeOptsHtml}</select>` : `<input type="text" class="form-control form-control-sm f-type text-center" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}${(isHeader && badButtons[it.shortName]) ? `<span class="badge bg-danger mt-1 d-block" style="cursor:pointer;font-size:.6rem;" onclick="window.itBtnReject('${itJsArg(campName)}','${month}','${(it.shortName||'').replace(/'/g,"\\'")}')"><i class="fas fa-triangle-exclamation me-1"></i>ไม่ถูกต้อง </span>` : ''}</td>
+                      <tr class="it-row-item ${!isHeader ? 'table-light' : ''}" data-email-campaign-id="${itEsc(it.emailCampaignId||'')}" data-email-button-id="${itEsc(it.emailButtonId||'')}" data-email-row-id="${itEsc(it.emailRowId||'')}" data-revision-id="${itEsc(it.revisionId||'')}" data-row-idx="${it.rowIdx}" data-short-name="${itEsc(it.shortName || '')}" data-builder-code="${(it.builderCode || '').replace(/[^A-Za-z0-9]/g,'')}" data-pos-ready="${it.posReady ? '1' : '0'}" data-is-itemset="${isItemSet ? '1' : '0'}" data-change-status="${_chg}" data-change-only="${_dateChange ? '1' : '0'}" data-original-end-date="${itEsc(it.endDate || '')}" data-original-promo-code="${itEsc(it.promoCode || '')}" data-original-code-itemset="${itEsc(it.builderCode || '')}" data-original-item-promotion="${itEsc(it.itemPromo || '')}" data-original-item-code="${itEsc(it.itemCode || '')}">
+                        <td>${isHeader ? `<select class="form-select form-select-sm f-type text-center" title="เลือกประเภทโปรโมชั่น" onchange="window.itSyncCateOnType&&window.itSyncCateOnType(this)" ${_dateChange ? 'disabled' : ''}>${_typeOptsHtml}</select>` : `<input type="text" class="form-control form-control-sm f-type text-center" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}${(isHeader && badButtons[it.shortName]) ? `<span class="badge bg-danger mt-1 d-block" style="cursor:pointer;font-size:.6rem;" onclick="window.itBtnReject('${itJsArg(campName)}','${month}','${(it.shortName||'').replace(/'/g,"\\'")}')"><i class="fas fa-triangle-exclamation me-1"></i>ไม่ถูกต้อง </span>` : ''}</td>
                         <td>
                           <div class="input-group input-group-sm">
-                            <input type="text" class="form-control f-code border-warning fw-bold text-center" ${_fcodeAttr} value="${_fcodeVal}" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'');window.itCheckCode&&window.itCheckCode(this)" ${!isHeader ? 'disabled style="background-color:#e9ecef; color:transparent; border:none;"' : ''}>
-                            ${isHeader ? `<button class="btn btn-warning f-code-done" type="button" data-done="0" title="กดเมื่อกรอกเสร็จ — กดอีกครั้งเพื่อแก้ไข" onclick="window.toggleCodeDone(this)"><i class="fas fa-check"></i></button><button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion" style="display:none" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>` : ''}
+                            <input type="text" class="form-control f-code border-warning fw-bold text-center" ${_fcodeAttr} value="${itEsc(_fcodeVal)}" oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'');window.itCheckCode&&window.itCheckCode(this)" ${!isHeader ? 'disabled style="background-color:#e9ecef; color:transparent; border:none;"' : (_dateChange ? 'readonly' : '')}>
+                            ${isHeader ? (_dateChange ? `<button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion เดิม" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>` : `<button class="btn btn-warning f-code-done" type="button" data-done="0" title="กดเมื่อกรอกเสร็จ — กดอีกครั้งเพื่อแก้ไข" onclick="window.toggleCodeDone(this)"><i class="fas fa-check"></i></button><button class="btn btn-outline-secondary f-code-copy" type="button" title="คัดลอก Code Promotion" style="display:none" onclick="window.itCopyNear(this,'f-code')"><i class="fas fa-copy"></i></button>`) : ''}
                           </div>
-                          ${(isHeader && _fromCounter) ? `<span class="badge bg-info text-dark mt-1 d-block" style="font-size:.6rem;font-weight:700" title="โค้ดนี้ถูกจอง+ยืนยันที่หน้าโค้ดกลางแล้ว — IT แค่ตรวจ+บันทึก"><i class="fas fa-bookmark me-1"></i>จองจากหน้าโค้ดกลาง</span>` : ''}
+                          ${(isHeader && _fromCounter && !_dateChange) ? `<span class="badge bg-info text-dark mt-1 d-block" style="font-size:.6rem;font-weight:700" title="โค้ดนี้ถูกจอง+ยืนยันที่หน้าโค้ดกลางแล้ว — IT แค่ตรวจ+บันทึก"><i class="fas fa-bookmark me-1"></i>จองจากหน้าโค้ดกลาง</span>` : ''}
                         </td>
                         <td>${!isHeader
                           ? `<input type="text" class="form-control form-control-sm f-itempromo text-center" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
-                          : (isItemSet
+                          : (_dateChange && !_legacyPriceExtension
+                              ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" value="${itEsc(String(it.itemPromo || '').trim() || _bcRaw)}" readonly title="รหัส Item Set เดิม — ไม่จองใหม่"><span class="small text-muted">รหัสเดิม · ไม่จองใหม่</span></div>`
+                              : isItemSet
                               ? ((_isVal || _isChange)
                                   ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="${itEsc(_isVal || '')}" ${_isChange ? 'readonly' : ''} oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}" title="${_isChange ? 'งาน ลด/ขยาย/ยกเลิก — ใช้ Code Item Set เดิม' : 'แก้รหัสได้ แล้วยืนยันก่อนให้หน้า Item Set รับรหัส'}"><div class="it-itemset-actions"><span class="it-itemset-status small ${_isConfirmed ? 'text-success' : 'text-warning'}">${_reuseConfirmed ? 'ยืนยันใช้รหัสเดิมแล้ว' : _isConfirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'}</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" ${_isChange ? 'disabled' : ''} title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`
                                   : `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" ${_itemSetInputAttr} value="" placeholder="รอรหัสจากตัวนับ" oninput="window.itItemSetChanged(this)" aria-label="Code Item Set ของ ${itEsc(it.shortName || '')}"><div class="it-itemset-actions"><span class="it-itemset-status small text-warning">ยังไม่ยืนยัน</span><button class="btn btn-outline-success btn-sm" type="button" onclick="window.itConfirmItemSetCode(this)" title="ยืนยันรหัสให้ปุ่มนี้"><i class="fas fa-check me-1"></i>ยืนยัน</button></div></div>`)
-                              : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`)}</td>
+                              : (_legacyPriceExtension
+                                  ? `<div class="it-itemset-code"><input type="text" class="form-control form-control-sm f-itempromo text-center mono" value="${itEsc(it.itemCode)}" readonly title="รหัสสินค้าหลักเดิม — งานขยายเวลานี้ไม่จอง Item Set ใหม่"><span class="small text-muted">รหัสสินค้าหลักเดิม · ไม่จองใหม่</span></div>`
+                                  : `<input type="text" class="form-control form-control-sm f-itempromo text-center" value="—" ${naAttr}>`))}</td>
                         <td>${!isHeader
                           ? `<input type="text" class="form-control form-control-sm f-kitchen" disabled style="background-color:#e9ecef; color:transparent; border:none;">`
                           : (isItemSet
@@ -1319,7 +1374,7 @@
                               : `<input type="text" class="form-control form-control-sm f-kitchen" value="—" ${naAttr}>`)}</td>
                         <td>${isHeader ? `<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm f-short" value="${it.shortName || ''}"><button class="btn btn-outline-secondary" type="button" title="คัดลอก Short Name" onclick="window.itCopyNear(this,'f-short')"><i class="fas fa-copy"></i></button></div>` : `<input type="text" class="form-control form-control-sm f-short" value="" disabled style="background-color:#e9ecef; color:transparent; border:none;">`}</td>
                         <td><input type="text" class="form-control form-control-sm f-itemcode text-center fw-bold text-primary" list="listCode" value="${it.itemCode || ''}" oninput="window.syncItem(this, 'code')"></td>
-                        <td><input type="text" class="form-control form-control-sm f-itemname" list="listNameEN" value="${itEsc(it.itemNameEN || '')}" title="${itEsc(it.itemNameEN || '')}" aria-label="Item Name EN" oninput="window.syncItem(this, 'name')"></td>
+                        <td><input type="text" class="form-control form-control-sm f-itemname" list="listNameEN" maxlength="40" value="${itEsc(it.itemNameEN || '')}" title="${itEsc(it.itemNameEN || '')}" aria-label="Item Name EN (สูงสุด 40 ตัวอักษร)" oninput="window.syncItem(this, 'name')"></td>
                         <td><input type="number" class="form-control form-control-sm text-center f-qty fw-bold px-1" value="${it.qty || ''}"></td>
                         <td><input type="text" class="form-control form-control-sm text-end f-gross px-1" value="${it.price || ''}" oninput="window.calcRow(this)"></td>
                         <td><input type="text" class="form-control form-control-sm text-end f-disc text-danger px-1" value="${it.discount || ''}" oninput="window.calcRow(this)"></td>
@@ -1331,7 +1386,7 @@
               </table>
             </div>
           </div>
-          ${(function(){
+          ${allDateChange ? '' : (function(){
             var aoItems=[], ss='';
             campTasks.forEach(function(it){ if(it.addonSubset) ss=it.addonSubset; if(it.addons){ try{ var a=JSON.parse(it.addons); if(a&&a.length) a.forEach(function(x){ aoItems.push(x); }); }catch(e){} } });
             if(!aoItems.length) return '';
@@ -1343,7 +1398,7 @@
             return '<div class="px-4 py-3 border-top" style="background:#eef9f1"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><div><div class="fw-bold small text-uppercase mb-1"><i class="fas fa-mug-hot me-1 text-success"></i>Add on (MKT กรอกมา) — IT ต้องสร้าง Subset</div><div>'+chips+'</div></div>'+act+'</div></div>';
           })()}
           <div class="card-footer bg-white py-2 px-4 d-flex justify-content-between align-items-center border-top">
-            <small class="text-muted"><i class="fas fa-circle-info me-1"></i> Item Set: กรอก Code Item Set + Kitchen (ถ้าใช้รหัสเดิม IT จะยืนยันตอนบันทึก) · Coupon/Bill/Voucher: กรอกแค่ Code Promotion แล้วกดบันทึกเพื่อปิดงาน</small>
+            <small class="text-muted"><i class="fas fa-circle-info me-1"></i> ${allDateChange ? 'งานลด/ขยาย: IT ปรับวันที่ใน POS ก่อน แล้วกดปิดงานบนเว็บ · คงรหัสเดิมทั้งหมด' : 'Item Set: กรอก Code Item Set + Kitchen (ถ้าใช้รหัสเดิม IT จะยืนยันตอนบันทึก) · Coupon/Bill/Voucher: กรอกแค่ Code Promotion แล้วกดบันทึกเพื่อปิดงาน'}</small>
             <div class="d-flex gap-2 align-items-center">
               ${chg === 'CANCELLED'
                 ? (everLive
@@ -1354,13 +1409,26 @@
                 <i class="fas fa-trash-can me-2"></i> ลบออกจากเว็บ + คืนโค้ด
               </button>`)
                 : `<button class="btn btn-success fw-bold px-4" onclick="window.saveCampaign('${itJsArg(campName)}', '${itJsArg(month)}')">
-                <i class="fas fa-save me-2"></i> บันทึก & ปิดงาน
+                <i class="fas fa-save me-2"></i> ${allDateChange ? 'ยืนยันปรับวันใน POS แล้ว · ปิดงาน' : 'บันทึก & ปิดงาน'}
               </button>`}
             </div>
           </div>
         </div>`;
     }
     container.innerHTML = html;
+    container.querySelectorAll('.it-row-item[data-change-status="EDITED"]').forEach(function(tr){
+      tr.querySelectorAll('[data-cc-reserve],[data-cg]').forEach(function(el){el.removeAttribute('data-cc-reserve');el.removeAttribute('data-cg');});
+      tr.querySelectorAll('.f-code,.f-itempromo').forEach(function(el){el.readOnly=true;});
+    });
+    container.querySelectorAll('.it-row-item[data-change-only="1"]').forEach(function(tr) {
+      tr.querySelectorAll('input:not(:disabled)').forEach(function(inp) { inp.readOnly = true; });
+      tr.querySelectorAll('select').forEach(function(sel) { sel.disabled = true; });
+    });
+    container.querySelectorAll('.card').forEach(function(card) {
+      var rows = card.querySelectorAll('.it-row-item');
+      if (!rows.length || !Array.from(rows).every(function(tr) { return tr.dataset.changeOnly === '1'; })) return;
+      card.querySelectorAll('.f-cate-remark,.f-branch-note').forEach(function(inp) { inp.readOnly = true; });
+    });
     // เช็ค+แก้อัตโนมัติ: หมวด Item Set (E-Voucher/Combo/Value set) ต้องตรงกับ Type Promo ของแต่ละแถว
     // ป้องกันเคส Type=Price Promotion แต่หมวดยังเป็น E-Voucher (จองเลขผิดซีรีส์ 109 แทน 107)
     try { container.querySelectorAll('.card').forEach(function (card) { window.itSyncCateCard && window.itSyncCateCard(card, { silent: true }); }); } catch (e) {}
@@ -1395,6 +1463,7 @@
     var isEVremark = /e[-\s]?voucher/i.test(remark);
     var fixed = false;
     card.querySelectorAll('.it-row-item').forEach(function (tr) {
+      if (tr.dataset.changeOnly === '1' || tr.dataset.changeStatus === 'EDITED') return;
       var sel = tr.querySelector('.f-type'); if (!sel || sel.disabled) return;
       var wantsEV = window.itWantsVoucherType(sel.value);
       if (wantsEV === isEVremark) return;
@@ -1600,12 +1669,57 @@
     if (!card) return Swal.fire({ icon: 'warning', title: 'หาการ์ดงานนี้ไม่เจอ', html: '<div class="text-start small">ชื่อแคมเปน: <b>' + itEsc(campName) + '</b><br>ลองกดรีเฟรชหน้า หรือสลับแท็บเป็น ALL แล้วลองอีกครั้ง</div>', confirmButtonColor: '#c0392b' });
     if (card.dataset.itSavePending === '1') return;
     const rows = card.querySelectorAll('.it-row-item');
+    const dateRows = Array.from(rows).filter(tr => tr.getAttribute('data-change-only') === '1');
+    if (dateRows.length) {
+      if (dateRows.length !== rows.length) return Swal.fire('มีงานหลายประเภทในแคมเปญนี้', 'เลือกแท็บ “Extended / Reduced” เพื่อปิดเฉพาะงานลด/ขยาย หรือแท็บ “New” เพื่อทำงานใหม่แยกกัน', 'warning');
+      const updates = dateRows.map(tr => ({
+        changeOnly: true, rowIdx: tr.getAttribute('data-row-idx'), campaign: campName, month,
+        sourceShortName: tr.getAttribute('data-short-name') || '',
+        originalEndDate: tr.getAttribute('data-original-end-date') || '',
+        originalPromoCode: tr.getAttribute('data-original-promo-code') || '',
+        originalCodeItemSet: tr.getAttribute('data-original-code-itemset') || '',
+        originalItemPromotion: tr.getAttribute('data-original-item-promotion') || '',
+        originalItemCode: tr.getAttribute('data-original-item-code') || ''
+      }));
+      Swal.fire({
+        icon: 'question', title: 'IT ปรับวันที่ใน POS แล้วใช่ไหม?',
+        text: 'การกดปิดงานจะบันทึกเฉพาะสถานะและวันที่ IT ดำเนินการ โดยไม่จองรหัสใหม่และไม่เปลี่ยนรหัส/สินค้าเดิม',
+        showCancelButton: true, confirmButtonText: 'ปรับแล้ว · ปิดงาน', cancelButtonText: 'ยังไม่ปิดงาน',
+        confirmButtonColor: '#218047'
+      }).then(function(answer) {
+        if (!answer.isConfirmed) return;
+        card.dataset.itSavePending = '1';
+        Swal.fire({ title: 'กำลังบันทึกและรอ Cloud ยืนยัน...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        google.script.run.withSuccessHandler(function(res) {
+          delete card.dataset.itSavePending;
+          if (res === 'SUCCESS') {
+            Swal.fire({ title: 'ปิดงานลด/ขยายสำเร็จ', text: 'คงรหัสและข้อมูลเดิมทั้งหมดแล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
+          } else if (res === 'CHANGE_CONFLICT') {
+            Swal.fire('ยังไม่ปิดงาน', 'ข้อมูลหรือสถานะงานเปลี่ยนไป กรุณารีเฟรชและตรวจสอบก่อนลองอีกครั้ง', 'warning');
+          } else if (res === 'STORAGE_ERROR') {
+            Swal.fire('บันทึกไม่สำเร็จ', 'พื้นที่เก็บข้อมูลในเครื่องเต็ม งานยังไม่ถูกบันทึกหรือซิงก์ Cloud', 'error');
+          } else {
+            Swal.fire('ยังไม่ปิดงาน', String(res || 'ไม่ทราบสาเหตุ'), 'warning');
+          }
+        }).withFailureHandler(function(err) {
+          delete card.dataset.itSavePending;
+          var message = String(err && err.message || err || '');
+          if (message.indexOf('CLOUD_CONFLICT:') !== -1) {
+            Swal.fire('ยังไม่ปิดงาน', 'Cloud มีข้อมูลใหม่กว่า กรุณาตรวจสอบข้อมูลล่าสุดก่อนลองอีกครั้ง', 'warning');
+          } else {
+            Swal.fire('Cloud ยังไม่ยืนยัน', 'อย่าเพิ่งปิดแท็บหรือทำซ้ำ กรุณาให้ IT ตรวจสอบสถานะงาน: ' + message, 'error');
+          }
+        }).saveSettlementBatch(month, updates);
+      });
+      return;
+    }
     const cateRemarkInp = card.querySelector('.f-cate-remark');
     const cateRemark = cateRemarkInp ? cateRemarkInp.value.trim() : '';
     const branchNoteInp = card.querySelector('.f-branch-note');
     const branchNote = branchNoteInp ? branchNoteInp.value.trim() : '';
 
     let headerStore = {};
+    let activeHeaderShortName = '';
     let isValid = true, errorMessage = "";
     let usedPromoCodes = new Set(), usedItemPromos = new Map();
     const reusedItemSets = [];
@@ -1622,18 +1736,26 @@
       const shortName = tr.getAttribute('data-short-name');
       const isHeader = !tr.querySelector('.f-code').disabled;
       if (isHeader) {
+        activeHeaderShortName = shortName;
         const promoType = tr.querySelector('.f-type').value;
         const isItemSet = tr.getAttribute('data-is-itemset') === '1' || (promoType || '').toUpperCase().indexOf('ITEM SET') >= 0;
         const promoCode = tr.querySelector('.f-code').value.trim();
+        const changeOnly = tr.getAttribute('data-change-only') === '1';
         let itemPromo = tr.querySelector('.f-itempromo').value.trim();
         let kitchen = tr.querySelector('.f-kitchen').value.trim();
+        if (changeOnly) { itemPromo = ''; kitchen = ''; } // displayed 107 is the existing product, not a new reservation
         // Code Item Set / Kitchen ใช้เฉพาะ Item Set — coupon/bill/voucher ปล่อยว่างได้ (ไม่มีข้อมูลจากฟอร์ม)
         if (!isItemSet && !/^107/.test(String(itemPromo))) { itemPromo = ''; kitchen = ''; }
         const netPrice = parseFloat(tr.querySelector('.f-net').value) || 0;
-        if (isItemSet) {
+        if (changeOnly) {
+          if (!promoCode || promoCode !== tr.getAttribute('data-original-promo-code')) {
+            isValid = false; tr.style.backgroundColor = '#fff3f3';
+            if (!errorMessage) errorMessage = 'งานขยายเวลาต้องใช้ Code Promotion เดิม ห้ามเปลี่ยนรหัส';
+          } else tr.style.backgroundColor = '';
+        } else if (isItemSet) {
           const posReady = tr.getAttribute('data-pos-ready') === '1';
           const builderCode = (tr.getAttribute('data-builder-code') || '').trim();
-          const isChangeRow = ['EXTENDED','REDUCED','CANCELLED'].indexOf((tr.getAttribute('data-change-status') || '').toUpperCase()) >= 0;
+          const isChangeRow = ['EXTENDED','REDUCED','CANCELLED','EDITED'].indexOf((tr.getAttribute('data-change-status') || '').toUpperCase()) >= 0;
           const itemInp = tr.querySelector('.f-itempromo');
           const cate = itemInp && itemInp.getAttribute('data-it-cate');
           const itemType = cate === '107' ? 'itemset' : 'item';
@@ -1663,10 +1785,15 @@
         }
         headerStore[shortName] = { promoType, promoCode, itemPromo, kitchenName: kitchen, shortName: tr.querySelector('.f-short').value, netPrice };
       }
-      const h = headerStore[shortName] || {};
+      // Item rows with a blank shortName belong to the preceding POS button.
+      // Carry that button through settlement so its full composition is saved.
+      const h = headerStore[isHeader ? shortName : activeHeaderShortName] || {};
       return {
         rowIdx: tr.getAttribute('data-row-idx'), campaign: campName, month: month, sourceShortName: shortName,
-        promoType: h.promoType || "", promoCode: h.promoCode || "", itemPromo: h.itemPromo || "",
+        emailCampaignId:tr.getAttribute('data-email-campaign-id')||'',emailButtonId:tr.getAttribute('data-email-button-id')||'',emailRowId:tr.getAttribute('data-email-row-id')||'',
+        changeOnly: tr.getAttribute('data-change-only') === '1',
+        legacyItemCode: tr.getAttribute('data-change-only') === '1' ? tr.querySelector('.f-itemcode').value.trim() : '',
+        promoType: h.promoType || "", promoCode: h.promoCode || "", itemPromo: h.itemPromo || "", revisionId:tr.getAttribute('data-revision-id')||'',
         kitchenName: h.kitchenName || "", shortName: h.shortName || "",
         itemCode: tr.querySelector('.f-itemcode').value, itemNameEN: tr.querySelector('.f-itemname').value,
         qty: tr.querySelector('.f-qty').value, price: tr.querySelector('.f-gross').value,
@@ -1686,7 +1813,7 @@
           /* ยืนยัน (CONFIRM) โค้ดที่จองไว้ของแคมเปญนี้ — กันถูกคืนตอน reload */
           try { updates.forEach(function (u) { itConfirmIfReserved(u.promoCode, campName); itConfirmIfReserved(u.itemPromo, campName); }); } catch (e) {}
           try { if (window.PC_CodeConvert) PC_CodeConvert.confirmForCampaign(campName); } catch (e) {}  // โค้ดจากฟอร์มแจ้งโปร → CONFIRMED → สาขาค้นเจอ
-          try { if (window.PC_API && PC_API.savePosButtonNoteCampaign) PC_API.savePosButtonNoteCampaign(campName, branchNote); } catch (e) {}  // ป้ายหมายเหตุเด่น → ทุกปุ่มของแคมเปญ → โชว์บนการ์ดสาขา
+          try { if (window.PC_API && PC_API.savePosButtonNoteCampaign) PC_API.savePosButtonNoteCampaign(campName, branchNote, month); } catch (e) {}  // เฉพาะเดือนที่บันทึก
           Swal.fire({ title: 'ปิดงานสำเร็จ!', text: 'แคมเปญถูกตั้งค่าและเปลี่ยนสถานะเป็น COMPLETE แล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
         } else if (String(res).startsWith('DUP_PROMO|')) {
           const p = String(res).split('|');
@@ -1696,11 +1823,21 @@
           Swal.fire({ icon:'error', title:'Code Promotion ซ้ำ', html:'รหัส <b>' + itEsc(p[1]) + '</b> ถูกใช้แล้วในแคมเปญ <b>' + itEsc(p[2]) + '</b><br><span class="text-muted small">' + reason + '</span>', confirmButtonColor:'#dc3545' });
         } else if (String(res).startsWith('DUP_ITEMSET|')) {
           const p = String(res).split('|'); Swal.fire({ icon:'error', title:'Code Item Set ซ้ำ', html:'รหัส <b>' + itEsc(p[1]) + '</b> ถูกใช้แล้วในแคมเปญ <b>' + itEsc(p[2]) + '</b><br><span class="text-muted small">ถ้าตั้งใจใช้รหัสเดิม ให้เลือก “ใช้ Item Set เดิม” ที่หน้า Item Set และให้ IT ยืนยันก่อนบันทึก</span>', confirmButtonColor:'#dc3545' });
+        } else if (res === 'CHANGE_CONFLICT') {
+          Swal.fire('ข้อมูลขยายเวลาเปลี่ยนไป', 'ข้อมูลปุ่มหรือรหัสเดิมไม่ตรงกับที่โหลดมา ระบบไม่บันทึกเพื่อป้องกันการทับงาน กรุณารีเฟรชแล้วตรวจอีกครั้ง', 'warning');
         } else if (res === 'STORAGE_ERROR') {
           Swal.fire('บันทึกไม่สำเร็จ', 'พื้นที่เก็บข้อมูลในเครื่องเต็ม งานยังไม่ถูกบันทึกหรือซิงก์ Cloud กรุณาสำรองข้อมูลและรีเฟรชก่อนลองใหม่', 'error');
         } else { Swal.fire('Database Notification', res, 'info'); }
       })
-      .withFailureHandler(function(err) { delete card.dataset.itSavePending; Swal.fire('System Connection Error', 'ไม่สามารถเข้าถึงฐานข้อมูลได้: ' + err, 'error'); })
+      .withFailureHandler(function(err) {
+        delete card.dataset.itSavePending;
+        var message = String(err && err.message || err || '');
+        if (message.indexOf('CLOUD_CONFLICT:') !== -1) {
+          Swal.fire('ยังไม่ปิดงาน', 'มีข้อมูลใหม่จากเครื่องอื่นในแคมเปญนี้ ระบบหยุดส่งข้อมูลเพื่อไม่ให้ทับงานล่าสุด กรุณาสำรองข้อมูลในเครื่องและให้ IT ตรวจรายการก่อนรีเฟรช', 'warning');
+        } else {
+          Swal.fire('ยังไม่ยืนยันบน Cloud', 'ข้อมูลอาจบันทึกอยู่ในเครื่อง แต่ Cloud ยังไม่ตอบรับ กรุณาอย่าปิดแท็บหรือรีเฟรช และแจ้ง IT ตรวจสอบ: ' + message, 'error');
+        }
+      })
         .saveSettlementBatch(month, updates);
     };
     if (!reusedItemSets.length) { submit(); return; }
@@ -1756,41 +1893,40 @@
     }).withFailureHandler(function(e){ Swal.fire('Error', String(e), 'error'); }).seedTestDeleteFlow();
   };
 
-  window.deleteCampaign = function(campName, month) {
-    var _PC = window.PC_COUNTER, _ent = null;
-    try { if (_PC && _PC.list) { var _h = _PC.list({}).filter(function (e) { return String(e.where || '').trim() === String(campName).trim() && e.status === 'RESERVED'; }); if (_h.length) _ent = _h[0]; } } catch (e) {}
-
-    // CASE A — งานที่ IT จองโค้ดไว้แต่ยังไม่ได้บันทึก (RESERVED) → ลบทิ้งจากระบบได้เลย + คืนโค้ดกลับคลัง
-    if (_ent) {
-      Swal.fire({
-        title: 'ลบงาน + คืนโค้ด',
-        html: `แคมเปญ <b>${campName}</b><br>โค้ดที่จองไว้: <b class="font-monospace">${_ent.code}</b> <span class="badge bg-secondary">RESERVED</span><br><span class="text-muted small">งานนี้ยังไม่ได้บันทึก (แค่จองโค้ด) → ลบทิ้งออกจากระบบ และคืนโค้ดกลับคลัง (นำกลับมาใช้ใหม่ได้)</span>`,
-        icon: 'warning', showCancelButton: true,
-        confirmButtonText: 'ลบงาน + คืนโค้ด', confirmButtonColor: '#c0392b', cancelButtonText: 'ยกเลิก'
-      }).then(r => {
-        if (!r.isConfirmed) return;
-        var returned = false;
-        try { if (typeof _PC.returnCode === 'function') returned = !!_PC.returnCode(_ent.code, _ent.type, 'IT Settlement (ลบงานที่ยังไม่บันทึก)'); } catch (e) {}
-        google.script.run.withSuccessHandler(function () {
-          window.loadITTasks();
-          Swal.fire({ icon: 'success', title: 'ลบงานแล้ว', html: returned ? 'คืนโค้ด <b class="font-monospace">'+_ent.code+'</b> กลับคลังเรียบร้อย' : 'ลบงานเรียบร้อย', timer: 1700, showConfirmButton: false });
-        }).withFailureHandler(function (e) { Swal.fire('Error', String(e), 'error'); }).deleteCampaigns([campName]);
-      });
-      return;
+  window.deleteCampaign = async function(campName, month) {
+    var card = window.itCardOf(campName,month);
+    if (card && card.dataset && card.dataset.itCancelPending) return;
+    if (card && card.dataset) card.dataset.itCancelPending = '1';
+    function hideOnly() {
+      var current = window.itCardOf(campName,month); if (current) current.remove();
+      if (!document.querySelectorAll('#campaignGroupContainer .card').length) { var empty = document.getElementById('itEmpty'); if (empty) empty.style.display = 'block'; }
     }
-
-    // CASE B — งานที่บันทึกแล้ว/ถูกยกเลิกจาก MKT-RD (มี CONFIRMED หรือไม่มีโค้ด) → แค่ซ่อนการ์ดจากหน้างาน (ข้อมูลในระบบยังอยู่)
-    Swal.fire({
-      title: 'เอางานออกจากหน้านี้?',
-      html: `<b>${campName}</b><br><span class="text-muted small">งานนี้ถูกบันทึกในระบบแล้ว (หรือถูกยกเลิกจาก MKT/RD) · ซ่อนการ์ดออกจากหน้างานเฉยๆ — ข้อมูลในระบบยังอยู่</span>`,
-      icon: 'question', showCancelButton: true, confirmButtonColor: '#6c757d',
-      confirmButtonText: 'ซ่อนออกจากหน้า', cancelButtonText: 'ยกเลิก'
-    }).then(r => {
-      if (!r.isConfirmed) return;
-      var card = window.itCardOf(campName, month);
-      if (card) card.remove();
-      if (!document.querySelectorAll('#campaignGroupContainer .card').length) { var em = document.getElementById('itEmpty'); if (em) em.style.display = 'block'; }
-    });
+    try {
+      if (!window.PC_API || !PC_API.getITCancellationPolicy) throw Error('เวอร์ชันระบบยังไม่ตรงกัน กรุณารีเฟรชหน้าเว็บ');
+      if (window.PC_CLOUD && PC_CLOUD.enabled && PC_CLOUD.enabled()) {
+        await PC_CLOUD.syncNow(); await PC_CLOUD.pull(false); PC_API.reloadFromStorage();
+      }
+      if (window.PC_COUNTER && PC_COUNTER.reloadFromStorage) PC_COUNTER.reloadFromStorage();
+      var policy = PC_API.getITCancellationPolicy(campName,month);
+      var refundable = policy.returnable.map(function (x) { return itEsc(x.code); }).join(', ');
+      var kept = policy.kept.length ? '<div class="small mt-2">ไม่คืนรหัสที่มีการอ้างอิง / ใช้ร่วมกับงานอื่น หรือไม่ได้จองให้แคมเปญนี้: <b>' + policy.kept.map(itEsc).join(', ') + '</b></div>' : '';
+      var choice = await Swal.fire({
+        title: policy.canCancel ? 'ยกเลิกงานที่ยังไม่บันทึก?' : 'ซ่อนงานออกจากหน้านี้?',
+        html: '<div class="text-start"><b>' + itEsc(campName) + '</b><div class="small mt-2">' +
+          (policy.canCancel ? 'ยังไม่เคยบันทึกจาก IT Settlement แม้ยืนยันรหัสไว้แล้วก็เลือกคืนรหัสที่ยังไม่ใช้ได้<br>คืนโค้ด: <b>' + (refundable || 'ไม่มีรหัสที่คืนได้') + '</b><br>ลบงานนี้ครบทุกเดือนออกจากรายการใช้งาน เพื่อกรอกโปรฯ ใหม่ได้ เก็บประวัติแยกในถังขยะ' : itEsc(policy.reason) + '<br>ซ่อนได้โดยไม่คืนโค้ดและไม่ลบข้อมูล') + '</div>' + kept + '</div>',
+        icon: policy.canCancel ? 'warning' : 'question',showCancelButton:true,showDenyButton:policy.canCancel,
+        confirmButtonText:policy.canCancel ? 'ยกเลิกงาน + คืนโค้ด' : 'ซ่อน ไม่คืนโค้ด',denyButtonText:'ซ่อน ไม่คืนโค้ด',cancelButtonText:'กลับ',
+        confirmButtonColor:policy.canCancel ? '#c0392b' : '#6c757d',denyButtonColor:'#6c757d'
+      });
+      if (choice.isDenied || (!policy.canCancel && choice.isConfirmed)) { hideOnly(); return; }
+      if (!choice.isConfirmed) return;
+      Swal.fire({title:'กำลังยกเลิกและยืนยันการบันทึก…',allowOutsideClick:false,didOpen:function(){Swal.showLoading();}});
+      var res = await new Promise(function (resolve,reject) { google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).cancelUnsettledITCampaign(campName,month); });
+      if (!res || res.status !== 'success') throw Error(res && res.message || 'ยกเลิกไม่สำเร็จ');
+      await Swal.fire({icon:'success',title:'ยกเลิกงานแล้ว',html:itEsc(res.message) + '<br>คืนโค้ด: <b>' + ((res.returned || []).map(itEsc).join(', ') || 'ไม่มีรหัสที่คืนได้') + '</b>' + ((res.kept || []).length ? '<br>คงรหัสที่มีการอ้างอิงไว้: ' + res.kept.map(itEsc).join(', ') : ''),confirmButtonColor:'#237840'});
+      if (window.loadITTasks) window.loadITTasks();
+    } catch (e) { Swal.fire({icon:'error',title:'ดำเนินการไม่สำเร็จ',text:String(e.message || e)}); }
+    finally { if (card && card.dataset) delete card.dataset.itCancelPending; }
   };
 
   window.extendCampaignPopup = function(campaignName, currentEnd, startDateStr) {

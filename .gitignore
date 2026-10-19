@@ -4,3 +4,11 @@
 .env
 .env.*
 !.env.example
+recovery-evidence-*/
+private-backups/
+
+# Local artifacts and downloaded credentials.
+.DS_Store
+node_modules/
+client_secret*.json
+*.credentials.json

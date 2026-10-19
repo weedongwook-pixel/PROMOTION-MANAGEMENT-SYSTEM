@@ -1,0 +1,58 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {webcrypto}=require('node:crypto');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {database,actor,grant}=require('../tests/helpers/copro-context.cjs');
+(async()=>{
+  const DB=database();DB.db.exec('CREATE TABLE promo_store(k TEXT PRIMARY KEY,v TEXT,updated_at INTEGER)');DB.db.exec(fs.readFileSync('sync-worker/migrations/002_submission_receipts.sql','utf8'));
+  for(const role of ['manage','submit','it'])grant(DB,actor,role);
+  const env={DB,CLOUD_FIRST_ENABLED:'true',EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:'true',EMAIL_TENANT_ID:actor.tenantId,EMAIL_API_AUDIENCE:'22222222-2222-4222-8222-222222222222',EMAIL_API_SCOPE:'api://22222222-2222-4222-8222-222222222222/access_as_user',GMAIL_CLIENT_SECRET:'mock',EMAIL_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')};
+  const sent=[];
+  const provider=async(url,opts)=>{if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:'Test send to email copro UOB'},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'external-test@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
+  const c={crypto:webcrypto,fetch:provider,URL,URLSearchParams,TextEncoder,TextDecoder,atob,btoa,AbortSignal,Request,Response,Headers,console};
+  vm.createContext(c);vm.runInContext(require('../tests/helpers/sync-worker-source.cjs')().replace('export default','globalThis.worker='),c);
+  c.PC_Email.verifyEmailActor=async()=>actor;c.PC_Email.gmailAccess=async()=> 'mock';
+  DB.db.exec("INSERT INTO email_connections VALUES(1,'it@rocks-foods.com','connected','mock','mock','now','now',1)");
+  await c.PC_Email.publishThread(actor,{messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
+  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+  try{
+    const page=await browser.newPage({viewport:{width:1366,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.route('**/*',async route=>{
+      const u=new URL(route.request().url());assert.equal(u.origin,'http://pilot.test');
+      if(u.pathname.startsWith('/email/')){
+        const request=route.request(),headers=new Headers(request.headers());headers.set('Origin','https://white-pine-853e.quiet-surf-dda2.workers.dev');
+        const response=await c.worker.fetch(new Request('https://sync.test'+u.pathname+u.search,{method:request.method(),headers,body:request.method()==='GET'?undefined:request.postData()}),env);
+        return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
+      }
+      if(u.pathname==='/')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css"><link rel="stylesheet" href="/css/workspace.css"><div id="pilot"></div><script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script><script src="/js/copro-email-client.js"></script><script src="/js/copro-email-ui.js"></script>'});
+      return route.fulfill({path:path.join(process.cwd(),u.pathname)});
+    });
+    await page.addInitScript(actor=>{window.PC_LANG='TH';window.PC_EmailAuth={acquireToken:async()=> 'mock'};window.PC_EmailMsalContext=async()=>({identity:actor});},actor);
+    await page.goto('http://pilot.test/');await page.evaluate(async()=>{await PC_CoProEmail.enable();PC_CoProEmailUI.mountSettings(document.getElementById('pilot'));});
+    const row={campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
+    const receipt=await page.evaluate(async row=>PC_CoProEmail.registerPrimary({submissionId:'batch-test-1234',actor:'Test staff',expectedButtons:2,writes:[{key:'promo::c::Email%20UOB%20test',expectedUpdatedAt:null,value:JSON.stringify({m:{'2026-10':[row,{...row,shortName:'Button B',codePromotion:'IC002'}]},w:[]})}]}),row);
+    const operation=page.evaluate(()=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'}));
+    await page.locator('#coproTestTo').fill('external-test@example.net');
+    const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});
+    const brands=await emptyBrand.all();assert.equal(brands.length,2);
+    const blank=[];for(const brand of brands)if(!await brand.inputValue())blank.push(brand);assert.equal(blank.length,1,'no silent copying to another button');await blank[0].fill('Partner B');
+    await page.getByRole('button',{name:'ตรวจตัวอย่างเมล',exact:true}).click();
+    await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).waitFor();
+    await page.locator('.swal2-popup').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished));});
+    for(const width of [1366,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:'/tmp/copro-email-preview-'+width+'.png',fullPage:true});}
+    await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).click();await operation;
+    assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,1);
+    const records=DB.db.prepare('SELECT record_json FROM email_copro_records').all().map(r=>JSON.parse(r.record_json)),business=records.find(r=>r.brand==='Test partner');assert.equal(business.billingEntity,'Test billing');assert.equal(business.soNo,'SO123');assert.equal(business.paymentCondition,'30 days');assert.equal(business.remark,'Internal only');assert.equal(records.filter(r=>r.brand==='Partner B').length,1);
+    await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,1);
+    const status=await c.PC_Email.coProStatus(actor,receipt.emailCampaigns[0].id,env);
+    for(const button of status.buttons)await c.PC_Email.commitIT(actor,{campaignId:status.id,buttonId:button.button_id,expectedVersion:1,codePromotion:JSON.parse(button.source_identity_json).codePromotion},env);await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,1);
+    for(let i=0;i<status.buttons.length;i++){await c.PC_Email.commitInterface(actor,{campaignId:status.id,buttonId:status.buttons[i].button_id,expectedVersion:1},env);await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,i===status.buttons.length-1?2:1);}
+    await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,2);
+    assert.equal(sent[0].threadId,'provider-thread');assert.equal(sent[1].threadId,'provider-thread');assert.deepEqual(errors,[]);
+    env.EMAIL_COPRO_ENABLED='false';
+    await page.evaluate(()=>PC_CoProEmailUI.mountSettings(document.getElementById('pilot')));
+    await page.getByRole('status').filter({hasText:'ผู้ดูแลยังไม่เปิด'}).waitFor();
+    assert.equal(await page.locator('[data-copro-enable]').isDisabled(),false,'a disabled server feature must not trap the tab in pilot mode');
+    await page.locator('[data-copro-enable]').click();assert.equal(await page.evaluate(()=>PC_CoProEmail.active()),false);
+    console.log('CoPro browser: exact external test recipient, preview, saved announcement, combined completion, same thread and no duplicate — MOCK providers only.');
+  }finally{await browser.close();DB.db.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

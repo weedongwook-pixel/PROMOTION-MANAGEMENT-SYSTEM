@@ -192,9 +192,13 @@
           promoType: g("cpTypePromo") || ctx.typePromotion || ex.promoType || "", createdBy: ex.createdBy || userName(), createdRole: ex.createdRole || role(), updatedBy: userName(),
         };
         var btn = document.getElementById("cpfSave"); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-        run("saveCoPromotion", rec).then(function () {
+        var useEmail=window.PC_CoProEmail&&window.PC_CoProEmail.active();
+        var operation=useEmail?window.PC_CoProEmailUI.save(rec):run("saveCoPromotion", rec);
+        operation.then(function (result) {
+          if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> บันทึก & แจ้ง ACC';return;}
+          if(result.status==='error')throw new Error(result.message||'บันทึกไม่สำเร็จ');
           host.remove();
-          if (window.Swal) Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", html: "แจ้งทีมบัญชี (ACC) เรียบร้อย · รอ IT ยืนยัน Interface ERP", timer: 2600, showConfirmButton: false });
+          if (window.Swal) Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
           resolve(true);
         }).catch(function (e) {
           btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> บันทึก & แจ้ง ACC';

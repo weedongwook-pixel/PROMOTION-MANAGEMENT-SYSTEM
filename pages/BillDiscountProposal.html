@@ -3,9 +3,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
 
-<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
+<script src="js/form-master-loader.js"></script>
+<div class="p-4 pc-workspace pc-proposal" style="background-color: #f4f4f4; min-height: 100vh;">
   
-  <div class="d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
+  <div class="pc-page-heading d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
     <div>
       <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
         <i class="fas fa-calculator text-success me-2"></i>Bill Discount <span style="color:#2e934a;">Proposal</span>
@@ -30,6 +31,7 @@
     </div>
   </div>
 
+  <nav class="pc-workflow-guide" aria-label="ขั้นตอนการแจ้งโปรโมชั่น"><ol><li>ข้อมูลแคมเปญ</li><li>สินค้าและส่วนลด</li><li>สาขาและเงื่อนไข</li><li>ตรวจทานและส่งให้ IT</li></ol></nav>
   <div id="loadingStatus" class="text-center p-5">
     <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
     <p class="mt-3 fw-bold" id="statusMessage">LOADING MASTER DATA (ITEMS & BRANCHES)...</p>
@@ -151,7 +153,7 @@
     }
 
     if (typeof google !== 'undefined') {
-        google.script.run
+        window.PC_FormMaster.run()
           .withSuccessHandler(function(response) {
             window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
             window.__pcRawMaster = response.items || [];
@@ -161,6 +163,7 @@
             document.getElementById('loadingStatus').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             if (window.campaignCount === 0) window.addCampaign();
+            if(window.PC_PromotionEdit) PC_PromotionEdit.mount('BillDiscountProposal');
           })
           .getMasterDataExtended();
 
@@ -766,6 +769,7 @@ window._legacyOpenBranchModal = function(campId) {
     if (campaignCards.length === 0) return Swal.fire('Warning', 'กรุณาเพิ่มอย่างน้อย 1 แคมเปญ', 'warning');
 
     let allCampaignData = [];
+    const mappingJobs = [];
     let isValid = true;
     let globalButtonNames = []; 
     let usedCampaignNames = [];
@@ -827,17 +831,17 @@ window._legacyOpenBranchModal = function(campId) {
                     isValid = false; break;
                 }
                 const file = fileEl.files[0];
-                fileData = await new Promise((resolve) => {
+                try { fileData = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => resolve({
                         base64: e.target.result.split(',')[1],
                         mimeType: file.type,
                         fileName: file.name
                     });
+                    reader.onerror = () => reject(new Error('อ่านไฟล์ Coupon Mapping ไม่สำเร็จ'));
                     reader.readAsDataURL(file);
-                });
-                // ครบวง (option ข): แกะโค้ดในไฟล์ → ลงทะเบียนเข้า pc_code_requests (PENDING) → IT ดาวน์โหลด Backoffice + ยืนยัน → สาขาค้นเจอ
-                try { if (window.PC_CodeConvert) PC_CodeConvert.ingestFromInput(fileEl, { campaign: nameEl.value.trim(), button: snEl.value.trim(), kindShort: 'bill', proStatus: 'Normal', end: endEl.value }); } catch (e) {}
+                }); } catch (e) { alertAndFocus(fileEl, String(e.message || e)); return; }
+                mappingJobs.push({ fileEl, campaign: nameEl.value.trim(), button: snEl.value.trim(), kindShort: 'bill', proStatus: 'Normal', start: startEl.value, end: endEl.value });
             }
 
             if (!snEl.value.trim()) { alertAndFocus(snEl, `${btnPrefix}: กรุณาระบุชื่อปุ่ม`); isValid = false; break; }
@@ -912,8 +916,32 @@ window._legacyOpenBranchModal = function(campId) {
 
 if (!isValid) return;
 
-    Swal.fire({
+    // Finish file inspection before opening confirmation: Swal.fire replaces any active dialog.
+    const mappingWarnings = [];
+    try {
+        const seenCodes = new Set();
+        for (const job of mappingJobs) {
+            if (!window.PC_CodeConvert || !PC_CodeConvert.inspectFromInput || !PC_CodeConvert.registerCodes) {
+                throw new Error('ตัวอ่าน Mapping Code ยังไม่พร้อม กรุณารีเฟรชแล้วลองอีกครั้ง');
+            }
+            const checked = await PC_CodeConvert.inspectFromInput(job.fileEl, job);
+            let duplicates = checked.dupSystem + checked.dup;
+            job.codes = checked.codes.filter(code => {
+                const key = String(code).toUpperCase();
+                if (seenCodes.has(key)) { duplicates++; return false; }
+                seenCodes.add(key); return true;
+            });
+            if (duplicates || checked.invalid) {
+                mappingWarnings.push(`ปุ่ม ${job.button}: ลงทะเบียนรหัสใหม่ ${job.codes.length} รหัส ข้ามรหัสซ้ำ ${duplicates} รหัส และรูปแบบผิด ${checked.invalid} รหัส`);
+            }
+        }
+    } catch (e) {
+        Swal.fire('ตรวจไฟล์ไม่ได้', String(e.message || e), 'error'); return;
+    }
+
+    return Swal.fire({
       title: 'ยืนยันการบันทึก?',
+      text: mappingWarnings.length ? mappingWarnings.join('\n') + '\nรหัสซ้ำจะไม่ลงทะเบียนเพิ่ม แต่ยังส่งข้อมูลแคมเปญให้ IT ได้' : undefined,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#2e934a',
@@ -921,6 +949,14 @@ if (!isValid) return;
       cancelButtonText: 'ยกเลิก'
     }).then((result) => {
       if (result.isConfirmed) {
+        if (!window.PC_SubmissionLog) { Swal.fire('ยังส่งงานไม่ได้', 'ระบบตรวจการบันทึกยังโหลดไม่ครบ กรุณารีเฟรชแล้วลองใหม่', 'error'); return; }
+        try {
+            for (const job of mappingJobs) {
+                if (!job.codes.length) continue;
+                const req = PC_CodeConvert.registerCodes(job.codes, job);
+                if (!req || req.error) throw new Error('บันทึก Mapping Code ไม่สำเร็จ กรุณาตรวจพื้นที่จัดเก็บแล้วลองอีกครั้ง');
+            }
+        } catch (e) { Swal.fire('ส่งงานไม่สำเร็จ', String(e.message || e), 'error'); return; }
         Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
         const finalPayload = {
@@ -928,24 +964,30 @@ if (!isValid) return;
             campaigns: allCampaignData,
             ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
         };
+        var _submissionPlan = PC_SubmissionLog.prepare('Bill Discount', finalPayload);
 
         google.script.run
           .withSuccessHandler(function(res) {
             Swal.close();
             if (res && res.status === "success") {
-                Swal.fire({ title: 'บันทึกสำเร็จ!', text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', icon: 'success', confirmButtonColor: '#2e934a' }).then(() => {
+                var _complete = function () {
                     document.getElementById('campaignList').innerHTML = ''; 
                     window.campaignCount = 0; 
                     window.addCampaign(); 
                     document.getElementById('globalMonth').value = '';
-                    var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
-                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
+                };
+                var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
+                if (_submissionPlan) PC_SubmissionLog.afterSave(_submissionPlan, {
+                    onDone: function (ok) { if (ok) _complete(); },
+                    onAfter: function () { if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c); }
                 });
             } else { 
+                if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, res && res.message || 'Unknown Error');
                 Swal.fire('เกิดข้อผิดพลาด', (res && res.message) ? res.message : 'ไม่สามารถบันทึกข้อมูลได้', 'error'); 
             }
           })
           .withFailureHandler(function(err) {
+            if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, err && err.message || err);
             Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
           })
           .submitBillDiscountProposal(finalPayload);

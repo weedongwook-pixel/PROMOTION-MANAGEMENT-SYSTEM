@@ -48,8 +48,8 @@
   }
 </style>
 
-<div class="p-4 opt-scope" style="background-color:#f4f4f4; min-height:100vh;">
-  <div id="optHeaderBar" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+<div class="p-4 opt-scope pc-workspace" style="background-color:#f4f4f4; min-height:100vh;">
+  <div id="optHeaderBar" class="pc-page-heading d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
     <div class="d-flex align-items-center">
       <div style="width:10px; height:60px; background:var(--pc-yellow,#2e934a); margin-right:20px; border-radius:5px;"></div>
       <div>
@@ -103,41 +103,54 @@
   <div class="bg-white p-2 rounded-3 shadow-sm border mb-3 d-flex flex-wrap gap-2 align-items-center" id="optFilterBar">
     <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-filter me-1"></i> สถานะ:</span>
     <div class="btn-group" id="optFilter">
-      <button class="btn btn-sm btn-outline-secondary" data-f="WAITING" onclick="window.setOptFilter(this,'WAITING')">รอตรวจสอบ</button>
-      <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.setOptFilter(this,'CONFIRMED')">ยืนยันแล้ว</button>
-      <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.setOptFilter(this,'REJECTED')">ตีกลับ</button>
-      <button class="btn btn-sm btn-success active" data-f="ALL" onclick="window.setOptFilter(this,'ALL')">ทั้งหมด</button>
+      <button class="btn btn-sm btn-outline-secondary" data-f="WAITING" onclick="window.setOptFilter(this,'WAITING')"><span data-en="Awaiting review" data-th="รอตรวจสอบ">รอตรวจสอบ</span></button>
+      <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.setOptFilter(this,'CONFIRMED')"><span data-en="Confirmed" data-th="ยืนยันแล้ว">ยืนยันแล้ว</span></button>
+      <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.setOptFilter(this,'REJECTED')"><span data-en="Returned" data-th="ตีกลับ">ตีกลับ</span></button>
+      <button class="btn btn-sm btn-success active" data-f="ALL" onclick="window.setOptFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span></button>
     </div>
     <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-clock-rotate-left me-1"></i> ประเภท:</span>
     <div class="btn-group" id="optLifeFilter">
-      <button class="btn btn-sm btn-dark active" data-lf="ALL" onclick="window.setOptLifeFilter(this,'ALL')">ทั้งหมด</button>
-      <button class="btn btn-sm btn-outline-dark" data-lf="NEW" onclick="window.setOptLifeFilter(this,'NEW')">New</button>
-      <button class="btn btn-sm btn-outline-dark" data-lf="EXTENDED" onclick="window.setOptLifeFilter(this,'EXTENDED')">ขยายเวลา</button>
-      <button class="btn btn-sm btn-outline-dark" data-lf="REDUCED" onclick="window.setOptLifeFilter(this,'REDUCED')">ลดเวลา</button>
-      <button class="btn btn-sm btn-outline-dark" data-lf="CANCELLED" onclick="window.setOptLifeFilter(this,'CANCELLED')">ยกเลิก</button>
+      <button class="btn btn-sm btn-dark active" data-lf="ALL" onclick="window.setOptLifeFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span></button>
+      <button class="btn btn-sm btn-outline-dark" data-lf="NEW" onclick="window.setOptLifeFilter(this,'NEW')"><span data-en="New" data-th="งานใหม่">งานใหม่</span></button>
+      <button class="btn btn-sm btn-outline-dark" data-lf="EXTENDED" onclick="window.setOptLifeFilter(this,'EXTENDED')"><span data-en="Extended" data-th="ขยายเวลา">ขยายเวลา</span></button>
+      <button class="btn btn-sm btn-outline-dark" data-lf="REDUCED" onclick="window.setOptLifeFilter(this,'REDUCED')"><span data-en="Reduced" data-th="ลดเวลา">ลดเวลา</span></button>
+      <button class="btn btn-sm btn-outline-dark" data-lf="CANCELLED" onclick="window.setOptLifeFilter(this,'CANCELLED')"><span data-en="Cancelled" data-th="ยกเลิก">ยกเลิก</span></button>
     </div>
     <select id="optRowsSelect" class="form-select form-select-sm" style="width:auto" onchange="window.optSetRows(this.value)"><option value="99999" selected>โชว์ทั้งหมด</option><option value="15">15 แถว</option><option value="30">30 แถว</option><option value="50">50 แถว</option></select>
     <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="window.optClearFilters()" title="ล้างตัวกรองทั้งหมด"><i class="fas fa-eraser me-1"></i>ล้างตัวกรอง</button>
-    <div class="ms-auto" style="width:300px;"><input type="text" id="optSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อแคมเปญ..." oninput="window.renderOpt()"></div>
   </div>
 
   <div class="bg-white rounded-3 shadow-sm border" style="overflow:hidden;">
+    <div id="optColumnFilters" class="pc-campaign-filters p-3 border-bottom d-flex flex-wrap gap-3">
+      <div><label for="opf_type" class="form-label fw-bold" data-en="Promotion Type" data-th="ประเภทโปรโมชั่น">ประเภทโปรโมชั่น</label><select id="opf_type" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+      <div><label for="opf_mode" class="form-label fw-bold" data-en="Sale Mode" data-th="ช่องทางขาย">ช่องทางขาย</label><select id="opf_mode" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+    </div>
+    <details id="optMoreFilters" class="pc-extra-filters border-bottom">
+      <summary class="p-3 fw-bold"><span data-en="More Filters" data-th="ตัวกรองเพิ่มเติม">ตัวกรองเพิ่มเติม</span></summary>
+      <div class="pc-campaign-filters p-3 pt-0 d-flex flex-wrap gap-3">
+        <div><label for="opf_name" class="form-label fw-bold" data-en="Campaign Name" data-th="ชื่อแคมเปญ">ชื่อแคมเปญ</label><select id="opf_name" class="form-select" aria-label="กรองชื่อแคมเปญ" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+        <div><label for="opf_start" class="form-label fw-bold" data-en="Start Date" data-th="วันที่เริ่ม">วันที่เริ่ม</label><select id="opf_start" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+        <div><label for="opf_end" class="form-label fw-bold" data-en="End Date" data-th="วันที่สิ้นสุด">วันที่สิ้นสุด</label><select id="opf_end" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+        <div><label for="opf_it" class="form-label fw-bold" data-en="IT Status" data-th="สถานะ IT">สถานะ IT</label><select id="opf_it" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+        <div><label for="opf_op" class="form-label fw-bold" data-en="OP Status" data-th="สถานะ OP">สถานะ OP</label><select id="opf_op" class="form-select" onchange="window.renderOpt()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></div>
+      </div>
+    </details>
     <div class="table-responsive" style="max-height:calc(100vh - 250px); overflow-y:auto;">
       <table class="table table-hover align-middle m-0" id="optTable">
         <thead class="text-center">
           <tr>
             <th style="width:40px;"><input class="form-check-input" type="checkbox" onclick="window.optToggleAll(this)"></th>
-            <th class="text-start ps-3" style="width:22%; line-height: 1.4;">Campaign Name<select id="opf_name" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>Type Promotion<select id="opf_type" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>Start Date<select id="opf_start" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>End Date<select id="opf_end" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>Sale Mode<select id="opf_mode" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>IT Status<select id="opf_it" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>OP Status<select id="opf_op" class="header-filter" onchange="window.renderOpt()"><option value="">ALL</option></select></th>
-            <th>OP ตรวจเสร็จ</th>
-            <th>วันที่ทำรายการ</th>
-            <th>ผู้ส่งงาน</th>
-            <th style="width:230px;">Action</th>
+            <th class="text-start ps-3" style="width:22%; line-height: 1.4;"><span data-en="Campaign / Reported by" data-th="แคมเปญ / ผู้แจ้ง">แคมเปญ / ผู้แจ้ง</span><input type="search" id="optSearch" class="header-filter" placeholder="ค้นหาชื่อแคมเปญ..." aria-label="ค้นหาชื่อแคมเปญ" oninput="window.renderOpt()"></th>
+            <th><span data-en="Promotion Type" data-th="ประเภทโปรโมชั่น">ประเภทโปรโมชั่น</span></th>
+            <th><span data-en="Promotion Period" data-th="ช่วงใช้งาน">ช่วงใช้งาน</span></th>
+            <th><span data-en="End Date" data-th="วันที่สิ้นสุด">วันที่สิ้นสุด</span></th>
+            <th><span data-en="Sale Mode" data-th="ช่องทางขาย">ช่องทางขาย</span></th>
+            <th><span data-en="Current Status" data-th="สถานะปัจจุบัน">สถานะปัจจุบัน</span></th>
+            <th><span data-en="Progress" data-th="ความคืบหน้า">ความคืบหน้า</span></th>
+            <th><span data-en="OP Reviewed On" data-th="วันที่ OP ตรวจเสร็จ">วันที่ OP ตรวจเสร็จ</span></th>
+            <th><span data-en="Last Updated" data-th="อัปเดตล่าสุด">อัปเดตล่าสุด</span></th>
+            <th><span data-en="Reported By" data-th="ผู้แจ้ง">ผู้แจ้ง</span></th>
+            <th style="width:230px;"><span data-en="Actions" data-th="ดำเนินการ">ดำเนินการ</span></th>
           </tr>
         </thead>
         <tbody id="optBody" class="text-center"></tbody>
@@ -154,10 +167,10 @@
     <div class="bg-white p-2 rounded-3 shadow-sm border mb-3 d-flex flex-wrap gap-2 align-items-center">
       <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-filter me-1"></i> สถานะ:</span>
       <div class="btn-group" id="npdOpFilter">
-        <button class="btn btn-sm btn-success active" data-f="PENDING" onclick="window.npdOpSetFilter(this,'PENDING')">รอตรวจสอบ</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.npdOpSetFilter(this,'CONFIRMED')">ยืนยันแล้ว</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.npdOpSetFilter(this,'REJECTED')">ตีกลับ</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="ALL" onclick="window.npdOpSetFilter(this,'ALL')">ทั้งหมด</button>
+        <button class="btn btn-sm btn-success active" data-f="PENDING" onclick="window.npdOpSetFilter(this,'PENDING')"><span data-en="Awaiting review" data-th="รอตรวจสอบ">รอตรวจสอบ</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.npdOpSetFilter(this,'CONFIRMED')"><span data-en="Confirmed" data-th="ยืนยันแล้ว">ยืนยันแล้ว</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.npdOpSetFilter(this,'REJECTED')"><span data-en="Returned" data-th="ตีกลับ">ตีกลับ</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="ALL" onclick="window.npdOpSetFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span></button>
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="window.npdOpClearFilters()" title="ล้างตัวกรองทั้งหมด"><i class="fas fa-eraser me-1"></i>ล้างตัวกรอง</button>
       <div class="ms-auto" style="width:300px;"><input type="text" id="npdOpSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อสินค้า / Project..." oninput="window.renderNpdOp()"></div>
@@ -172,7 +185,7 @@
               <th>ช่วงเวลา</th>
               <th>ช่องทาง</th>
               <th>สถานะ</th>
-              <th style="width:230px;">Action</th>
+              <th style="width:230px;"><span data-en="Actions" data-th="ดำเนินการ">ดำเนินการ</span></th>
             </tr>
           </thead>
           <tbody id="npdOpBody" class="text-center"></tbody>
@@ -188,10 +201,10 @@
     <div class="bg-white p-2 rounded-3 shadow-sm border mb-3 d-flex flex-wrap gap-2 align-items-center">
       <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-filter me-1"></i> สถานะ:</span>
       <div class="btn-group" id="flvOpFilter">
-        <button class="btn btn-sm btn-success active" data-f="PENDING" onclick="window.flvOpSetFilter(this,'PENDING')">รอตรวจสอบ</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.flvOpSetFilter(this,'CONFIRMED')">ยืนยันแล้ว</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.flvOpSetFilter(this,'REJECTED')">ตีกลับ</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="ALL" onclick="window.flvOpSetFilter(this,'ALL')">ทั้งหมด</button>
+        <button class="btn btn-sm btn-success active" data-f="PENDING" onclick="window.flvOpSetFilter(this,'PENDING')"><span data-en="Awaiting review" data-th="รอตรวจสอบ">รอตรวจสอบ</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.flvOpSetFilter(this,'CONFIRMED')"><span data-en="Confirmed" data-th="ยืนยันแล้ว">ยืนยันแล้ว</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.flvOpSetFilter(this,'REJECTED')"><span data-en="Returned" data-th="ตีกลับ">ตีกลับ</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="ALL" onclick="window.flvOpSetFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span></button>
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="window.flvOpClearFilters()" title="ล้างตัวกรองทั้งหมด"><i class="fas fa-eraser me-1"></i>ล้างตัวกรอง</button>
       <div class="ms-auto" style="width:300px;"><input type="text" id="flvOpSearch" class="form-control form-control-sm" placeholder="ค้นหาชื่อผง / Project..." oninput="window.renderFlavorOp()"></div>
@@ -206,7 +219,7 @@
               <th>ช่วงเวลา</th>
               <th>สถานะ IT</th>
               <th>สถานะ</th>
-              <th style="width:230px;">Action</th>
+              <th style="width:230px;"><span data-en="Actions" data-th="ดำเนินการ">ดำเนินการ</span></th>
             </tr>
           </thead>
           <tbody id="flvOpBody" class="text-center"></tbody>
@@ -220,7 +233,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>window.setOptLifeFilter = window.setOptLifeFilter || function(){};</script>
-<script src="js/op-tracking.js?v=23"></script>
+<script src="js/tracking-status.js?v=3"></script>
+<script src="js/op-tracking.js?v=34"></script>
 <template data-legacy="op-externalized" id="optLegacyInert">
   var optData = [];
   var optFilter = 'ALL';
@@ -310,7 +324,7 @@
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+
       '<style>body{font-family:"Kanit",sans-serif;padding:24px;color:#1a1d20}h2{margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #cfd4da;padding:6px 8px;text-align:left}thead th{background:#1a1d20;color:#fff}tbody tr:nth-child(even){background:#f6f8fa}@media print{.noprint{display:none}}</style>'+
       '</head><body><h2>'+esc(title)+'</h2><div class="sub">Potato Corner · พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+'</div>'+
-      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table>'+
+      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้แจ้ง</th></tr></thead><tbody>'+body+'</tbody></table>'+
       '<button class="noprint" onclick="window.print()" style="margin-top:16px;padding:8px 18px;border:0;background:#2e934a;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">🖨️ พิมพ์</button>'+
       '<scr'+'ipt>setTimeout(function(){try{window.print();}catch(e){}},400);<\/scr'+'ipt></body></html>';
     var w=window.open('','_blank'); if(!w){ Swal.fire('ป๊อปอัปถูกบล็อก','กรุณาอนุญาต popup เพื่อพิมพ์','warning'); return; } w.document.write(html); w.document.close();
@@ -395,7 +409,7 @@
       if (chg === 'EXTENDED') lifeTag = '<span class="life-tag tag-ext"><i class="fas fa-calendar-plus"></i> ขยายเวลา</span>';
       else if (chg === 'REDUCED') lifeTag = '<span class="life-tag tag-red"><i class="fas fa-calendar-minus"></i> ลดเวลา</span>';
       else if (chg === 'CANCELLED') lifeTag = '<span class="life-tag tag-cancel"><i class="fas fa-ban"></i> ยกเลิก</span>';
-      else if (String(c.opStatus || '').toUpperCase() !== 'CONFIRMED') lifeTag = '<span class="life-tag tag-new">NEW</span>';
+      else if (String(c.opStatus || '').toUpperCase() !== 'CONFIRMED') lifeTag = '<span class="life-tag tag-new" data-en="New" data-th="งานใหม่">งานใหม่</span>';
 
       let endCls = '', endFlag = '';
       if (chg === 'EXTENDED') { endCls = 'text-info fw-bold'; endFlag = '<i class="fas fa-arrow-up-long end-flag text-info" title="ขยายวันสิ้นสุด"></i>'; }

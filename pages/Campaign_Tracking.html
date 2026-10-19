@@ -76,8 +76,8 @@
   @media (max-width: 640px) { .ct-detail-topbar { padding:16px; gap:10px; } .ct-detail-topbar { flex-wrap:wrap; } .ct-detail-status { order:3; width:100%; padding-top:0; } .ct-detail-meta { grid-template-columns:repeat(2,minmax(0,1fr)); } .ct-detail-meta > div:nth-child(2n) { border-right:0; } .ct-detail-body .item-table-wrapper { padding:14px; } }
 </style>
 
-<div class="p-4 ct-scope" style="background-color: #f4f4f4; min-height: 100vh;">
-  <div id="ctHeader" class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+<div class="p-4 ct-scope pc-workspace" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div id="ctHeader" class="pc-page-heading d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
     <div class="d-flex align-items-center">
       <div style="width:10px; height:60px; background:var(--pc-yellow,#2e934a); margin-right:20px; border-radius:5px;"></div>
       <div>
@@ -113,12 +113,12 @@
 
   <div id="ctPromoBox" class="table-container border">
     <div class="p-3 bg-light border-bottom">
-      <div class="row g-3 align-items-center">
+      <div class="row g-3 align-items-center pc-tracking-tools">
         <div class="col-auto">
           <select id="rowsPerPageSelect" class="form-select shadow-sm" onchange="window.updateRowsPerPage(this.value)">
-            <option value="99999" selected>ทั้งหมด</option>
+            <option value="99999">ทั้งหมด</option>
             <option value="15">15 แถว</option>
-            <option value="30">30 แถว</option>
+            <option value="30" selected>30 แถว</option>
             <option value="50">50 แถว</option>
           </select>
         </div>
@@ -127,45 +127,59 @@
           <div style="width: 170px;"><input type="month" id="monthOnlyPicker" class="form-control" onchange="window.resetPageAndRender()" title="เลือกเดือน — แสดงโปรที่ครอบเดือนนั้น"></div>
           <div style="width: 180px;"><input type="date" id="monthPicker" class="form-control" onchange="window.resetPageAndRender()" title="เลือกวัน — แล้วเลือกโหมดในช่องถัดไป"></div>
           <div style="width: 150px;"><select id="dateMode" class="form-select" onchange="window.resetPageAndRender()" title="โหมดของตัวกรองวันที่"><option value="ACTIVE">ใช้งานวันที่เลือก</option><option value="START">วันที่เริ่ม</option><option value="END">วันที่สิ้นสุด</option></select></div>
+          <div style="width: 180px;"><input id="f_reporter" class="form-control" placeholder="ค้นหาชื่อผู้แจ้ง" aria-label="ค้นหาชื่อผู้แจ้ง" oninput="window.resetPageAndRender()"></div>
           <button class="btn btn-outline-secondary shadow-sm" onclick="window.clearFilters()" title="Clear Filters"><i class="fas fa-eraser"></i></button>
         </div>
       </div>
     </div>
 
+    <div class="pc-campaign-filters p-3 border-bottom d-flex flex-wrap gap-3">
+      <div>
+        <label for="f_type" class="form-label fw-bold" data-en="Promotion Type" data-th="ประเภทโปรโมชั่น">ประเภทโปรโมชั่น</label>
+        <select id="f_type" class="form-select" onchange="window.resetPageAndRender()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select>
+      </div>
+      <div>
+        <label for="f_mode" class="form-label fw-bold" data-en="Sale Mode" data-th="ช่องทางขาย">ช่องทางขาย</label>
+        <select id="f_mode" class="form-select" onchange="window.resetPageAndRender()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select>
+      </div>
+    </div>
     <div class="p-2 bg-white border-bottom d-flex flex-wrap gap-2 align-items-center" id="ctFilterBar">
-      <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-filter me-1"></i> สถานะ:</span>
+      <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-filter me-1"></i> ขั้นตอนงาน:</span>
       <div class="btn-group" id="ctStatusFilter">
-        <button class="btn btn-sm btn-success active" data-f="ALL" onclick="window.setCtStatusFilter(this,'ALL')">ทั้งหมด</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="WAITING" onclick="window.setCtStatusFilter(this,'WAITING')">รอตรวจสอบ</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="CONFIRMED" onclick="window.setCtStatusFilter(this,'CONFIRMED')">ยืนยันแล้ว</button>
-        <button class="btn btn-sm btn-outline-secondary" data-f="REJECTED" onclick="window.setCtStatusFilter(this,'REJECTED')">ตีกลับ</button>
+        <button class="btn btn-sm btn-success active" data-f="ALL" onclick="window.setCtStatusFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span> <span data-count>0</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="WAIT_IT" onclick="window.setCtStatusFilter(this,'WAIT_IT')"><span data-en="Awaiting IT" data-th="รอ IT">รอ IT</span> <span data-count>0</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="WAIT_OP" onclick="window.setCtStatusFilter(this,'WAIT_OP')"><span data-en="Awaiting OP" data-th="รอ OP">รอ OP</span> <span data-count>0</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="NEEDS_EDIT" onclick="window.setCtStatusFilter(this,'NEEDS_EDIT')"><span data-en="Needs changes" data-th="ต้องแก้ไข">ต้องแก้ไข</span> <span data-count>0</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="COMPLETE" onclick="window.setCtStatusFilter(this,'COMPLETE')"><span data-en="OP review completed" data-th="OP ตรวจสอบแล้ว">OP ตรวจสอบแล้ว</span> <span data-count>0</span></button>
+        <button class="btn btn-sm btn-outline-secondary" data-f="CANCELLED" onclick="window.setCtStatusFilter(this,'CANCELLED')"><span data-en="Cancelled" data-th="ยกเลิก">ยกเลิก</span> <span data-count>0</span></button>
       </div>
       <span class="fw-bold text-muted small ms-2 me-1"><i class="fas fa-clock-rotate-left me-1"></i> ประเภท:</span>
       <div class="btn-group" id="ctLifeFilter">
-        <button class="btn btn-sm btn-dark active" data-lf="ALL" onclick="window.setCtLifeFilter(this,'ALL')">ทั้งหมด</button>
-        <button class="btn btn-sm btn-outline-dark" data-lf="NEW" onclick="window.setCtLifeFilter(this,'NEW')">New</button>
-        <button class="btn btn-sm btn-outline-dark" data-lf="EXTENDED" onclick="window.setCtLifeFilter(this,'EXTENDED')">ขยายเวลา</button>
-        <button class="btn btn-sm btn-outline-dark" data-lf="REDUCED" onclick="window.setCtLifeFilter(this,'REDUCED')">ลดเวลา</button>
-        <button class="btn btn-sm btn-outline-dark" data-lf="CANCELLED" onclick="window.setCtLifeFilter(this,'CANCELLED')">ยกเลิก</button>
+        <button class="btn btn-sm btn-dark active" data-lf="ALL" onclick="window.setCtLifeFilter(this,'ALL')"><span data-en="All" data-th="ทั้งหมด">ทั้งหมด</span></button>
+        <button class="btn btn-sm btn-outline-dark" data-lf="NEW" onclick="window.setCtLifeFilter(this,'NEW')"><span data-en="New" data-th="งานใหม่">งานใหม่</span></button>
+        <button class="btn btn-sm btn-outline-dark" data-lf="EXTENDED" onclick="window.setCtLifeFilter(this,'EXTENDED')"><span data-en="Extended" data-th="ขยายเวลา">ขยายเวลา</span></button>
+        <button class="btn btn-sm btn-outline-dark" data-lf="REDUCED" onclick="window.setCtLifeFilter(this,'REDUCED')"><span data-en="Reduced" data-th="ลดเวลา">ลดเวลา</span></button>
+        <button class="btn btn-sm btn-outline-dark" data-lf="CANCELLED" onclick="window.setCtLifeFilter(this,'CANCELLED')"><span data-en="Cancelled" data-th="ยกเลิก">ยกเลิก</span></button>
       </div>
     </div>
 
+    <p class="small text-muted px-3 pt-3 mb-2" data-en="Progress counts saved promotion-button results, not member-product rows. OP review completed does not indicate the promotion start date. Check Cloud save results in Promotion Submissions." data-th="ความคืบหน้านับจากปุ่มโปรฯ ที่บันทึกผลแล้ว ไม่รวมแถวสินค้าสมาชิก · “OP ตรวจสอบแล้ว” ไม่ใช่วันเริ่มใช้งานโปรฯ · ตรวจผลบันทึก Cloud ได้ที่ประวัติการแจ้งโปรฯ">ความคืบหน้านับจากปุ่มโปรฯ ที่บันทึกผลแล้ว ไม่รวมแถวสินค้าสมาชิก · “OP ตรวจสอบแล้ว” ไม่ใช่วันเริ่มใช้งานโปรฯ · ตรวจผลบันทึก Cloud ได้ที่ประวัติการแจ้งโปรฯ</p>
     <div class="table-responsive-scroll">
-      <table class="table table-hover align-middle m-0" id="mainTrackingTable">
+      <table class="table table-hover align-middle m-0 ct-table-summary" id="mainTrackingTable">
         <thead class="text-center">
           <tr>
             <th style="width: 40px;"><input class="form-check-input" type="checkbox" onclick="window.toggleAll(this)" title="ติ๊กทั้งหมด / ยกเลิก"></th>
-            <th width="20%">Campaign Name<input type="text" id="f_name" class="header-filter" oninput="window.renderTracking()" placeholder="พิมพ์ค้นหาชื่อ…" style="text-align:left"></th>
-            <th width="12%">Type Promotion<select id="f_type" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th width="10%">Start Date<select id="f_start" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th width="10%">End Date<select id="f_end" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th width="12%">Sale Mode<select id="f_mode" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th>IT Status<select id="f_it" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th>OP Status<select id="f_op" class="header-filter" onchange="window.renderTracking()"><option value="">ALL</option></select></th>
-            <th>OP ตรวจเสร็จ</th>
-            <th>วันที่ทำรายการ</th>
-            <th>ผู้ส่งงาน<input type="text" id="f_reporter" class="header-filter" oninput="window.renderTracking()" placeholder="พิมพ์ค้นหา…" style="text-align:center"></th>
-            <th>Action</th>
+            <th width="24%"><span data-en="Campaign / Reported by" data-th="แคมเปญ / ผู้แจ้ง">แคมเปญ / ผู้แจ้ง</span><input type="search" id="f_name" class="header-filter" oninput="window.resetPageAndRender()" placeholder="ค้นหาชื่อแคมเปญ" aria-label="ค้นหาชื่อแคมเปญ" style="text-align:left"></th>
+            <th width="12%"><span data-en="Promotion Type" data-th="ประเภทโปรโมชั่น">ประเภทโปรโมชั่น</span></th>
+            <th width="12%"><span data-en="Promotion Period" data-th="ช่วงใช้งาน">ช่วงใช้งาน</span><select id="f_start" class="header-filter" onchange="window.renderTracking()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></th>
+            <th width="10%"><span data-en="End Date" data-th="วันที่สิ้นสุด">วันที่สิ้นสุด</span><select id="f_end" class="header-filter" onchange="window.renderTracking()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></th>
+            <th width="12%"><span data-en="Sale Mode" data-th="ช่องทางขาย">ช่องทางขาย</span></th>
+            <th><span data-en="Current Status" data-th="สถานะปัจจุบัน">สถานะปัจจุบัน</span><select id="f_it" class="header-filter" onchange="window.renderTracking()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></th>
+            <th><span data-en="Progress" data-th="ความคืบหน้า">ความคืบหน้า</span><select id="f_op" class="header-filter" onchange="window.renderTracking()"><option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option></select></th>
+            <th><span data-en="OP Reviewed On" data-th="วันที่ OP ตรวจเสร็จ">วันที่ OP ตรวจเสร็จ</span></th>
+            <th><span data-en="Last Updated" data-th="อัปเดตล่าสุด">อัปเดตล่าสุด</span></th>
+            <th><span data-en="Reported By" data-th="ผู้แจ้ง">ผู้แจ้ง</span></th>
+            <th><span data-en="Actions" data-th="ดำเนินการ">ดำเนินการ</span></th>
           </tr>
         </thead>
         <tbody id="trackingTableBody" class="text-center"></tbody>
@@ -184,7 +198,8 @@
   </div>
 </div>
 
-<script src="js/campaign-tracking.js?v=34"></script>
+<script src="js/tracking-status.js?v=3"></script>
+<script src="js/campaign-tracking.js?v=43"></script>
 <template data-legacy="ct-externalized" id="ctLegacyInert">
   let allCampaigns = []; 
   var ctStaffMode = false;
@@ -479,7 +494,7 @@ window.openFile = function(url, name) {
     var st='body{font-family:Kanit,sans-serif;padding:24px;color:#1a1d20}h2{margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #cfd4da;padding:6px 8px;text-align:left}thead th{background:#1a1d20;color:#fff}tbody tr:nth-child(even){background:#f6f8fa}';
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>'+st+'</style></head><body>'+
       '<h2>'+esc(title)+'</h2><div class="sub">Potato Corner · พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+'</div>'+
-      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table></body></html>';
+      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้แจ้ง</th></tr></thead><tbody>'+body+'</tbody></table></body></html>';
     var w=window.open('','_blank'); if(!w){ Swal.fire('ป๊อปอัปถูกบล็อก','กรุณาอนุญาต popup เพื่อพิมพ์','warning'); return; }
     w.document.write(html); w.document.close();
     try{ w.focus(); setTimeout(function(){ try{ w.print(); }catch(e){} }, 500); }catch(e){}

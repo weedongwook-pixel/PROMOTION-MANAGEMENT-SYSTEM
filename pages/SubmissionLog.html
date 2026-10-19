@@ -1,0 +1,347 @@
+<style>
+  #sl-page { padding: 24px; min-height: 100vh; max-width: 100%; box-sizing: border-box; background: #f4f6f9; color: #1a1d20; }
+  #sl-page *, #sl-page *::before, #sl-page *::after { box-sizing: border-box; }
+  #sl-page .sl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; }
+  #sl-page h1 { font-size: 1.55rem; font-weight: 700; margin: 0 0 5px; }
+  #sl-page .sl-sub { color: #58645e; margin: 0; font-size: .91rem; overflow-wrap: anywhere; }
+  #sl-page .sl-scope-note { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 5px 9px; border: 1px solid #cfe2d3; border-radius: 999px; background: #edf7ef; color: #155e35; font-size: .79rem; font-weight: 700; }
+  #sl-page .sl-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  #sl-page .sl-controls label { font-size: .78rem; font-weight: 700; color: #58645e; display: block; margin-bottom: 3px; }
+  #sl-page .sl-controls input { min-height: 39px; }
+  #sl-page .sl-overview { padding: 16px 18px; border-radius: 12px; background: #eaf6ee; color: #145c32; margin-bottom: 10px; }
+  #sl-page .sl-overview.pending { background: #fff3d9; color: #755000; }
+  #sl-page .sl-overview.empty { background: #eaf0f3; color: #344c58; }
+  #sl-page .sl-overview.error { background: #fce7e7; color: #922222; }
+  #sl-page .sl-overview strong { display: block; font-size: 1.08rem; line-height: 1.4; }
+  #sl-page .sl-overview span { display: block; font-size: .85rem; margin-top: 3px; }
+  #sl-page .sl-issues { margin-top: 10px; font-size: .83rem; }
+  #sl-page .sl-issues summary { cursor: pointer; font-weight: 700; }
+  #sl-page .sl-issues ul { margin: 7px 0 0; padding-inline-start: 20px; }
+  #sl-page .sl-issues li { margin-top: 4px; overflow-wrap: anywhere; }
+  #sl-page .sl-progress { display: block; width: 100%; height: 8px; margin-top: 12px; border: 0; border-radius: 99px; overflow: hidden; accent-color: #247b43; }
+  #sl-page .sl-progress::-webkit-progress-bar { background: rgba(24, 78, 46, .14); border-radius: 99px; }
+  #sl-page .sl-progress::-webkit-progress-value { background: #247b43; border-radius: 99px; }
+  #sl-page .sl-progress::-moz-progress-bar { background: #247b43; border-radius: 99px; }
+  #sl-page .sl-metrics { display: flex; flex-wrap: wrap; gap: 12px 24px; border: 1px solid #dce4df; border-radius: 12px; padding: 14px 18px; background: #fff; margin-bottom: 18px; }
+  #sl-page .sl-metrics span { color: #3d4c43; font-size: .86rem; white-space: nowrap; }
+  #sl-page .sl-metrics strong { font-size: 1.12rem; color: #1a1d20; margin-right: 4px; }
+  #sl-page .sl-metrics .sl-good strong { color: #126a37; }
+  #sl-page .sl-metrics .sl-bad strong { color: #a22323; }
+  #sl-page .sl-list-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+  #sl-page .sl-list-head h2 { margin: 0; font-size: 1.08rem; font-weight: 700; }
+  #sl-page .sl-list-head p { margin: 3px 0 0; color: #58645e; font-size: .81rem; }
+  #sl-page .sl-search { min-width: min(100%, 260px); min-height: 40px; }
+  #sl-page .sl-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+  #sl-page .sl-filters button { min-height: 39px; padding: 7px 12px; border: 1px solid #cfd9d2; border-radius: 8px; background: #fff; color: #355141; font-size: .85rem; font-weight: 700; }
+  #sl-page .sl-filters button:hover { border-color: #247b43; }
+  #sl-page .sl-filters button[aria-pressed="true"] { background: #185b34; color: #fff; border-color: #185b34; }
+  #sl-page .sl-filters button span { font-variant-numeric: tabular-nums; }
+  #sl-page .sl-result-count { min-height: 22px; margin: 0 0 8px; color: #536157; font-size: .8rem; }
+  #sl-page .sl-note { color: #4c5b52; font-size: .82rem; margin: 0 0 12px; }
+  #sl-page .sl-note summary { cursor: pointer; width: fit-content; }
+  #sl-page .sl-note p { margin: 7px 0 0; max-width: 80ch; }
+  #sl-page .sl-table-wrap { background: #fff; border: 1px solid #dce4df; border-radius: 12px; overflow-x: auto; }
+  #sl-page table { width: 100%; min-width: 860px; border-collapse: collapse; }
+  #sl-page th { background: #1a1d20; color: #fff; font-size: .79rem; padding: 12px 14px; text-align: left; white-space: nowrap; }
+  #sl-page td { padding: 13px 14px; border-bottom: 1px solid #edf0ee; vertical-align: middle; font-size: .87rem; }
+  #sl-page tbody tr:last-child td { border-bottom: 0; }
+  #sl-page tbody tr.sl-failed { background: #fff8f8; }
+  #sl-page tbody tr:hover { background: #f4f8f5; }
+  #sl-page .sl-campaign { font-weight: 700; overflow-wrap: anywhere; }
+  #sl-page .sl-id { color: #66736b; font-size: .72rem; }
+  #sl-page .sl-button-count { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  #sl-page .sl-button-count small { display: block; color: #805400; font-weight: 600; font-size: .73rem; white-space: normal; overflow-wrap: anywhere; }
+  #sl-page .sl-state { font-size: .76rem; font-weight: 700; display: inline-flex; gap: 5px; align-items: center; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
+  #sl-page .sl-state.verified { background: #e5f5eb; color: #126a37; }
+  #sl-page .sl-state.failed { background: #fce7e7; color: #a22323; }
+  #sl-page .sl-empty { padding: 46px 20px; text-align: center; color: #59675f; }
+  #sl-page .sl-activity { margin-top: 30px; }
+  #sl-page .sl-activity-tools { display: flex; gap: 10px; align-items: end; justify-content: space-between; flex-wrap: wrap; margin: 0 0 12px; }
+  #sl-page .sl-activity-tools h2 { margin: 0 0 4px; font-size: 1.08rem; font-weight: 700; }
+  #sl-page .sl-activity-tools p { margin: 0; color: #58645e; font-size: .81rem; }
+  #sl-page .sl-activity-tools label { display: block; font-size: .78rem; font-weight: 700; color: #58645e; margin-bottom: 3px; }
+  #sl-page .sl-activity-tools select { min-width: 150px; min-height: 39px; }
+  #sl-page .sl-action { display: inline-flex; font-weight: 700; font-size: .78rem; padding: 5px 9px; border-radius: 6px; background: #eaf1f8; color: #17496f; }
+  #sl-page .sl-action.ADDED { background: #e5f5eb; color: #126a37; }
+  #sl-page .sl-action.CANCELLED { background: #fce7e7; color: #a22323; }
+  #sl-page .sl-action.REDUCED { background: #fff1cd; color: #805400; }
+  #sl-page .sl-activity-detail { color: #4c5b52; font-size: .78rem; margin-top: 4px; overflow-wrap: anywhere; }
+  #sl-page .sl-activity-status { color: #126a37; font-size: .79rem; font-weight: 700; white-space: nowrap; }
+  #sl-page button:focus-visible, #sl-page input:focus-visible, #sl-page select:focus-visible { outline: 3px solid rgba(46,147,74,.35); outline-offset: 2px; }
+  @media (max-width: 650px) {
+    #sl-page { padding: 16px; }
+    #sl-page .sl-head { display: block; }
+    #sl-page .sl-controls { margin-top: 14px; }
+    #sl-page .sl-search { width: 100%; }
+    #sl-page .sl-filters button { flex: 1 1 auto; }
+    #sl-page .sl-table-wrap { overflow-x: visible; }
+    #sl-page table, #sl-page tbody, #sl-page tbody tr { display: block; width: 100%; min-width: 0; }
+    #sl-page thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    #sl-page tbody tr { padding: 12px 14px; border-bottom: 1px solid #e5ebe7; }
+    #sl-page tbody tr:last-child { border-bottom: 0; }
+    #sl-page td { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; padding: 6px 0; border: 0; }
+    #sl-page td::before { content: attr(data-label); color: #66736b; font-size: .73rem; font-weight: 700; }
+    #sl-page td:first-child, #sl-page td:last-child, #sl-page td.sl-empty { display: block; }
+    #sl-page td:first-child { padding-bottom: 10px; }
+    #sl-page td:last-child { padding-top: 10px; }
+    #sl-page td:first-child::before, #sl-page td:last-child::before, #sl-page td.sl-empty::before { content: none; }
+  }
+</style>
+
+<div id="sl-page">
+  <div class="sl-head">
+    <div>
+      <h1><i class="fas fa-clipboard-check text-success me-2" aria-hidden="true"></i>ประวัติการแจ้งโปรโมชั่น</h1>
+      <p id="sl-description" class="sl-sub">ดูรายการที่คุณแจ้งและผลตรวจการบันทึกใน Cloud กับศูนย์ติดตามงาน</p>
+      <span id="sl-active-scope" class="sl-scope-note"><i class="fas fa-user" aria-hidden="true"></i>เฉพาะรายการของฉัน</span>
+    </div>
+    <div class="sl-controls">
+      <div id="sl-scope-wrap" hidden><label for="sl-scope">รายการของใคร</label><select id="sl-scope" class="form-select form-select-sm"><option value="all">ทุกผู้ส่ง</option><option value="mine">เฉพาะของฉัน</option></select></div>
+      <div><label for="sl-date">วันที่ส่งงาน (เวลาไทย)</label><input id="sl-date" type="date" class="form-control form-control-sm"></div>
+      <button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
+    </div>
+  </div>
+  <div id="sl-overview" class="sl-overview empty" role="status" aria-live="polite"><strong>กำลังตรวจรายการที่ส่ง…</strong></div>
+  <div id="sl-metrics" class="sl-metrics"><span>กำลังนับแคมเปญ…</span></div>
+  <div id="sl-list-tools" hidden>
+    <div class="sl-list-head">
+      <div><h2>รายการที่แจ้ง</h2><p>แสดงงานที่ตรวจพบใน Cloud และแจ้งเตือนหากงานที่เคยยืนยันสำเร็จหายไป</p></div>
+      <label class="visually-hidden" for="sl-search">ค้นหาแคมเปญหรือผู้ส่ง</label>
+      <input id="sl-search" class="form-control form-control-sm sl-search" type="search" placeholder="ค้นหาแคมเปญ / ผู้ส่ง" oninput="window.slApplyFilters()">
+    </div>
+    <div class="sl-filters" role="group" aria-label="กรองตามสถานะการบันทึก">
+      <button type="button" data-filter="all" aria-pressed="true" onclick="window.slSetFilter('all')">ทั้งหมด <span id="sl-count-all">0</span></button>
+      <button type="button" data-filter="verified" aria-pressed="false" onclick="window.slSetFilter('verified')">บันทึกสำเร็จ <span id="sl-count-verified">0</span></button>
+      <button type="button" data-filter="failed" aria-pressed="false" onclick="window.slSetFilter('failed')">บันทึกไม่สำเร็จ <span id="sl-count-failed">0</span></button>
+    </div>
+    <p id="sl-result-count" class="sl-result-count" aria-live="polite"></p>
+  </div>
+  <details class="sl-note"><summary>ความหมายของสถานะ</summary><p>“บันทึกสำเร็จ” คือพบรายการใน Cloud ส่วน “บันทึกไม่สำเร็จ” จะแสดงเฉพาะงานที่เคยยืนยันสำเร็จ แต่ตรวจ Cloud ล่าสุดไม่พบรายการ ระบบตรวจเทียบจำนวนปุ่มโปรฯ กับศูนย์ติดตามงานอีกชั้น</p></details>
+  <div class="sl-table-wrap"><table>
+    <thead><tr><th>แคมเปญ</th><th>สถานะบันทึก</th><th>จำนวนปุ่มโปรฯ</th><th>เวลาส่ง</th><th>ผู้ทำรายการ</th><th>ประเภท</th><th>ตรวจงาน</th></tr></thead>
+    <tbody id="sl-rows"><tr><td colspan="7" class="sl-empty">กำลังโหลด…</td></tr></tbody>
+  </table></div>
+  <section class="sl-activity" aria-labelledby="sl-activity-title">
+    <div class="sl-activity-tools">
+      <div><h2 id="sl-activity-title">รายการเปลี่ยนแปลง <span id="sl-activity-count">0</span></h2><p>เพิ่มปุ่มหรือสินค้า · ลดเวลา · ขยายเวลา · ยกเลิก — แยกจากจำนวนแคมเปญที่แจ้งใหม่ · เริ่มเก็บหลังเปิดใช้ฟีเจอร์นี้</p></div>
+      <div><label for="sl-activity-filter">ประเภทการเปลี่ยนแปลง</label><select id="sl-activity-filter" class="form-select form-select-sm" onchange="window.slRenderActivity()"><option value="all">ทั้งหมด</option><option value="ADDED">เพิ่ม</option><option value="EDITED">แก้ไขข้อมูล</option><option value="REDUCED">ลด</option><option value="EXTENDED">ขยาย</option><option value="CANCELLED">ยกเลิก</option></select></div>
+    </div>
+    <p id="sl-activity-result" class="sl-result-count" role="status" aria-live="polite">กำลังตรวจประวัติจาก Cloud…</p>
+    <div class="sl-table-wrap"><table>
+      <thead><tr><th>แคมเปญ</th><th>ทำรายการ</th><th>รายละเอียด</th><th>เวลา</th><th>ผู้ทำรายการ</th><th>ผลบันทึก</th><th>ตรวจงาน</th></tr></thead>
+      <tbody id="sl-activity-rows"><tr><td colspan="7" class="sl-empty">กำลังโหลด…</td></tr></tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var items = [], activities = [], generation = 0, activeFilter = 'all';
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
+  function time(v) { var d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('th-TH', { timeZone:'Asia/Bangkok', hour:'2-digit', minute:'2-digit' }); }
+  function state(item) {
+    var s = item.status;
+    if (s === 'verified') return ['fa-circle-check', 'บันทึกสำเร็จ'];
+    if (s === 'failed') return ['fa-circle-xmark', 'บันทึกไม่สำเร็จ'];
+    return null;
+  }
+  function updateScopeDescription() {
+    var canViewAll = PC_SubmissionLog.canViewAll(), scope = document.getElementById('sl-scope');
+    var viewingAll = canViewAll && scope && scope.value === 'all';
+    var description = document.getElementById('sl-description'), badge = document.getElementById('sl-active-scope');
+    if (description) description.textContent = viewingAll
+      ? 'ดูรายการที่ทุกคนแจ้งและผลตรวจการบันทึกใน Cloud กับศูนย์ติดตามงาน'
+      : 'ดูรายการที่คุณแจ้งและผลตรวจการบันทึกใน Cloud กับศูนย์ติดตามงาน';
+    if (badge) badge.innerHTML = viewingAll
+      ? '<i class="fas fa-users" aria-hidden="true"></i>ทุกผู้ส่ง'
+      : '<i class="fas fa-user" aria-hidden="true"></i>เฉพาะรายการของฉัน';
+  }
+  function renderRows() {
+    var body = document.getElementById('sl-rows'), resultCount = document.getElementById('sl-result-count');
+    if (!body) return;
+    var scope = document.getElementById('sl-scope');
+    var actor = PC_SubmissionLog.canViewAll() && scope && scope.value === 'all' ? 'ทุกผู้ส่ง' : (PC_SubmissionLog.user() || 'ไม่ระบุชื่อ');
+    var search = document.getElementById('sl-search');
+    var query = String(search && search.value || '').trim().toLocaleLowerCase();
+    var checkedCount = items.filter(function (item) { return item.status === 'verified' || item.status === 'failed'; }).length;
+    var visible = items.map(function (item, index) { return { item: item, index: index }; }).filter(function (entry) {
+      var item = entry.item;
+      if (item.status !== 'verified' && item.status !== 'failed') return false;
+      if (activeFilter === 'verified' && item.status !== 'verified') return false;
+      if (activeFilter === 'failed' && item.status !== 'failed') return false;
+      return !query || [item.campaign, item.form, item.user].some(function (value) {
+        return String(value || '').toLocaleLowerCase().indexOf(query) !== -1;
+      });
+    }).sort(function (a, b) {
+      if (activeFilter === 'all' && (a.item.status === 'verified') !== (b.item.status === 'verified'))
+        return a.item.status === 'verified' ? 1 : -1;
+      return String(b.item.at || '').localeCompare(String(a.item.at || ''));
+    });
+    if (resultCount) resultCount.textContent = 'แสดง ' + visible.length + ' จาก ' + checkedCount + ' รายการที่ตรวจผลได้';
+    if (!items.length) {
+      body.innerHTML = '<tr><td colspan="7" class="sl-empty"><i class="fas fa-inbox fa-2x mb-2 d-block" aria-hidden="true"></i>ไม่พบรายการแจ้งของ ' + esc(actor) + ' ในวันที่เลือก · ลองเปลี่ยนวันที่หรือกดตรวจอีกครั้ง</td></tr>';
+      return;
+    }
+    if (!checkedCount) {
+      body.innerHTML = '<tr><td colspan="7" class="sl-empty">ยังไม่มีรายการที่ยืนยันผลครบ · โปรดดูคำแนะนำด้านบน</td></tr>';
+      return;
+    }
+    if (!visible.length) {
+      body.innerHTML = '<tr><td colspan="7" class="sl-empty">ไม่พบรายการที่ตรงกับคำค้นหาหรือตัวกรอง <button type="button" class="btn btn-link btn-sm" onclick="window.slClearFilters()">ล้างตัวกรอง</button></td></tr>';
+      return;
+    }
+    body.innerHTML = visible.map(function (entry) {
+      var x = entry.item, st = state(x), buttonsFound = Number(x.foundButtons) || 0, expected = Number(x.expectedButtons) || 0;
+      var canOpen = x.status !== 'failed' && x.status !== 'sending';
+      var buttonCount = '<span class="sl-button-count">' + buttonsFound + (expected ? ' / ' + expected : '') +
+        (x.trackingMismatch ? '<small>ศูนย์ติดตามยังไม่ตรงกับ Cloud · ไม่ต้องส่งซ้ำ</small>' : '') + '</span>';
+      return '<tr class="' + (x.status === 'failed' ? 'sl-failed' : '') + '">' +
+        '<td><div class="sl-campaign">' + esc(x.campaign) + '</div></td>' +
+        '<td data-label="สถานะ"><div><span class="sl-state ' + esc(x.status) + '"><i class="fas ' + st[0] + '" aria-hidden="true"></i>' + st[1] + '</span>' +
+        (x.error && x.status !== 'verified' ? '<div class="sl-id mt-1">' + esc(x.error) + '</div>' : '') + '</div></td>' +
+        '<td data-label="จำนวนปุ่มโปรฯ">' + buttonCount + '</td><td data-label="เวลาส่ง">' + esc(time(x.at)) + '</td><td data-label="ผู้ส่ง">' + esc(x.user || '—') + '</td><td data-label="ประเภท">' + esc(x.form) + '</td>' +
+        '<td>' + (canOpen ? '<button type="button" class="btn btn-outline-success btn-sm" onclick="window.slOpenTracking(' + entry.index + ')">เปิดศูนย์ติดตาม</button>' : '—') + '</td></tr>';
+    }).join('');
+  }
+  window.slSetFilter = function (filter) {
+    if (filter !== 'all' && filter !== 'verified' && filter !== 'failed') return;
+    activeFilter = filter;
+    document.querySelectorAll('#sl-page .sl-filters button[data-filter]').forEach(function (button) {
+      button.setAttribute('aria-pressed', button.getAttribute('data-filter') === filter ? 'true' : 'false');
+    });
+    renderRows();
+  };
+  window.slApplyFilters = renderRows;
+  window.slClearFilters = function () {
+    var search = document.getElementById('sl-search');
+    if (search) search.value = '';
+    window.slSetFilter('all');
+  };
+  function render() {
+    var body = document.getElementById('sl-rows'), metrics = document.getElementById('sl-metrics'), overview = document.getElementById('sl-overview');
+    if (!body || !metrics || !overview) return;
+    var checked = items.filter(function (item) { return item.status === 'verified' || item.status === 'failed'; });
+    var summary = PC_SubmissionLog.summarize(checked);
+    var partial = items.filter(function (item) { return item.cloudPartial; }).length;
+    var unreadable = items.length - checked.length - partial;
+    var issues = items.filter(function (item) { return item.status !== 'verified' && item.status !== 'failed'; });
+    var scope = document.getElementById('sl-scope');
+    var actor = PC_SubmissionLog.canViewAll() && scope && scope.value === 'all' ? 'ทุกผู้ส่ง' : (PC_SubmissionLog.user() || 'ไม่ระบุชื่อ');
+    overview.className = 'sl-overview ' + (unreadable || partial ? 'pending' : summary.submissions === 0 ? 'empty' : summary.failed === summary.submissions ? 'error' : summary.failed ? 'pending' : '');
+    overview.innerHTML = '<strong>' + (summary.submissions === 0 ? (partial ? 'พบข้อมูล Cloud ที่ต้องตรวจเพิ่มเติม' : unreadable ? 'ยังโหลดผลการบันทึกไม่ได้' : 'ยังไม่พบรายการส่งในวันที่เลือก') :
+      summary.failed === summary.submissions ? 'บันทึกไม่สำเร็จ ' + summary.failed + ' รายการ · ยังไม่มีแคมเปญที่บันทึกสำเร็จ' :
+      'บันทึกสำเร็จ ' + summary.verified + ' รายการ') +
+      '</strong><span>ผู้ทำรายการ: ' + esc(actor) + ' · บันทึกไม่สำเร็จ ' + summary.failed + '</span>' +
+      (partial ? '<span>Cloud มีข้อมูลบางส่วน ' + partial + ' รายการ แต่ปุ่มไม่ครบ · แจ้ง IT ก่อนส่งซ้ำ</span>' : '') +
+      (unreadable ? '<span>อีก ' + unreadable + ' รายการยังโหลดผลไม่ได้ กรุณากด “ตรวจอีกครั้ง”</span>' : '') +
+      (summary.submissions ? '<progress class="sl-progress" value="' + summary.verified + '" max="' + summary.submissions + '" aria-label="บันทึกสำเร็จ ' + summary.verified + ' จาก ' + summary.submissions + ' รายการที่ตรวจผลได้"></progress>' : '') +
+      (issues.length ? '<details class="sl-issues"><summary>ดูแคมเปญที่ต้องตรวจ (' + issues.length + ')</summary><ul>' +
+        issues.map(function (item) { return '<li>' + esc(item.campaign || 'ไม่ระบุแคมเปญ') + ' — ' + esc(item.error || 'กรุณากดตรวจอีกครั้ง') + '</li>'; }).join('') + '</ul></details>' : '');
+    metrics.innerHTML = '<span class="sl-good"><strong>' + summary.campaigns + '</strong> แคมเปญที่บันทึกสำเร็จ (ชื่อไม่ซ้ำ)</span>' +
+      '<span><strong>' + summary.submissions + '</strong> รายการที่ตรวจผลได้</span>' +
+      '<span class="sl-good"><strong>' + summary.verified + '</strong> บันทึกสำเร็จ</span>' +
+      '<span class="sl-bad"><strong>' + summary.failed + '</strong> บันทึกไม่สำเร็จ</span>';
+    var tools = document.getElementById('sl-list-tools');
+    if (tools) tools.hidden = !checked.length;
+    [['all', summary.submissions], ['verified', summary.verified], ['failed', summary.failed]].forEach(function (entry) {
+      var count = document.getElementById('sl-count-' + entry[0]);
+      if (count) count.textContent = entry[1];
+    });
+    renderRows();
+  }
+  window.slOpenTracking = function (index) {
+    var item = items[index]; if (!item) return;
+    try { sessionStorage.setItem('pc_tracking_focus', item.campaign); } catch (e) {}
+    if (window.loadPage) window.loadPage('Campaign_Tracking', document.getElementById('nav-Campaign_Tracking'));
+  };
+  window.slRenderActivity = function () {
+    var body = document.getElementById('sl-activity-rows'); if (!body) return;
+    var select = document.getElementById('sl-activity-filter'), selected = select && select.value || 'all';
+    var visible = activities.map(function (item, index) { return { item:item, index:index }; }).filter(function (entry) {
+      return selected === 'all' || String(entry.item.kind || '').split('/').indexOf(selected) !== -1;
+    });
+    var count = document.getElementById('sl-activity-count'), result = document.getElementById('sl-activity-result');
+    if (count) count.textContent = activities.length;
+    if (result) result.textContent = 'แสดง ' + visible.length + ' จาก ' + activities.length + ' รายการเปลี่ยนแปลงที่อ่านได้จาก Cloud';
+    if (!visible.length) {
+      body.innerHTML = '<tr><td colspan="7" class="sl-empty">' + (activities.length ? 'ไม่พบรายการประเภทนี้ในวันที่เลือก' : 'ยังไม่พบการเพิ่ม / ลด / ขยาย / ยกเลิกในวันที่เลือก') + '</td></tr>';
+      return;
+    }
+    var names = { ADDED:'เพิ่ม', REDUCED:'ลดเวลา', EXTENDED:'ขยายเวลา', CANCELLED:'ยกเลิก', EDITED:'แก้ไขข้อมูล' };
+    body.innerHTML = visible.map(function (entry) {
+      var x = entry.item, kind = String(x.kind || ''), label = kind.split('/').map(function (part) { return names[part] || part; }).join(' / ');
+      var buttons = Array.isArray(x.buttons) ? x.buttons : [], products = Array.isArray(x.items) ? x.items : [];
+      var detail = [x.scope === 'campaign' ? 'ทั้งแคมเปญ' : buttons.length ? 'ปุ่ม: ' + buttons.join(', ') : 'รายปุ่ม'];
+      if (products.length) detail.push('สินค้า: ' + products.join(', '));
+      if (x.before || x.after) detail.push((x.before || '—') + ' → ' + (x.after || '—'));
+      if (x.note) detail.push(x.note);
+      return '<tr><td><div class="sl-campaign">' + esc(x.campaign) + '</div></td>' +
+        '<td data-label="ทำรายการ"><span class="sl-action ' + esc(kind.split('/')[0]) + '">' + esc(label) + '</span></td>' +
+        '<td data-label="รายละเอียด"><div class="sl-activity-detail">' + esc(detail.join(' · ')) + '</div></td>' +
+        '<td data-label="เวลา">' + esc(time(x.at)) + '</td><td data-label="ผู้ทำรายการ">' + esc(x.user || '—') + '</td>' +
+        '<td data-label="ผลบันทึก"><span class="sl-activity-status"><i class="fas fa-circle-check" aria-hidden="true"></i> พบใน Cloud</span></td>' +
+        '<td><button type="button" class="btn btn-outline-success btn-sm" onclick="window.slOpenActivity(' + entry.index + ')">เปิดศูนย์ติดตาม</button></td></tr>';
+    }).join('');
+  };
+  window.slOpenActivity = function (index) {
+    var item = activities[index]; if (!item) return;
+    try { sessionStorage.setItem('pc_tracking_focus', item.campaign); } catch (e) {}
+    if (window.loadPage) window.loadPage('Campaign_Tracking', document.getElementById('nav-Campaign_Tracking'));
+  };
+  window.slRefresh = async function () {
+    var n = ++generation, date = document.getElementById('sl-date'), button = document.getElementById('sl-refresh');
+    if (!date || !window.PC_SubmissionLog) return;
+    updateScopeDescription();
+    if (button) button.disabled = true;
+    var overview = document.getElementById('sl-overview');
+    if (overview) { overview.className = 'sl-overview empty'; overview.innerHTML = '<strong>กำลังตรวจรายการที่ส่ง…</strong>'; }
+    var metrics = document.getElementById('sl-metrics');
+    if (metrics) metrics.innerHTML = '<span>กำลังนับแคมเปญ…</span>';
+    var tools = document.getElementById('sl-list-tools');
+    if (tools) tools.hidden = true;
+    var body = document.getElementById('sl-rows');
+    if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty">กำลังตรวจข้อมูลจาก Cloud และศูนย์ติดตามงาน…</td></tr>';
+    var activityBody = document.getElementById('sl-activity-rows');
+    if (activityBody) activityBody.innerHTML = '<tr><td colspan="7" class="sl-empty">กำลังอ่านประวัติจาก Cloud…</td></tr>';
+    try {
+      var scope = document.getElementById('sl-scope');
+      var option = { scope: scope ? scope.value : 'mine' };
+      var results = await Promise.allSettled([PC_SubmissionLog.list(date.value, option), PC_SubmissionLog.listActivity(date.value, option)]);
+      if (n !== generation || !document.getElementById('sl-rows')) return;
+      if (results[0].status === 'fulfilled') { items = results[0].value; render(); }
+      else {
+        items = [];
+        if (overview) { overview.className = 'sl-overview error'; overview.innerHTML = '<strong>โหลดผลการบันทึกจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
+        if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
+        if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(results[0].reason && results[0].reason.message || results[0].reason) + '</td></tr>';
+      }
+      if (results[1].status === 'fulfilled') { activities = results[1].value; window.slRenderActivity(); }
+      else {
+        activities = [];
+        var activityResult = document.getElementById('sl-activity-result');
+        if (activityResult) activityResult.textContent = 'ยังอ่านประวัติจาก Cloud ไม่ได้ · กรุณากด “ตรวจอีกครั้ง”';
+        if (activityBody) activityBody.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">อ่านประวัติไม่ได้: ' + esc(results[1].reason && results[1].reason.message || results[1].reason) + '</td></tr>';
+      }
+    } catch (e) {
+      if (n !== generation) return;
+      items = [];
+      if (overview) { overview.className = 'sl-overview error'; overview.innerHTML = '<strong>โหลดผลการบันทึกจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
+      if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
+      if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(e && e.message || e) + ' · กรุณากดตรวจอีกครั้ง</td></tr>';
+    } finally { if (n === generation && button && document.getElementById('sl-refresh')) button.disabled = false; }
+  };
+  window.initSubmissionLog = function () {
+    var date = document.getElementById('sl-date');
+    if (!date || !window.PC_SubmissionLog) return;
+    var canViewAll = PC_SubmissionLog.canViewAll && PC_SubmissionLog.canViewAll();
+    var scopeWrap = document.getElementById('sl-scope-wrap');
+    if (scopeWrap) scopeWrap.hidden = !canViewAll;
+    var scope = document.getElementById('sl-scope');
+    if (scope && canViewAll) scope.addEventListener('change', window.slRefresh);
+    updateScopeDescription();
+    date.value = PC_SubmissionLog.today();
+    date.addEventListener('change', window.slRefresh);
+    window.slRefresh();
+  };
+})();
+</script>

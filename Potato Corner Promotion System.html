@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html lang="th">
-<head><meta name="build" content="p2-20260820c">
+<head><meta name="build" content="p2-20260929-syncsafe">
   <base target="_top">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>POTATO CORNER PROMOTION SYSTEM</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/table-std.css">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script defer src="vendor/sweetalert2/sweetalert2.all.min.js"></script>
+  <script defer src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
   <!-- Microsoft Entra (MSAL.js) — "เข้าด้วย Microsoft" SSO -->
-  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+  <script defer src="vendor/msal/msal-browser.min.js"></script>
 
   <!-- seed data + app modules: loaded SEQUENTIALLY with retry so the preview/serve
        never drops a script under parallel-load pressure (order matters: data → mock-backend) -->
   <script>
   window.__pcBoot = (function () {
-    // Core modules: order matters (data → mock-backend → libs). item-master.js (1.25MB)
+    // Core modules: order matters (data → mock-backend → libs). item-master.js
     // is DEFERRED out of this list and streamed in the background so first paint isn't
     // blocked by the catalog — pages that need products await PC_ensureItemMaster().
     var scripts = [
@@ -26,56 +26,105 @@
       "data/subset-flavors.js", "data/item-master-prices.js", "data/rm-master.js", "data/recipe-bom.js", "js/flavor-order.js", "data/hardware-master.js", "data/asset-seed.js", "data/plan-2026.js", "data/promo-codes.js", "data/price-promotion.js", "data/price-promos-live.js", "data/product-formula.js",
       "js/branch-master.js", "data/tender-master.js", "data/edc-zone-seed.js", "data/epay-seed.js", "js/edc-zone-seeder.js", "js/edc-reminder.js", "data/real-promos.js", "data/code-promos.js", "data/bill-discount-confirmed.js", "data/pro-july-2026.js", "data/voucher-coupon-confirmed.js", "data/co-promotions-seed.js", "js/rd-sticker.js", "data/device-change-cases.js",
       "js/themes.js",
+      "js/email-auth.js", "js/copro-email-client.js", "js/copro-email-ui.js",
       "data/evoucher-copro-seed.js", "js/format.js", "js/code-pack.js", "js/mock-backend.js", "js/subset-catalog.js", "js/code-counter.js", "js/store-select.js", "js/customer-group.js", "js/voucher-tag.js", "js/form-subset.js", "js/promo-code-convert.js",
-      "js/code-guard.js", "js/abbr-rename.js", "js/save-verify.js", "js/name-limit.js", "js/flavor-import.js", "js/lock-enforce.js", "js/item-picker.js", "js/item-cate-picker.js", "js/table-engine.js", "js/npd-readonly-view.js", "js/promo-import.js", "js/i18n-dict.js", "js/i18n.js", "js/easy-datepicker.js", "js/promo-report.js", "js/co-promo.js", "js/calendar-reminder.js", "js/email-templates.js", "js/notify.js", "js/cloud-store.js"
+      "js/form-code-allocation.js", "js/code-guard.js", "js/abbr-rename.js", "js/save-verify.js", "js/submission-log.js", "js/name-limit.js", "js/flavor-import.js", "js/lock-enforce.js", "js/item-picker.js", "js/item-cate-picker.js", "js/table-engine.js", "js/npd-readonly-view.js", "js/promo-import.js", "js/i18n-dict.js", "js/i18n.js", "js/easy-datepicker.js", "js/promo-report.js", "js/co-promo.js", "js/calendar-reminder.js", "js/email-templates.js", "js/notify.js", "js/promotion-edit-model.js", "js/promotion-edit.js", "js/cloud-store.js"
     ];
     var ITEM_MASTER = "data/item-master.js";
-    var ready = false, cbs = [];
+    var ready = false, cbs = [], bootFailed = null;
     function onReady(cb) { if (ready) { try { cb(); } catch (e) { console.error(e); } } else cbs.push(cb); }
-    function done() { ready = true; cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); }
+    function setBootMessage(message, failed) {
+      var status = document.getElementById('boot-status');
+      if (!status) {
+        document.addEventListener('DOMContentLoaded', function () { setBootMessage(message, failed); }, { once: true });
+        return;
+      }
+      status.textContent = message;
+      status.hidden = !message;
+      var retry = document.getElementById('boot-retry');
+      if (retry) retry.hidden = !failed;
+      var spinner = document.querySelector('#boot-splash .spinner-border');
+      if (spinner && failed) spinner.hidden = true;
+    }
+    var slowBoot = setTimeout(function () {
+      if (!ready && !bootFailed) setBootMessage('กำลังโหลดช้ากว่าปกติ กรุณารอสักครู่', false);
+    }, 12000);
+    function done() {
+      clearTimeout(slowBoot);
+      ready = true;
+      cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
+    }
+    function failBoot(error) {
+      clearTimeout(slowBoot);
+      bootFailed = error;
+      console.error('[boot] required module unavailable:', error);
+      setBootMessage('โหลดระบบไม่ครบ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง', true);
+    }
     function run(src, code) {
       var s = document.createElement("script");
       s.textContent = code + "\n//# sourceURL=" + src;
       document.head.appendChild(s);
     }
-    // fetch one file as text with retry — uses the HTTP cache (revalidates) so reloads are fast.
-    function fetchText(src) {
-      var tries = 0;
-      return new Promise(function (resolve) {
-        (function attempt() {
-          fetch(src)
-            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
-            .then(resolve)
-            .catch(function () {
-              tries++;
-              if (tries <= 8) { setTimeout(attempt, 120 * tries); }
-              else { console.error("[boot] gave up loading " + src); resolve(""); }
-            });
-        })();
-      });
+    // A stalled request must settle; a missing module must never look like a
+    // successful boot. Retrying the same URL preserves the browser HTTP cache.
+    async function fetchText(src) {
+      var lastError;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 20000);
+        try {
+          var response = await fetch(src + '?v=p5-20261008-resilient-boot', { cache: 'no-cache', signal: controller.signal });
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          var code = await response.text();
+          if (!code) throw new Error('Empty response');
+          return code;
+        } catch (error) {
+          lastError = error;
+          if (attempt < 2) await new Promise(function (resolve) { setTimeout(resolve, 300 * (attempt + 1)); });
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      throw new Error(src + ': ' + String(lastError && lastError.message || lastError));
     }
     // PARALLEL download, SEQUENTIAL execute — kick off every fetch at once (one round-trip
     // wall-clock instead of 23), then run them strictly in order so dependencies hold.
-    var fetches = scripts.map(fetchText);
+    var fetches = scripts.map(function (src) {
+      return fetchText(src).then(function (code) { return { code: code }; }, function (error) { return { error: error }; });
+    });
+    var domReady = document.readyState === 'loading'
+      ? new Promise(function (resolve) { document.addEventListener('DOMContentLoaded', resolve, { once: true }); })
+      : Promise.resolve();
     (async function () {
-      for (var i = 0; i < scripts.length; i++) {
-        var code = await fetches[i];
-        if (code) run(scripts[i], code);
+      try {
+        await domReady;
+        if (!window.Swal || !window.bootstrap) throw new Error('Required UI library unavailable');
+        for (var i = 0; i < scripts.length; i++) {
+          var result = await fetches[i];
+          if (result.error) throw result.error;
+          run(scripts[i], result.code);
+        }
+        done();
+        // Start streaming the heavy catalog in the background once core is up.
+        ensureItemMaster().catch(function (e) { console.error('[boot] product catalog unavailable:', e); });
+      } catch (error) {
+        failBoot(error);
       }
-      done();
-      // start streaming the heavy catalog in the background once core is up
-      ensureItemMaster();
     })();
 
-    // ---- deferred item master (1.25MB) ----
+    // ---- deferred item master ----
     var imPromise = null;
     function ensureItemMaster() {
       if (window.PC_ITEM_MASTER && window.PC_ITEM_MASTER.length) return Promise.resolve();
-      if (!imPromise) imPromise = fetchText(ITEM_MASTER).then(function (code) { if (code) run(ITEM_MASTER, code); });
+      if (!imPromise) imPromise = fetchText(ITEM_MASTER).then(function (code) {
+        if (!code) throw new Error('Product catalog download failed');
+        run(ITEM_MASTER, code);
+        if (!window.PC_ITEM_MASTER || !window.PC_ITEM_MASTER.length) throw new Error('Product catalog could not be read');
+      }).catch(function (error) { imPromise = null; throw error; });
       return imPromise;
     }
 
-    return { onReady: onReady, isReady: function () { return ready; }, ensureItemMaster: ensureItemMaster };
+    return { onReady: onReady, isReady: function () { return ready; }, failed: function () { return bootFailed; }, fail: failBoot, ensureItemMaster: ensureItemMaster };
   })();
   window.PC_ensureItemMaster = function () { return window.__pcBoot.ensureItemMaster(); };
   </script>
@@ -202,6 +251,10 @@
     /* instant branded splash — shown immediately, removed once core modules are ready */
     #boot-splash { position: fixed; inset: 0; z-index: 99999; background: var(--pc-yellow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
     #boot-splash .brand-text { font-size: 3rem; }
+    #boot-status { color: #fff; text-align: center; font-weight: 600; max-width: min(90vw, 34rem); }
+    #boot-retry[hidden], #boot-splash .spinner-border[hidden] { display: none !important; }
+    #boot-retry { border: 1px solid #fff; border-radius: 8px; padding: 10px 18px; background: #fff; color: #145b31; font-weight: 700; cursor: pointer; }
+    #boot-retry:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
     /* ===================== Responsive layer ===================== */
     @media (max-width: 1024px){
@@ -318,6 +371,7 @@
     .dr-scope .dr-header [style*="background:var(--pc-yellow"]{ background:#2e934a !important; }
     .dr-scope .dr-sel{ border:1.5px solid #d6dbe0 !important; background:#fff !important; color:#1a1d20 !important; }
   </style>
+  <link rel="stylesheet" href="css/workspace.css?v=20261018-reported-date">
 </head>
 <body class="loading" style="background-color: rgb(238, 242, 239);">
 
@@ -325,6 +379,8 @@
     <div class="brand-text">POTATO<br>CORNER</div>
     <div class="brand-subtext">PROMOTION MANAGEMENT SYSTEM</div>
     <div class="spinner-border text-dark" role="status" style="width:2.2rem;height:2.2rem;"></div>
+    <p id="boot-status" role="status" aria-live="polite" hidden></p>
+    <button id="boot-retry" type="button" hidden onclick="location.reload()">ลองโหลดอีกครั้ง</button>
   </div>
 
   <div id="login-section" class="login-wrapper">
@@ -336,14 +392,14 @@
       <div class="login-card">
         <h4 class="fw-bold mb-4 text-center">L O G I N</h4>
         <div class="mb-3 text-start">
-          <label class="form-label fw-bold small">USERNAME</label>
+          <label for="user" class="form-label fw-bold small">USERNAME</label>
           <div class="input-group">
             <span class="input-group-text bg-white border-dark" style="border-width: 2px;"><i class="fas fa-user"></i></span>
             <input type="text" id="user" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
           </div>
         </div>
         <div class="mb-4 text-start">
-          <label class="form-label fw-bold small">PASSWORD</label>
+          <label for="pass" class="form-label fw-bold small">PASSWORD</label>
           <div class="input-group">
             <span class="input-group-text bg-white border-dark" style="border-width: 2px;"><i class="fas fa-lock"></i></span>
             <input type="password" id="pass" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Password" autocomplete="new-password">
@@ -392,6 +448,7 @@
       <div class="nav-link" id="nav-Dashboard" onclick="loadPage('Dashboard', this)"><i class="fas fa-chart-line me-2"></i> <span class="navlbl" data-en="DASHBOARD" data-th="แดชบอร์ด">DASHBOARD</span></div>
       <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">เสนอ / สร้างโปร</div>
       <div id="nav-CreatePromotion" class="nav-link" onclick="loadPage('CreatePromotion', this)"><i class="fas fa-bullhorn me-2"></i> <span class="navlbl" data-en="CREATE PROMOTION" data-th="แจ้งโปรโมชั่น">CREATE PROMOTION</span></div>
+      <div id="nav-SubmissionLog" class="nav-link" onclick="loadPage('SubmissionLog', this)"><i class="fas fa-clipboard-check me-2"></i> <span class="navlbl" data-en="PROMOTION SUBMISSIONS" data-th="ประวัติการแจ้งโปรฯ">ประวัติการแจ้งโปรฯ</span></div>
       <div id="nav-Proposal" class="nav-link" onclick="loadPage('Proposal', this)" style="display:none;"><i class="fas fa-file-invoice me-2"></i> <span class="navlbl" data-en="ITEM SET PROPOSAL" data-th="เสนอ Item Set">ITEM SET PROPOSAL</span></div>
       <div id="nav-Coupon" class="nav-link" onclick="loadPage('Coupon', this)" style="display:none;"><i class="fas fa-ticket-alt me-2"></i> <span class="navlbl" data-en="COUPON PROPOSAL" data-th="เสนอคูปอง">COUPON PROPOSAL</span></div>
       <div id="nav-BillDiscountProposal" class="nav-link" onclick="loadPage('BillDiscountProposal', this)" style="display:none;"><i class="fas fa-calculator me-2"></i> <span class="navlbl" data-en="BILL DISCOUNT PROPOSAL" data-th="เสนอ Bill Discount">BILL DISCOUNT PROPOSAL</span></div>
@@ -445,6 +502,7 @@
       <div id="nav-ReportButtons" class="nav-link" onclick="loadPage('ReportButtons', this)"><i class="fas fa-bars-staggered me-2 text-warning"></i> <span class="navlbl" data-en="REPORT BUTTONS" data-th="ตั้งค่าปุ่มแจ้งปัญหา">ตั้งค่าปุ่มแจ้งปัญหา</span></div>
       <div id="nav-TenderSettings" class="nav-link" onclick="loadPage('TenderSettings', this)"><i class="fas fa-cash-register me-2 text-warning"></i> <span class="navlbl" data-en="TENDER SETTINGS" data-th="ตั้งค่า Tender (ช่องทางรับชำระ)">ตั้งค่า Tender</span></div>
       <div id="nav-NotificationSettings" class="nav-link" onclick="loadPage('NotificationSettings', this)"><i class="fas fa-bell me-2 text-warning"></i> <span class="navlbl" data-en="NOTIFICATIONS" data-th="ตั้งค่าการแจ้งเตือน">ตั้งค่าการแจ้งเตือน</span></div>
+      <div id="nav-Email_Settings" class="nav-link" onclick="loadPage('Email_Settings', this)"><i class="fas fa-envelope me-2"></i> <span class="navlbl" data-en="EMAIL SETTINGS" data-th="ตั้งค่าอีเมล">ตั้งค่าอีเมล</span></div>
       <div id="nav-CalendarReminder" class="nav-link" onclick="loadPage('CalendarReminder', this)"><i class="fas fa-calendar-check me-2 text-warning"></i> <span class="navlbl" data-en="แจ้งเตือนเข้าปฏิทิน" data-th="แจ้งเตือนเข้าปฏิทิน">แจ้งเตือนเข้าปฏิทิน</span></div>
       <div id="nav-LockSettings" class="nav-link" onclick="loadPage('LockSettings', this)"><i class="fas fa-lock me-2 text-warning"></i> <span class="navlbl" data-en="LOCK SETTINGS" data-th="ตั้งค่าล็อกแจ้งล่วงหน้า">ตั้งค่าล็อกแจ้งล่วงหน้า</span></div>
       <div id="nav-ImportSettings" class="nav-link" onclick="loadPage('ImportSettings', this)"><i class="fas fa-file-import me-2 text-warning"></i> <span class="navlbl" data-en="IMPORT SETTINGS" data-th="ตั้งค่า Import">ตั้งค่า Import</span></div>
@@ -468,8 +526,12 @@
 
   <script>
     /* 1. Auth check on load — wait for the sequential module loader to finish first */
-    window.onload = () => {
+    function beginBoot() {
       var boot = function () {
+        if (!window.Swal || !window.bootstrap) {
+          window.__pcBoot.fail(new Error('Required UI library unavailable'));
+          return;
+        }
         const session = localStorage.getItem('pc_session');
         if (session === 'active') {
           initApp(localStorage.getItem('pc_last_page') || 'Dashboard');
@@ -484,7 +546,9 @@
       };
       if (window.__pcBoot && window.__pcBoot.onReady) window.__pcBoot.onReady(boot);
       else boot();
-    };
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', beginBoot, { once: true });
+    else beginBoot();
 
     window.PC_tryBranchGuest = function () {
       try {
@@ -553,6 +617,14 @@
       return _msalApp;
     }
 
+    window.PC_EmailMsalContext = async function () {
+      const app = getMsalApp();
+      if (_msalReady) await _msalReady;
+      let identity=null;
+      try { identity=JSON.parse(sessionStorage.getItem('pc_email_staff_identity') || 'null'); } catch (_) {}
+      return {app, identity, email:localStorage.getItem('pc_userEmail') || ''};
+    };
+
     async function loginWithMicrosoft() {
       const errMsg = document.getElementById('errMsg');
       const btn = document.getElementById('msLoginBtn');
@@ -577,11 +649,18 @@
             localStorage.setItem('pc_role', res.role);
             localStorage.setItem('pc_userName', res.name);
             try { localStorage.setItem('pc_userEmail', res.email || email); } catch (e) {}
+            // Account-selection binding only. Server JWT and protected grants
+            // remain authoritative; no token or credential is stored here.
+            try { sessionStorage.setItem('pc_email_staff_identity',JSON.stringify({tenantId:claims.tid,objectId:claims.oid})); } catch (_) {}
             afterLogin();
           } else {
             errMsg.innerText = '❌ ' + ((res && res.message) || 'อีเมลนี้ยังไม่ได้รับสิทธิ์');
             btn.disabled = false; btn.innerHTML = orig;
           }
+        }).withFailureHandler(() => {
+          errMsg.innerText = '❌ ตรวจสิทธิ์ผู้ใช้ไม่สำเร็จ กรุณาลองเข้าสู่ระบบอีกครั้ง';
+          btn.disabled = false;
+          btn.innerHTML = orig;
         }).checkLoginByEmail(email);
       } catch (e) {
         const code = (e && e.errorCode) || '';
@@ -651,6 +730,8 @@
         SC:    ['Dashboard','CardLink','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','Campaign_Tracking','DiscountReport','Memo','CreateRD','NPD','Flavor','Products','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','TeamQueue','BranchTickets','Tender','BillDiff','BranchWork','Branch_View','ProductLookup','CoPromotion','RDReopen'],   /* Supply Chain — สิทธิ์รวมของ MKT + RD */
         Branch: ['Branch_View','ProductLookup','BranchWork','BranchCards','BranchVoucher','BranchTickets','Tender','BillDiff','BranchEDC','BranchHours','BranchIssues'],
       };
+      ['Admin','IT'].forEach(function (role) { defaults[role].push('Email_Settings'); });
+      ['Admin','MKT','IT','RD','SC'].forEach(function (role) { if (defaults[role] && !defaults[role].includes('SubmissionLog')) defaults[role].push('SubmissionLog'); });
       ['Admin','IT','OP','ACC','MKT','SC'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchEDC')<0) defaults[rr].push('BranchEDC'); });
       ['Admin','IT','OP'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchIssues')<0) defaults[rr].push('BranchIssues'); });
       let saved = null;
@@ -674,10 +755,10 @@
         }
       } catch (e) {}
       // backfill หน้าใหม่ให้ผู้ใช้เดิม — ทำ“ครั้งเดียวต่อเวอร์ชัน” → หลังจากนี้ถ้า Admin ติ๊กออกเองจะไม่ถูกเติมกลับ (คุมได้จริง)
-      const BACKFILL_VER = 16;
+      const BACKFILL_VER = 17;
       let _bfv = 0; try { _bfv = +localStorage.getItem('pc_perm_backfill_ver') || 0; } catch (e) {}
       if (_bfv < BACKFILL_VER) {
-        const NEW_MODULES = ['Products','ImportSettings','DiscountReport','CompCode','CodeCounter','BranchHours','ProductLookup','Branch_View','Campaign_Tracking','Flavor','CreatePromotion','CreateRD','Tender','BillDiff','BranchWork','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','TeamQueue','Products','CoPromotion','InterfaceERP','RDReopen','BranchEDC','BranchIssues','CardLink'];
+        const NEW_MODULES = ['Products','ImportSettings','DiscountReport','CompCode','CodeCounter','BranchHours','ProductLookup','Branch_View','Campaign_Tracking','Flavor','CreatePromotion','SubmissionLog','CreateRD','Tender','BillDiff','BranchWork','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','TeamQueue','Products','CoPromotion','InterfaceERP','RDReopen','BranchEDC','BranchIssues','CardLink','Email_Settings'];
         Object.keys(defaults).forEach(role => {
           if (!Array.isArray(saved[role])) { saved[role] = defaults[role].slice(); return; }   // บทบาทใหม่ → ใส่ค่าเริ่มต้น
           NEW_MODULES.forEach(m => { if (defaults[role].includes(m) && !saved[role].includes(m)) saved[role].push(m); });
@@ -691,14 +772,46 @@
       }
       // Admin = superuser: ต้องมีสิทธิ์ครบทุกหน้า default เสมอ (กันหน้าใหม่หายเพราะ saved เก่า/ตกหล่นจาก backfill) — ไม่กระทบ role อื่น
       if (Array.isArray(saved.Admin)) { let _adCh = false; defaults.Admin.forEach(m => { if (!saved.Admin.includes(m)) { saved.Admin.push(m); _adCh = true; } }); if (_adCh) { try { localStorage.setItem('pc_permissions', JSON.stringify(saved)); } catch (e) {} } }
+      // Email navigation is discoverability only; server grants enforce access.
+      if (Array.isArray(saved.IT) && !localStorage.getItem('pc_email_nav_v1')) {
+        if (!saved.IT.includes('Email_Settings')) saved.IT.push('Email_Settings');
+        localStorage.setItem('pc_permissions',JSON.stringify(saved));
+        localStorage.setItem('pc_email_nav_v1','1');
+      }
+      // Grant the Log page to existing IT/MKT accounts once without re-running the broad module backfill.
+      try {
+        if (!localStorage.getItem('pc_perm_submission_log_it_mkt_v1')) {
+          let _logGrantChanged = false;
+          ['IT','MKT'].forEach(function (role) {
+            if (Array.isArray(saved[role]) && !saved[role].includes('SubmissionLog')) {
+              saved[role].push('SubmissionLog');
+              _logGrantChanged = true;
+            }
+          });
+          if (_logGrantChanged) {
+            localStorage.setItem('pc_permissions', JSON.stringify(saved));
+          }
+          localStorage.setItem('pc_perm_submission_log_it_mkt_v1', '1');
+        }
+      } catch (e) {}
+      // RD submits promotions too: backfill only this page for existing RD accounts.
+      try {
+        if (!localStorage.getItem('pc_perm_submission_log_rd_v1') && Array.isArray(saved.RD)) {
+          if (!saved.RD.includes('SubmissionLog')) {
+            saved.RD.push('SubmissionLog');
+            localStorage.setItem('pc_permissions', JSON.stringify(saved));
+          }
+          localStorage.setItem('pc_perm_submission_log_rd_v1', '1');
+        }
+      } catch (e) {}
       return ensureITWork(saved);
     }
     window.PC_getPermissions = getPermissions;
     const SECTIONS = [
-      { key:'promo', label:'PROMOTION', th:'งานโปรโมชั่น & งานสาขา', color:'#2e934a', icon:'fa-bullhorn', pages:['Dashboard','CreatePromotion','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','ITWork','CodeCounter','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','CardLink','CompCode','BranchCards','BranchVoucher','BranchHours','BranchIssues','CoPromotion','InterfaceERP','RDReopen'] },
+      { key:'promo', label:'PROMOTION', th:'งานโปรโมชั่น & งานสาขา', color:'#2e934a', icon:'fa-bullhorn', pages:['Dashboard','CreatePromotion','SubmissionLog','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','ITWork','CodeCounter','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','CardLink','CompCode','BranchCards','BranchVoucher','BranchHours','BranchIssues','CoPromotion','InterfaceERP','RDReopen'] },
       { key:'it', label:'IT WORK', th:'งาน IT · อุปกรณ์', color:'#9a6700', icon:'fa-desktop', pages:['Asset','Plan2026','ITForms','DeviceSwap','AssetLogistics','ITPlan','CmposForm','Maintenance'] },
       { key:'rd', label:'RD STICKER', th:'งานสติ๊กเกอร์สรรพากร', color:'#c0392b', icon:'fa-receipt', pages:['RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide'] },
-      { key:'sys', label:'SYSTEM', th:'ตั้งค่าระบบ', color:'#1a1d20', icon:'fa-gear', pages:['MasterData','ImportSettings','SaleModePrice','CatBranchSetting','CatModeMaster','ReportButtons','ReportSettings','TenderSettings','NotificationSettings','CalendarReminder','LockSettings','Permissions'] },
+      { key:'sys', label:'SYSTEM', th:'ตั้งค่าระบบ', color:'#1a1d20', icon:'fa-gear', pages:['MasterData','ImportSettings','SaleModePrice','CatBranchSetting','CatModeMaster','ReportButtons','ReportSettings','TenderSettings','NotificationSettings','Email_Settings','CalendarReminder','LockSettings','Permissions'] },
     ];
     function roleAllowed() { const role = localStorage.getItem('pc_role') || 'Admin'; return getPermissions()[role] || getPermissions().Admin || []; }
     function accessibleSections() { const a = roleAllowed(); return SECTIONS.filter(s => s.pages.some(p => a.includes(p))); }
@@ -856,7 +969,7 @@
     };
 
     /* 3. Page routing */
-    function loadPage(pg, el, fromHistory) {
+    function loadPage(pg, el, fromHistory, retryAttempt) {
       // leave-guard: เตือนเฉพาะตอนมีข้อมูลกรอกค้างจริง (NPD / เพิ่มผง) ก่อนออกจากหน้า
       var _lg = window.__leaveGuard;
       if (_lg && _lg.page !== pg && !fromHistory) {
@@ -911,48 +1024,73 @@
           <span class="fw-bold text-muted">Loading…</span>
         </div>`;
 
-      function _renderPage() {
-        google.script.run.withSuccessHandler(html => {
-          area.innerHTML = "";
-          area.innerHTML = html;
-          executeScripts(area);
+      const generation = window.__pageGen;
+      const showError = error => {
+        if (window.__pageGen !== generation) return;
+        console.error('[page-load]', pg, error);
+        if (pg === 'Memo' && !retryAttempt && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+          area.innerHTML = '<div class="pc-pageload" role="status"><div class="spinner-border text-warning"></div><span class="fw-bold text-muted">กำลังลองเปิด Memo อีกครั้ง…</span></div>';
           setTimeout(() => {
-            const initFn = "init" + pg;
-            if (typeof window[initFn] === "function") window[initFn]();
-            if (window.pcEnsureRailFold) window.pcEnsureRailFold(area);
-          }, 300);
-          if (window.innerWidth < 768) {
-            const sb = document.getElementById('sidebar');
-            if (sb) sb.classList.remove('active');
-          }
-        }).getPageContent(pg);
-      }
-
-      // Pages that read the product catalog must wait for the deferred item-master to finish.
-      // (Resolves instantly once it has streamed in the background — only the very first
-      // navigation into a product page right after boot may wait.)
+            if (window.__pageGen === generation) loadPage(pg, document.getElementById('nav-' + pg), true, 1);
+          }, 500);
+          return;
+        }
+        area.innerHTML = '<div class="p-4 text-center" role="alert"><div class="fw-bold text-danger mb-2">เปิดหน้านี้ไม่สำเร็จ</div><div class="text-muted mb-3">ไม่สามารถโหลดหน้านี้ได้ กรุณาลองอีกครั้ง หากยังไม่สำเร็จให้ส่งรายละเอียดด้านล่างให้ IT</div><button type="button" class="btn btn-outline-success">ลองอีกครั้ง</button><details class="small text-muted mt-3"><summary>รายละเอียดสำหรับ IT</summary><code data-pc-error-detail class="d-block mt-2 text-break"></code></details></div>';
+        area.querySelector('[data-pc-error-detail]').textContent = pg + ': ' + String(error && (error.message || error) || 'ไม่ทราบสาเหตุ').slice(0, 240);
+        area.querySelector('button').addEventListener('click', () => loadPage(pg, document.getElementById('nav-' + pg)));
+      };
+      const pageContent = new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPageContent(pg);
+      });
+      // Fetch the static partial and the product catalog together; neither is
+      // allowed to silently leave a page initialized with missing product data.
       const NEEDS_ITEMS = ['Products','SaleModePrice','ItemSet','CreatePromotion','Proposal','Coupon',
         'BillDiscountProposal','VoucherProposal','BillDiff','CodeCounter','Campaign_Tracking','IT_Settlement',
         'ITWork','NPD','Flavor','ProductLookup','Branch_View','MemberCard','CatModeMaster','CatBranchSetting',
         'Op_Tracking','CodeMgmt','BranchWork','BranchTickets','TeamQueue','DiscountReport','AbbrPreview'];
-      if (NEEDS_ITEMS.indexOf(pg) !== -1 && window.PC_ensureItemMaster) {
-        window.PC_ensureItemMaster().then(_renderPage, _renderPage);
-      } else {
-        _renderPage();
-      }
+      const needsItems = NEEDS_ITEMS.indexOf(pg) !== -1;
+      const itemsReady = needsItems && window.PC_ensureItemMaster ? window.PC_ensureItemMaster().then(() => {
+        if (!window.PC_ITEM_MASTER || !window.PC_ITEM_MASTER.length) throw new Error('Product catalog unavailable');
+      }) : Promise.resolve();
+      Promise.all([pageContent, itemsReady]).then(async ([html]) => {
+        if (window.__pageGen !== generation) return;
+        area.innerHTML = html;
+        await executeScripts(area);
+        if (window.__pageGen !== generation) return;
+        const initFn = 'init' + pg;
+        if (typeof window[initFn] === 'function') window[initFn]();
+        if (window.pcEnsureRailFold) window.pcEnsureRailFold(area);
+        if (window.innerWidth < 768) {
+          const sb = document.getElementById('sidebar');
+          if (sb) sb.classList.remove('active');
+        }
+      }).catch(showError);
     }
 
     // load a sub-page partial into an arbitrary container (used by ITWork left-rail)
     window.pcLoadSub = function (area, pg) {
+      const token = area.__pcSubToken = (area.__pcSubToken || 0) + 1;
       area.innerHTML = '<div class="pc-pageload"><div class="spinner-border text-warning" role="status"></div><span class="fw-bold text-muted">Loading…</span></div>';
-      function go() {
-        google.script.run.withSuccessHandler(function (html) {
-          area.innerHTML = html;
-          executeScripts(area);
-          setTimeout(function () { var fn = 'init' + pg; if (typeof window[fn] === 'function') { try { window[fn](); } catch (e) { console.warn('sub init', pg, e); } } if (window.pcEnsureRailFold) window.pcEnsureRailFold(area); }, 300);
-        }).getPageContent(pg);
-      }
-      if (window.PC_ensureItemMaster) window.PC_ensureItemMaster().then(go, go); else go();
+      const pageContent = new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPageContent(pg);
+      });
+      const itemsReady = window.PC_ensureItemMaster ? window.PC_ensureItemMaster().then(() => {
+        if (!window.PC_ITEM_MASTER || !window.PC_ITEM_MASTER.length) throw new Error('Product catalog unavailable');
+      }) : Promise.resolve();
+      Promise.all([pageContent, itemsReady]).then(async ([html]) => {
+        if (area.__pcSubToken !== token || !area.isConnected) return;
+        area.innerHTML = html;
+        await executeScripts(area);
+        if (area.__pcSubToken !== token || !area.isConnected) return;
+        const fn = 'init' + pg;
+        if (typeof window[fn] === 'function') window[fn]();
+        if (window.pcEnsureRailFold) window.pcEnsureRailFold(area);
+      }).catch(error => {
+        if (area.__pcSubToken !== token || !area.isConnected) return;
+        console.error('[sub-page-load]', pg, error);
+        area.innerHTML = '<div class="p-4 text-center" role="alert"><div class="fw-bold text-danger mb-2">เปิดหน้านี้ไม่สำเร็จ</div><div class="text-muted mb-3">ตรวจสอบการเชื่อมต่อ แล้วลองอีกครั้ง</div><button type="button" class="btn btn-outline-success">ลองอีกครั้ง</button></div>';
+        area.querySelector('button').addEventListener('click', () => window.pcLoadSub(area, pg));
+      });
     };
 
     /* 4. Logout */
@@ -976,16 +1114,51 @@
     }
 
     /* 5. Utilities */
-    function executeScripts(container) {
-      const scripts = container.getElementsByTagName("script");
+    async function executeScripts(container) {
+      const scripts = Array.from(container.getElementsByTagName("script"));
       for (let i = 0; i < scripts.length; i++) {
         const t = (scripts[i].type || "").toLowerCase();
         // skip non-JS scripts (editor/babel instrumentation, JSON, templates) — re-running them as plain JS throws
         if (t && t !== "text/javascript" && t !== "application/javascript" && t !== "module") continue;
         const newScript = document.createElement("script");
         if (scripts[i].src) {
-          newScript.src = scripts[i].src;
-          document.body.appendChild(newScript); // keep src scripts in DOM so async load completes
+          const src = scripts[i].src;
+          if ((window.Swal && /sweetalert2/i.test(src)) || (window.XLSX && /xlsx/i.test(src))) continue;
+          newScript.src = src;
+          if (/^https?:\/\//i.test(src) && new URL(src, location.href).origin !== location.origin) {
+            // Third-party export/UI libraries are optional for page initialization.
+            newScript.onerror = () => console.warn('[page-script] optional library unavailable:', src);
+            document.body.appendChild(newScript);
+            continue;
+          }
+          let lastError;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const pageScript = attempt === 0 ? newScript : document.createElement('script');
+            pageScript.src = src;
+            try {
+              await new Promise((resolve, reject) => {
+                let settled = false;
+                const finish = error => {
+                  if (settled) return;
+                  settled = true;
+                  clearTimeout(timer);
+                  pageScript.onload = pageScript.onerror = null;
+                  if (error && pageScript.parentNode) pageScript.parentNode.removeChild(pageScript);
+                  if (error) reject(error); else resolve();
+                };
+                const timer = setTimeout(() => finish(new Error('Script load timed out: ' + src)), 10000);
+                pageScript.onload = () => finish();
+                pageScript.onerror = () => finish(new Error('Script failed to load: ' + src));
+                try { document.body.appendChild(pageScript); } catch (error) { finish(error); }
+              });
+              lastError = null;
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+            }
+          }
+          if (lastError) throw lastError;
           continue;
         } else {
           var src = scripts[i].textContent || "";

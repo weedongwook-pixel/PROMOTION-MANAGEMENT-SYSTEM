@@ -33,12 +33,27 @@
   .npd-scope .cc-resv.ok { background:#e8f6ee; color:#0b6b3a; border-color:#bfe3cd; }
   .npd-scope .cc-field { display:flex; align-items:center; gap:5px; }
   .npd-scope .cc-field > input { flex:1 1 auto; min-width:0; }
+  .npd-scope .np-excel { background:#fff; border:1px solid #c8d0d8; border-radius:12px; padding:18px; margin-bottom:20px; }
+  .npd-scope .np-excel label { font-size:.85rem; font-weight:600; }
+  .npd-scope .np-excel .form-control:focus-visible,
+  .npd-scope .np-excel .form-select:focus-visible,
+  .npd-scope .np-excel button:focus-visible { outline:3px solid #237840; outline-offset:2px; }
+  .npd-scope .np-excel .form-text { color:#515c65; }
+  .npd-scope .np-excel table { font-size:.83rem; }
+  .npd-scope .np-excel th { white-space:nowrap; }
+  .npd-scope .np-excel details { margin:10px 0; }
+  .npd-scope .np-excel summary { cursor:pointer; font-weight:600; padding:6px 0; }
+  .npd-scope .np-excel [hidden] { display:none!important; }
+  .npd-scope #npExcelStatus { overflow-wrap:anywhere; }
+  .npd-scope #npSubsetExcelFile:focus-visible,
+  .npd-scope #npSubsetExcelSheet:focus-visible,
+  .npd-scope #npSubsetExcelApply:focus-visible { outline:3px solid #237840; outline-offset:2px; }
 </style>
 
-<div class="container-fluid p-4 npd-scope" style="background-color:#f4f6f9; min-height:100vh;" data-screen-label="NPD">
+<div class="container-fluid p-4 npd-scope pc-workspace" style="background-color:#f4f6f9; min-height:100vh;" data-screen-label="NPD">
 
   <!-- header card -->
-  <div class="d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+  <div class="pc-page-heading d-flex justify-content-between align-items-center mb-3 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
     <div class="d-flex align-items-center">
       <div style="width:10px;height:55px;background:var(--pc-yellow,#2e934a);margin-right:15px;border-radius:5px;"></div>
       <div>
@@ -51,6 +66,21 @@
       <div><b>Brand:</b> Potato Corner</div>
     </div>
   </div>
+
+  <section class="np-excel" aria-labelledby="npExcelTitle">
+    <div class="d-flex align-items-baseline justify-content-between gap-2 flex-wrap mb-2">
+      <h4 id="npExcelTitle" class="h6 fw-bold m-0"><i class="fas fa-file-excel text-success me-2" aria-hidden="true"></i>นำเข้า Excel — สินค้าใหม่ NPD</h4>
+      <span class="small">อ่านไฟล์ → ตรวจตัวอย่าง → เติมฟอร์ม → ส่งให้ IT</span>
+    </div>
+    <p class="small mb-3">รองรับแบบฟอร์ม Approval Form ตามไฟล์ตัวอย่าง อ่านข้อมูลในเบราว์เซอร์ ไม่ส่งงานอัตโนมัติ และไม่แก้ทับสินค้าเดิม</p>
+    <div class="row g-3 align-items-end">
+      <div class="col-md-7"><label for="npExcelFile" class="form-label">ไฟล์ Excel (.xlsx ไม่เกิน 15 MB)</label><input id="npExcelFile" type="file" accept=".xlsx" class="form-control" onchange="PC_NpdExcelUI.read(this)"></div>
+      <div class="col-md-5"><label for="npExcelSheet" class="form-label">ชีตสินค้า NPD</label><select id="npExcelSheet" class="form-select" onchange="PC_NpdExcelUI.preview()" disabled><option value="">เลือกไฟล์ก่อน</option></select></div>
+    </div>
+    <div id="npExcelStatus" class="small mt-2" role="status" aria-live="polite"></div>
+    <div id="npExcelPreview" hidden></div>
+    <div id="npExcelReview" hidden></div>
+  </section>
 
   <!-- ===== NEW PRODUCT TAB ===== -->
   <div id="tabNew">
@@ -73,7 +103,17 @@
     </div>
 
     <div class="bg-white rounded-3 shadow-sm border mb-3">
-      <div class="sec-head d-flex justify-content-between align-items-center"><span>SUBSET สูตรผงสินค้าใหม่ <span style="font-weight:400;font-size:.7rem;color:#9aa3ab;text-transform:none">(ใส่หรือไม่ใส่ก็ได้ — เครื่องดื่ม / topping ที่ไม่มีผง ข้ามได้)</span></span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">SS Code / CMPOS = IT กรอก</span></div>
+      <div class="sec-head d-flex justify-content-between align-items-center"><span>SUBSET สูตรผงสินค้าใหม่ <span style="font-weight:400;font-size:.7rem;color:#9aa3ab;text-transform:none">(ใส่หรือไม่ใส่ก็ได้ — เครื่องดื่ม / topping ที่ไม่มีผง ข้ามได้)</span></span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">SS / CMPOS จองผ่านเลขกลาง · IT ตรวจยืนยัน</span></div>
+      <div class="p-3 border-bottom" aria-labelledby="npSubsetExcelTitle">
+        <h4 id="npSubsetExcelTitle" class="h6 fw-bold"><i class="fas fa-file-excel text-success me-2" aria-hidden="true"></i>Import Excel เฉพาะ Subset</h4>
+        <p class="small mb-3">เลือกชีต <b>ss</b> เพื่อเพิ่มกลุ่มและรายการผงในส่วนนี้ ไม่แทนที่สินค้า / Subset เดิม และยังไม่ส่งงานให้ IT</p>
+        <div class="row g-3">
+          <div class="col-md-7"><label for="npSubsetExcelFile" class="form-label small fw-bold">ไฟล์ Excel (.xlsx ไม่เกิน 15 MB)</label><input id="npSubsetExcelFile" type="file" accept=".xlsx" class="form-control" onchange="PC_NpdExcelUI.readSubset(this)"></div>
+          <div class="col-md-5"><label for="npSubsetExcelSheet" class="form-label small fw-bold">ชีต Subset / CMPOS</label><select id="npSubsetExcelSheet" class="form-select" onchange="PC_NpdExcelUI.previewSubset()" disabled><option value="">เลือกไฟล์ก่อน</option></select></div>
+        </div>
+        <div id="npSubsetExcelStatus" class="small mt-2" role="status" aria-live="polite"></div>
+        <div id="npSubsetExcelPreview" hidden></div>
+      </div>
       <div class="p-3" id="subsetSection"></div>
     </div>
 
@@ -152,4 +192,6 @@
   <datalist id="spoonList"></datalist>
 </div>
 
+<script src="js/npd-excel-import.js"></script>
 <script src="js/npd-redesign.js"></script>
+<script src="js/npd-excel-ui.js"></script>

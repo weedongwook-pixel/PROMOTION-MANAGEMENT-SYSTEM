@@ -124,14 +124,18 @@
       icon: 'question', title: 'ยืนยัน Interface ERP?',
       html: '<div style="text-align:left;font-size:.86rem;line-height:1.6">โค้ด <b>' + esc([r.codePromotion, r.codeItemSet].filter(Boolean).join(' / ') || '-') + '</b><br>' +
         '<b>' + esc(r.cmposName || r.buttonName || '') + '</b> · Brand ' + esc(r.brand || '-') + '<br>' +
-        '<span style="color:#6c757d">เมื่อยืนยัน: ตั้งสถานะ Sales interface setup = YES และแจ้งทีมบัญชี (ACC) · MKT · IT ทางอีเมล + ช่องทางที่ตั้งค่าไว้</span></div>',
-      showCancelButton: true, confirmButtonText: '<i class="fas fa-paper-plane"></i> ยืนยัน & แจ้ง ACC',
-      confirmButtonColor: '#2c5cc5', cancelButtonText: 'ยกเลิก'
+        '<span style="color:#6c757d">'+(r.emailCampaignId?'บันทึก Interface ก่อน ระบบจะเข้าคิวเมลหนึ่งฉบับเมื่อ IT ขึ้นปุ่มและ Interface ครบทุกปุ่ม โดยส่งให้ผู้รับในลูปที่ยืนยันไว้':'เมื่อยืนยัน: ตั้งสถานะ Sales interface setup = YES ส่วนการส่งอีเมลขึ้นอยู่กับการตั้งค่าที่เปิดใช้งาน')+'</span></div>',
+      showCancelButton: true, confirmButtonText: '<i class="fas fa-check"></i> ยืนยัน Interface',
+      confirmButtonColor: '#1b5e20', cancelButtonText: 'ยกเลิก'
     }).then(function (res) {
       if (!res.isConfirmed) return;
-      run2('confirmErpInterface', id, uname()).catch(function () {}).finally(function () {
-        Swal.fire({ icon: 'success', title: 'ยืนยัน Interface แล้ว', html: 'แจ้งทีมบัญชี (ACC) เรียบร้อย', timer: 2000, showConfirmButton: false });
+      run2('confirmErpInterface', id, uname()).then(function (result) {
+        if(!result||result.status!=='success')throw new Error(result&&result.message||'ระบบยังไม่ยืนยันการบันทึก Interface');
+        var notice=result.mailStatus==='accepted'?'Gmail รับอีเมลแล้ว':result.mailStatus==='queued'?'บันทึกแล้ว · อีเมลยืนยันอยู่ในคิวส่ง':result.mailStatus==='waiting_for_both'?'บันทึกแล้ว · รอ IT ขึ้นปุ่มครบก่อนส่งอีเมล':'บันทึก Interface แล้ว · ยังไม่ยืนยันการส่งอีเมล';
+        Swal.fire({ icon: 'success', title: 'ยืนยัน Interface แล้ว', text:notice, timer: 3000, showConfirmButton: false });
         ieLoad();
+      }).catch(function(error){
+        Swal.fire({icon:'error',title:'ยังยืนยัน Interface ไม่สำเร็จ',text:String(error&&error.message||error)});
       });
     });
   };

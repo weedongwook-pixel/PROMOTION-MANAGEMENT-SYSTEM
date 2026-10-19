@@ -1,0 +1,28 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-10-15-promotion-edit.md
+
+Execution: native, following user approval and repeated request to continue in the current project. Preserve existing dirty files, no commits or deploy without a separate handoff.
+Ruling: Work in the existing directory as recommended and subsequently requested by the user — this retains the currently deployed uncommitted baseline; do not reset or move branches. Cost if wrong: changes would need to be separated by diff rather than by worktree.
+Pre-flight: Tasks 1/2/4 share normalized form rows, stable IDs and immutable metadata. Use a single shared model for browser and Worker; transport must not trust caller-provided original status/owner.
+Pre-flight: Tasks 3/4 share edit context and master-data readiness. Mount only after the existing form calls addCampaign at the end of its load callback.
+Pre-flight: Tasks 2/5 share receipt identity. Existing receipt table and replay mechanism can store edit receipt; keep edits separate from new submission counts.
+
+Task 1: complete — model tests cover original owner, historical IT lock, four form types, original codes/metadata, SS, validation, other-month preservation and legacy online channel.
+Task 2: complete — Worker transaction/CAS and replayable receipts tested with SQLite, including IT-close between read and commit. Client recovers durable receipt after response loss without local-first campaign writes. Worker dry-run build passes.
+Task 3/4: implemented — actual form hooks and Tracking detail entry; local Chrome roundtrip passes all four form types using real Worker + browser adapter and mocked D1 transport. Navigation guard retains unsaved draft until explicit discard.
+Task 5: implemented — edit audit stored inside the same D1 transaction, deterministic event identity, replay produces one history entry. Original sender/date preserved.
+Ruling: Initial user-edit mode keeps campaign name, button count/identities, online type and attachment fixed; details/dates/stores/channels/items/quantities/prices/discounts are editable — these identity changes require reassigning/releasing code ownership and are left in the existing IT workflow rather than silently recycling codes. This is narrower than the plan's rename/add/remove/file-replacement steps. Cost: users must contact IT for those structural changes.
+Ruling: Authentication remains the existing shared Cloud-token and sender-name model, not newly signed per-user sessions — this feature checks existing sender identity but does not claim protection against a user forging the existing client-side login. Cost: strict security-grade ownership still requires separate authentication work.
+Verification: full Node suite 126/126 before final legacy test; local Chrome four-form happy paths pass; final suite/review pending. Impeccable detector reports incumbent font/accent styles, not new edit UI findings; preserve existing visual identity rather than redesign unrelated forms.
+
+Final review: fresh independent reviewer found three Important issues (Bill All fields, Voucher face-value strings, click-only dirty tracking) and confirmed the coordinator's deletion-tombstone issue. All reproduced before fixes. Single fix pass preserves form-specific stored representations, compares collected values for draft guard, and guards tombstones both before and inside the transaction.
+Final: fixed Bill/Voucher formats — real-format regression RED→GREEN; local Chrome now uses Bill category/All rows and Voucher All-items `50 ฿` rows instead of Item Set-shaped fixtures.
+Final: fixed click-only draft loss — Chrome item-removal guard assertion RED→GREEN; snapshot comparison also covers hidden store changes and customer-group state.
+Final: fixed deleted-campaign revival — tombstone regression RED→GREEN, plus deletion-during-transaction rollback and restored-newer-than-tombstone tests pass.
+Final: fixed unescaped restored branch labels — Chrome DOM regression RED→GREEN; store labels cannot create HTML elements.
+Final: fixed renamed-button submission-history false warning — submission-log regression RED→GREEN using server-generated original button-name aliases, preserving original receipt checks and new-campaign counts.
+Final: full shell integration passes with real Tracking detail button -> CreatePromotion/Coupon original form -> confirmed Worker edit. Six buttons/eighteen rows retain exact codes; no production writes. Four-form Chrome harness also passes. Worker dry-run build passes.
+Final: Ruling: Real production deployment/data verification stays outside this implementation turn — no deploy requested in this turn, no mutations to TOTO or other Cloud records. Cost: real-link testing requires separately authorized deployment of both Sync Worker and frontend.
+Final: Ruling: Strict authentication remains the previously disclosed sender-name/shared-token model; no new authentication subsystem is silently introduced. Cost: security-grade identity enforcement remains separate work.
+Final: minor (deferred): incumbent fonts/accent borders and preexisting header duplication in narrow mobile captures are not redesigned in this task.
+Final: manual keyboard/a11y navigation not exhaustively exercised; controls retain native button/input semantics and incumbent styles.
+Final verification: `node --test tests/*.test.cjs` 132 passed / 0 failed; local four-form Chrome test passed; final full-shell Tracking -> edit button -> Coupon (6 buttons/18 rows) -> durable edit receipt passed; final Sync Worker dry-run build passed. Source retained in current workspace without commit, merge or deploy.

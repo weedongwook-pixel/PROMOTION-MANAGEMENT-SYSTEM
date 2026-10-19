@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Item Set Builder — local preview</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; font-family:Kanit,sans-serif; background:#eef1f4; }
+    .preview-label { background:#173b29; color:#fff; padding:8px 22px; font-size:.8rem; }
+    .preview-label strong { color:#ffe082; }
+  </style>
+</head>
+<body>
+  <div class="preview-label"><strong>LOCAL PREVIEW</strong> · ข้อมูลตัวอย่างเท่านั้น · ไม่เชื่อม Cloud · ยังไม่ deploy</div>
+  <main id="previewMount">กำลังเปิดพรีวิว…</main>
+  <script>
+    const campaign = 'ตัวอย่าง — Item Set / Subset';
+    const shortName = 'SET-DRINK+SAUCE';
+    const rows = [
+      { shortName, itemCode:'101003', itemNameEn:'MEGA FRIES', qty:2, price:100 },
+      { shortName, itemCode:'SS0035', itemNameEn:'Drink All', isSubset:'Y', chooseMin:'1', chooseMax:'2', qty:1, price:20 },
+      { shortName, itemCode:'SS0136', itemNameEn:'Sauce & Topping', isSubset:'Y', chooseMin:'1', chooseMax:'3', qty:2, price:10 },
+    ];
+    const button = { campaign, shortName, month:'2026-10', saleMode:'Take Away', start:'2026-10-01', end:'2026-10-31',
+      kitchen:'FRIES+DRINK', codeItemSet:'', itStatus:'PENDING', posReady:false };
+    window.PC_SEED = { items:[{ itemCode:'101003', itemNameEN:'MEGA FRIES', category:'Food' }] };
+    window.PC_SUBSET_MASTER = [
+      { ssCode:'SS0001', name:'Flavor' }, { ssCode:'SS0035', name:'Drink All' },
+      { ssCode:'SS0136', name:'Sauce & Topping' },
+    ];
+    window.PC_PRODUCT_FORMULA = { '101003':[{ code:'SS0001', min:2, max:2 }] };
+    window.PC_RECIPE = { '101003':{ modes:{ 'Take Away':[
+      { rm:'3116', d:'Potatoes', q:'100', u:'G' },
+      { rm:'4003', d:'Box Mega', q:'1', u:'PCS' },
+    ] } } };
+    window.PC_API = {
+      getItemSetButtons: () => [button],
+      getItemSetProposalRows: () => rows,
+      getPromoDetails: () => ({ items:rows }),
+      getMasterDataExtended: () => ({ items:[{ itemCode:'101003', itemNameEN:'MEGA FRIES' }] }),
+    };
+    fetch('../pages/ItemSet.html').then(response => {
+      if (!response.ok) throw new Error('เปิดไฟล์ Item Set ไม่ได้');
+      return response.text();
+    }).then(html => {
+      const script = html.match(/<script>([\s\S]*?)<\/script>/);
+      if (!script) throw new Error('ไม่พบโค้ดหน้า Item Set');
+      document.getElementById('previewMount').innerHTML = html.replace(script[0], '');
+      window.eval(script[1]);
+      window.initItemSet();
+      window.App.posPick(campaign, shortName);
+      if (new URLSearchParams(location.search).get('tab') === 'recipe') window.App.tab('recipe');
+    }).catch(error => {
+      document.getElementById('previewMount').textContent = 'พรีวิวไม่สำเร็จ: ' + error.message;
+    });
+  </script>
+</body>
+</html>

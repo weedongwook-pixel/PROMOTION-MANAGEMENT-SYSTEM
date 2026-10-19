@@ -1,5 +1,6 @@
-<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
-  <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
+<script src="js/form-master-loader.js"></script>
+<div class="p-4 pc-workspace pc-proposal" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div class="pc-page-heading d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 shadow" style="background:#2e934a;color:#fff;">
     <div>
       <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
         <i class="fas fa-file-invoice text-success me-2"></i>Item Set <span style="color:#2e934a;">Proposal</span>
@@ -51,6 +52,7 @@
     });
   </script>
 
+  <nav class="pc-workflow-guide" aria-label="ขั้นตอนการแจ้งโปรโมชั่น"><ol><li>ข้อมูลแคมเปญ</li><li>สินค้าและราคา</li><li>สาขาและเงื่อนไข</li><li>ตรวจทานและส่งให้ IT</li></ol></nav>
   <div id="loadingStatus" class="text-center p-5">
     <div class="spinner-border text-warning" role="status"></div>
     <p class="mt-2 fw-bold" id="statusMessage">LOADING MASTER DATA...</p>
@@ -321,7 +323,7 @@
     }
 
     if (typeof google !== 'undefined') {
-        google.script.run
+        window.PC_FormMaster.run()
           .withSuccessHandler(function(response) {
             window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
             window.__pcRawMaster = response.items || [];
@@ -331,6 +333,7 @@
             document.getElementById('loadingStatus').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             window.addCampaign(); 
+            if(window.PC_PromotionEdit) PC_PromotionEdit.mount('Proposal');
           })
           .getMasterDataExtended();
     } else {
@@ -608,7 +611,10 @@
           }
           usedShortNames.push(snValue);
           
-          if (!net.value || net.value <= 0) { Swal.fire('กรุณากรอก Net Price','','warning'); net.focus(); return; }
+          if (net.value.trim() === '') { Swal.fire('กรุณากรอก Net Price','กรอก 0 ได้หากต้องการให้ราคาสุทธิเป็นศูนย์','warning'); net.focus(); return; }
+          if (!Number.isFinite(Number(net.value)) || Number(net.value) < 0 || !Number.isInteger(Number(net.value))) {
+              Swal.fire('Net Price ไม่ถูกต้อง','กรุณากรอกจำนวนเต็มตั้งแต่ 0 บาทขึ้นไป','warning'); net.focus(); return;
+          }
 
           const rows = btn.querySelectorAll('.item-body tr');
           if (rows.length === 0) { Swal.fire('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ','','warning'); return; }
@@ -688,6 +694,8 @@
         cancelButtonText: 'ยกเลิก'
     }).then((result) => {
         if (result.isConfirmed) {
+            if (!window.PC_SubmissionLog) { Swal.fire('ยังส่งงานไม่ได้', 'ระบบตรวจการบันทึกยังโหลดไม่ครบ กรุณารีเฟรชแล้วลองใหม่', 'error'); return; }
+            var _submissionPlan = PC_SubmissionLog.prepare('Item Set', allData);
             Swal.fire({ 
               title: 'กำลังบันทึก...', 
               didOpen: () => Swal.showLoading(), 
@@ -700,31 +708,19 @@
                         var _camps = Array.from(new Set(allData.map(d => d.campaign).filter(Boolean)));
                         var _hasEV = allData.some(d => /voucher/i.test(String(d.postCate || d.cate || d.cateRemark || '')));
                         /* ⭐ ตรวจจากต้นทางว่าเข้าระบบจริง — เดิมขึ้นสำเร็จทั้งที่ข้อมูลอาจไม่เข้า */
-                        if (window.PC_SaveVerify) {
-                            window.PC_SaveVerify.after({
-                                kind: 'campaign', key: _camps[0] || '', payload: allData,
-                                okTitle: 'บันทึกสำเร็จ!', okHtml: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว',
-                                onDone: function (ok) {
-                                    if (!ok) return;
-                                    window.resetForm();
-                                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV });
-                                },
-                                onRetry: function () { try { document.querySelector('[onclick*="submitAll"],#btnSubmitAll')?.click(); } catch (e) {} }
+                        if (_submissionPlan) {
+                            PC_SubmissionLog.afterSave(_submissionPlan, {
+                                onDone: function (ok) { if (ok) window.resetForm(); },
+                                onAfter: function () { if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV }); }
                             });
-                        } else Swal.fire({
-                            title: 'บันทึกสำเร็จ!',
-                            text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว',
-                            icon: 'success',
-                            confirmButtonColor: '#2e934a'
-                        }).then(() => {
-                            window.resetForm();
-                            if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV });
-                        });
+                        }
                     } else {
+                        if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, res);
                         Swal.fire('บันทึกไม่สำเร็จ', res, 'error');
                     }
                   })
-                  .withFailureHandler(err => { 
+                  .withFailureHandler(err => {
+                    if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, err && err.message || err);
                     Swal.fire('เกิดข้อผิดพลาดทางเทคนิค', err.message, 'error'); 
                   })
                   .saveBulkProposal(allData);
@@ -823,7 +819,7 @@
               <input type="hidden" class="camp-store" id="hidden-store-${campId}">
             </div>
           </div>
-          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #6d3bd1 !important;">
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm">
             <label class="small fw-bold text-uppercase d-block mb-1"><i class="fas fa-shapes me-1" style="color:#6d3bd1"></i>ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด *</label>
             <div class="row g-2 align-items-end">
               <div class="col-md-5">
@@ -839,7 +835,7 @@
               </div>
             </div>
           </div>
-          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #2e934a !important;">
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm">
             <label class="small fw-bold text-uppercase d-block mb-1">CAMPAIGN SALE MODE *</label>
             <div class="d-flex flex-wrap align-items-center gap-3">
               <div class="form-check p-2 rounded border border-dark bg-white d-flex align-items-center" style="min-width: 130px; height: 40px;">
@@ -861,7 +857,7 @@
           </div>
           <div class="button-container" id="btn-container-${campId}"></div>
           <button class="btn btn-outline-dark btn-sm fw-bold w-100 mt-2 mb-4" onclick="window.addButton('${campId}')"><i class="fas fa-plus"></i> ADD NEW POS BUTTON</button>
-          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm" style="border-left: 10px solid #2e934a !important;">
+          <div class="mb-4 p-3 border border-dark rounded bg-white shadow-sm">
             <label class="small fw-bold text-uppercase d-block mb-2"><i class="fas fa-arrow-up-right-dots me-1"></i> เงื่อนไขพิเศษ <span class="text-muted fw-normal" style="font-size:.72rem;">(ติ๊กหรือระบุ → ระบบเติมเข้าช่องเงื่อนไขให้อัตโนมัติ)</span></label>
             <div class="d-flex flex-wrap align-items-center gap-3">
               <div class="form-check"><input class="form-check-input up-upsize border-dark me-1" type="checkbox" onchange="window.syncUpsizeMechanic('${campId}')"><label class="form-check-label small fw-bold">อัพไซด์เครื่องดื่ม 16oz. >> 22oz. + 5 บาท</label></div>
@@ -897,7 +893,7 @@
   window.addButton = function(campId) {
     const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
     const html = `
-      <div class="pos-button-block mb-4 p-3 border border-secondary rounded bg-white shadow-sm" id="${btnId}" style="border-left: 5px solid #000 !important;">
+      <div class="pos-button-block mb-4 p-3 border border-secondary rounded bg-white shadow-sm" id="${btnId}">
         <div class="row g-2 mb-3">
           <div class="col-md-6">
             <label class="small fw-bold text-uppercase">KITCHEN NAME (BILL) * <span class="text-danger">(Max 40)</span></label>
@@ -917,10 +913,10 @@
           <tbody class="item-body"></tbody>
           <tfoot class="table-light fw-bold small">
             <tr><td colspan="3" class="text-end">GROSS TOTAL:</td><td class="text-end btn-gross">0.00</td><td></td></tr>
-            <tr><td colspan="3" class="text-end text-danger">DISCOUNT (AUTO):</td><td><input type="text" class="form-control form-control-sm text-end border-0 fw-bold btn-disc bg-transparent text-danger shadow-none" value="0.00" readonly></td><td></td></tr>
+            <tr><td colspan="3" class="text-end text-danger">DISCOUNT (AUTO):</td><td><input type="text" class="form-control form-control-sm text-end border-0 fw-bold btn-disc bg-transparent text-danger shadow-none" placeholder="กรอก Net ก่อน" aria-label="ส่วนลดอัตโนมัติหลังกรอกราคา Net" readonly></td><td></td></tr>
             <tr class="table-warning">
                 <td colspan="3" class="text-end h6 fw-bold">PRICE PROMOTION (NET) * :</td>
-                <td><input type="number" class="form-control form-control-sm text-end border-dark fw-bold btn-net shadow-none" style="color: #28a745;" step="1" oninput="window.updateTotals('${btnId}')"></td>
+                <td><input type="number" class="form-control form-control-sm text-end border-dark fw-bold btn-net shadow-none" style="color: #28a745;" min="0" step="1" required oninput="window.updateTotals('${btnId}')" onchange="window.updateTotals('${btnId}')"></td>
                 <td></td>
             </tr>
           </tfoot>
@@ -947,8 +943,8 @@
         <input type="hidden" class="row-ic"><input type="hidden" class="row-catecode"><input type="hidden" class="row-catname">
         <input type="hidden" class="row-issubset"><input type="hidden" class="row-ssmin"><input type="hidden" class="row-ssmax">
       </td>
-      <td><input type="number" class="form-control form-control-sm border-0 text-center row-qty shadow-none" value="1" min="1" oninput="window.updateTotals('${btnId}')"></td>
-      <td><input type="number" class="form-control form-control-sm border-0 text-end row-op shadow-none bg-white" step="0.01" oninput="window.updateTotals('${btnId}')"></td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-center row-qty shadow-none" value="1" min="1" oninput="window.updateTotals('${btnId}')" onchange="window.updateTotals('${btnId}')"></td>
+      <td><input type="number" class="form-control form-control-sm border-0 text-end row-op shadow-none bg-white" step="0.01" oninput="window.updateTotals('${btnId}')" onchange="window.updateTotals('${btnId}')"></td>
       <td class="text-center"><i class="fas fa-times-circle text-danger cursor-pointer" onclick="document.getElementById('${rowId}').remove(); window.updateTotals('${btnId}')"></i></td>`;
     tbody.appendChild(tr);
     window.updateDatalist(rowId, "");
@@ -965,7 +961,11 @@
     btnBlock.querySelector('.btn-gross').innerText = gross.toFixed(2);
     
     const netInput = btnBlock.querySelector('.btn-net');
-    let net = parseFloat(netInput.value) || 0;
+    const discountInput = btnBlock.querySelector('.btn-disc');
+    // ช่อง Net ว่างไม่ใช่ Net = 0: ยังไม่คำนวณส่วนลดจนกว่าผู้ใช้จะกรอกเอง
+    if (netInput.value.trim() === '') { discountInput.value = ''; return; }
+    let net = Number(netInput.value);
+    if (!Number.isFinite(net) || net < 0) { discountInput.value = ''; return; }
 
     if (net % 1 !== 0) {
       Swal.fire({
@@ -979,7 +979,7 @@
       netInput.value = net;
     }
 
-    btnBlock.querySelector('.btn-disc').value = (gross - net).toFixed(2);
+    discountInput.value = (gross - net).toFixed(2);
   };
 
   window.handleFill = function(rowId, val, btnId, campId) {
@@ -1080,7 +1080,10 @@
     });
     btnBlock.querySelectorAll('.item-body tr').forEach(row => {
       const itemName = row.querySelector('.row-search-input').value;
-      const item = window.masterData.find(d => d.itemNameEN === itemName);
+      const code = String(row.querySelector('.row-ic')?.value || '').trim();
+      // A Subset keeps its own configured price, not an individual product's price.
+      if (/^SS/i.test(code) || row.querySelector('.row-issubset')?.value === '1') return;
+      const item = window.masterData.find(d => code ? String(d.itemCode) === code : (d.itemNameEN === itemName || String(d.itemCode) + ' - ' + d.itemNameEN === itemName));
       if (item) row.querySelector('.row-op').value = isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0);
     });
     window.updateTotals(btnId);

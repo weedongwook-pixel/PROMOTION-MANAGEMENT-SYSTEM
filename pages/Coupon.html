@@ -1,5 +1,6 @@
-<div class="p-4" style="background-color: #f4f4f4; min-height: 100vh;">
-  <div class="d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
+<script src="js/form-master-loader.js"></script>
+<div class="p-4 pc-workspace pc-proposal" style="background-color: #f4f4f4; min-height: 100vh;">
+  <div class="pc-page-heading d-flex justify-content-between align-items-end mb-4 px-1 pt-2 pb-2">
     <div>
       <h2 class="fw-bold m-0" style="font-family:'Montserrat', sans-serif; font-size: 2.1rem; letter-spacing: 0.2px; line-height: 1.1; color:#1a1d20;">
         <i class="fas fa-ticket-alt text-success me-2"></i>Coupon <span style="color:#2e934a;">Proposal</span>
@@ -22,13 +23,14 @@
       </div>
     </div>
   </div>
+  <nav class="pc-workflow-guide" aria-label="ขั้นตอนการแจ้งโปรโมชั่น"><ol><li>ข้อมูลแคมเปญ</li><li>สินค้าและราคา</li><li>สาขาและเงื่อนไข</li><li>ตรวจทานและส่งให้ IT</li></ol></nav>
   <div id="loadingStatus" class="text-center p-5">
     <div class="spinner-border text-warning" role="status"></div>
     <p class="mt-2 fw-bold" id="statusMessage">LOADING MASTER DATA (ITEMS & BRANCHES)...</p>
   </div>
 
   <div id="mainContent" style="display:none;">
-    <div id="pcCustomerGroup"></div>
+    <div id="pcCustomerGroup" data-mapping-scope="coupon"></div>
     <div id="campaignList"></div>
 
     <div class="mb-4 text-center">
@@ -148,7 +150,7 @@
   };
 
   window.loadMasterData = function() {
-    google.script.run
+    window.PC_FormMaster.run()
       .withSuccessHandler(function(response) {
         if (!window.isCouponPageActive()) return;
         window.masterData = (function(__it){var __pf={},__cf={},__df={};try{__pf=JSON.parse(localStorage.getItem('pc_product_flags')||'{}')||{};}catch(e){}try{__cf=JSON.parse(localStorage.getItem('pc_cat_flags')||'{}')||{};}catch(e){}try{__df=JSON.parse(localStorage.getItem('pc_dep_flags')||'{}')||{};}catch(e){}return (__it||[]).filter(function(it){var f=__pf[it.itemCode]||{};if(f.active===0||f.status===0)return false;if(!(f.active===1||f.status===1)&&String(it.status||'Active').toLowerCase()==='inactive')return false;if((__cf[it.category]||{}).active===0)return false;if(it.department&&(__df[it.department]||{}).active===0)return false;return true;});})(response.items || []).sort(function(a,b){var na=parseInt(a.itemCode,10),nb=parseInt(b.itemCode,10);if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb;if(isNaN(na)&&!isNaN(nb))return 1;if(!isNaN(na)&&isNaN(nb))return -1;return String(a.itemCode||'').localeCompare(String(b.itemCode||''));});
@@ -172,6 +174,7 @@
     if (list) list.innerHTML = "";
     window.campaignCount = 0;
     if (typeof window.addCampaign === 'function') window.addCampaign();
+    if(window.PC_PromotionEdit) PC_PromotionEdit.mount('Coupon');
     window.isInitializing = false;   // init complete — never leave the guard stuck
   };
 
@@ -305,6 +308,8 @@ window.submitAllData = async function() {
 
             if (discInputEl.value === "" || parseFloat(discInputEl.value) <= 0) return showError('กรุณาระบุค่า "DISCOUNT (AUTO)" ให้ถูกต้อง (ต้องมากกว่า 0)', discInputEl);
 
+            const missingCategory=Array.from(block.querySelectorAll('.item-body tr')).find(row=>row.querySelector('.row-scope')?.value==='CATE'&&!row.querySelector('.row-catecode').value);
+            if(missingCategory)return showError('กรุณาเลือกหมวดสินค้าที่ต้องการลดราคา',missingCategory.querySelector('.row-cat-select'));
             let hasItem = false;
             block.querySelectorAll('.item-body tr').forEach(row => {
                 const ic = row.querySelector('.row-ic').value;
@@ -329,16 +334,19 @@ window.submitAllData = async function() {
                         itemCode: ic,
                         itemName: search,
                         qty: qty,
-                        grossValue: opVal.toFixed(2),
-                        discountValue: (opVal - netVal).toFixed(2), 
+                        couponGroupMode: !!block.querySelector('.btn-group-mode')?.checked,
+                        selectionMode: row.querySelector('.row-scope').value==='CATE'?'CATE':'ITEM',
+                        grossValue: block.querySelector('.btn-group-mode')?.checked?'':opVal.toFixed(2),
+                        discountValue: block.querySelector('.btn-group-mode')?.checked?discInputEl.value:(opVal - netVal).toFixed(2), 
                         discountUnit: block.querySelector('.btn-disc-unit').value,
-                        netPrice: (netVal * qty).toFixed(2), 
+                        netPrice: block.querySelector('.btn-group-mode')?.checked?'':(netVal * qty).toFixed(2), 
                         promotionDetail: detailInput.value.trim(),
                         promotionCondition: mechanicInput.value.trim(),
                         fileInfo: attachedFileInfo,
                         cateCode: row.querySelector('.row-catecode').value,
                         cateName: row.querySelector('.row-catname').value,
-                        ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+                        ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {}),
+                        ...(window.PC_CustomerGroup?.couponValue ? PC_CustomerGroup.couponValue(block) : {})
                     });
                 }
             });
@@ -355,26 +363,25 @@ window.submitAllData = async function() {
       cancelButtonText: 'ยกเลิก'
     }).then((result) => {
       if (result.isConfirmed) {
+        if (!window.PC_SubmissionLog) { Swal.fire('ยังส่งงานไม่ได้', 'ระบบตรวจการบันทึกยังโหลดไม่ครบ กรุณารีเฟรชแล้วลองใหม่', 'error'); return; }
+        var _submissionPlan = PC_SubmissionLog.prepare('Coupon', payload);
         Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         google.script.run
           .withSuccessHandler(function(res) {
             Swal.close();
             if (res && res.status === "success") {
-                Swal.fire({ 
-                    title: 'บันทึกสำเร็จ!', 
-                    text: 'ข้อมูลถูกส่งไปที่ IT เรียบร้อยแล้ว', 
-                    icon: 'success', 
-                    confirmButtonColor: '#2e934a' 
-                }).then(() => {
-                    resetForm();
-                    var _c = Array.from(new Set((payload || []).map(function (p) { return p.campaignName || p.campaign; }).filter(Boolean)));
-                    if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c);
+                var _c = Array.from(new Set((payload || []).map(function (p) { return p.campaignName || p.campaign; }).filter(Boolean)));
+                if (_submissionPlan) PC_SubmissionLog.afterSave(_submissionPlan, {
+                    onDone: function (ok) { if (ok) resetForm(); },
+                    onAfter: function () { if (window.PC_CoPromo) window.PC_CoPromo.promptAfterSubmit(_c); }
                 });
             } else { 
+                if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, res && res.message || 'Unknown Error');
                 Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้: ' + (res ? res.message : 'Unknown Error'), 'error'); 
             }
           })
           .withFailureHandler(function(err) {
+            if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, err && err.message || err);
             Swal.close(); 
             Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
           })
@@ -647,7 +654,18 @@ window.addButton = function(campId) {
           </div>
         </div>
 
-        <table class="table table-sm table-bordered border-dark align-middle mb-2">
+        <div class="form-check mb-3">
+          <input type="checkbox" class="form-check-input btn-category-mode" id="category-${btnId}" onchange="window.couponCategoryChanged('${btnId}')" aria-describedby="category-help-${btnId}">
+          <label class="form-check-label fw-bold" for="category-${btnId}" data-th="เลือกทั้งหมวดสินค้า (Cate)" data-en="Select entire categories (Cate)">เลือกทั้งหมวดสินค้า (Cate)</label>
+          <div id="category-help-${btnId}" class="small text-muted" data-th="ไม่ติ๊กเพื่อเลือกสินค้ารายตัว ติ๊กเพื่อใช้ส่วนลดกับสินค้าทั้งหมวด" data-en="Leave unchecked to choose individual products. Check to apply a discount to entire categories.">ไม่ติ๊กเพื่อเลือกสินค้ารายตัว ติ๊กเพื่อใช้ส่วนลดกับสินค้าทั้งหมวด</div>
+        </div>
+        <div class="form-check mb-3">
+          <input type="checkbox" class="form-check-input btn-group-mode" id="group-${btnId}" onchange="window.couponGroupChanged('${btnId}')" aria-describedby="group-help-${btnId}">
+          <label class="form-check-label fw-bold" for="group-${btnId}" data-th="คิดเป็นกลุ่ม" data-en="Group discount (no price calculation)">คิดเป็นกลุ่ม</label>
+          <div id="group-help-${btnId}" class="small text-muted" data-th="ติ๊กเพื่อกำหนดสินค้าที่ร่วมโปรฯ โดยไม่รวมราคาและไม่คำนวณ Net รายตัว" data-en="Check to define eligible products without totaling prices or calculating individual Net prices.">ติ๊กเพื่อกำหนดสินค้าที่ร่วมโปรฯ โดยไม่รวมราคาและไม่คำนวณ Net รายตัว</div>
+        </div>
+        <select class="btn-group-target" hidden aria-hidden="true" tabindex="-1"><option value="ITEM">ITEM</option><option value="CATE">CATE</option></select>
+        <div class="table-responsive"><table class="table table-sm table-bordered border-dark align-middle mb-2 coupon-items-table">
           <thead class="table-dark small text-center">
             <tr>
               <th style="width: 20%;">Category</th>
@@ -661,7 +679,7 @@ window.addButton = function(campId) {
           <tbody class="item-body"></tbody>
           <tfoot class="table-light fw-bold small">
             <tr>
-                <td colspan="4" class="text-end text-danger align-middle">DISCOUNT (AUTO):</td>
+                <td colspan="4" class="text-end text-danger align-middle coupon-discount-label">DISCOUNT (AUTO):</td>
                 <td>
                     <div class="input-group input-group-sm border border-danger rounded bg-white">
                         <input type="number" class="form-control text-end border-0 fw-bold btn-disc-input shadow-none text-danger" value="0" oninput="window.updateTotals('${btnId}')">
@@ -671,14 +689,16 @@ window.addButton = function(campId) {
                 <td></td>
             </tr>
           </tfoot>
-        </table>
+        </table></div>
         <div class="d-flex justify-content-between align-items-center mt-2">
-            <button class="btn btn-sm btn-dark fw-bold" onclick="window.addItemRow('${btnId}')"><i class="fas fa-plus"></i> ADD ITEM </button>
+            <button type="button" class="btn btn-sm btn-dark fw-bold coupon-add-row" onclick="window.addItemRow('${btnId}')"><i class="fas fa-plus" aria-hidden="true"></i> <span data-th="เพิ่มสินค้า" data-en="Add item">เพิ่มสินค้า</span></button>
             <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove</small>
         </div>
+        ${window.PC_CustomerGroup?.couponHTML ? PC_CustomerGroup.couponHTML(btnId) : ''}
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
     window.addItemRow(btnId);
+    if(window.PC_CustomerGroup?.syncCoupons)PC_CustomerGroup.syncCoupons();
 };
 
 window.toggleFileSection = function(btnId) {
@@ -693,8 +713,15 @@ window.addItemRow = function(btnId) {
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.innerHTML = `
-      <td><select class="form-select form-select-sm border-0 row-cat-select shadow-none" onchange="window.updateDatalist('${rowId}', this.value)"><option value="">-- All --</option>${(window.PC_FormSubset?window.PC_FormSubset.optionHTML('coupon'):'')}${window.categories.filter(window.pcCatShownInCoupon).map(cat => `<option value="${cat}">${(window.catCodeMap&&window.catCodeMap[cat])?window.catCodeMap[cat]+' - ':''}${cat}</option>`).join('')}</select></td>
-      <td>
+      <td style="min-width:220px;">
+        <select id="scope-${rowId}" class="row-scope" hidden aria-hidden="true" tabindex="-1">
+          <option value="ITEM" data-th="เฉพาะสินค้า" data-en="Specific items">เฉพาะสินค้า</option>
+          <option value="CATE" data-th="ทั้งหมวด" data-en="Entire category">ทั้งหมวด</option>
+          <option value="SUBSET" data-th="กลุ่มสินค้า (Subset)" data-en="Product group (Subset)">กลุ่มสินค้า (Subset)</option>
+        </select>
+        <select aria-label="Category / หมวดสินค้า" class="form-select form-select-sm row-cat-select shadow-none" onchange="window.couponScopeChanged('${rowId}')"><option value="" data-th="ทุกหมวด" data-en="All categories">ทุกหมวด</option><option value="__SUBSET__" data-th="กลุ่มสินค้า (Subset)" data-en="Product group (Subset)">กลุ่มสินค้า (Subset)</option>${window.categories.filter(window.pcCatShownInCoupon).map(cat => { const e=String(cat).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const code=(window.catCodeMap&&window.catCodeMap[cat])||'';return `<option value="${e}" translate="no">${code?code+' - ':''}${e}</option>`;}).join('')}</select>
+      </td>
+      <td style="min-width:240px;">
         <input type="text" list="list-${rowId}" class="form-control form-control-sm border-0 row-search-input shadow-none fw-bold text-green-custom" oninput="window.handleFill('${rowId}', this.value, '${btnId}')" placeholder="Search product...">
         <datalist id="list-${rowId}"></datalist>
         <input type="hidden" class="row-ic"><input type="hidden" class="row-catecode"><input type="hidden" class="row-catname"><input type="hidden" class="row-issubset">
@@ -708,7 +735,10 @@ window.addItemRow = function(btnId) {
         </span>
       </td>`;
     tbody.appendChild(tr);
-    window.updateDatalist(rowId, "");
+    if(document.getElementById(btnId).querySelector('.btn-group-mode')?.checked)tr.querySelector('.row-scope').value=document.getElementById(btnId).querySelector('.btn-group-target')?.value||'ITEM';
+    window.updateDatalist(rowId, tr.querySelector('.row-scope').value==='CATE'?'__CATE__:':'');
+    window.couponScopeView(rowId);
+    if(window.couponGroupView)window.couponGroupView(btnId);
 };
 
 window.updateTotals = function(btnId) {
@@ -739,6 +769,11 @@ window.updateTotals = function(btnId) {
     }
 
     rows.forEach(row => {
+        if (btnBlock.querySelector('.btn-group-mode')?.checked || row.querySelector('.row-scope')?.value === 'CATE') {
+            row.querySelector('.row-op').value = '';
+            row.querySelector('.row-net').value = '';
+            return;
+        }
         const op = parseFloat(row.querySelector('.row-op').value.replace(/,/g, '')) || 0;
         let netPerItem = (discUnit === 'PCT') 
             ? (op - (op * discInput / 100)) 
@@ -788,7 +823,9 @@ window.toggleCouponView = function(campId, type) {
       window.updateTotals(btnId);
       return;
     }
-    const item = window.masterData.find(d => d.itemNameEN === val || String(d.itemCode) === String(val) || (String(d.itemCode) + ' - ' + d.itemNameEN) === val);
+    const selectedCategory = row.querySelector('.row-cat-select').value;
+    if (selectedCategory.startsWith('__CATE__:') || row.querySelector('.row-scope')?.value === 'CATE') return;
+    const item = window.masterData.find(d => (!selectedCategory || String(d.category) === selectedCategory) && (d.itemNameEN === val || String(d.itemCode) === String(val) || (String(d.itemCode) + ' - ' + d.itemNameEN) === val));
     // refresh suggestions (capped) based on typed text + row category
     const _catSel = row.querySelector('.row-cat-select');
     window.updateDatalist(rowId, _catSel ? _catSel.value : '', val);
@@ -823,6 +860,30 @@ window.toggleCouponView = function(campId, type) {
   window.updateDatalist = function(rowId, catName, query) {
     const dl = document.getElementById('list-' + rowId);
     if (!dl) return;
+    const row = document.getElementById(rowId);
+    // A category change is a new selection, not a product lookup keystroke.
+    if (row && query === undefined) {
+      ['.row-ic','.row-catecode','.row-catname','.row-search-input','.row-op'].forEach(s => { row.querySelector(s).value=''; });
+      row.querySelector('.row-search-input').readOnly=false;
+      row.querySelector('.row-search-input').placeholder='Search product...';
+      row.querySelector('.row-issubset').value='';
+      const block=row.closest('.pos-button-block');
+      if (block) window.updateTotals(block.id);
+    }
+    if (String(catName).startsWith('__CATE__:')) {
+      const name=String(catName).slice(9), code=window.catCodeMap[name];
+      dl.innerHTML='';
+      if(row){row.querySelector('.row-search-input').readOnly=true;row.querySelector('.row-search-input').placeholder=document.documentElement?.lang==='en'?'Select a category':'เลือกหมวดสินค้า';}
+      if (!code || !row) return;
+      row.querySelector('.row-ic').value=code;
+      row.querySelector('.row-catecode').value=code;
+      row.querySelector('.row-catname').value=name;
+      row.querySelector('.row-search-input').value=code+' - '+name+' (ทั้งหมวด / Entire category)';
+      row.querySelector('.row-search-input').readOnly=true;
+      row.querySelector('.row-op').readOnly=false;
+      row.querySelector('.row-op').classList.remove('bg-light');
+      return;
+    }
     if (catName === '__SUBSET__') {
       var _r = document.getElementById(rowId);
       if (_r) { var _is = _r.querySelector('.row-issubset'); if (_is) _is.value = '1'; var _si = _r.querySelector('.row-search-input'); if (_si) _si.placeholder = 'ค้นหากลุ่มสินค้า…'; }
@@ -845,6 +906,82 @@ window.toggleCouponView = function(campId, type) {
       out.push('<option value="' + (d.itemCode || '') + ' - ' + (d.itemNameEN || '') + '">' + (d.category || '') + '</option>');
     }
     dl.innerHTML = out.join('');
+  };
+
+  window.couponScopeView = function(rowId) {
+    const row=document.getElementById(rowId);if(!row)return;
+    const mode=row.querySelector('.row-scope').value;
+    const grouped=!!row.closest('.pos-button-block')?.querySelector?.('.btn-group-mode')?.checked||mode==='CATE';
+    row.querySelector('.row-cat-select').hidden=mode==='SUBSET';
+    row.querySelector('.row-cat-select').required=mode==='CATE';
+    row.querySelector('.row-search-input').hidden=false;
+    row.querySelector('.row-op').hidden=grouped;
+    row.querySelector('.row-net').hidden=grouped;
+    if(grouped)row.querySelector('.row-net').value='';
+  };
+  window.couponScopeChanged = function(rowId) {
+    const row=document.getElementById(rowId);
+    const cat=row.querySelector('.row-cat-select');
+    const group=row.closest('.pos-button-block')?.querySelector?.('.btn-group-mode');
+    if(group)row.querySelector('.row-scope').value=group.checked&&row.closest('.pos-button-block').querySelector('.btn-group-target')?.value==='CATE'?'CATE':cat.value==='__SUBSET__'?'SUBSET':'ITEM';
+    const mode=row.querySelector('.row-scope').value;
+    window.couponScopeView(rowId);
+    window.updateDatalist(rowId,mode==='SUBSET'?'__SUBSET__':mode==='CATE'?'__CATE__:'+cat.value:cat.value);
+    if(group&&window.couponGroupView)window.couponGroupView(row.closest('.pos-button-block').id);
+  };
+
+  window.couponGroupView = function(btnId) {
+    const block=document.getElementById(btnId);if(!block)return;
+    const group=!!block.querySelector('.btn-group-mode')?.checked;
+    const target=block.querySelector('.btn-group-target')?.value||'ITEM',category=group&&target==='CATE';
+    const categoryControl=block.querySelector('.btn-category-mode');if(categoryControl)categoryControl.checked=category;
+    const groupControl=block.querySelector('.btn-group-mode');if(groupControl)groupControl.disabled=category;
+    block.dataset.couponAppliedMode=group?'GROUP:'+target:'ITEM';
+    const table=block.querySelector('.coupon-items-table');
+    if(table){
+      [2,3,4].forEach(i=>{table.tHead.rows[0].cells[i].hidden=group;});
+      const heading=table.tHead.rows[0].cells[1];heading.dataset.th=category?'หมวดสินค้าที่เลือก':'สินค้า';heading.dataset.en=category?'Selected category':'Search item';heading.textContent=document.documentElement.lang==='en'?heading.dataset.en:heading.dataset.th;
+      table.querySelectorAll('.item-body tr').forEach(row=>{[2,3,4].forEach(i=>row.cells[i].hidden=group);row.querySelector('.row-qty').hidden=group;});
+    }
+    const label=block.querySelector('.coupon-discount-label');
+    if(label){label.colSpan=group?1:4;label.dataset.th=group?'ส่วนลดต่อสินค้าที่ร่วมโปรฯ':'ส่วนลด';label.dataset.en=group?'Discount per eligible product':'Discount';label.textContent=(document.documentElement.lang==='en'?label.dataset.en:label.dataset.th)+':';}
+    const add=block.querySelector('.coupon-add-row span');
+    if(add){add.dataset.th=category?'เพิ่มหมวดสินค้า':'เพิ่มสินค้า';add.dataset.en=category?'Add category':'Add item';add.textContent=document.documentElement.lang==='en'?add.dataset.en:add.dataset.th;}
+    block.querySelectorAll('.item-body tr').forEach(row=>{
+      const cat=row.querySelector('.row-cat-select');
+      const subset=cat.querySelector('option[value="__SUBSET__"]');if(subset)subset.hidden=category;
+      const placeholder=cat.options[0];placeholder.dataset.th=category?'เลือกหมวดสินค้า':'ทุกหมวด';placeholder.dataset.en=category?'Select category':'All categories';placeholder.textContent=document.documentElement.lang==='en'?placeholder.dataset.en:placeholder.dataset.th;
+      window.couponScopeView(row.id);
+      // Keep the original category picker available for individual Subset rows.
+      cat.hidden=false;
+    });
+  };
+  window.couponGroupChanged = async function(btnId) {
+    const block=document.getElementById(btnId),control=block.querySelector('.btn-group-mode'),group=control.checked;
+    const target=block.querySelector('.btn-group-target'),previous=block.dataset.couponAppliedMode||'ITEM';
+    const categoryControl=block.querySelector('.btn-category-mode');
+    const undo=()=>{control.checked=previous.startsWith('GROUP:');target.value=control.checked?previous.split(':')[1]:'ITEM';if(categoryControl)categoryControl.checked=target.value==='CATE';};
+    const rows=Array.from(block.querySelectorAll('.item-body tr'));
+    const hasValues=rows.some(row=>row.querySelector('.row-ic').value||row.querySelector('.row-search-input').value||row.querySelector('.row-op').value);
+    if(hasValues){
+      control.disabled=true;if(categoryControl)categoryControl.disabled=true;
+      try{
+        const en=document.documentElement.lang==='en';
+        const result=await Swal.fire({icon:'warning',title:en?'Change product selection?':'เปลี่ยนรูปแบบการเลือกสินค้า?',text:en?'Existing selections and prices in this button will be cleared.':'รายการและราคาที่เลือกในปุ่มนี้จะถูกล้าง เพื่อไม่ให้หมวดสินค้าปะปนกับสินค้ารายตัว',showCancelButton:true,confirmButtonText:en?'Change selection':'เปลี่ยนรูปแบบ',cancelButtonText:en?'Cancel':'ยกเลิก'});
+        if(!result.isConfirmed){undo();return;}
+      }catch(error){undo();return;}finally{control.disabled=target.value==='CATE'&&!!categoryControl?.checked;if(categoryControl)categoryControl.disabled=false;}
+    }
+    rows.forEach(row=>{
+      row.querySelector('.row-scope').value=group?target.value:'ITEM';row.querySelector('.row-cat-select').value='';row.querySelector('.row-qty').value='1';
+      window.couponScopeChanged(row.id);
+    });
+    window.couponGroupView(btnId);window.updateTotals(btnId);
+  };
+  window.couponCategoryChanged = function(btnId) {
+    const block=document.getElementById(btnId),category=block.querySelector('.btn-category-mode').checked;
+    block.querySelector('.btn-group-target').value=category?'CATE':'ITEM';
+    if(category)block.querySelector('.btn-group-mode').checked=true;
+    return window.couponGroupChanged(btnId);
   };
 
   window.handleSelectionGlobal = function(el, campId, type) {

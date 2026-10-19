@@ -7,6 +7,10 @@
   var optRowsPerPage = 99999;
   var optExpanded = null;
   var optStoreCache = {};
+  function revisionScope(campaign,rowIdx){
+    const c=optData.find(r=>r.campaign===campaign&&(rowIdx==null||String(r.rowIdx)===String(rowIdx)));
+    return c&&c.revisionId?{month:c.month,revisionId:c.revisionId}:undefined;
+  }
 
   window.initOp_Tracking = function () {
     window.optLoadItemMaster();
@@ -144,7 +148,7 @@
     var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+
       '<style>body{font-family:"Kanit",sans-serif;padding:24px;color:#1a1d20}h2{margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #cfd4da;padding:6px 8px;text-align:left}thead th{background:#1a1d20;color:#fff}tbody tr:nth-child(even){background:#f6f8fa}@media print{.noprint{display:none}}</style>'+
       '</head><body><h2>'+esc(title)+'</h2><div class="sub">Potato Corner · พิมพ์เมื่อ '+new Date().toLocaleString('th-TH')+'</div>'+
-      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้ส่งงาน</th></tr></thead><tbody>'+body+'</tbody></table>'+
+      '<table><thead><tr><th>#</th><th>ชื่อแคมเปญ</th><th>ประเภท</th><th>Code Promotion</th><th>เริ่ม</th><th>สิ้นสุด</th><th>ช่องทาง</th><th>IT</th><th>OP</th><th>OP ตรวจเสร็จ</th><th>วันที่ทำรายการ</th><th>ผู้แจ้ง</th></tr></thead><tbody>'+body+'</tbody></table>'+
       '<button class="noprint" onclick="window.print()" style="margin-top:16px;padding:8px 18px;border:0;background:#2e934a;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">🖨️ พิมพ์</button>'+
       '<scr'+'ipt>setTimeout(function(){try{window.print();}catch(e){}},400);<\/scr'+'ipt></body></html>';
     var w=window.open('','_blank'); if(!w){ Swal.fire('ป๊อปอัปถูกบล็อก','กรุณาอนุญาต popup เพื่อพิมพ์','warning'); return; } w.document.write(html); w.document.close();
@@ -165,13 +169,15 @@
   window.fillOptFilters = function (base) {
     var esc2 = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
     var uniq = function(a){ return [...new Set(a.filter(Boolean))].sort(); };
-    var setOpts = function(id, vals){ var el=document.getElementById(id); if(!el) return; var cur=el.value; el.innerHTML='<option value="">ALL</option>'+vals.map(function(v){return '<option value="'+esc2(v)+'">'+esc2(v)+'</option>';}).join(''); if(vals.indexOf(cur)>=0) el.value=cur; };
+    var setOpts = function(id, vals){ var el=document.getElementById(id); if(!el) return; var cur=el.value; el.innerHTML='<option value="" data-en="All" data-th="ทั้งหมด">ทั้งหมด</option>'+vals.map(function(v){return '<option '+(id==='opf_name'?'translate="no" ':'')+'value="'+esc2(v)+'">'+esc2(v)+'</option>';}).join(''); if(vals.indexOf(cur)>=0) el.value=cur; };
     setOpts('opf_name', uniq(base.map(function(c){return c.campaign;})));
     setOpts('opf_type', uniq(base.map(function(c){return c.promoType;})));
     setOpts('opf_start', uniq(base.map(function(c){return c.startDate;})));
     setOpts('opf_end', uniq(base.map(function(c){return c.endDate;})));
     setOpts('opf_mode', uniq(base.map(function(c){return c.channel;})));
-    setOpts('opf_it', uniq(base.map(function(c){return c.itStatus||'PENDING';})));
+    setOpts('opf_it', ['PENDING','COMPLETE']);
+    const itFilter=document.getElementById('opf_it');
+    if(itFilter)Array.from(itFilter.options).forEach(o=>{if(!o.value)return;const pending=o.value==='PENDING';o.dataset.th=pending?'รอ IT ขึ้นปุ่ม':'IT ขึ้นปุ่มแล้ว';o.dataset.en=pending?'Awaiting IT button setup':'IT button setup completed';o.textContent=(localStorage.getItem('pc_lang')==='EN'?o.dataset.en:o.dataset.th);});
     setOpts('opf_op', uniq(base.map(function(c){return c.opStatus==='CONFIRMED'?'COMPLETE':'WAITING';})));
   };
   window.renderOpt = function () {
@@ -188,6 +194,8 @@
       optSIdx[k] = (optSIdx[k] ? optSIdx[k] + ' ' : '') + extra;
     });
     let rows = [...seen.values()];
+    const workflowGroups=new Map();optData.forEach(r=>{const key=JSON.stringify([r.campaign,r.month||'']);if(!workflowGroups.has(key))workflowGroups.set(key,[]);workflowGroups.get(key).push(r);});
+    rows=rows.map(c=>({...c,_tracking:window.PC_TrackingStatus.summarize(workflowGroups.get(JSON.stringify([c.campaign,c.month||'']))||[c])}));
     window.fillOptFilters(rows);
 
     rows = rows.filter(c => (c.changeStatus || '') !== 'CANCELLED' || optFilter === 'ALL' || optLifeFilter === 'CANCELLED');
@@ -207,12 +215,12 @@
     if(_fs) rows=rows.filter(c=>(c.startDate||'')===_fs);
     if(_fe) rows=rows.filter(c=>(c.endDate||'')===_fe);
     if(_fm) rows=rows.filter(c=>(c.channel||'')===_fm);
-    if(_fi) rows=rows.filter(c=>(c.itStatus||'PENDING')===_fi);
+    if(_fi) rows=rows.filter(c=>_fi==='PENDING'?['WAIT_IT','NEEDS_EDIT'].includes(c._tracking.state):['WAIT_OP','COMPLETE'].includes(c._tracking.state));
     if(_fo) rows=rows.filter(c=>((c.opStatus==='CONFIRMED')?'COMPLETE':'WAITING')===_fo);
 
     // sort by promotion start date descending (ล่าสุด/ปัจจุบันก่อน) + จำกัดจำนวนแถวตามตัวเลือก
     const toDate = (s) => { const m = String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2]-1, +m[1]).getTime() : (Date.parse(s)||0); };
-    rows.sort((a,b) => toDate(b.startDate) - toDate(a.startDate));
+    rows.sort(window.PC_TrackingStatus.compareCampaigns);
     if (optRowsPerPage && optRowsPerPage < rows.length) rows = rows.slice(0, optRowsPerPage);
     if (optExpanded != null && !rows.some(c => String(c.rowIdx) === String(optExpanded))) optExpanded = null;
 
@@ -239,6 +247,7 @@
     const fmtTxn = s => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? escCell(s) : d.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
     const fmtOpDone = s => { if (!s) return ''; const d = new Date(String(s).length === 10 ? String(s) + 'T00:00:00' : s); return isNaN(d.getTime()) ? escCell(s) : d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'}); };
     rows.forEach(c => {
+      const workflow = window.PC_TrackingStatus.summarize(optData.filter(row => row.campaign === c.campaign && String(row.month || '') === String(c.month || '')));
       const expanded = String(optExpanded) === String(c.rowIdx);
       const itDone = c.itStatus === 'COMPLETE';
       const itCls = itDone ? 'bg-success text-white' : 'bg-warning text-dark';
@@ -254,7 +263,7 @@
       if (chg === 'EXTENDED') lifeTag = '<span class="life-tag tag-ext"><i class="fas fa-calendar-plus"></i> ขยายเวลา</span>';
       else if (chg === 'REDUCED') lifeTag = '<span class="life-tag tag-red"><i class="fas fa-calendar-minus"></i> ลดเวลา</span>';
       else if (chg === 'CANCELLED') lifeTag = '<span class="life-tag tag-cancel"><i class="fas fa-ban"></i> ยกเลิก</span>';
-      else if (String(c.opStatus || '').toUpperCase() !== 'CONFIRMED') lifeTag = '<span class="life-tag tag-new">NEW</span>';
+      else if (String(c.opStatus || '').toUpperCase() !== 'CONFIRMED') lifeTag = '<span class="life-tag tag-new" data-en="New" data-th="งานใหม่">งานใหม่</span>';
 
       let endCls = '', endFlag = '';
       if (chg === 'EXTENDED') { endCls = 'text-info fw-bold'; endFlag = '<i class="fas fa-arrow-up-long end-flag text-info" title="ขยายวันสิ้นสุด"></i>'; }
@@ -263,15 +272,15 @@
       html += `
         <tr class="${expanded ? 'fw-bold opt-open' : ''}">
           <td><input class="form-check-input opt-row-checkbox" type="checkbox" data-campaign="${c.campaign}"></td>
-          <td class="text-start ps-3"><div>${c.campaign}</div>${(window.PC_voucherTag ? PC_voucherTag(c) : '')}${lifeTag}</td>
+          <td class="text-start ps-3"><div class="op-campaign-name ct-campaign-name" translate="no" tabindex="0" aria-label="ชื่อแคมเปญ เลื่อนเพื่ออ่านชื่อเต็ม">${escCell(c.campaign)}</div><div class="op-campaign-meta small text-muted"><span data-en="Reported by:" data-th="ผู้แจ้ง:">ผู้แจ้ง:</span> <span translate="no">${escCell(c.reporter || c.submittedBy || '—')}</span><div class="pc-reported-at"><span data-en="Submitted on:" data-th="วันที่แจ้ง:">วันที่แจ้ง:</span> ${c.txnDate ? fmtTxn(c.txnDate) : '<span data-en="Not specified" data-th="ไม่ระบุ">ไม่ระบุ</span>'}</div></div>${(window.PC_voucherTag ? PC_voucherTag(c) : '')}${lifeTag}</td>
           <td class="text-start"><span class="fw-bold">${c.promoType || '-'}</span></td>
-          <td class="small">${c.startDate || ''}</td>
+          <td class="op-period ct-period">${escCell(c.startDate || '—')}<span class="op-period-end ct-period-end ${endCls}"><span data-en="To" data-th="ถึง">ถึง</span> ${escCell(c.endDate || '—')}${endFlag}</span></td>
           <td class="small ${endCls}">${c.endDate || ''}${endFlag}</td>
           <td class="small">${window.PCniceChannel ? PCniceChannel(c.channel) : (c.channel || '-')}</td>
-          <td><span class="status-badge ${itCls}" data-en="${itEn}" data-th="${itTh}">${itTh}</span></td>
-          <td><span class="status-badge ${opCls}">${opWord}</span>${op === 'REJECTED' && c.rejectReason ? `<button class="btn btn-sm btn-link text-danger p-0 d-block mx-auto" style="font-size:.65rem;" onclick="window.optShowReject(${c.rowIdx})"><i class="fas fa-circle-info me-1"></i>ดูเหตุผล</button>` : ''}</td>
+          <td><span class="ct-workflow-status ct-state-${workflow.state}">${escCell(workflow.label)}</span><div class="small text-muted mt-1">${workflow.owner === '—' ? 'ไม่ค้างดำเนินการ' : 'รอดำเนินการโดย ' + workflow.owner}</div>${op === 'REJECTED' && c.rejectReason ? `<button class="btn btn-sm btn-link text-danger p-0 d-block mx-auto" onclick="window.optShowReject(${c.rowIdx})"><i class="fas fa-circle-info me-1"></i>ดูเหตุผล</button>` : ''}</td>
+          <td><div class="ct-progress"><span>IT <b>${workflow.itDone}/${workflow.total}</b></span><span>OP <b>${workflow.opDone}/${workflow.total}</b></span></div>${c.opDoneDate ? `<div class="small text-muted mt-1"><span data-en="OP Reviewed On" data-th="วันที่ OP ตรวจเสร็จ">วันที่ OP ตรวจเสร็จ</span><br>${fmtOpDone(c.opDoneDate)}</div>` : ''}</td>
           <td class="small">${c.opDoneDate ? fmtOpDone(c.opDoneDate) : '<span class="text-muted">-</span>'}</td>
-          <td class="small">${c.txnDate ? fmtTxn(c.txnDate) : '<span class="text-muted">-</span>'}</td>
+          <td class="small">${workflow.updatedAt ? fmtTxn(workflow.updatedAt) : '<span class="text-muted">ไม่ระบุ</span>'}</td>
           <td class="small">${(c.reporter || c.submittedBy) ? escCell(c.reporter || c.submittedBy) : '<span class="text-muted">-</span>'}</td>
           <td>
             <button class="btn btn-sm ${expanded ? 'btn-secondary' : 'btn-outline-primary'} fw-bold" ${itDone ? '' : 'disabled'} title="${itDone ? 'ดูรายละเอียด / ตรวจสอบ' : 'รอ IT ตั้งค่าปุ่มก่อน'}" onclick="window.optToggle(${c.rowIdx})">${expanded ? '<i class="fas fa-chevron-up me-1"></i>ปิด' : '<i class="fas fa-eye me-1"></i>ดูรายละเอียด'}</button>
@@ -280,6 +289,8 @@
       if (expanded) html += `<tr class="opt-open-detail"><td colspan="12" class="expand-content-cell"><div class="item-table-wrapper" id="opt-exp-${c.rowIdx}"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-success"></div></div></div></td></tr>`;
     });
     tbody.innerHTML = html;
+    const headings = Array.from(tbody.closest('table').tHead.rows[0].cells, th => { const label = th.cloneNode(true); label.querySelectorAll('select,input').forEach(el => el.remove()); return label.textContent.trim(); });
+    Array.from(tbody.rows).forEach(row => Array.from(row.cells).forEach((cell, index) => { if (cell.colSpan === 1) cell.dataset.label = headings[index] || ''; }));
     if (optExpanded !== null) window.optFetch(optExpanded);
     window.optSetFocus(optExpanded != null);
     var _ofn = document.getElementById('optFocusName');
@@ -301,6 +312,29 @@
   window.optToggle = function (rowIdx) { optExpanded = (optExpanded === rowIdx) ? null : rowIdx; window.renderOpt(); };
   window.optSetFocus = function (on) { var sc = document.querySelector('.opt-scope'); if (sc) sc.classList.toggle('opt-focus', !!on); };
   window.optExitFocus = function () { optExpanded = null; window.renderOpt(); };
+
+  window.optReviewButtonGroups = function (items) {
+    const rows = Array.isArray(items) ? items : [];
+    const buttonName = i => String((i && i.shortName) || '').trim();
+    const namedButtons = [...new Set(rows.map(buttonName).filter(sn => sn && sn !== '-'))];
+    // A single named POS button can have member rows without a repeated short name.
+    // Leave unnamed rows separate when their button cannot be identified unambiguously.
+    const onlyButton = namedButtons.length === 1 ? namedButtons[0] : '-';
+    const groups = new Map();
+    rows.forEach(i => {
+      const rawName = buttonName(i);
+      const name = rawName && rawName !== '-' ? rawName : onlyButton;
+      if (!groups.has(name)) groups.set(name, { name, items: [] });
+      groups.get(name).items.push(i);
+    });
+    return [...groups.values()].map(group => {
+      if (group.name !== '-') {
+        group.items = group.items.filter(i => buttonName(i) === group.name)
+          .concat(group.items.filter(i => buttonName(i) !== group.name));
+      }
+      return group;
+    });
+  };
 
   window.optFetch = function (rowIdx) {
     const cont = document.getElementById('opt-exp-' + rowIdx);
@@ -350,29 +384,26 @@
             </div>`;
       const det = (res.promotionDetail || '-').replace(/\n/g, '<br>');
       const cond = (res.condition || '-').replace(/\n/g, '<br>');
+      const btnGroups = window.optReviewButtonGroups(res.items);
       window.__optDetailCache = window.__optDetailCache || {};
-      (function(){
-        var seen={}, list=[];
-        (res.items||[]).forEach(function(it){ var sn=it.shortName||'-'; if(seen[sn])return; seen[sn]=1; list.push({sn:sn, detail:String(it.detail||''), condition:String(it.condition||'')}); });
-        window.__optDetailCache[rowIdx] = { cond:cond, det:det, campDetail:det, campCond:cond, list:list };
-      })();
-
-      // group items by button (shortName) for per-button review
-      const btnOrder = [];
-      const btnMap = {};
-      (res.items || []).forEach(i => {
-        const k = i.shortName || '-';
-        if (!btnMap[k]) { btnMap[k] = []; btnOrder.push(k); }
-        btnMap[k].push(i);
-      });
+      window.__optDetailCache[rowIdx] = {
+        cond, det, campDetail: det, campCond: cond,
+        list: btnGroups.map(group => {
+          const item = group.items.find(i => i.detail || i.condition) || group.items[0];
+          return { sn: group.name, detail: String(item.detail || ''), condition: String(item.condition || '') };
+        })
+      };
       const alreadyConfirmed = String(base.opStatus || '').trim().toUpperCase() === 'CONFIRMED';
 
-      const btnCards = btnOrder.map((sn, bi) => {
-        const items = btnMap[sn];
+      const btnCards = btnGroups.map((group, bi) => {
+        const sn = group.name;
+        const items = group.items;
         const h = items[0];
         const btnTotal = items.reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.qty) || 1), 0);
         const btnNet = items.reduce((s, it) => { const np = (it.netPrice != null && it.netPrice !== '') ? it.netPrice : it.price; return s + (parseFloat(np) || 0) * (parseInt(it.qty) || 1); }, 0);
-        const _kitchenLbl = String(h.kitchen || '').replace(/"/g, '&quot;');
+        const textEscape = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const readCell = (value, kind = '') => `<td><div class="ro-input op-cell-value ${kind}" translate="no">${textEscape(value)}</div></td>`;
+        const _kitchenLbl = textEscape(h.kitchen || '');
         const itemRows = items.map((i, ri) => {
           const _im = optItemName(i.itemCode) || {};
           const _isSet = /item\s*set/i.test(_im.type||'');
@@ -381,11 +412,11 @@
           let _short   = ri===0 ? (sn||'') : '';
           let _setCode = ri===0 ? (_hasSet ? h.itemSetCode : (_isSet ? (i.itemCode||'') : '')) : '';
           let _itemCodeCell = (_isSet || isCoupon || isSpecialType) ? '' : (i.itemCode||'');
-          let _en = String(_im.en || i.itemNameEn || '').replace(/"/g,'&quot;');
-          let _th = String(_im.th || i.itemNameTh || '').replace(/"/g,'&quot;');
+          let _en = String(_im.en || i.itemNameEn || '');
+          let _th = String(_im.th || i.itemNameTh || '');
           if (isPrice) {   // Price Promo: ครัว=Kitchen Name · Short Name=ชื่อปุ่ม · โชว์รหัส+ชื่อสินค้าครบทุกบรรทัด
-            _kitchen = ri===0 ? String(h.kitchen||'').replace(/"/g,'&quot;') : '';
-            _short   = ri===0 ? String(sn||'').replace(/"/g,'&quot;') : '';
+            _kitchen = ri===0 ? String(h.kitchen||'') : '';
+            _short   = ri===0 ? String(sn||'') : '';
             _setCode = ri===0 ? (_hasSet ? h.itemSetCode : (i.itemCode||'')) : '';
             _itemCodeCell = i.itemCode||'';
           }
@@ -395,24 +426,24 @@
             _itemCodeCell = i.itemCode || '';
           }
           return `<tr>
-            <td><input class="ro-input" style="font-weight:bold;background:#f3f6fb" value="${ri === 0 ? (/item\s*set/i.test(String(base.promoType||'')) ? 'Price Promotion' : (base.promoType||'')) : ''}" readonly></td>
-            <td><input class="ro-input" value="${ri === 0 ? (h.codePromotion || h.promoCode || res.promoCode || '') : ''}" readonly></td>
-            <td><input class="ro-input" value="${_setCode}" readonly></td>
-            <td><input class="ro-input" style="text-align:left;" value="${_kitchen}" readonly></td>
-            <td><input class="ro-input" style="text-align:left;" value="${_short}" readonly></td>
-            <td><input class="ro-input" style="color:#0d6efd;font-weight:bold;" value="${_itemCodeCell}" readonly></td>
-            <td><input class="ro-input" style="text-align:left;" value="${_en}" readonly></td>
-            <td><input class="ro-input" style="text-align:left;" value="${_th}" readonly></td>
-            <td><input class="ro-input" value="${i.qty || 0}" readonly></td>
-            <td><input class="ro-input" value="${i.price || 0}" readonly></td>
-            <td><input class="ro-input text-danger" value="${i.discount || 0}" readonly></td>
-            <td><input class="ro-input fw-bold" value="${i.netPrice || 0}" readonly></td>
+            ${readCell(ri === 0 ? (/item\s*set/i.test(String(base.promoType||'')) ? 'Price Promotion' : (base.promoType||'')) : '', 'fw-bold')}
+            ${readCell(ri === 0 ? (h.codePromotion || h.promoCode || res.promoCode || '') : '', 'op-code')}
+            ${readCell(_setCode, 'op-code')}
+            ${readCell(_kitchen, 'op-name')}
+            ${readCell(_short, 'op-name')}
+            ${readCell(_itemCodeCell, 'op-code fw-bold')}
+            ${readCell(_en, 'op-name')}
+            ${readCell(_th, 'op-name')}
+            ${readCell(i.qty || 0, 'op-number')}
+            ${readCell(i.price || 0, 'op-number')}
+            ${readCell(i.discount || 0, 'op-number text-danger')}
+            ${readCell(i.netPrice || 0, 'op-number fw-bold')}
           </tr>`; }).join('');
         return `
           <div class="btn-review border rounded-3 mb-3" data-btn="${bi}" data-short="${(sn||'').replace(/"/g,'&quot;')}">
             <div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:#f1f3f5;border-bottom:1px solid #dee2e6;border-radius:12px 12px 0 0;">
               <div class="d-flex align-items-center flex-wrap gap-2">
-                <span class="fw-bold"><i class="fas fa-hand-pointer me-1 text-success"></i>${sn}</span>
+                <span class="fw-bold"><i class="fas fa-hand-pointer me-1 text-success"></i>${textEscape(sn)}</span>
                 ${_kitchenLbl ? `<span class="badge" style="background:#fff3cd;color:#8a6d0b;border:1px solid #ffe69c;font-size:.72rem"><i class="fas fa-receipt me-1"></i>บิลครัว: ${_kitchenLbl}</span>` : ''}
                 ${btnTotal > 0 ? `<span class="badge" style="background:#e7f1ff;color:#0d6efd;font-size:.72rem"><i class="fas fa-tag me-1"></i>ราคาปกติ ฿${btnTotal.toLocaleString()}</span>` : ''}
                 ${(btnNet > 0 && btnNet < btnTotal) ? `<span class="badge bg-success" style="font-size:.72rem"><i class="fas fa-arrow-down me-1"></i>ราคาลด ฿${btnNet.toLocaleString()}</span>` : ''}
@@ -457,7 +488,7 @@
           <i class="fas fa-triangle-exclamation mt-1" style="color:#8a5a00;font-size:1.15rem"></i>
           <div class="small fw-bold" style="color:#8a5a00;line-height:1.5">กรุณาตรวจสอบปุ่มรับข้อมูลเครื่อง POS ก่อนทำการตรวจสอบปุ่มทุกครั้ง<div class="fw-normal mt-1" style="opacity:.85">ให้เครื่อง POS รับข้อมูลปุ่มล่าสุดให้เสร็จก่อน แล้วจึงติ๊กผลตรวจ — ถ้ายังไม่รับข้อมูล ปุ่มที่เห็นบนเครื่องอาจเป็นของเก่า</div></div>
         </div>
-        <div class="fw-bold small text-uppercase text-muted mb-2"><i class="fas fa-list-check me-1"></i>ตรวจแต่ละปุ่ม (${btnOrder.length} ปุ่ม) — ติ๊ก ถูกต้อง/ไม่ถูกต้อง ทุกปุ่ม แล้วกดบันทึก</div>
+        <div class="fw-bold small text-uppercase text-muted mb-2"><i class="fas fa-list-check me-1"></i>ตรวจแต่ละปุ่ม (${btnGroups.length} ปุ่ม) — ติ๊ก ถูกต้อง/ไม่ถูกต้อง ทุกปุ่ม แล้วกดบันทึก</div>
         ${btnCards}
         <div class="d-flex justify-content-between align-items-center mt-3 p-3 rounded-3" style="background:${base.opStatus==='CONFIRMED'?'#eef1f4':'#fff8e1'};">
           <div class="small fw-bold text-muted" id="opt-review-status-${rowIdx}">${base.opStatus==='CONFIRMED'?'<i class="fas fa-circle-check me-1 text-success"></i>ตรวจสอบยืนยันแล้ว — รอเคสเปลี่ยนแปลงจาก MKT (ขยาย/ลด/ยกเลิก)':'<i class="fas fa-circle-info me-1"></i>ยังตรวจไม่ครบทุกปุ่ม'}</div>
@@ -466,8 +497,12 @@
             : `<button class="btn btn-success fw-bold px-4" onclick="window.optSaveReview('${base.campaign.replace(/'/g, "\\'")}', ${rowIdx})"><i class="fas fa-save me-2"></i>บันทึกผลตรวจสอบ</button>`}
         </div>
         <div class="alert alert-light border mt-2 mb-0 small"><i class="fas fa-lock me-1 text-secondary"></i> OP ตรวจสอบและบันทึกผลเท่านั้น — ถ้ามีปุ่มใด "ไม่ถูกต้อง" ระบบจะส่งกลับให้ IT แก้</div>`;
+      (cont.querySelectorAll ? cont.querySelectorAll('.btn-review table') : []).forEach(table => {
+        const headings = Array.from(table.tHead.rows[0].cells, th => th.textContent.trim());
+        Array.from(table.tBodies[0].rows).forEach(row => Array.from(row.cells).forEach((cell, index) => { cell.dataset.label = headings[index]; }));
+      });
       window.optUpdateReviewStatus(rowIdx);
-    }).getPromoDetails(base.campaign);
+    }).getPromoDetails(base.campaign,{month:base.month,revisionId:base.revisionId||''});
   };
 
   // mark one button ok/no (toggle within its group)
@@ -577,7 +612,7 @@
 
     if (badCards.length === 0) {
       Swal.fire({ title: 'ยืนยันผลตรวจสอบ?', html: `<b>${campaign}</b><br><span class="text-muted small">ทุกปุ่มถูกต้อง — ส่งให้สาขาเห็น</span>`, icon: 'question', showCancelButton: true, confirmButtonColor: '#198754', confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก' })
-        .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ตรวจสอบถูกต้องแล้ว!', text: 'ส่งให้สาขาเรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'CONFIRMED', ''); });
+        .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ตรวจสอบถูกต้องแล้ว!', text: 'ส่งให้สาขาเรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'CONFIRMED', '', revisionScope(campaign,rowIdx)); });
     } else {
       // build reason from each bad button's stored issues
       const reason = badCards.map(c => {
@@ -587,7 +622,7 @@
         return `▸ ${sn} [${iss}]\n   ${det}`;
       }).join('\n');
       Swal.fire({ title: 'ส่งกลับ IT เพื่อแก้ไข?', html: `<div class="text-start"><div class="alert alert-danger small py-2 mb-2"><b>ปุ่มไม่ถูกต้อง (${badNames.length}):</b><br>${badNames.map(n => '• ' + n).join('<br>')}</div><div class="text-muted small">รายละเอียดที่ระบุไว้แต่ละปุ่มจะถูกส่งให้ IT</div></div>`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'ส่งกลับ IT', cancelButtonText: 'ยกเลิก' })
-        .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังส่งกลับ IT...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ส่งกลับ IT เรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'REJECTED', reason); });
+        .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังส่งกลับ IT...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ส่งกลับ IT เรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'REJECTED', reason, revisionScope(campaign,rowIdx)); });
     }
   };
 
@@ -621,7 +656,7 @@
       if (!r.isConfirmed) return;
       const reasonText = '[ปุ่มไม่ถูกต้อง: ' + badNames.join(' · ') + ' | ' + r.value.issues.join(' · ') + ']\n' + r.value.detail;
       Swal.fire({ title: 'กำลังส่งกลับ IT...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ส่งกลับ IT เรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'REJECTED', reasonText);
+      google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ส่งกลับ IT เรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => { optExpanded = null; window.loadOpTasks(); })).setOpStatus(campaign, 'REJECTED', reasonText, revisionScope(campaign));
     });
   };
 
@@ -662,7 +697,7 @@
 
   window.optVerify = function (name) {
     Swal.fire({ title: 'ยืนยันว่าปุ่มถูกต้อง?', html: `<b>${name}</b><br><span class="text-muted small">เมื่อยืนยันแล้ว รายละเอียดจะถูกส่งไปแสดงให้สาขาเห็น</span>`, icon: 'question', showCancelButton: true, confirmButtonColor: '#198754', confirmButtonText: 'ยืนยันถูกต้อง', cancelButtonText: 'ยกเลิก' })
-      .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ตรวจสอบถูกต้องแล้ว!', text: 'ส่งให้สาขาเรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => window.loadOpTasks())).setOpStatus(name, 'CONFIRMED', ''); });
+      .then(r => { if (!r.isConfirmed) return; Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(() => Swal.fire({ icon: 'success', title: 'ตรวจสอบถูกต้องแล้ว!', text: 'ส่งให้สาขาเรียบร้อย', timer: 1500, showConfirmButton: false }).then(() => window.loadOpTasks())).setOpStatus(name, 'CONFIRMED', '', revisionScope(name)); });
   };
 
   window.optReject = function (name) {
@@ -725,7 +760,7 @@
       Swal.fire({ title: 'กำลังส่งกลับ IT...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       google.script.run.withSuccessHandler(() =>
         Swal.fire({ icon: 'success', title: 'ตีกลับเรียบร้อย', text: 'ส่งงานกลับไปที่ IT แล้ว', timer: 1500, showConfirmButton: false }).then(() => window.loadOpTasks())
-      ).setOpStatus(name, 'REJECTED', reasonText);
+      ).setOpStatus(name, 'REJECTED', reasonText, revisionScope(name));
     });
   };
 
