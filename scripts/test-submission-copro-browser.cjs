@@ -16,7 +16,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    const plan=PC_SubmissionLog.prepare('Bill Discount',rows);
    window.result=PC_SubmissionLog.afterSave(plan,{successNote:'ข้ามรหัสซ้ำ 6001 รหัส',onAfter:()=>PC_CoPromo.promptAfterSubmit(['Co-Promo test'])});
   });
-  await page.getByText('ตรวจพบข้อมูลครบแล้ว',{exact:true}).waitFor();
+  await page.getByText('ส่งและบันทึกข้อมูลสำเร็จ',{exact:true}).waitFor();
   assert.ok((await page.locator('.swal2-html-container').innerText()).includes('6001'));
   await page.locator(history?'.swal2-confirm':'.swal2-cancel').click();
   await page.getByText('เป็น Co-Promotion หรือไม่?',{exact:true}).waitFor();

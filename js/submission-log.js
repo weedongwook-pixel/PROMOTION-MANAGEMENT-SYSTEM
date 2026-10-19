@@ -171,7 +171,7 @@
     if (typeof options.onDone === 'function') options.onDone(ok);
     var navigateToLog = false;
     if (window.Swal) {
-      if (ok) await Swal.fire({ icon: 'success', title: 'ตรวจพบข้อมูลครบแล้ว',
+      if (ok) await Swal.fire({ icon: 'success', title: 'ส่งและบันทึกข้อมูลสำเร็จ',
         text: plan.entries.length + ' แคมเปญ · Cloud บันทึกแล้ว และพบทุกปุ่มในศูนย์ติดตามงาน' + (options.successNote ? '\n' + options.successNote : ''),
         showCancelButton: true, confirmButtonText: 'ดูประวัติการแจ้งโปรฯ', cancelButtonText: 'ทำงานต่อ', confirmButtonColor: '#2e934a'
       }).then(function (r) { if (r.isConfirmed) navigateToLog = true; });

@@ -323,3 +323,15 @@ test('unverified submissions do not start the Co-Promo follow-up',async()=>{
  const f=setup(),plan=f.log.prepare('Bill Discount',[{campaign:'TOTO',shortName:'Missing'}]);let calls=0;
  assert.equal(await f.log.afterSave(plan,{onAfter:()=>calls++}),false);assert.equal(calls,0);
 });
+test('all promotion forms show save success only after complete Cloud readback',async()=>{
+ for(const form of ['Item Set','Coupon','Bill Discount','Voucher'])for(const state of ['missing','offline','partial','saved']){
+  const f=setup(),rows=[{campaign:'Cloud proof',shortName:'A'},{campaign:'Cloud proof',shortName:'B'}],plan=f.log.prepare(form,rows),dialogs=[];
+  f.setTracking(rows);f.setRemote({'Cloud proof':state==='saved'?rows:state==='partial'?rows.slice(0,1):state==='offline'?new Error('unavailable'):[]});
+  f.context.Swal={fire:async options=>{dialogs.push(options);return {isConfirmed:false};},showLoading(){}};
+  f.context.document={getElementById(){return null;}};f.context.loadPage=()=>{};
+  let reset=false,copro=false;const ok=await f.log.afterSave(plan,{onDone:value=>reset=value,onAfter:()=>copro=true});
+  assert.equal(ok,state==='saved',form+':'+state);assert.equal(reset,ok);assert.equal(copro,ok);
+  assert.equal(dialogs.some(d=>d.icon==='success'),ok);
+  if(ok)assert.equal(dialogs.find(d=>d.icon==='success').title,'ส่งและบันทึกข้อมูลสำเร็จ');
+ }
+});

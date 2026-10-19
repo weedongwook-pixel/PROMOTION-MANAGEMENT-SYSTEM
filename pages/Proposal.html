@@ -725,8 +725,8 @@
                   })
                   .saveBulkProposal(allData);
             } else {
-                console.log("Submitting:", allData);
-                setTimeout(() => Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย (Local Mode)', 'success'), 1000);
+                PC_SubmissionLog.fail(_submissionPlan, 'Cloud connection unavailable');
+                Swal.fire('ยังส่งงานไม่ได้', 'ยังเชื่อมต่อ Cloud ไม่ได้ ข้อมูลที่กรอกยังอยู่ กรุณาเชื่อมต่อแล้วลองใหม่', 'error');
             }
         }
     });
