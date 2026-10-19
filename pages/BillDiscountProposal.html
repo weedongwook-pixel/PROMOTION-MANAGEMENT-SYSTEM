@@ -916,7 +916,7 @@ window._legacyOpenBranchModal = function(campId) {
 
 if (!isValid) return;
 
-    // Finish file inspection before opening confirmation: Swal.fire replaces any active dialog.
+    // Inspect before saving; duplicate summaries belong in the verified success message.
     const mappingWarnings = [];
     try {
         const seenCodes = new Set();
@@ -939,16 +939,6 @@ if (!isValid) return;
         Swal.fire('ตรวจไฟล์ไม่ได้', String(e.message || e), 'error'); return;
     }
 
-    return Swal.fire({
-      title: 'ยืนยันการบันทึก?',
-      text: mappingWarnings.length ? mappingWarnings.join('\n') + '\nรหัสซ้ำจะไม่ลงทะเบียนเพิ่ม แต่ยังส่งข้อมูลแคมเปญให้ IT ได้' : undefined,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#2e934a',
-      confirmButtonText: 'ตกลง',
-      cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-      if (result.isConfirmed) {
         if (!window.PC_SubmissionLog) { Swal.fire('ยังส่งงานไม่ได้', 'ระบบตรวจการบันทึกยังโหลดไม่ครบ กรุณารีเฟรชแล้วลองใหม่', 'error'); return; }
         try {
             for (const job of mappingJobs) {
@@ -978,6 +968,7 @@ if (!isValid) return;
                 };
                 var _c = Array.from(new Set((allCampaignData || []).map(function (c) { return c.name || c.campaign || c.campaignName; }).filter(Boolean)));
                 if (_submissionPlan) PC_SubmissionLog.afterSave(_submissionPlan, {
+                    successNote: mappingWarnings.join('\n'),
                     onDone: function (ok) { if (ok) _complete(); },
                     onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_c); }
                 });
@@ -991,8 +982,6 @@ if (!isValid) return;
             Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
           })
           .submitBillDiscountProposal(finalPayload);
-      }
-    });
 };
 </script>
 <style>
