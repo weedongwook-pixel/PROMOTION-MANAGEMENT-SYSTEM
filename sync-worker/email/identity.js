@@ -27,7 +27,7 @@
       let key;
       for (let attempt = 0; attempt < 2; attempt++) {
         if (!entry || entry.expires <= Date.now() || attempt === 1) {
-          const response = await (deps.fetch || fetch)(endpoint, {signal: AbortSignal.timeout(8000), redirect: 'error'});
+          const response = await (deps.fetch || fetch)(endpoint, {signal: AbortSignal.timeout(8000), redirect: 'manual'});
           if (!response.ok) reject();
           const body = await response.json();
           if (!Array.isArray(body.keys) || body.keys.length > 100) reject();

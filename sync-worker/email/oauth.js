@@ -13,7 +13,7 @@
   });
   async function token(params, deps) {
     try {
-      const response = await (deps.fetch || fetch)('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(params).toString(),signal:AbortSignal.timeout(10000),redirect:'error'});
+      const response = await (deps.fetch || fetch)('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(params).toString(),signal:AbortSignal.timeout(10000),redirect:'manual'});
       if (!response.ok) {
         if(response.status>=500||response.status===429)throw new Error('email_provider_unavailable');
         const failure=await response.json().catch(()=>null);
@@ -41,7 +41,7 @@
   api.verifySender = async function (accessToken, c, deps = {}) {
     let data;
     try {
-      const response = await (deps.fetch || fetch)('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers:{Authorization:'Bearer '+accessToken},signal:AbortSignal.timeout(10000),redirect:'error'});
+      const response = await (deps.fetch || fetch)('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers:{Authorization:'Bearer '+accessToken},signal:AbortSignal.timeout(10000),redirect:'manual'});
       if (!response.ok) throw new Error();
       data = await response.json();
     } catch (_) { throw new Error('email_provider_error'); }

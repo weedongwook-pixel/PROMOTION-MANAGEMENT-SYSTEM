@@ -20,7 +20,7 @@
   api.gmailGet=async function(path,token,deps={}){
     if(!/^(messages(?:\?|\/)|threads(?:\?|\/))/.test(path))throw Error('email_invalid_provider_path');
     try{
-      const r=await(deps.fetch||fetch)(base+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(10000),redirect:'error'});
+      const r=await(deps.fetch||fetch)(base+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(10000),redirect:'manual'});
       if(!r.ok)throw Error();return await r.json();
     }catch(_){throw Error('email_provider_error');}
   };
@@ -49,7 +49,7 @@
   api.sendReply=async function(token,snapshot,deps={}){
     const payload=api.buildReply(snapshot);
     try{
-      const r=await(deps.fetch||fetch)(base+'messages/send',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000),redirect:'error'});
+      const r=await(deps.fetch||fetch)(base+'messages/send',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000),redirect:'manual'});
       if(r.ok){const data=await r.json();return typeof data.id==='string'?{outcome:'accepted',providerId:data.id}:{outcome:'ambiguous'};}
       if(r.status>=500)return {outcome:'ambiguous'};
       return {outcome:'rejected',retryable:r.status===429};
