@@ -260,6 +260,10 @@ class D1{
     const target=page.locator(process.argv.includes('--existing-it-codes')?'.it-row-item[data-short-name="FRIES TEST"]':'.it-row-item[data-short-name="NEW STRUCTURE"]').first();
     await target.locator('.it-code-mode').first().waitFor();
     assert.ok(await page.locator('.it-row-item[data-short-name="FRIES TEST"] .it-code-mode').count()>0);
+    assert.equal(posts.filter(p=>p==='/promo/it-button-code').length,0,'opening the job must not allocate a code');
+    assert.equal(await target.locator('.it-code-mode').first().inputValue(),'keep');
+    assert.equal(await target.locator('.it-code-apply').first().isDisabled(),true);
+    assert.equal(await page.locator('.it-row-item[data-change-status="EDITED"] [data-cc-reserve]').count(),0,'revision inputs must not trigger automatic allocation on render or focus');
     for(const slot of (form==='Proposal'?['promotion','itemset']:['promotion'])){
       const controls=target.locator('.it-revision-code[data-slot="'+slot+'"]');
       const manual=slot==='itemset'?'1079800':{Proposal:'P9800',Coupon:'IC9800',BillDiscountProposal:'BD9800',VoucherProposal:'VC9800'}[form];
@@ -270,6 +274,7 @@ class D1{
       const expected=manual.slice(0,-4)+'9801';
       await controls.locator('[role="status"]').filter({hasText:'บันทึกรหัส '+expected+' แล้ว'}).waitFor();
       assert.equal(await target.locator(slot==='itemset'?'.f-itempromo':'.f-code').inputValue(),expected);
+      assert.equal(await controls.locator('select').inputValue(),'keep');assert.equal(await controls.locator('button').isDisabled(),true);
     }
     for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await target.locator('.it-code-mode').first().scrollIntoViewIfNeeded();await page.screenshot({path:'/private/tmp/it-revision-code-'+form+'-'+width+'.png'});}
     if(form==='Proposal'){

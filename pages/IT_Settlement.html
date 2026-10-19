@@ -962,19 +962,23 @@
   function itRevisionCodeControls(it, slot) {
     if(!itCanAssignRevisionCode(it))return '';
     var label=slot==='itemset'?'Code Item Set':'Code Promotion';
-    return `<div class="it-revision-code mt-2" data-slot="${slot}"><label class="small fw-bold d-block">กำหนดรหัสปุ่ม<select class="form-select form-select-sm it-code-mode mt-1" aria-label="วิธีกำหนด ${label}" onchange="window.itRevisionCodeMode(this)"><option value="">เลือกวิธีกำหนดรหัส</option><option value="manual">ใส่โค้ดเอง</option><option value="auto">ให้ระบบจองโค้ด</option></select></label><input class="form-control form-control-sm it-manual-code mt-1" type="text" maxlength="20" aria-label="กรอก ${label} ใหม่" placeholder="กรอกรหัสใหม่" hidden disabled><button type="button" class="btn btn-sm btn-outline-success mt-1 it-code-apply" onclick="window.itAssignRevisionCode(this)" disabled>บันทึกรหัส</button><span class="it-code-result small d-block mt-1" role="status" aria-live="polite"></span></div>`;
+    var current=String(slot==='itemset'?(it.itemPromo||it.builderCode||''):(it.promoCode||'')).trim();
+    var hasCode=!!current&&!/^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(current);
+    var isNew=String(it.editButtonId).startsWith('edit:'+it.revisionId+':');
+    var initial=hasCode?`<option value="keep">${isNew?'ใช้รหัสที่จองไว้':'ใช้รหัสเดิม'}</option>`:'<option value="">เลือกวิธีกำหนดรหัส</option>';
+    return `<div class="it-revision-code mt-2" data-slot="${slot}"><label class="small fw-bold d-block">กำหนดรหัสปุ่ม<select class="form-select form-select-sm it-code-mode mt-1" aria-label="วิธีกำหนด ${label}" onchange="window.itRevisionCodeMode(this)">${initial}<option value="manual">ใส่โค้ดเอง</option><option value="auto">ให้ระบบจองโค้ดใหม่</option></select></label><input class="form-control form-control-sm it-manual-code mt-1" type="text" maxlength="20" aria-label="กรอก ${label} ใหม่" placeholder="กรอกรหัสใหม่" hidden disabled><button type="button" class="btn btn-sm btn-outline-success mt-1 it-code-apply" onclick="window.itAssignRevisionCode(this)" disabled>บันทึกรหัส</button><span class="it-code-result small d-block mt-1" role="status" aria-live="polite"></span></div>`;
   }
   window.itRevisionCodeMode = function(select) {
     var box=select.closest('.it-revision-code'),input=box.querySelector('.it-manual-code'),button=box.querySelector('.it-code-apply');
-    input.hidden=select.value!=='manual';input.disabled=input.hidden;button.disabled=!select.value;
-    button.textContent=select.value==='auto'?'จองรหัส':'บันทึกรหัส';
+    input.hidden=select.value!=='manual';input.disabled=input.hidden;button.disabled=!['manual','auto'].includes(select.value);
+    button.textContent=select.value==='auto'?'จองรหัสใหม่':'บันทึกรหัส';
     if(!input.hidden)input.focus();
   };
   window.itAssignRevisionCode = async function(button) {
     var box=button.closest('.it-revision-code'),tr=button.closest('tr.it-row-item'),card=tr.closest('.card');
     var select=box.querySelector('.it-code-mode'),manual=box.querySelector('.it-manual-code'),status=box.querySelector('.it-code-result');
     var slot=box.dataset.slot,code=String(manual.value||'').trim().toUpperCase();
-    if(!select.value)return;
+    if(!['manual','auto'].includes(select.value))return;
     if(select.value==='manual'&&!code){status.textContent='กรุณากรอกรหัส';manual.focus();return;}
     if(!window.PC_CLOUD?.assignITButtonCode){status.textContent='ระบบกำหนดรหัสยังไม่พร้อม กรุณารีเฟรช';return;}
     var campaign=card.getAttribute('data-campaign'),month=card.getAttribute('data-month'),buttonId=tr.getAttribute('data-edit-button-id');
@@ -999,9 +1003,9 @@
         if(input&&!input.disabled){input.value=receipt.code;input.setAttribute('data-cc-code',receipt.code);}
         if(slot==='itemset'){row.setAttribute('data-original-item-promotion',receipt.code);row.setAttribute('data-builder-code',receipt.code);row.setAttribute('data-pos-ready','0');if(input&&!input.disabled)window.itItemSetChanged(input);}
       });
-      manual.value='';box._codeRequest=null;status.textContent='บันทึกรหัส '+receipt.code+' แล้ว';
+      manual.value='';box._codeRequest=null;select.options[0].value='keep';select.options[0].textContent='ใช้รหัสที่บันทึกแล้ว';select.value='keep';window.itRevisionCodeMode(select);status.textContent='บันทึกรหัส '+receipt.code+' แล้ว';
     } catch(e) {status.textContent=String(e.message||e);}
-    finally {button.disabled=false;select.disabled=false;manual.disabled=select.value!=='manual';}
+    finally {button.disabled=!['manual','auto'].includes(select.value);select.disabled=false;manual.disabled=select.value!=='manual';}
   };
 
   function itUniqueButtonCode(tasks, shortName, fields, pattern) {
@@ -1255,7 +1259,7 @@
           ${first.extendCodeNote ? `<div class="px-4 py-2 d-flex align-items-start gap-2" style="background:#fff8e1;border-bottom:1px solid #f0d98a"><i class="fas fa-note-sticky text-warning mt-1"></i><span style="font-size:.85rem;line-height:1.4"><b>Noted (MKT → IT):</b> ${String(first.extendCodeNote).replace(/</g,'&lt;')}</span></div>` : ''}
           ${anyDateChange ? `<div class="px-4 py-2 small fw-bold" style="background:#eaf7ff;color:#15506b;border-bottom:1px solid #b8dfee"><i class="fas fa-calendar-check me-2"></i>งานลด/ขยายเวลา: ตรวจและปรับวันใน POS ตามที่แจ้ง แล้วกดปิดงาน · ใช้รหัส/สินค้าเดิม ไม่จองรหัสใหม่</div>` : ''}
           ${window.PC_CustomerGroup?.mappingListHTML?PC_CustomerGroup.mappingListHTML(campTasks):(window.PC_CustomerGroup?.mappingHTML?PC_CustomerGroup.mappingHTML(first):'')}
-          ${first.revisionPending ? `<div class="px-4 py-3 bg-light border-bottom"><strong>รอ IT ดำเนินการแก้ไข</strong><div class="small">ผู้แก้ไข: ${itEsc(first.revisionRequestedBy||'')} · ${itEsc(first.revisionRequestedAt||'')}</div><div style="white-space:pre-wrap">${itEsc(first.revisionReason||'')}</div><div class="small">จุดที่แก้: ${itEsc((first.revisionChanges||[]).join(' · ')||'ตรวจตามเหตุผลที่แจ้ง')} · เลือกกรอกรหัสเองหรือจองรหัสได้ด้านล่าง · เก็บรหัสเดิมไว้ในประวัติ · ปิดงานแล้วส่ง OP ตรวจซ้ำ</div></div>` : ''}
+          ${first.revisionPending ? `<div class="px-4 py-3 bg-light border-bottom"><strong>รอ IT ดำเนินการแก้ไข</strong><div class="small">ผู้แก้ไข: ${itEsc(first.revisionRequestedBy||'')} · ${itEsc(first.revisionRequestedAt||'')}</div><div style="white-space:pre-wrap">${itEsc(first.revisionReason||'')}</div><div class="small">จุดที่แก้: ${itEsc((first.revisionChanges||[]).join(' · ')||'ตรวจตามเหตุผลที่แจ้ง')} · ปุ่มเดิมใช้รหัสเดิมเป็นค่าเริ่มต้น · เปลี่ยนรหัสเมื่อเลือกกรอกเองหรือจองใหม่เท่านั้น · ปิดงานแล้วส่ง OP ตรวจซ้ำ</div></div>` : ''}
           <div class="px-4 py-2 d-flex align-items-center gap-2 flex-wrap" style="background:#fffdf5;border-bottom:1px solid #f0d98a">
             <span class="fw-bold text-uppercase" style="font-size:.72rem;color:#9a6700;white-space:nowrap"><i class="fas fa-bullhorn me-1"></i>ป้ายหมายเหตุเด่น (โชว์บนการ์ดสาขา)</span>
             <input type="text" class="form-control form-control-sm f-branch-note" style="max-width:440px;font-size:.8rem" placeholder="พิมพ์ข้อความเน้นให้สาขาเห็นชัด — เว้นว่าง = ไม่โชว์ป้าย" value="${(first.branchNote||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" oninput="window.itBranchNotePrev(this)">
@@ -1351,7 +1355,7 @@
                       ? _pcOwn : (itUniqueButtonCode(campTasks, it.shortName, ['promoCode'], /^[A-Z]{1,3}\d+$/i) || _pcOwn);
                     const _isPlaceholderCode = _pcRaw === '' || /^(ONLINE|NORMAL|OFFLINE|-+)$/i.test(_pcRaw);
                     const _isChange = _dateChange || _chg === 'CANCELLED' || (!!it.revisionPending && !itCanAssignRevisionCode(it));   // คงรหัสเดิม ไม่จองใหม่
-                    const _keepExisting = isHeader && !_fromCounter && (!_isPlaceholderCode || _isChange);   // มีโค้ดจริงแล้ว หรือเป็นงาน ลด/ขยาย/ยกเลิก → ใช้โค้ดเดิม ไม่ autorun
+                    const _keepExisting = isHeader && !_fromCounter && (!_isPlaceholderCode || _isChange || it.revisionPending);   // มีโค้ดจริงแล้ว หรือเป็นงาน ลด/ขยาย/ยกเลิก → ใช้โค้ดเดิม ไม่ autorun
                     const _preset = _fromCounter || _keepExisting;
                     const _presetCode = _dateChange ? _pcOwn : (_fromCounter ? _ccCode : _pcRaw);
                     const _fcodeAttr = isHeader ? ((_dateChange || _preset) ? `data-cg-ignore='${itEsc(campName)}'` : (_ccType ? `id="${_promoField}" data-cc-reserve="${_ccType}" data-cc-where='${itEsc(campName)}' ${_legacyUnique ? `data-cc-legacy-field="itccf-${_ccType}-${_oldKey}"` : ''} data-cg-ignore='${itEsc(campName)}'` : `data-cg="promo" data-cg-ignore='${itEsc(campName)}'`)) : '';
@@ -1388,7 +1392,7 @@
                     const _isVal = String(it.itemPromo||'').trim() || _bcRaw || (_dateChange ? '' : (itUniqueButtonCode(campTasks, it.shortName, ['itemPromo', 'builderCode'], /^10[5-9]\d{3,}$/) || (_isEntry && _isEntry.code) || _sharedIS));
                     const _reuseConfirmed = !!(isHeader && _isVal && window.PC_API && PC_API.isPosReuseConfirmed && PC_API.isPosReuseConfirmed(campName, it.shortName || '', _isVal));
                     const _isConfirmed = _reuseConfirmed || !!(_isEntry && _isEntry.status === 'CONFIRMED' && _isEntry.code === _isVal);
-                    const _isAttr = (_isCate === '107')
+                    const _isAttr = it.revisionPending ? `id="${_isField}" data-cc-where='${itEsc(campName)}'` : (_isCate === '107')
                       ? `id="${_isField}" data-cc-reserve="itemset" data-cc-where='${itEsc(campName)}'`
                       : `id="${_isField}" data-cc-reserve="item" data-cc-cat="${_isCate}" data-cc-where='${itEsc(campName)}'`;
                     const _canMigrateLegacy = _legacyUnique || (_bcRaw && _bcRaw === _isVal);
