@@ -10,3 +10,10 @@ test('only managers publish concrete test messages; audience sees summaries with
   await assert.rejects(a.publishThread(actor,{messageId:'m1',recipients:{to:['not-in-loop@example.net'],cc:[]},audience:[actor]},env,deps));
   DB.db.exec('UPDATE email_threads SET enabled=0');assert.equal((await a.listApprovedThreads(actor,env)).length,0);DB.db.close();
 });
+test('manager can publish distinct real conversations and users select the correct campaign loop',async()=>{
+ const a=load(['templates','gmail','registry']),DB=database(),env={DB};grant(DB,actor,'manage');a.gmailAccess=async()=> 'mock';
+ const deps={fetch:async url=>{const id=url.includes('/m2?')?'m2':'m1';return Response.json({id,threadId:'thread-'+id,payload:{headers:[{name:'Subject',value:id==='m1'?'UOB October promotion':'KTC November promotion'},{name:'Message-ID',value:'<'+id+'@example.net>'},{name:'To',value:'partner@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});}};
+ for(const messageId of ['m1','m2'])await a.publishThread(actor,{mode:'production',messageId,recipients:{to:['partner@example.net'],cc:[]},audience:[actor]},env,deps);
+ const items=await a.listApprovedThreads(actor,env);assert.equal(items.length,2);assert.ok(items.every(x=>x.mode==='production'));assert.deepEqual(Array.from(items,x=>x.subject),['UOB October promotion','KTC November promotion']);
+ await assert.rejects(a.publishThread(actor,{mode:'unknown',messageId:'m1',recipients:{to:['partner@example.net'],cc:[]},audience:[actor]},env,deps));DB.db.close();
+});

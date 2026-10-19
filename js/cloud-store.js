@@ -294,7 +294,7 @@
       return [row.campaign, row.month, row.shortName].join('\u0000');
     }));
     var submission={submissionId: batchId, actor: actor, expectedButtons: buttons.size, writes: writes};
-    if(window.PC_CoProEmail&&window.PC_CoProEmail.active()){
+    if(window.PC_CoProEmail && (window.PC_CoProEmail.active() || (window.PC_CoProEmail.prepareSubmission && await window.PC_CoProEmail.prepareSubmission()))){
       if(!_hydrated||_inFlight||Object.keys(_pending).length)throw new Error('Cloud ยังไม่พร้อมสำหรับงานทดสอบอีเมล');
       var pilot=await window.PC_CoProEmail.registerPrimary(submission);
       var proof=await submissionReceipt(batchId);

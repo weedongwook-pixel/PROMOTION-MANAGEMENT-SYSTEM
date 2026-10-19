@@ -14,7 +14,7 @@
         const text=await request.text();if(new TextEncoder().encode(text).length>1048576)return json({error:'email_request_too_large'},413);
         body=JSON.parse(text);
       }
-      if(path==='/email/threads/search'&&request.method==='GET')return json(await api.searchThreads(actor,url.searchParams.get('q')||'',env,{},url.searchParams.get('pageToken')||''));
+      if(path==='/email/threads/search'&&request.method==='GET')return json(await api.searchThreads(actor,url.searchParams.get('q')||'',env,{},url.searchParams.get('pageToken')||'',url.searchParams.get('mode')||'test'));
       if(path==='/email/threads'&&request.method==='POST')return json(await api.publishThread(actor,body,env));
       if(path==='/email/threads'&&request.method==='GET'){
         try{await api.requireEmailPermission(actor,'submit',env);}catch(_){await api.requireEmailPermission(actor,'manage',env);}

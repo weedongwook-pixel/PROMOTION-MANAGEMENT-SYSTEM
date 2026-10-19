@@ -50,7 +50,7 @@
     const c=await campaign(input.campaignId,env);if(!owner(c,actor))throw Error('email_campaign_denied');
     const current=await source(c,env);
     const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',input.policyId).first();
-    if(!thread||thread.version!==input.policyVersion||!api.threadAudience(thread,actor)||thread.mode!=='test')throw Error('email_policy_changed');
+    if(!thread||thread.version!==input.policyVersion||!api.threadAudience(thread,actor)||!['test','production'].includes(api.emailThreadMode(thread)))throw Error('email_policy_changed');
     const recipients=api.emailRecipients(input.recipients),approved={to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)};
     if(JSON.stringify(recipients)!==JSON.stringify(approved))throw Error('email_unapproved_recipients');
     const buttons=(await statement(env,'SELECT * FROM email_campaign_buttons WHERE campaign_id=? AND cancelled=0',c.id).all()).results;
@@ -68,7 +68,7 @@
     return {c,thread,recipients,records,contentHash,sourceVersion:current.row.updated_at};
   }
   api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,details,text:api.renderCoProEmail({milestone:'submitted',details}).text,recipients:d.recipients,subject:d.thread.subject};};
-  function snapshot(c,t,recipients,milestone,rows,records){return {threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
+  function snapshot(c,t,recipients,milestone,rows,records){return {deliveryMode:api.emailThreadMode(t),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }

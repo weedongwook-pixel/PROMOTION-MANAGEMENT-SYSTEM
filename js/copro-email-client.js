@@ -9,7 +9,7 @@
   }
   async function request(path,{method='GET',body,interactive=false}={}){
     if(!caps)await capabilities();
-    if(!caps.coproEnabled)throw Error('ยังไม่เปิดทดสอบ Co-Promotion email / Pilot disabled');
+    if(!caps.coproEnabled)throw Error('ยังไม่เปิดบริการ Co-Promotion email / Email disabled');
     if(!window.PC_EmailAuth)throw Error('เปิดตั้งค่าอีเมลและยืนยัน Microsoft ก่อน / Verify Microsoft in Email Settings');
     const token=await window.PC_EmailAuth.acquireToken({scope:caps.scope,interactive});
     const r=await fetch('/email/'+path,{method,credentials:'same-origin',cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
@@ -19,13 +19,21 @@
   async function refresh(){if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});}
   const api=window.PC_CoProEmail={
     active,request,capabilities,list,
+    async prepareSubmission(){
+      if(active())return true;
+      try {
+        const available=await capabilities();
+        if(!available.coproEnabled||!available.sendingEnabled)return false;
+        await api.enable();return true;
+      } catch (_) { return false; } // Ordinary promotion saving remains available; Co-Promo reports missing email readiness.
+    },
     async enable(){await capabilities();await request('copro',{interactive:true});sessionStorage.setItem(key,'on');},
     disable(){sessionStorage.removeItem(key);},
     async registerPrimary(body){if(!active())throw Error('Pilot not selected');const receipt=await request('promo/submissions',{method:'POST',body});return receipt;},
     async saveIT(month,updates){
       const campaigns=await list(),matches=[];
       for(const update of updates){
-        const found=campaigns.filter(c=>c.key==='promo::c::'+encodeURIComponent(update.campaign)&&c.month===String(update.month||month));
+        const found=campaigns.filter(c=>c.key==='promo::c::'+encodeURIComponent(update.campaign)&&c.month===String(update.month||month)&&c.records&&c.records.length);
         if(found.length>1)throw Error('พบหลายงาน กรุณาตรวจรหัสงาน / Ambiguous campaign');
         if(!found.length){matches.push(null);continue;}
         const campaign=found[0],button=campaign.buttons.find(b=>b.button_id===update.emailButtonId);

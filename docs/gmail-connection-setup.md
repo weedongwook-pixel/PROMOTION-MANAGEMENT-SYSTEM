@@ -1,4 +1,4 @@
-# Gmail connection setup — disabled implementation
+# Gmail connection setup — activation pending
 
 The connection slice connects one sender, `it@rocks-foods.com`. The added Co-Promotion pilot implements approved-conversation selection and two queued replies, but is disabled by default. All development provider calls use mocks. No production migration, connection, consent or delivery is implied by this document.
 
@@ -72,9 +72,9 @@ Feature switches are all false in source control:
 - `EMAIL_CONNECTION_ENABLED`: connection APIs and credential availability.
 - `EMAIL_COPRO_ENABLED`: pilot business APIs and explicit per-tab opt-in.
 - `EMAIL_TEST_SEND_ENABLED`: dispatcher may send to approved **test** recipients.
-- `EMAIL_SEND_ENABLED`: production sends remain unimplemented; enabling this alone cannot authorize production delivery.
+- `EMAIL_SEND_ENABLED`: dispatch only explicitly approved production conversations; test messages require the separate test switch.
 
-No cron is configured. Following separate approval, configure a one-minute backend schedule and enable only the required flags; preserve unrelated variables/secrets. The Worker scheduled handler processes at most five events per invocation. Do not expose an unauthenticated manual-dispatch endpoint.
+A one-minute backend schedule is configured. It is inert while sending flags are disabled. After connection and recipient setup, enable only the required flags; preserve unrelated variables/secrets. The Worker scheduled handler processes at most five events per invocation. Do not expose an unauthenticated manual-dispatch endpoint.
 
 ### User test sequence
 
@@ -104,3 +104,15 @@ node scripts/test-copro-email-browser.cjs
 node scripts/test-form-master-loading-browser.cjs
 node scripts/test-promotion-edit-browser.cjs --shell --revision
 ```
+
+## Production conversation selection (2026-10-19)
+
+The post-submission Co-Promotion Yes path now requires email, rather than silently falling back to an accounting-only save. It selects production policies only, previews actual campaign details and exact approved To/CC, and requires explicit confirmation. A queued result is not Gmail acceptance or delivery. Failed email preparation retains the user's form and the already-saved promotion.
+
+Apply `005_email_production_threads.sql` before this backend revision. It adds `delivery_mode` without rewriting campaign rows or existing policies; legacy policies remain test-only. The old `mode` column is retained solely for schema compatibility. New readers and dispatch use `delivery_mode` as authoritative. Do not change a policy's delivery mode in place; publish a new reviewed policy. Outbox snapshots pin the mode as well as recipients and message references.
+
+Managers can search and publish real conversations, selecting Production in Email Settings. The sender must be a participant in the chosen original message; approved To/CC must be participants. Search results remain manager-only and ordinary submitters see audience-scoped policy summaries. Each campaign/month selects its own approved conversation. Production and test dispatch switches do not authorize each other's messages.
+
+When production capabilities are enabled, a new submission attempts verified email registration automatically; no separate pilot switch is required. Users without email access can still save ordinary promotions. Choosing Co-Promotion cannot fall back to a non-email success. An ordinary registered promotion without a Co-Promotion record follows ordinary IT settlement. Existing unverified submissions are not adopted by title and are not resent automatically.
+
+Live prerequisites remain: confirmed Microsoft API registration/scope, administrator and actor grants for verified immutable identities, owner-completed Gmail consent, published real conversations and recipients, and enabling connection/Co-Promotion/production sending. Do not interpret deployed code or configured secrets as a connected mailbox. No live mail was sent during implementation; browser provider calls use mocks.

@@ -31,8 +31,8 @@
     if (opts.source === "itemset" && !opts.hasEVoucher) return Promise.resolve();
     return Swal.fire({
       icon: "question", title: "เป็น Co-Promotion หรือไม่?",
-      html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6">โปรที่ร่วมกับพาร์ทเนอร์ (เช่น Samsung, KTC, Grab, Central ฯลฯ)<br>ต้องแจ้งทีมบัญชี (ACC) เพื่อตั้งค่า ERP<br><b style="color:#1a1d20">' + esc(campaigns.join(", ")) + "</b></div>",
-      showCancelButton: true, confirmButtonText: '<i class="fas fa-handshake"></i> ใช่ · กรอกข้อมูล Co-Promo',
+      html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6">โปรที่ร่วมกับพาร์ทเนอร์ (เช่น Samsung, KTC, Grab, Central ฯลฯ)<br>เลือกลูปอีเมลเดิมและตรวจรายละเอียดโปรฯ ก่อนยืนยันส่ง<br><b style="color:#1a1d20">' + esc(campaigns.join(", ")) + "</b></div>",
+      showCancelButton: true, confirmButtonText: '<i class="fas fa-handshake"></i> ใช่ · เตรียมส่งเมลเข้าลูป',
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
     }).then(function (res) {
       if (!res.isConfirmed) return;
@@ -42,19 +42,21 @@
   function openFormsSequential(list) {
     if (!list.length) return;
     var c = list.shift();
-    return openForm(c).then(function () { return openFormsSequential(list); });
+    return openForm(c, null, { requireEmail: true }).then(function () { return openFormsSequential(list); });
   }
 
-  function openForm(campaign, existing) {
+  function openForm(campaign, existing, options) {
     return run("getCoPromoContext", campaign).then(function (ctx) {
       ctx = ctx || { campaign: campaign, buttons: [] };
-      return showFormPage(ctx, existing || null);
+      return showFormPage(ctx, existing || null, options || {});
     });
   }
 
   /* ---- ฟอร์มหน้าเต็ม ---- */
-  function showFormPage(ctx, ex) {
+  function showFormPage(ctx, ex, options) {
     ex = ex || {};
+    var requireEmail = !!options.requireEmail;
+    var saveLabel = requireEmail ? 'เลือกลูปและตรวจเมล' : 'บันทึก & แจ้ง ACC';
     var editing = !!ex.id;
     var btns = ctx.buttons || [];
 
@@ -89,6 +91,7 @@
     host.id = "pcCoproPage";
     host.innerHTML = '' +
       '<style>' +
+      'body:has(#pcCoproPage) > .swal2-container{z-index:3100}' +
       '#pcCoproPage{position:fixed;inset:0;z-index:3000;background:#eef1f4;font-family:Kanit,sans-serif;color:#2b333c;display:flex;flex-direction:column;overflow:hidden}' +
       '#pcCoproPage .cpf-top{background:#0e5c37;color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 14px rgba(14,92,55,.25);flex:none}' +
       '#pcCoproPage .cpf-top .bk{background:rgba(255,255,255,.16);border:0;color:#fff;width:40px;height:40px;border-radius:11px;cursor:pointer;font-size:1.05rem}' +
@@ -148,9 +151,9 @@
       '<label>Payment condition (เงื่อนไขการจ่าย)</label><input id="cpCond" value="' + esc(ex.paymentCondition || "") + '">' +
       '<label>Remark (หมายเหตุ)</label><textarea id="cpRemark">' + esc(ex.remark || "") + "</textarea>" +
       "</div></div>" +
-      '<div class="cpf-foot"><span class="cpf-err" id="cpfErr"></span>' +
+      '<div class="cpf-foot"><span class="cpf-err" id="cpfErr" role="alert"></span>' +
       '<button class="cpf-btn cpf-cancel" id="cpfCancel">ยกเลิก</button>' +
-      '<button class="cpf-btn cpf-save" id="cpfSave"><i class="fas fa-paper-plane"></i> บันทึก & แจ้ง ACC</button></div>';
+      '<button class="cpf-btn cpf-save" id="cpfSave"><i class="fas fa-paper-plane"></i> ' + saveLabel + '</button></div>';
 
     document.body.appendChild(host);
 
@@ -192,17 +195,26 @@
           promoType: g("cpTypePromo") || ctx.typePromotion || ex.promoType || "", createdBy: ex.createdBy || userName(), createdRole: ex.createdRole || role(), updatedBy: userName(),
         };
         var btn = document.getElementById("cpfSave"); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-        var useEmail=window.PC_CoProEmail&&window.PC_CoProEmail.active();
-        var operation=useEmail?window.PC_CoProEmailUI.save(rec):run("saveCoPromotion", rec);
+        var useEmail=requireEmail || (window.PC_CoProEmail&&window.PC_CoProEmail.active());
+        var operation=Promise.resolve().then(async function () {
+          if (requireEmail) {
+            if (!window.PC_CoProEmail || !window.PC_CoProEmailUI) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาติดต่อผู้ดูแล');
+            var caps = await window.PC_CoProEmail.capabilities();
+            if (!caps.coproEnabled || !caps.sendingEnabled) throw Error('ยังไม่ได้เปิดบริการส่งอีเมลหรือเชื่อมบัญชีผู้ส่ง กรุณาติดต่อผู้ดูแล');
+            if (!window.PC_CoProEmail.active()) throw Error('ยังไม่ได้ยืนยันสิทธิ์อีเมลสำหรับรายการนี้ กรุณาให้ผู้ดูแลตรวจสอบ');
+          }
+          return useEmail ? window.PC_CoProEmailUI.save(rec, requireEmail ? {mode:'production'} : {}) : run("saveCoPromotion", rec);
+        });
         operation.then(function (result) {
-          if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> บันทึก & แจ้ง ACC';return;}
+          if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> ' + saveLabel;return;}
           if(result.status==='error')throw new Error(result.message||'บันทึกไม่สำเร็จ');
+          if(requireEmail && result.mailStatus!=='queued') throw Error('ยังไม่ได้รับการยืนยันว่าอีเมลเข้าคิวส่ง กรุณาให้ผู้ดูแลตรวจสถานะก่อนทำซ้ำ');
           host.remove();
           if (window.Swal) Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
           resolve(true);
         }).catch(function (e) {
-          btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> บันทึก & แจ้ง ACC';
-          errEl.textContent = String(e && e.message || e); errEl.style.display = "block";
+          btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> ' + saveLabel;
+          errEl.textContent = (requireEmail ? 'ยังยืนยันการส่งอีเมลไม่ได้ — โปรฯ บันทึกแล้ว ไม่ต้องส่งข้อมูลโปรฯ ซ้ำ: ' : '') + String(e && e.message || e); errEl.style.display = "block";
         });
       };
     });

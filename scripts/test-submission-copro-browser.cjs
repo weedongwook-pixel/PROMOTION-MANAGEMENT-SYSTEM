@@ -8,10 +8,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.goto('http://copro.test/');
   for(const file of ['vendor/sweetalert2/sweetalert2.all.min.js','js/submission-log.js','js/co-promo.js'])await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'..',file),'utf8')});
   await page.evaluate(()=>{
-   localStorage.setItem('pc_userName','MKT');window.navigation=[];window.loadPage=name=>navigation.push(name);
+   localStorage.setItem('pc_userName','MKT');window.navigation=[];window.ordinarySaves=0;window.loadPage=name=>navigation.push(name);
    const rows=[{campaign:'Co-Promo test',shortName:'Discount',month:'2026-10'}];
    window.PC_CLOUD={enabled:()=>true,readCampaignRows:async()=>rows};
-   const run={withSuccessHandler(fn){this.success=fn;return this;},withFailureHandler(){return this;},getAllCampaignData(){this.success(rows);},getCoPromoContext(){this.success({campaign:'Co-Promo test',buttons:[{buttonName:'Discount',codePromotion:'BD001'}]});}};
+   const run={withSuccessHandler(fn){this.success=fn;return this;},withFailureHandler(){return this;},saveCoPromotion(){window.ordinarySaves++;this.success({status:'success'});},getAllCampaignData(){this.success(rows);},getCoPromoContext(){this.success({campaign:'Co-Promo test',buttons:[{buttonName:'Discount',codePromotion:'BD001'}]});}};
    window.google={script:{run}};
    const plan=PC_SubmissionLog.prepare('Bill Discount',rows);
    window.result=PC_SubmissionLog.afterSave(plan,{onAfter:()=>PC_CoPromo.promptAfterSubmit(['Co-Promo test'])});
@@ -21,7 +21,22 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.getByText('เป็น Co-Promotion หรือไม่?',{exact:true}).waitFor();
   assert.deepEqual(await page.evaluate(()=>navigation),[],'navigation cannot skip Co-Promo');
   await page.locator(copro?'.swal2-confirm':'.swal2-cancel').click();
-  if(copro){await page.locator('#cpfCancel').waitFor();assert.deepEqual(await page.evaluate(()=>navigation),[]);await page.locator('#cpfCancel').click();}
+  if(copro){
+   await page.locator('#cpfCancel').waitFor();assert.deepEqual(await page.evaluate(()=>navigation),[]);
+   await page.locator('#cpBrand').fill('Test partner');await page.locator('#cpfSave').click();
+   await page.locator('#cpfErr').filter({hasText:'ยังยืนยันการส่งอีเมลไม่ได้'}).waitFor();
+   assert.equal(await page.evaluate(()=>ordinarySaves),0,'Co-Promo yes must never silently save without email');
+   assert.equal(await page.locator('#cpBrand').inputValue(),'Test partner','keep user input on email failure');
+   await page.evaluate(()=>{
+    window.emailCalls=[];
+    window.PC_CoProEmail={active:()=>true,capabilities:async()=>({coproEnabled:true,sendingEnabled:true})};
+    window.PC_CoProEmailUI={save:async record=>{emailCalls.push(record);return {status:'success',saved:true,mailStatus:'queued'};}};
+   });
+   await page.locator('#cpfSave').click();
+   await page.waitForFunction(()=>!document.getElementById('pcCoproPage'));
+   assert.equal(await page.evaluate(()=>emailCalls.length),1);assert.equal(await page.evaluate(()=>emailCalls[0].campaign),'Co-Promo test');
+   assert.equal(await page.evaluate(()=>ordinarySaves),0);
+  }
   assert.equal(await page.evaluate(()=>result),true);assert.deepEqual(await page.evaluate(()=>navigation),history?['SubmissionLog']:[]);assert.deepEqual(errors,[]);
   console.log(`Verified history=${history}, Co-Promo=${copro}: prompt and form complete before navigation; no external sends`);await page.close();
  }}finally{await browser.close();}

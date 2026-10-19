@@ -13,7 +13,7 @@ async function fixture(options={}){
   DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run(input.writes[0].key,input.writes[0].value);
   const c=prep.campaigns[0],buttons=(await DB.prepare('SELECT * FROM email_campaign_buttons WHERE campaign_id=?').bind(c.id).all()).results;
   buttons.sort((a,b)=>JSON.parse(a.source_identity_json).shortName.localeCompare(JSON.parse(b.source_identity_json).shortName));
-  DB.db.prepare('INSERT INTO email_threads VALUES (?,?,?,?,?,?,?,?,?,1,\'test\',1,?,?)').run('policy','provider-thread','m1','<m1@example.com>','[]','Test send to email copro UOB','["test@example.net"]','[]',JSON.stringify([actor]),'manager',Date.now());
+  DB.db.prepare('INSERT INTO email_threads(id,thread_id,message_id,rfc_message_id,references_json,subject,to_json,cc_json,audience_json,version,mode,enabled,published_by,updated_at) VALUES (?,?,?,?,?,?,?,?,?,1,\'test\',1,?,?)').run('policy','provider-thread','m1','<m1@example.com>','[]','Test send to email copro UOB','["test@example.net"]','[]',JSON.stringify([actor]),'manager',Date.now());
   const draft={campaignId:c.id,expectedVersion:1,policyId:'policy',policyVersion:1,recipients:{to:['test@example.net'],cc:[]},confirmed:true,records:buttons.map(b=>({buttonId:b.button_id,brand:'Test partner',detail:'Public detail'}))};
   draft.previewHash=(await a.previewCoPromo(actor,draft,env)).previewHash;
   return {a,DB,env,c,buttons,draft};
