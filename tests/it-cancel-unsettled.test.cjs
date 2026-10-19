@@ -94,3 +94,19 @@ test('confirming pending IT cancellation deletes the job and returns both codes 
   assert.equal(c.PC_COUNTER.entryOf('P9001'),null);assert.equal(c.PC_COUNTER.entryOf('1079001'),null);
   assert.equal(dialogs.at(-1).icon,'success');assert.equal(reloads,1);
 });
+test('cancellation removes attached mapping registrations only for the deleted campaign and keeps a restore snapshot',()=>{
+ const {c,data}=setup();
+ const own={id:'CR-1',campaign:'New campaign',promoCode:'P9001',status:'PENDING',codes:[],codeSeq:[['UOB',1,6001,5]],createdAt:1};
+ const other={id:'CR-2',campaign:'Other campaign',status:'PENDING',codes:['SHARED']};
+ data.set('pc_code_requests',JSON.stringify([own,other]));
+ assert.equal(c.PC_API.cancelUnsettledITCampaign('New campaign','2026-10').status,'success');
+ assert.equal(c.PC_COUNTER.entryOf('P9001'),null);
+ assert.deepEqual(JSON.parse(data.get('pc_code_requests')),[other]);
+ assert.deepEqual(JSON.parse(data.get('pc_mock_store_v28')).trash[0].cr,[own]);
+});
+test('failed mapping cleanup cannot report cancellation success or release reservations',()=>{
+ const {c,data,fail}=setup();const raw=JSON.stringify([{id:'CR-1',campaign:'New campaign',codes:['UOB001']}]);data.set('pc_code_requests',raw);
+ fail(k=>k==='pc_code_requests');
+ assert.equal(c.PC_API.cancelUnsettledITCampaign('New campaign','2026-10').status,'error');
+ assert.equal(data.get('pc_code_requests'),raw);assert.equal(c.PC_API.checkCampaignName('New campaign'),true);assert.equal(c.PC_COUNTER.entryOf('P9001').status,'CONFIRMED');
+});

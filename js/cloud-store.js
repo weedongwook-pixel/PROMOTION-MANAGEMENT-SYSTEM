@@ -823,6 +823,20 @@
       if (keys[k] == null) return;
       n++;
       var cur = localStorage.getItem(k);
+      if (k === 'pc_code_requests') {
+        // A campaign tombstone also invalidates its older attachment registrations.
+        // Filter after merging so stale tabs cannot resurrect deleted mapping codes.
+        var mergedRequests = mergeList(cur || '[]', keys[k]);
+        var liveRequests = JSON.parse(mergedRequests.str).filter(function (request) {
+          var deletedAt = Number(_tombs[String(request && request.campaign || '').trim()]) || 0;
+          var createdAt = Number(request && request.createdAt) || Date.parse(request && request.createdAt) || 0;
+          return !deletedAt || !createdAt || createdAt > deletedAt;
+        });
+        var requestsRaw = JSON.stringify(liveRequests);
+        if (requestsRaw !== cur) { _set(k, requestsRaw); changed = true; }
+        if (requestsRaw !== keys[k]) queuePush(k);
+        return;
+      }
       if (cur === keys[k]) return;
       /* ⭐ ตารางสิทธิ์ = รวมรายบทบาท — บทบาทใหม่ที่เพิ่งเพิ่มในโค้ด (เช่น SC) ต้องไม่ถูกคลาวด์ลบทิ้ง
          (คลาวด์ชนะสำหรับบทบาทที่มีอยู่แล้ว · บทบาทที่มีแค่ในเครื่องเก็บไว้แล้วดันขึ้นให้) */

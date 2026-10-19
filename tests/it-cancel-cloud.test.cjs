@@ -12,7 +12,8 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
   const row={campaign,shortName:'UOB 30',promoType:'Bill Discount',codePromotion:'BD9001',itStatus:'PENDING',opStatus:'WAITING'};
   const block={m:{'2026-11':[row],'2026-12':[{...row}],'2027-01':[{...row}]},w:[],_ts:10};
   const counter={v:1,migItemset:2,types:{bill:{cursor:9001,seeded:true}},reservations:{'bill::BD9001':{type:'bill',code:'BD9001',num:9001,status:'RESERVED',where:campaign,field:'test'}},log:[]};
-  for(const[k,v]of Object.entries({[key]:block,'promo::meta':meta,'promo::deleted':{[campaign]:1},pc_code_counter_v1:counter}))db.db.prepare('INSERT INTO promo_store VALUES(?,?,?)').run(k,JSON.stringify(v),1);
+  const requests=[{id:'CR-1',campaign,createdAt:1,codes:[],codeSeq:[['UOB',1,6001,5]]},{id:'CR-2',campaign:'Other',createdAt:1,codes:['OTHER']}];
+  for(const[k,v]of Object.entries({[key]:block,'promo::meta':meta,'promo::deleted':{[campaign]:1},pc_code_counter_v1:counter,pc_code_requests:requests}))db.db.prepare('INSERT INTO promo_store VALUES(?,?,?)').run(k,JSON.stringify(v),1);
   const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k),key:i=>[...data.keys()][i],get length(){return data.size;}};
   const c={URL,Date,Math,localStorage:storage,console:{log(){},warn(){},error(){}},setTimeout(){return 1;},clearTimeout(){},setInterval(){},location:{hostname:'localhost'},navigator:{onLine:true},document:{readyState:'loading',addEventListener(){},querySelectorAll(){return[];}},addEventListener(){},PC_REAL_PROMOS:[],fetch:async(url,o={})=>worker.fetch(new Request('https://test'+new URL(url).pathname,{...o,headers:{Authorization:'Bearer test','Content-Type':'application/json'}}),{DB:db,SYNC_TOKEN:'test',CLOUD_FIRST_ENABLED:'true'})};c.window=c;vm.createContext(c);
   c.indexedDB={open(){const request={};queueMicrotask(()=>{request.result={close(){},transaction(){const tx={objectStore(){return{add(){queueMicrotask(()=>tx.oncomplete?.());},getAllKeys(){const q={};queueMicrotask(()=>{q.result=[];q.onsuccess?.();tx.oncomplete?.();});return q;},delete(){}};}};return tx;}};request.onsuccess();});return request;}};
@@ -23,7 +24,21 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
   if(race)await assert.rejects(()=>c.PC_CLOUD.syncNow());else await c.PC_CLOUD.syncNow();
   assert.equal(db.db.prepare('SELECT count(*) n FROM promo_store WHERE k=?').get(key).n,race?1:0);
   const tomb=db.db.prepare("SELECT v FROM promo_store WHERE k='promo::deleted'").get();assert.equal(Number(JSON.parse(tomb.v)[campaign])>10,!race);
+  assert.deepEqual(JSON.parse(db.db.prepare("SELECT v FROM promo_store WHERE k='pc_code_requests'").get().v),race?requests:[requests[1]]);
   if(race)assert.equal(JSON.parse(db.db.prepare("SELECT v FROM promo_store WHERE k='pc_code_counter_v1'").get().v).reservations['bill::BD9001'].status,'RESERVED');
-  else {await c.PC_CLOUD.pull();c.PC_API.reloadFromStorage();assert.equal(c.PC_API.checkCampaignName(campaign),false);assert.equal(c.PC_API.getITTasks('ALL').some(r=>r.campaign===campaign),false);}
+  else {
+   // A stale browser must not revive old attached codes, including compressed ranges.
+   data.set('pc_code_requests',JSON.stringify(requests));
+   await c.PC_CLOUD.pull({force:true});
+   assert.deepEqual(JSON.parse(data.get('pc_code_requests')),[requests[1]]);
+   const fresh={id:'CR-new',campaign,createdAt:Date.now()+1000,codes:['NEW']};
+   db.db.prepare("UPDATE promo_store SET v=?,updated_at=updated_at+1 WHERE k='pc_code_requests'").run(JSON.stringify([...requests,fresh]));
+   data.delete('pc_code_requests');
+   await c.PC_CLOUD.pull({force:true});
+   assert.deepEqual(JSON.parse(data.get('pc_code_requests')),[requests[1],fresh]);
+   await c.PC_CLOUD.syncNow();
+   assert.deepEqual(JSON.parse(db.db.prepare("SELECT v FROM promo_store WHERE k='pc_code_requests'").get().v),[requests[1],fresh]);
+
+   c.PC_API.reloadFromStorage();assert.equal(c.PC_API.checkCampaignName(campaign),false);assert.equal(c.PC_API.getITTasks('ALL').some(r=>r.campaign===campaign),false);}
  }
 });

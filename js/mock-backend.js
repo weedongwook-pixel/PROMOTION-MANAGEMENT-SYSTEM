@@ -4677,7 +4677,11 @@
       });
     };
     ['pc_co_promotions','pc_member_coupons','pc_member_cards','pc_bill_discount_confirmed','pc_code_requests'].forEach(key => {
-      try { scanShared(JSON.parse(localStorage.getItem(key) || 'null')); } catch (_) { candidates.forEach(c => used.add(c)); }
+      try {
+        let value = JSON.parse(localStorage.getItem(key) || 'null');
+        if (key === 'pc_code_requests' && Array.isArray(value)) value = value.filter(r => String(r && r.campaign || '').trim() !== campaign);
+        scanShared(value);
+      } catch (_) { candidates.forEach(c => used.add(c)); }
     });
     [window.PC_CODE_PROMOS,window.PC_VOUCHER_COUPON_CONFIRMED,window.PC_BILL_DISCOUNT_CONFIRMED].forEach(scanShared);
     const returnable = [], kept = [];
@@ -4695,6 +4699,10 @@
     if (!policy.canCancel) return {status:'error',message:policy.reason};
     if (policy.returnable.length && (!window.PC_COUNTER || !PC_COUNTER.returnCode)) return {status:'error',message:'ระบบเลขกลางยังไม่พร้อม'};
     const before = JSON.parse(JSON.stringify(store)), counterBefore = localStorage.getItem('pc_code_counter_v1');
+    const requestsBefore = localStorage.getItem('pc_code_requests');
+    let requests;
+    try { requests = JSON.parse(requestsBefore || '[]'); if (!Array.isArray(requests)) throw Error(); }
+    catch (_) { return {status:'error',message:'อ่านทะเบียนโค้ดไม่ได้ — ยังไม่ลบงานหรือคืนโค้ด'}; }
     const snap = {id:'TRASH' + Date.now().toString(36).toUpperCase(),deletedAt:NOW(),deletedBy:localStorage.getItem('pc_userName') || '',campaigns:[campaign],months:{},pp:{},comp:{},npd:[],cr:[],codes:policy.returnable.map(x => x.code),source:'IT Settlement (ยังไม่บันทึก)'};
     Object.keys(store.months).forEach(m => {
       const removed = store.months[m].filter(r => String(r.campaign || '').trim() === campaign);
@@ -4702,15 +4710,18 @@
       store.months[m] = store.months[m].filter(r => String(r.campaign || '').trim() !== campaign);
       if (!store.months[m].length) delete store.months[m];
     });
+    snap.cr = requests.filter(r => String(r && r.campaign || '').trim() === campaign);
     store.trash = [snap].concat(store.trash || []).slice(0,100);
     if (!persist()) { store = before; return {status:'error',message:'บันทึกการยกเลิกไม่สำเร็จ — ยังไม่คืนโค้ด'}; }
     try {
+      if (snap.cr.length) localStorage.setItem('pc_code_requests',JSON.stringify(requests.filter(r => String(r && r.campaign || '').trim() !== campaign)));
       policy.returnable.forEach(x => { const result = PC_COUNTER.returnCode(x.code,x.type,'IT Settlement (ยกเลิกงานที่ยังไม่บันทึก)',true); if (!result || !result.returned) throw Error('คืนโค้ด ' + x.code + ' ไม่สำเร็จ'); });
       const savedCounter = JSON.parse(localStorage.getItem('pc_code_counter_v1') || '{}');
       const remaining = Object.values(savedCounter.reservations || {});
       if (policy.returnable.some(x => remaining.some(e => String(e.code) === x.code && e.status !== 'RELEASED'))) throw Error('บันทึกการคืนโค้ดไม่สำเร็จ');
     } catch (e) {
       store = before;
+      try { if (requestsBefore == null) localStorage.removeItem('pc_code_requests'); else localStorage.setItem('pc_code_requests',requestsBefore); } catch (_) {}
       try { if (counterBefore == null) localStorage.removeItem('pc_code_counter_v1'); else localStorage.setItem('pc_code_counter_v1',counterBefore); PC_COUNTER.reloadFromStorage(); } catch (_) {}
       persist(); return {status:'error',message:String(e.message || e)};
     }
