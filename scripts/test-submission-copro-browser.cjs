@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
- try{for(const history of [false,true])for(const copro of [false,true]){
+ try{for(const copro of [false,true]){
   const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',route=>{assert.equal(new URL(route.request().url()).origin,'http://copro.test','test must never send external requests');return route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'});});
   await page.goto('http://copro.test/');
@@ -18,7 +18,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   });
   await page.getByText('ส่งและบันทึกข้อมูลสำเร็จ',{exact:true}).waitFor();
   assert.ok((await page.locator('.swal2-html-container').innerText()).includes('6001'));
-  await page.locator(history?'.swal2-confirm':'.swal2-cancel').click();
+  assert.equal(await page.locator('.swal2-confirm').isVisible(),false);
+  assert.equal(await page.locator('.swal2-cancel').isVisible(),false);
   await page.getByText('เป็น Co-Promotion หรือไม่?',{exact:true}).waitFor();
   assert.deepEqual(await page.evaluate(()=>navigation),[],'navigation cannot skip Co-Promo');
   await page.locator(copro?'.swal2-confirm':'.swal2-cancel').click();
@@ -38,7 +39,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    assert.equal(await page.evaluate(()=>emailCalls.length),1);assert.equal(await page.evaluate(()=>emailCalls[0].campaign),'Co-Promo test');
    assert.equal(await page.evaluate(()=>ordinarySaves),0);
   }
-  assert.equal(await page.evaluate(()=>result),true);assert.deepEqual(await page.evaluate(()=>navigation),history?['SubmissionLog']:[]);assert.deepEqual(errors,[]);
-  console.log(`Verified history=${history}, Co-Promo=${copro}: prompt and form complete before navigation; no external sends`);await page.close();
+  assert.equal(await page.evaluate(()=>result),true);assert.deepEqual(await page.evaluate(()=>navigation),[]);assert.deepEqual(errors,[]);
+  console.log(`Verified Co-Promo=${copro}: success auto-continues without history/continue buttons; no external sends`);await page.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

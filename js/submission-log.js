@@ -173,8 +173,9 @@
     if (window.Swal) {
       if (ok) await Swal.fire({ icon: 'success', title: 'ส่งและบันทึกข้อมูลสำเร็จ',
         text: plan.entries.length + ' แคมเปญ · Cloud บันทึกแล้ว และพบทุกปุ่มในศูนย์ติดตามงาน' + (options.successNote ? '\n' + options.successNote : ''),
-        showCancelButton: true, confirmButtonText: 'ดูประวัติการแจ้งโปรฯ', cancelButtonText: 'ทำงานต่อ', confirmButtonColor: '#2e934a'
-      }).then(function (r) { if (r.isConfirmed) navigateToLog = true; });
+        showConfirmButton: false, showCancelButton: false, timer: 1500, timerProgressBar: true,
+        allowOutsideClick: false, allowEscapeKey: false
+      });
       else await Swal.fire({ icon: 'warning', title: 'ยังตรวจผลการส่งไม่ครบ',
         text: 'มี ' + results.filter(function (r) { return !r.ok; }).length + ' แคมเปญที่ต้องตรวจเพิ่มเติม กรุณาเปิด “ประวัติการแจ้งโปรฯ” เพื่อตรวจสถานะ Cloud ก่อนกดส่งซ้ำ',
         confirmButtonText: 'เปิดประวัติการแจ้งโปรฯ', confirmButtonColor: '#2e934a'
