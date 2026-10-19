@@ -1,20 +1,32 @@
 (function (root) {
   'use strict';
   const api = root.PC_Email;
+  // Return only fixed application codes, never Google's response body or description.
+  const tokenErrors=Object.freeze({
+    invalid_client:'email_client_invalid',
+    unauthorized_client:'email_client_unauthorized',
+    invalid_grant:'email_reconnect_required',
+    redirect_uri_mismatch:'email_redirect_mismatch',
+    invalid_request:'email_token_request_invalid',
+    unsupported_grant_type:'email_token_request_invalid',
+    temporarily_unavailable:'email_provider_unavailable'
+  });
   async function token(params, deps) {
     try {
       const response = await (deps.fetch || fetch)('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(params).toString(),signal:AbortSignal.timeout(10000),redirect:'error'});
       if (!response.ok) {
-        if (response.status === 400) {
-          const failure = await response.json();
-          if (failure.error === 'invalid_grant') throw new Error('email_reconnect_required');
-        }
-        throw new Error();
+        if(response.status>=500||response.status===429)throw new Error('email_provider_unavailable');
+        const failure=await response.json().catch(()=>null);
+        throw new Error(Object.hasOwn(tokenErrors,failure?.error)?tokenErrors[failure.error]:'email_provider_error');
       }
       const data = await response.json();
       if (typeof data.access_token !== 'string' || !data.access_token) throw new Error();
       return data;
-    } catch (error) { throw new Error(error.message === 'email_reconnect_required' ? 'email_reconnect_required' : 'email_provider_error'); }
+    } catch (error) {
+      const reason=error.name==='TimeoutError'?'email_provider_timeout':
+        Object.values(tokenErrors).includes(error.message)?error.message:'email_provider_error';
+      throw new Error(reason);
+    }
   }
   api.exchangeCode = async function (code, verifier, c, deps = {}) {
     const result = await token({client_id:c.clientId,client_secret:c.clientSecret,code,code_verifier:verifier,grant_type:'authorization_code',redirect_uri:c.redirectUri},deps);

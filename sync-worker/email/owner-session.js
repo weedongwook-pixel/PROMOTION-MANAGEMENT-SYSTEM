@@ -17,6 +17,12 @@
     return {...OWNER,csrf:row.csrf,expiresAt:row.expires_at};
   };
   const failureMessages=Object.freeze({
+    email_client_invalid:'Google ไม่ยอมรับข้อมูลยืนยันแอป ผู้ดูแลต้องตรวจ Client ID และ Client Secret ของระบบ ไม่ต้องเปลี่ยนบัญชี Gmail',
+    email_client_unauthorized:'Google ไม่อนุญาตแอปนี้ให้รับสิทธิ์ ผู้ดูแลต้องตรวจการตั้งค่า OAuth ของแอป',
+    email_redirect_mismatch:'ที่อยู่รับสิทธิ์ของเว็บไม่ตรงกับที่ตั้งค่าใน Google ผู้ดูแลต้องแก้การตั้งค่า',
+    email_token_request_invalid:'Google ปฏิเสธรูปแบบคำขอรับสิทธิ์ ผู้ดูแลต้องตรวจระบบเชื่อมต่อ',
+    email_provider_unavailable:'บริการ Google ตอบกลับว่าไม่พร้อมใช้งาน กรุณาลองเชื่อมต่อภายหลัง',
+    email_provider_timeout:'ระบบรอการตอบกลับจาก Google นานเกินกำหนด กรุณาลองเชื่อมต่อใหม่',
     email_wrong_mailbox:'บัญชี Gmail ที่ Google ยืนยันไม่ตรงกับบัญชีผู้ส่ง it@rocks-foods.com',
     email_missing_scopes:'Google ยังไม่ได้ให้สิทธิ์อ่านและส่งอีเมลครบ กรุณาอนุญาตสิทธิ์ทั้งสองรายการ',
     email_refresh_required:'Google ไม่ได้ส่งสิทธิ์สำหรับการเชื่อมต่อระยะยาว กรุณาเริ่มเชื่อมต่อใหม่',

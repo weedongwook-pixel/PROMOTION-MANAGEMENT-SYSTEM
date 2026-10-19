@@ -71,6 +71,12 @@ test('logout blocks both pending and already-exchanging consent callbacks in tha
 
 test('failed consent reports a safe reason and stage without exposing provider data or creating a session',async()=>{
  for(const [failure,want] of [
+  ['email_client_invalid','email_client_invalid'],
+  ['email_client_unauthorized','email_client_unauthorized'],
+  ['email_redirect_mismatch','email_redirect_mismatch'],
+  ['email_token_request_invalid','email_token_request_invalid'],
+  ['email_provider_unavailable','email_provider_unavailable'],
+  ['email_provider_timeout','email_provider_timeout'],
   ['email_missing_scopes','email_missing_scopes'],
   ['email_refresh_required','email_refresh_required'],
   ['email_reconnect_required','email_reconnect_required'],
