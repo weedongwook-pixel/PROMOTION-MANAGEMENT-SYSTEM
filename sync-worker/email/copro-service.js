@@ -64,11 +64,12 @@
       }
       seen.add(r.buttonId);return saved;
     }).sort((a,b)=>a.buttonId.localeCompare(b.buttonId));
-    const contentHash=await api.hash(JSON.stringify({source:c.source_hash,thread:thread.id,version:thread.version,recipients,records}));
-    return {c,thread,recipients,records,contentHash,sourceVersion:current.row.updated_at};
+    const attachmentData=await api.readEmailAttachments(current.block.m[c.month],env);
+    const contentHash=await api.hash(JSON.stringify({source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
+    return {c,thread,recipients,records,contentHash,attachmentData,sourceVersion:current.row.updated_at};
   }
-  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,details,text:api.renderCoProEmail({milestone:'submitted',details}).text,recipients:d.recipients,subject:d.thread.subject};};
-  function snapshot(c,t,recipients,milestone,rows,records){return {deliveryMode:api.emailThreadMode(t),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
+  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({milestone:'submitted',details}).text,recipients:d.recipients,subject:d.thread.subject};};
+  function snapshot(c,t,recipients,milestone,rows,records,attachments){return {attachments,deliveryMode:api.emailThreadMode(t),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }
@@ -79,11 +80,13 @@
     if(existing){if(existing.content_hash!==contentHash)throw Error('email_revision_not_enabled');return {saved:true,mailStatus:'queued',campaignId:c.id,version:c.version};}
     if(input.expectedVersion!==c.version)throw Error('email_version_conflict');
     const statements=[...authorizationGuard(env,actor,'submit',c,thread,d.sourceVersion),statement(env,'UPDATE email_campaigns SET version=version+1 WHERE id=? AND version=?',c.id,c.version),...guard(env)];
+    if(d.attachmentData.version!==null) statements.push(...fileGuard(env,d.attachmentData.version));
     statements.push(statement(env,'INSERT INTO email_bindings VALUES (?,?,?,?,?,?,?,1)',c.id,thread.id,thread.version,JSON.stringify(recipients),contentHash,api.emailActorKey(actor),Date.now()));
     for(const r of records)statements.push(statement(env,'INSERT INTO email_copro_records(id,campaign_id,button_id,record_json) VALUES (?,?,?,?)',crypto.randomUUID(),c.id,r.buttonId,JSON.stringify(r)));
-    statements.push(queued(env,c,1,'submitted',snapshot(c,thread,recipients,'submitted',JSON.parse(c.source_json),records)),audit(env,c.id,actor,'submitted'));
+    statements.push(queued(env,c,1,'submitted',snapshot(c,thread,recipients,'submitted',JSON.parse(c.source_json),records,d.attachmentData.manifest)),audit(env,c.id,actor,'submitted'));
     await env.DB.batch(statements);return {saved:true,mailStatus:'queued',campaignId:c.id,version:c.version+1};
   };
+  function fileGuard(env,version){return [statement(env,"INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM promo_store WHERE k='pc_promo_files' AND updated_at=?) THEN 1 ELSE 0 END",version),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];}
   async function complete(actor,input,env,kind){
     await api.requireEmailPermission(actor,'it',env);
     const c=await campaign(input.campaignId,env),s=await source(c,env);
@@ -109,8 +112,12 @@
     if(!thread||thread.version!==binding.policy_version)throw Error('email_policy_changed');
     statements.unshift(...authorizationGuard(env,actor,'it',c,thread,s.row.updated_at));
     const records=(await statement(env,'SELECT record_json FROM email_copro_records WHERE campaign_id=?',c.id).all()).results.map(r=>JSON.parse(r.record_json));
+    const announcement=await statement(env,"SELECT snapshot_json FROM email_outbox WHERE event_key=?",c.id+':'+c.month+':submitted').first();
+    const approvedFiles=announcement?JSON.parse(announcement.snapshot_json).attachments:undefined;
+    const attachmentData=approvedFiles===undefined?{manifest:undefined,version:null}:await api.readEmailAttachments(s.block.m[c.month],env,approvedFiles);
+    if(attachmentData.version!==null)statements.push(...fileGuard(env,attachmentData.version));
     const predicate='EXISTS(SELECT 1 FROM email_campaign_buttons WHERE campaign_id=? AND cancelled=0) AND NOT EXISTS(SELECT 1 FROM email_campaign_buttons b LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id WHERE b.campaign_id=? AND b.cancelled=0 AND (b.it_done=0 OR COALESCE(r.interface_done,0)=0))';
-    statements.push(queued(env,c,binding.version,'it_interface_complete',snapshot(c,thread,JSON.parse(binding.recipients_json),'it_interface_complete',JSON.parse(c.source_json),records),predicate,[c.id,c.id]),audit(env,c.id,actor,kind));
+    statements.push(queued(env,c,binding.version,'it_interface_complete',snapshot(c,thread,JSON.parse(binding.recipients_json),'it_interface_complete',JSON.parse(c.source_json),records,attachmentData.manifest),predicate,[c.id,c.id]),audit(env,c.id,actor,kind));
     await env.DB.batch(statements);return {saved:true,mailStatus:await mailState(c,env),campaignId:c.id};
   }
   async function mailState(c,env){const event=await statement(env,'SELECT status FROM email_outbox WHERE event_key=?',c.id+':'+c.month+':it_interface_complete').first();return event?.status||'waiting_for_both';}

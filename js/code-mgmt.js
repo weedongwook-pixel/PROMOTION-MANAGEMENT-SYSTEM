@@ -876,8 +876,7 @@ function itDownload(id){ const r=loadReqs().find(x=>x.id===id); if(!r) return;
   } else {
     /* ⭐ FX-P91 — รูปแบบตามไฟล์จริงของ Backoffice (`ID_Imp….xlsx`)
        ชีต **Import_ID** · 3 คอลัมน์ ProID (= โค้ด) · ProStatus (Voucher/E-Coupon = HS) · ProExpire */
-    const status=r.type==='REMOVE'?'Delete':(r.proStatus||(r.kindShort==='voucher'?'HS':'Normal')); const rows=[['ProID','ProStatus','ProExpire']];
-    (r.codes||[]).forEach(c=> rows.push([cCode(c), status, r.proExpire||r.end||'']));
+    let rows;try { rows=PC_CodeConvert.backofficeRows([r]); } catch(e) { Swal.fire({icon:'error',title:'ดาวน์โหลดไฟล์ไม่ได้',text:String(e.message||e)});return; }
     ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:18},{wch:12},{wch:14}]; sheetName='Import_ID';
   }
   XLSX.utils.book_append_sheet(wb, ws, sheetName);

@@ -98,3 +98,30 @@ test('Item Set cannot be certified complete without its product code',async()=>{
   const {a,DB,env,c,buttons,draft}=await fixture({itemSet:true});await a.commitCoPromo(actor,draft,env);
   await assert.rejects(a.commitIT(actor,{campaignId:c.id,buttonId:buttons[0].button_id,expectedVersion:1,codePromotion:'P4000'},env));assert.equal(DB.db.prepare('SELECT SUM(it_done) n FROM email_campaign_buttons').get().n,0);DB.db.close();
 });
+test('preview lists original files; confirmation binds file bytes and both milestones carry approved manifests',async()=>{
+ const {a,DB,env,c,buttons,draft}=await fixture();
+ const block=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v);block.m['2026-10'].forEach(r=>r.attachment='file:f1');
+ DB.db.prepare('UPDATE promo_store SET v=?,updated_at=2 WHERE k=?').run(JSON.stringify(block),c.key);
+ const file={name:'original.xlsx',mime:'application/octet-stream',base64:Buffer.from('ORIGINAL').toString('base64')};
+ DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_promo_files',JSON.stringify({f1:file}));
+ const preview=await a.previewCoPromo(actor,draft,env);assert.equal(preview.attachments.length,1);assert.equal(preview.attachments[0].name,'original.xlsx');assert.equal(preview.attachments[0].base64,undefined);
+ draft.previewHash=preview.previewHash;await a.commitCoPromo(actor,draft,env);
+ for(const b of buttons){await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);await a.commitIT(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1,codePromotion:JSON.parse(b.source_identity_json).codePromotion},env);}
+ for(const row of DB.db.prepare('SELECT snapshot_json FROM email_outbox').all()){const snap=JSON.parse(row.snapshot_json);assert.deepEqual(snap.attachments,JSON.parse(JSON.stringify(preview.attachments)));assert.ok(!row.snapshot_json.includes(file.base64));}DB.db.close();
+});
+test('changing attached bytes after preview or during commit cannot queue unapproved files',async()=>{
+ for(const race of [false,true]){
+  const {a,DB,env,c,draft}=await fixture();const block=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v);block.m['2026-10'][0].attachment='file:f1';DB.db.prepare('UPDATE promo_store SET v=? WHERE k=?').run(JSON.stringify(block),c.key);
+  const file={name:'original.xlsx',mime:'application/octet-stream',base64:Buffer.from('ORIGINAL').toString('base64')};DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_promo_files',JSON.stringify({f1:file}));draft.previewHash=(await a.previewCoPromo(actor,draft,env)).previewHash;
+  const change=()=>DB.db.prepare("UPDATE promo_store SET v=?,updated_at=2 WHERE k='pc_promo_files'").run(JSON.stringify({f1:{...file,base64:Buffer.from('CHANGED').toString('base64')}}));
+  if(race){const batch=DB.batch.bind(DB);DB.batch=async statements=>{change();return batch(statements);};}else change();
+  await assert.rejects(a.commitCoPromo(actor,draft,env));assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,0);DB.db.close();
+ }
+});
+test('legacy completion without attachment approval preserves legacy delivery instead of claiming an empty manifest',async()=>{
+ const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+ const first=DB.db.prepare('SELECT id,snapshot_json FROM email_outbox').get(),snap=JSON.parse(first.snapshot_json);delete snap.attachments;DB.db.prepare('UPDATE email_outbox SET snapshot_json=? WHERE id=?').run(JSON.stringify(snap),first.id);
+ const block=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v);block.m['2026-10'][0].attachment='file:legacy';DB.db.prepare('UPDATE promo_store SET v=? WHERE k=?').run(JSON.stringify(block),c.key);
+ for(const b of buttons){await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);await a.commitIT(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1,codePromotion:JSON.parse(b.source_identity_json).codePromotion},env);}
+ const completion=JSON.parse(DB.db.prepare("SELECT snapshot_json FROM email_outbox WHERE event_key LIKE '%it_interface_complete'").get().snapshot_json);assert.equal(Object.hasOwn(completion,'attachments'),false);DB.db.close();
+});

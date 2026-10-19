@@ -52,3 +52,14 @@ test('production and test switches only dispatch their matching explicitly appro
   DB.db.close();
  }
 });
+test('dispatch sends exact original attachments and holds changed or missing bytes before delivery',async()=>{
+ for(const change of ['none','changed','missing']){
+  const {a,DB,env}=await fixture();const block=JSON.parse(DB.db.prepare("SELECT v FROM promo_store WHERE k='promo::c::Pilot'").get().v);block.m['2026-10'][0].attachment='file:f1';DB.db.prepare("UPDATE promo_store SET v=? WHERE k='promo::c::Pilot'").run(JSON.stringify(block));
+  const file={name:'original.xlsx',mime:'application/octet-stream',base64:Buffer.from('EXACT ORIGINAL').toString('base64')};DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_promo_files',JSON.stringify({f1:file}));
+  const {manifest}=await a.readEmailAttachments(block.m['2026-10'],env);
+  for(const e of DB.db.prepare('SELECT id,snapshot_json FROM email_outbox').all()){const snap=JSON.parse(e.snapshot_json);snap.attachments=manifest;DB.db.prepare('UPDATE email_outbox SET snapshot_json=? WHERE id=?').run(JSON.stringify(snap),e.id);}
+  a.gmailMessage=async()=>{if(change!=='none')DB.db.prepare("UPDATE promo_store SET v=? WHERE k='pc_promo_files'").run(JSON.stringify(change==='missing'?{}:{f1:{...file,base64:Buffer.from('changed').toString('base64')}}));return {messageId:'m',threadId:'provider',headers:{'message-id':'<m@example.com>',subject:'Test send to email copro UOB',references:''}};};
+  let sent=0;a.sendReply=async(token,snapshot)=>{sent++;assert.equal(snapshot.attachments.length,1);assert.equal(snapshot.attachments[0].base64,file.base64);return {outcome:'accepted',providerId:'mock'};};
+  await a.dispatchEmail(env);assert.equal(sent,change==='none'?2:0);DB.db.close();
+ }
+});

@@ -11,7 +11,7 @@ export default {async fetch(){
  await run('refresh',()=>a.refreshAccessToken({refresh_token:'fake-refresh'},c));
  await run('profile',()=>a.verifySender('fake-access',c));
  await run('list',()=>a.gmailGet('messages?q=test','fake-access'));
- await run('send',()=>a.sendReply('fake-access',{threadId:'t',rfcMessageId:'<o@example.com>',subject:'Test',recipients:{to:['test@example.net'],cc:[]},milestone:'submitted',details:{campaign:'Test',buttons:[]}}));
+ await run('send',()=>a.sendReply('fake-access',{threadId:'t',rfcMessageId:'<o@example.com>',subject:'Test',recipients:{to:['test@example.net'],cc:[]},milestone:'submitted',details:{campaign:'Test',buttons:[]},attachments:[{name:'original.xlsx',mime:'application/octet-stream',base64:'T1JJR0lOQUw='}]}));
  return Response.json(result);
 }}`;
 (async()=>{
@@ -21,7 +21,7 @@ export default {async fetch(){
   if(redirect)return new Response(null,{status:302,headers:{Location:'https://redirect-must-not-be-followed.invalid/'}});
   if(u.pathname==='/token')return Response.json({access_token:'fake-access',refresh_token:'fake-refresh',scope:'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send'});
   if(u.pathname.endsWith('/profile'))return Response.json({emailAddress:'it@rocks-foods.com'});
-  if(u.pathname.endsWith('/send'))return Response.json({id:'fake-sent'});
+  if(u.pathname.endsWith('/send')){const payload=await request.json(),mime=Buffer.from(payload.raw,'base64url').toString('utf8');assert.match(mime,/Content-Disposition: attachment/);assert.match(mime,/T1JJR0lOQUw=/);return Response.json({id:'fake-sent'});}
   return Response.json({messages:[]});
  }}));
  try{

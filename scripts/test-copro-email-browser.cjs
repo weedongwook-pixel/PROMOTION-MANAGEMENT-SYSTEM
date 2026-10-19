@@ -41,8 +41,9 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     });
   await c.PC_Email.publishThread(actor,{mode,messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
     await page.evaluate(async()=>{await PC_CoProEmail.enable();PC_CoProEmailUI.mountSettings(document.getElementById('pilot'));});
-    const row={campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
-    const receipt=await page.evaluate(async row=>PC_CoProEmail.registerPrimary({submissionId:'batch-test-1234',actor:'Test staff',expectedButtons:2,writes:[{key:'promo::c::Email%20UOB%20test',expectedUpdatedAt:null,value:JSON.stringify({m:{'2026-10':[row,{...row,shortName:'Button B',codePromotion:'IC002'}]},w:[]})}]}),row);
+    const attachment={name:process.env.EMAIL_ATTACHMENT_FIXTURE?path.basename(process.env.EMAIL_ATTACHMENT_FIXTURE):'original.xlsx',mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base64:(process.env.EMAIL_ATTACHMENT_FIXTURE?fs.readFileSync(process.env.EMAIL_ATTACHMENT_FIXTURE):Buffer.from('mock original')).toString('base64')};
+    const row={attachment:'file:original',campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
+    const receipt=await page.evaluate(async ({row,attachment})=>PC_CoProEmail.registerPrimary({submissionId:'batch-test-1234',actor:'Test staff',expectedButtons:2,writes:[{key:'promo::c::Email%20UOB%20test',expectedUpdatedAt:null,value:JSON.stringify({m:{'2026-10':[row,{...row,shortName:'Button B',codePromotion:'IC002'}]},w:[]})},{key:'pc_promo_files',expectedUpdatedAt:null,value:JSON.stringify({original:attachment})}]}),{row,attachment});
     const operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
     await page.locator('#coproTestTo').fill('external-test@example.net');
     const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});
@@ -50,6 +51,7 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     const blank=[];for(const brand of brands)if(!await brand.inputValue())blank.push(brand);assert.equal(blank.length,1,'no silent copying to another button');await blank[0].fill('Partner B');
     await page.getByRole('button',{name:'ตรวจตัวอย่างเมล',exact:true}).click();
     await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).waitFor();
+    assert.ok((await page.locator('.swal2-popup').innerText()).includes(attachment.name));
     await page.locator('.swal2-popup').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished));});
     for(const width of [1366,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:'/tmp/copro-email-preview-'+width+'.png',fullPage:true});}
     await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).click();await operation;
@@ -60,6 +62,7 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     for(const button of status.buttons)await c.PC_Email.commitIT(actor,{campaignId:status.id,buttonId:button.button_id,expectedVersion:1,codePromotion:JSON.parse(button.source_identity_json).codePromotion},env);await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,1);
     for(let i=0;i<status.buttons.length;i++){await c.PC_Email.commitInterface(actor,{campaignId:status.id,buttonId:status.buttons[i].button_id,expectedVersion:1},env);await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,i===status.buttons.length-1?2:1);}
     await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,2);
+    for(const [i,mail] of sent.entries()){const mime=Buffer.from(mail.raw,'base64url').toString('utf8');assert.match(mime,/Content-Disposition: attachment/);fs.writeFileSync('/private/tmp/copro-attachment-'+i+'.eml',mime);}
     assert.equal(sent[0].threadId,'provider-thread');assert.equal(sent[1].threadId,'provider-thread');assert.deepEqual(errors,[]);
     env.EMAIL_COPRO_ENABLED='false';
     await page.evaluate(()=>PC_CoProEmailUI.mountSettings(document.getElementById('pilot')));

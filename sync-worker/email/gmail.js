@@ -43,7 +43,21 @@
     const headers=['From: it@rocks-foods.com','To: '+recipients.to.join(', '),...(recipients.cc.length?['Cc: '+recipients.cc.join(', ')]:[]),
       'Subject: =?UTF-8?B?'+utf8(subject)+'?=','In-Reply-To: '+original,'References: '+refs.join(' '),'MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"'];
     const part=(type,body)=>'--'+boundary+'\r\nContent-Type: '+type+'; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+body+'\r\n';
-    const mime=headers.join('\r\n')+'\r\n\r\n'+part('text/plain',content.text)+part('text/html',content.html)+'--'+boundary+'--\r\n';
+    let mime=headers.join('\r\n')+'\r\n\r\n'+part('text/plain',content.text)+part('text/html',content.html)+'--'+boundary+'--\r\n';
+    if(snapshot.attachments?.length){
+      const mixed='pc_files_'+crypto.randomUUID().replace(/-/g,'');
+      const body=mime.slice(mime.indexOf('\r\n\r\n')+4);
+      const mainHeaders=headers.slice(0,-1).concat('Content-Type: multipart/mixed; boundary="'+mixed+'"');
+      mime=mainHeaders.join('\r\n')+'\r\n\r\n--'+mixed+'\r\nContent-Type: multipart/alternative; boundary="'+boundary+'"\r\n\r\n'+body;
+      for(const f of snapshot.attachments){
+        if(!f.name||/[\r\n\0]/.test(f.name)||! /^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/.test(f.mime)||!f.base64||!/^[A-Za-z0-9+/]*={0,2}$/.test(f.base64))throw Error('email_attachment_invalid');
+        const encoded=encodeURIComponent(f.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());
+        const segments=[''];for(const token of encoded.match(/%[A-F0-9]{2}|./g)||[]){if(segments[segments.length-1].length+token.length>60)segments.push('');segments[segments.length-1]+=token;}
+        const filename=segments.length===1?"filename*=UTF-8''"+encoded:segments.map((part,i)=>'filename*'+i+'*='+(i===0?"UTF-8''":'')+part).join(';\r\n ');
+        mime+='--'+mixed+'\r\nContent-Type: '+f.mime+'\r\nContent-Disposition: attachment;\r\n '+filename+'\r\nContent-Transfer-Encoding: base64\r\n\r\n'+f.base64.match(/.{1,76}/g).join('\r\n')+'\r\n';
+      }
+      mime+='--'+mixed+'--\r\n';
+    }
     return {raw:utf8(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),threadId:api.emailHeader(snapshot.threadId)};
   };
   api.sendReply=async function(token,snapshot,deps={}){

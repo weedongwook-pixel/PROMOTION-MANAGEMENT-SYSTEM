@@ -33,7 +33,7 @@
       }
       return json({error:'email_not_found'},404);
     }catch(error){
-      const safe=['email_admin_required','email_campaign_denied','email_policy_changed','email_unapproved_recipients','email_confirmation_required','email_version_conflict','email_new_campaign_required','email_source_changed','email_invalid_record','email_incomplete_records','email_revision_not_enabled','email_reconnect_required'];
+      const safe=['email_attachment_missing','email_attachment_unsupported','email_attachment_invalid','email_attachment_too_large','email_attachments_changed','email_admin_required','email_campaign_denied','email_policy_changed','email_unapproved_recipients','email_confirmation_required','email_version_conflict','email_new_campaign_required','email_source_changed','email_invalid_record','email_incomplete_records','email_revision_not_enabled','email_reconnect_required'];
       const code=safe.includes(error.message)?error.message:'email_request_failed';
       return json({error:code},code==='email_admin_required'||code==='email_campaign_denied'?403:409);
     }

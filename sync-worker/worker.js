@@ -4,6 +4,7 @@ import './email/storage.js';
 import './email/oauth.js';
 import './email/templates.js';
 import './email/gmail.js';
+import './email/attachments.js';
 import './email/registry.js';
 import './email/copro-model.js';
 import '../js/settlement-transform.js';

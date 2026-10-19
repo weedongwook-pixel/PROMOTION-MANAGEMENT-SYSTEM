@@ -16,12 +16,13 @@
         const c=await statement(env,"SELECT * FROM email_campaigns WHERE id=? AND status='active'",event.campaign_id).first();
         if(!c)throw Error();
         await api.requireEmailPermission({tenantId:c.owner_tenant,objectId:c.owner_oid},'submit',env);
-        await api.checkCoProSource(c,env);
+        const source=await api.checkCoProSource(c,env);
         const b=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
         const t=b&&await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',b.thread_id).first();
         if(!b||b.version!==event.binding_version||!t||!['test','production'].includes(api.emailThreadMode(t))||t.version!==b.policy_version)throw Error();
         if(!api.threadAudience(t,{tenantId:c.owner_tenant,objectId:c.owner_oid}))throw Error();
         snapshot=JSON.parse(event.snapshot_json);
+        if(snapshot.attachments!==undefined){const attachments=await api.readEmailAttachments(source.block.m[c.month],env,snapshot.attachments);snapshot.attachments=attachments.files;}
         const mode=api.emailThreadMode(t);
         if((snapshot.deliveryMode||'test')!==mode||(mode==='production'?env.EMAIL_SEND_ENABLED:env.EMAIL_TEST_SEND_ENABLED)!=='true')throw Error();
         if(snapshot.threadId!==t.thread_id||snapshot.rfcMessageId!==t.rfc_message_id||snapshot.subject!==t.subject||JSON.stringify(snapshot.references)!==t.references_json||JSON.stringify(api.emailRecipients(snapshot.recipients))!==b.recipients_json||JSON.stringify({to:JSON.parse(t.to_json),cc:JSON.parse(t.cc_json)})!==b.recipients_json)throw Error();

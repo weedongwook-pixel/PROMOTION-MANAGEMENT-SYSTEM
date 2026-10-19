@@ -179,19 +179,10 @@
     var reqs = requestsForCampaign(campaign);
     if (!reqs.length) return Promise.reject(new Error('ไม่พบโค้ดที่แนบมากับแคมเปญนี้'));
     return ensureXLSX().then(function () {
-      var aoa = [['ProID', 'ProStatus', 'ProExpire']];
-      reqs.forEach(function (r) {
-        var status = r.proStatus || (r.kindShort === 'voucher' ? 'HS' : 'Normal');
-        var expire = r.proExpire || r.end || '';
-        (r.codes || []).forEach(function (c) { aoa.push([cCode(c), status, expire]); });
-      });
-      var ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = [{ wch: 18 }, { wch: 12 }, { wch: 14 }];
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Import_ID');
+      var built = buildBackofficeSheet(reqs);
       var base = String(campaign || 'promo').replace(/[^\w\u0E00-\u0E7F\-]+/g, '_');
-      XLSX.writeFile(wb, base + '_Backoffice_' + (aoa.length - 1) + '.xlsx');
-      return aoa.length - 1;
+      XLSX.writeFile(built.wb, base + '_Backoffice_' + built.count + '.xlsx');
+      return built.count;
     });
   }
 
@@ -206,14 +197,26 @@
     return requestsForButton(campaign, button).reduce(function (n, r) { return n + (r.count || (r.codes || []).length); }, 0);
   }
   function sanitizeName(s) { return String(s || '').replace(/[^\w\u0E00-\u0E7F\-]+/g, '_').replace(/^_+|_+$/g, ''); }
-  function buildBackofficeSheet(reqs) {
-    /* FX-P91 — ตรงกับไฟล์จริงของ Backoffice: ชีต Import_ID · ProID = โค้ด · ProStatus (Voucher/E-Coupon = HS) · ProExpire = วันที่สิ้นสุด */
-    var aoa = [['ProID', 'ProStatus', 'ProExpire']];
+  function backofficeDate(value) {
+    var text = String(value == null ? '' : value).trim(), match, year, month, day;
+    if ((match = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(text))) { year=+match[1]; month=+match[2]; day=+match[3]; }
+    else if ((match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text))) { day=+match[1]; month=+match[2]; year=+match[3]; }
+    else if (typeof value === 'number' && XLSX.SSF) { var date=XLSX.SSF.parse_date_code(value); if(date){year=date.y;month=date.m;day=date.d;} }
+    var check = new Date(Date.UTC(year,month-1,day));
+    if (!year || year<1900 || year>9999 || check.getUTCFullYear()!==year || check.getUTCMonth()+1!==month || check.getUTCDate()!==day) throw new Error('วันหมดอายุไม่ถูกต้อง กรุณาระบุ ProExpire เป็น YYYY-MM-DD');
+    return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  }
+  function backofficeRows(reqs) {
+    var rows = [['ProID', 'ProStatus', 'ProExpire']];
     reqs.forEach(function (r) {
-      var status = r.proStatus || (r.kindShort === 'voucher' ? 'HS' : 'Normal');
-      var expire = r.proExpire || r.end || '';
-      (r.codes || []).forEach(function (c) { aoa.push([cCode(c), status, expire]); });
+      var status = r.type === 'REMOVE' ? 'Delete' : (KIND_STATUS[r.kindShort] || r.proStatus || 'Normal');
+      var expire = backofficeDate(r.proExpire || r.end || '');
+      (r.codes || []).forEach(function (c) { rows.push([String(cCode(c)), status, expire]); });
     });
+    return rows;
+  }
+  function buildBackofficeSheet(reqs) {
+    var aoa = backofficeRows(reqs);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [{ wch: 18 }, { wch: 12 }, { wch: 14 }];
     var wb = XLSX.utils.book_new();
@@ -287,6 +290,7 @@
     downloadBackofficeForButton: downloadBackofficeForButton,
     downloadAllBackofficeForCampaign: downloadAllBackofficeForCampaign,
     confirmForCampaign: confirmForCampaign,
+    backofficeRows: backofficeRows,
     KIND_STATUS: KIND_STATUS
   };
 })();

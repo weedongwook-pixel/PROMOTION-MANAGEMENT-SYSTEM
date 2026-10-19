@@ -42,7 +42,7 @@
       });
       if(!choose.isConfirmed)return null;
       const draft=choose.value,preview=await client().request('copro/preview',{method:'POST',body:draft});
-      const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text,word('ฉบับแรก: เมื่อบันทึก Co-Promotion สำเร็จ\nฉบับที่สอง: เมื่อขึ้นปุ่มและ Interface ครบ','First: after Co-Promotion save\nSecond: after POS setup and Interface are both complete')].join('\n\n');
+      const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text,word('ไฟล์แนบต้นฉบับ: ','Original attachments: ')+((preview.attachments||[]).map(f=>f.name+' ('+Math.ceil(f.size/1024)+' KB)').join(', ')||word('ไม่มี','None')),word('ฉบับแรก: เมื่อบันทึก Co-Promotion สำเร็จ\nฉบับที่สอง: เมื่อขึ้นปุ่มและ Interface ครบ','First: after Co-Promotion save\nSecond: after POS setup and Interface are both complete')].join('\n\n');
       const confirm=await Swal.fire({title:word('ตรวจเนื้อหาและผู้รับก่อนบันทึก','Review content and recipients'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit">'+esc(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันบันทึกและเข้าคิวเมล','Confirm save and queue email'),cancelButtonText:word('ยกเลิก','Cancel'),confirmButtonColor:'#1b5e20',width:740});
       if(!confirm.isConfirmed)return null;
       const result=await client().request('copro',{method:'POST',body:{...draft,previewHash:preview.previewHash,confirmed:true}});

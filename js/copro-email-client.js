@@ -13,7 +13,9 @@
     if(!window.PC_EmailAuth)throw Error('กรุณาเชื่อมบัญชีผู้ส่งที่ตั้งค่าอีเมล / Connect the sender in Email Settings');
     const authHeaders=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({scope:caps.scope,interactive})};
     const r=await fetch('/email/'+path,{method,credentials:'same-origin',cache:'no-store',headers:{...authHeaders,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
-    const result=await r.json();if(!r.ok)throw Error('ยังดำเนินการอีเมลไม่ได้ / Email not completed: '+(result.error||r.status));return result;
+    const result=await r.json();
+    const fileErrors={email_attachment_missing:'ไม่พบไฟล์แนบต้นฉบับ กรุณาตรวจไฟล์ของโปรฯ',email_attachment_unsupported:'ไฟล์แนบเป็นลิงก์ภายนอก กรุณาอัปโหลดไฟล์ต้นฉบับเข้าระบบ',email_attachment_invalid:'ข้อมูลไฟล์แนบไม่ถูกต้อง กรุณาตรวจไฟล์ต้นฉบับ',email_attachment_too_large:'ไฟล์แนบเกินขนาดหรือจำนวนที่ระบบรองรับ',email_attachments_changed:'ไฟล์แนบเปลี่ยนหลังตรวจตัวอย่าง กรุณาตรวจตัวอย่างเมลใหม่'};
+    if(!r.ok)throw Error(fileErrors[result.error]||'ยังดำเนินการอีเมลไม่ได้ / Email not completed: '+(result.error||r.status));return result;
   }
   async function list(){return (await request('copro')).items;}
   async function refresh(){if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});}
