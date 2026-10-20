@@ -529,6 +529,7 @@
     /* 1. Auth check on load — wait for the sequential module loader to finish first */
     function beginBoot() {
       var boot = function () {
+        try {
         if (!window.Swal || !window.bootstrap) {
           window.__pcBoot.fail(new Error('Required UI library unavailable'));
           return;
@@ -544,6 +545,10 @@
         // view is set — drop the splash (no flash) and unhide
         var sp = document.getElementById('boot-splash'); if (sp) sp.remove();
         document.body.classList.remove('loading');
+        } catch (error) {
+          console.error('[boot] session restore failed:', error);
+          window.__pcBoot.fail(error);
+        }
       };
       if (window.__pcBoot && window.__pcBoot.onReady) window.__pcBoot.onReady(boot);
       else boot();
@@ -776,8 +781,10 @@
       // Email navigation is discoverability only; server grants enforce access.
       if (Array.isArray(saved.IT) && !localStorage.getItem('pc_email_nav_v1')) {
         if (!saved.IT.includes('Email_Settings')) saved.IT.push('Email_Settings');
-        localStorage.setItem('pc_permissions',JSON.stringify(saved));
-        localStorage.setItem('pc_email_nav_v1','1');
+        try {
+          localStorage.setItem('pc_permissions',JSON.stringify(saved));
+          localStorage.setItem('pc_email_nav_v1','1');
+        } catch (e) {}
       }
       ['Admin','MKT','IT','RD','SC'].forEach(function(role){if(Array.isArray(saved[role])&&!saved[role].includes('MyPending'))saved[role].push('MyPending');});
       // Grant the Log page to existing IT/MKT accounts once without re-running the broad module backfill.
@@ -817,7 +824,7 @@
     ];
     function roleAllowed() { const role = localStorage.getItem('pc_role') || 'Admin'; return getPermissions()[role] || getPermissions().Admin || []; }
     function accessibleSections() { const a = roleAllowed(); return SECTIONS.filter(s => s.pages.some(p => a.includes(p))); }
-    function currentSection() { const secs = accessibleSections(); let s = secs.find(x => x.key === localStorage.getItem('pc_section')); if (!s) { s = secs[0] || SECTIONS[0]; localStorage.setItem('pc_section', s.key); } return s; }
+    function currentSection() { const secs = accessibleSections(); let s = secs.find(x => x.key === localStorage.getItem('pc_section')); if (!s) { s = secs[0] || SECTIONS[0]; try { localStorage.setItem('pc_section', s.key); } catch (e) {} } return s; }
     function landingPage(sec) { const a = roleAllowed(); return sec.pages.find(p => a.includes(p)) || 'Dashboard'; }
     window.openSectionChooser = function () {
       const secs = accessibleSections();
@@ -831,7 +838,7 @@
       ov.style.display = 'flex';
     };
     window.pickSection = function (key) { localStorage.setItem('pc_section', key); const ov = document.getElementById('section-chooser'); if (ov) ov.style.display = 'none'; const s = SECTIONS.find(x=>x.key===key)||SECTIONS[0]; initApp(landingPage(s)); };
-    function afterLogin() { const secs = accessibleSections(); const s = secs[0]||SECTIONS[0]; localStorage.setItem('pc_section', s.key); initApp(landingPage(s)); }
+    function afterLogin() { const secs = accessibleSections(); const s = secs[0]||SECTIONS[0]; try { localStorage.setItem('pc_section', s.key); } catch (e) {} initApp(landingPage(s)); }
 
     function applyPermissions() {
       const role = localStorage.getItem('pc_role') || 'Admin';
@@ -1006,7 +1013,8 @@
       document.body.style.overflow = '';
       document.body.style.paddingRight = '';
 
-      localStorage.setItem('pc_last_page', pg);
+      // Remembering navigation is optional; storage quota must not block entry.
+      try { localStorage.setItem('pc_last_page', pg); } catch (e) {}
       // Browser Back/Forward: push a history entry on forward nav; skip when we got here FROM history (popstate)
       if (!fromHistory && window.history && window.history.pushState) {
         if (!window.history.state || window.history.state.pcPage !== pg) {

@@ -97,3 +97,10 @@ test('critical UI libraries are local and startup no longer waits for window.onl
   assert.ok(fs.readFileSync(path.join(root, 'js/mock-backend.js'), 'utf8').includes(build));
   assert.match(fs.readFileSync(path.join(root, 'sw.js'), 'utf8'), /potato-v81-email-network-only/);
 });
+
+test('session restoration errors show recovery instead of leaving an endless splash',()=>{
+ const begin=shell.slice(shell.indexOf('    function beginBoot()'),shell.indexOf("    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', beginBoot"));
+ const failure=Error('restore failed');let reported;
+ const context={window:{Swal:{},bootstrap:{},__pcBoot:{onReady:fn=>fn(),fail:error=>reported=error}},localStorage:{getItem:key=>key==='pc_session'?'active':'Dashboard'},initApp(){throw failure;},document:{},console:{error(){}}};
+ vm.runInNewContext(begin+'\nbeginBoot();',context);assert.equal(reported,failure);
+});
