@@ -3,6 +3,14 @@
   const en=()=>window.PC_LANG==='EN',word=(th,english)=>en()?english:th;
   const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const addresses=value=>String(value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+  function conversationRecipients(item){
+    const seen=new Set(['it@rocks-foods.com']),result={to:[],cc:[]};
+    for(const field of ['to','cc'])for(const match of String(item[field]||'').matchAll(/[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/ig)){
+      const address=match[0].toLowerCase();
+      if(!seen.has(address)){seen.add(address);result[field].push(address);}
+    }
+    return result;
+  }
   const client=()=>window.PC_CoProEmail;
   function error(error){return Swal.fire({icon:'error',title:word('ยังดำเนินการอีเมลไม่ได้','Email not completed'),text:String(error?.message||error)});}
   async function approveConversation(mode){
@@ -21,7 +29,12 @@
             if(n!==generation||!results.isConnected)return;results.replaceChildren();
             for(const item of found.items){
               const button=document.createElement('button');button.type='button';button.className='btn btn-outline-success d-block my-2';button.textContent=[item.subject,item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join(' · ');
-              button.addEventListener('click',()=>{selected=item;document.getElementById('coproSelected').textContent='เลือกลูป: '+item.subject;});results.append(button);
+              button.addEventListener('click',()=>{
+                selected=item;document.getElementById('coproSelected').textContent='เลือกลูป: '+item.subject;
+                const recipients=conversationRecipients(item);
+                document.getElementById('coproNewTo').value=recipients.to.join(', ');
+                document.getElementById('coproNewCc').value=recipients.cc.join(', ');
+              });results.append(button);
             }
             if(!found.items.length)results.textContent='ไม่พบเมล กรุณาตรวจหัวข้อและบัญชีผู้ส่ง';
           }catch(e){if(n===generation&&results.isConnected)results.textContent=String(e.message||e);}
@@ -76,22 +89,30 @@
       }).join('');
       const choose=await Swal.fire({
         title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
-        html:'<div style="text-align:left"><p>'+esc(word('ระบุข้อมูลแต่ละปุ่มและผู้รับให้ครบ ไม่คัดลอกข้อมูลข้ามปุ่มหรือเพิ่ม To/CC เดิมอัตโนมัติ','Complete each button and enter recipients. Data is not copied across buttons; there is no automatic Reply All.'))+'</p>'+
+        html:'<div style="text-align:left"><p>'+esc(word('ตรวจข้อมูลแต่ละปุ่มและรายชื่อ To/CC ที่เลือกไว้ก่อนส่ง','Review each button and the selected To/CC recipients before sending.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
           '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recordForms+'</div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
-          const field=document.getElementById('coproLoop'),describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');};field.addEventListener('change',describe);describe();
+          const field=document.getElementById('coproLoop'),describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
           document.getElementById('coproCampaign').addEventListener('change',event=>document.querySelectorAll('[data-copro-records]').forEach(section=>{section.hidden=section.dataset.coproRecords!==event.target.value;}));
         },
-        preConfirm(){
+        showLoaderOnConfirm:true,
+        async preConfirm(){
           const campaign=campaigns.find(c=>c.id===document.getElementById('coproCampaign').value),policy=policies.find(p=>p.id===document.getElementById('coproLoop').value),to=addresses(document.getElementById('coproTestTo').value),cc=addresses(document.getElementById('coproTestCc').value);
           if(!to.length){Swal.showValidationMessage(word('กรุณาระบุผู้รับ To','Enter at least one To recipient'));return false;}
           const records=campaign.buttons.map((b,i)=>{const identity=JSON.parse(b.source_identity_json),saved={buttonId:b.button_id,cmposName:identity.shortName,buttonName:identity.shortName};for(const [key]of fields)saved[key]=document.getElementById('coproRecord-'+campaign.id+'-'+i+'-'+key).value.trim();return saved;});
           const invalid=records.findIndex(r=>!r.brand);if(invalid!==-1){const field=document.getElementById('coproRecord-'+campaign.id+'-'+invalid+'-brand');field.classList.add('is-invalid');field.focus();field.scrollIntoView({block:'center'});Swal.showValidationMessage(word('กรุณาระบุพาร์ทเนอร์ให้ครบทุกปุ่ม','Enter a partner for every button'));return false;}
-          return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:policy.id,policyVersion:policy.version,recipients:{to,cc},records};
+          let selectedPolicy=policy;
+          if(JSON.stringify({to,cc})!==JSON.stringify(policy.recipients)){
+            try{
+              const caps=await client().capabilities(),context=caps.authMode==='gmail_owner'?await window.PC_EmailAuth.ownerSession():await window.PC_EmailMsalContext();
+              selectedPolicy=await client().request('threads',{method:'POST',body:{mode:policy.mode,policyId:policy.id,recipients:{to,cc},audience:[context.identity]},interactive:true});
+            }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
+          }
+          return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:selectedPolicy.id,policyVersion:selectedPolicy.version,recipients:selectedPolicy.recipients,records};
         }
       });
       if(!choose.isConfirmed)return null;

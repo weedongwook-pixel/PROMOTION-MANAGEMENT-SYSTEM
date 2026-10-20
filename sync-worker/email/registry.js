@@ -20,11 +20,17 @@
   api.publishThread=async function(actor,input,env,deps={}){
     await api.requireEmailPermission(actor,'manage',env);
     const mode=input.mode||'test';if(!['test','production'].includes(mode))throw Error('email_invalid_mode');
-    const token=await api.gmailAccess(env,deps),message=await api.gmailMessage(input.messageId,token,deps),h=message.headers;
+    let messageId=input.messageId;
+    if(input.policyId){
+      const prior=await env.DB.prepare('SELECT * FROM email_threads WHERE id=? AND enabled=1').bind(input.policyId).first();
+      if(!prior||!api.threadAudience(prior,actor)||api.emailThreadMode(prior)!==mode)throw Error('email_policy_changed');
+      messageId=prior.message_id;
+    }
+    const token=await api.gmailAccess(env,deps),message=await api.gmailMessage(messageId,token,deps),h=message.headers;
     if(!h.subject||/[\r\n]/.test(h.subject)||(mode==='test'&&h.subject!==TEST_SUBJECT)||!/^<[^\s<>]+@[^\s<>]+>$/.test(h['message-id']||''))throw Error('email_invalid_test_thread');
     const recipients=api.emailRecipients(input.recipients);
     const members=new Set(([h.to,h.cc,h.from].filter(Boolean).join(',').match(/[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}/ig)||[]).map(x=>x.toLowerCase()));
-    if(!members.has('it@rocks-foods.com')||[...recipients.to,...recipients.cc].some(x=>!members.has(x)))throw Error('email_unapproved_recipients');
+    if(!members.has('it@rocks-foods.com')||(!(mode==='production'&&env.EMAIL_AUTH_MODE==='gmail_owner')&&[...recipients.to,...recipients.cc].some(x=>!members.has(x))))throw Error('email_unapproved_recipients');
     if(!Array.isArray(input.audience)||!input.audience.length||input.audience.length>50||input.audience.some(x=>!/^[-a-f0-9]{36}$/i.test(x.tenantId||'')||!/^[-a-f0-9]{36}$/i.test(x.objectId||'')))throw Error('email_invalid_audience');
     if(env.EMAIL_AUTH_MODE==='gmail_owner'&&input.audience.some(x=>x.tenantId!==actor.tenantId||x.objectId!==actor.objectId))throw Error('email_invalid_audience');
     const refs=(h.references||'').match(/<[^\s<>]+@[^\s<>]+>/g)||[];

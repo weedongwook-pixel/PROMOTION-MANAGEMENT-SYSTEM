@@ -11,7 +11,7 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
   if(!ownerMode)for(const role of ['manage','submit','it'])grant(DB,actor,role);
   const env={DB,SYNC_TOKEN:'test-cloud-token',EMAIL_AUTH_MODE:ownerMode?'gmail_owner':'microsoft',CLOUD_FIRST_ENABLED:'true',EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:mode==='test'?'true':'false',EMAIL_SEND_ENABLED:mode==='production'?'true':'false',EMAIL_TENANT_ID:actor.tenantId,EMAIL_API_AUDIENCE:'22222222-2222-4222-8222-222222222222',EMAIL_API_SCOPE:'api://22222222-2222-4222-8222-222222222222/access_as_user',GMAIL_CLIENT_SECRET:'mock',EMAIL_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')};
   const sent=[];
-  const provider=async(url,opts)=>{if(/messages\?/.test(url))return Response.json({messages:[{id:'m1'}]});if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:subject},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'external-test@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
+  const provider=async(url,opts)=>{if(/messages\?/.test(url))return Response.json({messages:[{id:'m1'}]});if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:subject},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'"Test, Partner" <external-test@example.net>'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
   const c={crypto:webcrypto,fetch:provider,URL,URLSearchParams,TextEncoder,TextDecoder,atob,btoa,AbortSignal,Request,Response,Headers,console};
   vm.createContext(c);vm.runInContext(require('../tests/helpers/sync-worker-source.cjs')().replace('export default','globalThis.worker='),c);
   if(!ownerMode)c.PC_Email.verifyEmailActor=async()=>actor;
@@ -56,6 +56,11 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
           async saveCoPromoDrafts(owner,value,expectedUpdatedAt){if(window.failDraft)throw Error('Cloud offline');const key='pc_copro_drafts::'+encodeURIComponent(owner);const r=await fetch('/promo/store/'+encodeURIComponent(key),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value,expectedUpdatedAt})});if(!r.ok)throw Error('Cloud save failed');const check=await this.readCloudKey(key);if(check.value!==value)throw Error('Readback failed');return check;}
         };
       });
+      if(process.argv.includes('--real-cloud')){
+        await page.evaluate(()=>{localStorage.setItem('pc_cloud_cfg',JSON.stringify({url:location.origin,token:'test-cloud-token'}));});
+        await page.addScriptTag({path:path.join(process.cwd(),'js/cloud-store.js')});
+        await page.evaluate(()=>{const save=PC_CLOUD.saveCoPromoDrafts;PC_CLOUD.saveCoPromoDrafts=function(...args){if(window.failDraft)return Promise.reject(Error('Cloud offline'));return save.apply(this,args);};});
+      }
     }
     if(process.argv.includes('--form'))await draftScripts();
     let operation;
@@ -92,16 +97,23 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     }
     if(process.argv.includes('--new-loop')){
       await page.locator('#coproFindSubject').fill(subject);await page.locator('#coproFind').click();
-      await page.locator('#coproFound button').first().click();await page.locator('#coproNewTo').fill('external-test@example.net');
+      await page.locator('#coproFound button').first().click();
+      assert.equal(await page.locator('#coproNewTo').inputValue(),'external-test@example.net');
+      assert.equal(await page.locator('#coproNewCc').inputValue(),'');
+      if(ownerMode&&mode==='production')await page.locator('#coproNewCc').fill('added@example.net');
       await page.getByRole('button',{name:'อนุมัติลูปและทำต่อ',exact:true}).click();
     }
-    await page.locator('#coproTestTo').fill('external-test@example.net',{timeout:5000});
+    await page.locator('#coproTestTo').waitFor({timeout:5000});
+    assert.equal(await page.locator('#coproTestTo').inputValue(),'external-test@example.net');
+    if(process.argv.includes('--new-loop')&&ownerMode&&mode==='production')assert.equal(await page.locator('#coproTestCc').inputValue(),'added@example.net');
+    if(ownerMode&&mode==='production')await page.locator('#coproTestCc').fill('edited@example.net');
     const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});
     const brands=await emptyBrand.all();assert.equal(brands.length,2);
     const blank=[];for(const brand of brands)if(!await brand.inputValue())blank.push(brand);assert.equal(blank.length,1,'no silent copying to another button');await blank[0].fill('Partner B');
     await page.getByRole('button',{name:'ตรวจตัวอย่างเมล',exact:true}).click();
     await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).waitFor();
     assert.ok((await page.locator('.swal2-popup').innerText()).includes(attachment.name));
+    if(ownerMode&&mode==='production')assert.ok((await page.locator('.swal2-popup').innerText()).includes('edited@example.net'));
     await page.locator('.swal2-popup').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished));});
     for(const width of [1366,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:'/tmp/copro-email-preview-'+width+'.png',fullPage:true});}
     await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).click();
