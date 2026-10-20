@@ -24,7 +24,7 @@
     for(const b of d.buttons||[]){
       lines.push('Type Promotion: '+String(b.promoType||'-'));
       lines.push('Code Promotion: '+String((b.codePromotion??(b.code||'').split(' / ')[0])||'-'));
-      lines.push('ชื่อปุ่ม (SHORT NAME (POS)): '+String(b.name||'-'));
+      lines.push('ชื่อปุ่ม: '+String(b.name||'-'));
       lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));
       lines.push('เงื่อนไข: '+String(b.condition||'-'));
     }
@@ -32,7 +32,7 @@
     lines.push('ไฟล์แนบ: '+((snapshot.attachments||[]).map(file=>file.name).join(', ')||'ไม่มี'));
     const text=lines.join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม \(SHORT NAME \(POS\)\)|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ):/;
+    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ):/;
     return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map((x,i)=>{
       const match=x.match(label);
       const content=i===0?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);

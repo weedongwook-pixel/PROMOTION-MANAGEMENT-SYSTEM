@@ -14,11 +14,11 @@ test('preview and email present every requested promotion field and original att
  const details=a.coProDetails([{campaign:'Campaign A',start:'2026-11-01',end:'2027-01-31',stores:'ALL',shortName:'POS name',detail:'Promo detail',mechanic:'Original conditions',codePromotion:'BD176'}]);
  for(const milestone of ['submitted','promotion_edited','it_interface_complete']){
   const mail=a.renderCoProEmail({milestone,details,attachments:[{name:'original.xlsx'}]});
-  let lastIndex=-1;for(const text of ['ชื่อแคมเปญ: Campaign A','วันที่เริ่ม - วันที่สิ้นสุด: 2026-11-01 - 2027-01-31','Type Promotion: -','Code Promotion: BD176','ชื่อปุ่ม (SHORT NAME (POS)): POS name','รายละเอียดโปรฯ: Promo detail','เงื่อนไข: Original conditions','ไฟล์แนบ: original.xlsx']){const index=mail.text.indexOf(text);assert.ok(index>lastIndex,text);lastIndex=index;}
+  let lastIndex=-1;for(const text of ['ชื่อแคมเปญ: Campaign A','วันที่เริ่ม - วันที่สิ้นสุด: 2026-11-01 - 2027-01-31','Type Promotion: -','Code Promotion: BD176','ชื่อปุ่ม: POS name','รายละเอียดโปรฯ: Promo detail','เงื่อนไข: Original conditions','ไฟล์แนบ: original.xlsx']){const index=mail.text.indexOf(text);assert.ok(index>lastIndex,text);lastIndex=index;}
   assert.doesNotMatch(mail.text,/Stores:|Sale Mode:|Minimum amount:|Unit price:|Net:|Discount:/);
  }
  const missing=a.renderCoProEmail({milestone:'submitted',details:{buttons:[{}]},attachments:[]});
- for(const label of ['ชื่อปุ่ม (SHORT NAME (POS)): -','รายละเอียดโปรฯ: -','เงื่อนไข: -','Code Promotion: -'])assert.ok(missing.text.includes(label));
+ for(const label of ['ชื่อปุ่ม: -','รายละเอียดโปรฯ: -','เงื่อนไข: -','Code Promotion: -'])assert.ok(missing.text.includes(label));
 });
 
 test('HTML mail bolds headings and field labels while retaining escaped regular values and plain text',()=>{

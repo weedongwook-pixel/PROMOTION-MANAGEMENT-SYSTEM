@@ -81,7 +81,7 @@ test('queue failure rolls back final IT settlement, product and completion evide
 });
 test('email preview shows saved items and quantities without leaking accounting remarks',async()=>{
   const {a,DB,env,draft}=await fixture();draft.records[0].remark='Private accounting note';
-  const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/Code Promotion: IC001/);assert.match(preview.text,/ชื่อปุ่ม \(SHORT NAME \(POS\)\): Button A/);assert.doesNotMatch(preview.text,/Public detail/);assert.doesNotMatch(preview.text,/Private accounting note/);DB.db.close();
+  const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/Code Promotion: IC001/);assert.match(preview.text,/ชื่อปุ่ม: Button A/);assert.doesNotMatch(preview.text,/Public detail/);assert.doesNotMatch(preview.text,/Private accounting note/);DB.db.close();
 });
 test('same-name buttons with distinct codes cannot complete each other',async()=>{
   const {a,DB,env,c,buttons,draft}=await fixture({sameName:true});await a.commitCoPromo(actor,draft,env);
