@@ -13,3 +13,7 @@ test('mail history has one row per campaign and latest status for each milestone
 test('failed mail lookup remains unknown without inventing an unsent status',async()=>{
  const html=await render([],true);assert.equal((html.match(/<td>ยังตรวจสถานะไม่ได้<\/td>/g)||[]).length,6);assert.doesNotMatch(html,/ไม่ได้ส่งเมล/);
 });
+
+test('no edit notification is shown as a dash after a successful lookup',async()=>{
+ const html=await render([]);assert.equal((html.match(/<td>-<\/td>/g)||[]).length,2);
+});
