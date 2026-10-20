@@ -346,3 +346,10 @@ test('CoPromo No or completed Yes offers history or continue only at the end',as
   assert.deepEqual(events,['copro-no','choices',...(choice?['history']:[])]);
  }
 });
+
+test('all-date history includes older submissions without changing the mine filter',async()=>{
+ const {log,setTracking,setRemote}=setup();
+ const row={campaign:'Older promo',txnDate:'2026-01-01T05:00:00Z',submittedBy:'Bow',submissionId:'SUB-OLD',submissionExpectedButtons:1,shortName:'One'};
+ setTracking([row,{...row,campaign:'Other user',submittedBy:'Other'}]);setRemote({'Older promo':[row]});
+ const result=await log.list('',{scope:'mine'});assert.equal(result.length,1);assert.equal(result[0].campaign,'Older promo');assert.equal(result[0].status,'verified');
+});

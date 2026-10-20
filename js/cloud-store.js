@@ -464,6 +464,16 @@
     return check;
   }
 
+  async function saveMailDecision(campaign, kind, revisionId, decision) {
+    var owner=localStorage.getItem('pc_userName');
+    if(!owner||decision!=='not_sent')throw Error('ข้อมูลสถานะเมลไม่ถูกต้อง');
+    var key='pc_mail_decisions::'+encodeURIComponent(owner),prior=await readCloudKey(key),items=prior?JSON.parse(prior.value):{};
+    var id=JSON.stringify([campaign,kind,revisionId||'']);
+    items[id]={campaign:campaign,kind:kind,revisionId:revisionId||'',status:decision,user:owner,at:new Date().toISOString()};
+    var value=JSON.stringify(items),response=await api('/promo/store/'+encodeURIComponent(key),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:value,expectedUpdatedAt:prior?prior.updatedAt:null})});
+    if(!response.ok)throw Error('ยังบันทึกสถานะไม่ส่งเมลบน Cloud ไม่สำเร็จ กรุณาลองใหม่');
+    var check=await readCloudKey(key);if(!check||check.value!==value)throw Error('ยังยืนยันสถานะไม่ส่งเมลไม่ได้');
+  }
   async function saveCoPromoRecords(value, expectedUpdatedAt) {
     var key='pc_co_promotions';
     if (_inFlight || _pending[key]) throw Error('ยังมีข้อมูล CoPromo ค้างซิงก์ กรุณารอสักครู่แล้วลองใหม่');
@@ -1379,7 +1389,7 @@
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
-    readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    saveMailDecision:saveMailDecision, readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
     loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,

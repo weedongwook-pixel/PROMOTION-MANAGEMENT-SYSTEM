@@ -35,7 +35,10 @@
       showCancelButton: true, confirmButtonText: '<i class="fas fa-handshake"></i> ใช่ · เตรียมส่งเมลเข้าลูป',
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
     }).then(async function (res) {
-      if (!res.isConfirmed) return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
+      if (!res.isConfirmed) {
+        if(res.dismiss===Swal.DismissReason.cancel&&window.PC_CLOUD?.saveMailDecision)for(const campaign of campaigns)await window.PC_CLOUD.saveMailDecision(campaign,'submitted','','not_sent');
+        return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
+      }
       if(!window.PC_CoPromoDrafts?.recordCoPromo)throw Error('ระบบบันทึก CoPromo ยังไม่พร้อม กรุณาเปิดเว็บใหม่');
       for(const campaign of campaigns)await window.PC_CoPromoDrafts.recordCoPromo(campaign);
       return openFormsSequential(campaigns.slice()).then(function (completed) {

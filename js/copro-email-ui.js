@@ -54,16 +54,32 @@
     generation++;return result.isConfirmed?result.value:null;
   }
   window.PC_CoProEmailUI={
+    async mountHistory(root,entries){
+      const kinds={submitted:'แจ้งโปรฯ',promotion_edited:'แจ้งแก้ไข',it_interface_complete:'IT–Interface เสร็จ'};
+      const labels={unknown:'ยังตรวจสถานะไม่ได้',unselected:'ยังไม่เลือก',not_sent:'ไม่ส่ง',queued:'รอส่ง',retry:'รอส่ง · กำลังลองใหม่',sending:'รอส่ง · กำลังส่ง',accepted:'ส่งเรียบร้อย (Gmail รับแล้ว)',failed:'ส่งไม่สำเร็จ',held:'ส่งไม่สำเร็จ',needs_verification:'ต้องตรวจผลส่งก่อนส่งซ้ำ',cancelled:'ยกเลิกการส่ง',waiting:'รอ IT และ Interface ครบ'};
+      root.textContent='กำลังอ่านสถานะเมล…';
+      try{
+        const results=await Promise.allSettled([client().request('copro/mail-history'),window.PC_CLOUD.readCloudKey('pc_mail_decisions::'+encodeURIComponent(localStorage.getItem('pc_userName')||''))]);
+        if(!root.isConnected)return;
+        const events=results[0].status==='fulfilled'?results[0].value.items:[],decision=results[1].status==='fulfilled'&&results[1].value?Object.values(JSON.parse(results[1].value.value)):[];
+        const rows=events.filter(e=>!(e.status==='unselected'&&decision.some(d=>d.campaign===e.campaign&&d.kind===e.kind)));
+        for(const d of decision)if(!events.some(e=>e.campaign===d.campaign&&e.kind===d.kind&&(d.revisionId?e.eventKey.endsWith(':revision:'+d.revisionId):e.status!=='unselected')))rows.push(d);
+        const campaigns=new Set([...(entries||[]).map(e=>e.campaign),...rows.map(e=>e.campaign)]);
+        for(const campaign of campaigns)for(const kind of Object.keys(kinds))if(!rows.some(e=>e.campaign===campaign&&e.kind===kind))rows.push({campaign,kind,status:results[0].status==='rejected'?'unknown':kind==='it_interface_complete'?'waiting':'unselected'});
+        const reason={approval_or_source_changed:'ข้อมูลโปรฯ หรือสิทธิ์เปลี่ยนหลังยืนยัน',approval_or_target_changed:'ลูปเมลหรือสิทธิ์เปลี่ยน',connection_unavailable:'บัญชี Gmail ยังไม่พร้อม',provider_rejected:'Gmail ปฏิเสธการส่ง',provider_rate_limited:'Gmail จำกัดการส่งชั่วคราว',provider_outcome_unknown:'ยังยืนยันผลตอบกลับจาก Gmail ไม่ได้',lease_expired:'ระบบไม่ได้รับผลส่งภายในเวลาที่กำหนด',acknowledgement_not_saved:'บันทึกผลตอบกลับ Gmail ไม่สำเร็จ'};
+        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังตรวจสถานะจาก Gmail ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th><th>ประเภทเมล</th><th>สถานะ</th><th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.campaign)+'</td><td>'+esc(kinds[r.kind]||r.kind)+'</td><td>'+esc(labels[r.status]||r.status)+'</td><td>'+esc(r.at?new Date(r.at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(reason[r.error]||r.error||'—')+'</td></tr>').join('')+'</tbody></table></div>';
+      }catch(e){root.textContent='อ่านสถานะเมลไม่สำเร็จ: '+e.message;}
+    },
     async notifyEdit(context,receipt){
       const answer=await Swal.fire({icon:'question',title:'ต้องการส่งเมลแจ้งการแก้ไขหรือไม่?',text:context.campaign,input:'textarea',inputLabel:'ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)',inputAttributes:{maxlength:4000},showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
-      if(!answer.isConfirmed)return false;
+      if(!answer.isConfirmed){try{if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(context.campaign,'promotion_edited',receipt.editId,'not_sent');}catch(e){await Swal.fire({icon:'error',title:'โปรฯ บันทึกแล้ว แต่สถานะไม่ส่งเมลยังบันทึกไม่ได้',text:e.message});}return false;}
       try{
         const body={campaignKey:'promo::c::'+encodeURIComponent(context.campaign),month:context.month,editId:receipt.editId,additionalMessage:answer.value||''};
         Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         const preview=await client().request('copro/revision/preview',{method:'POST',body,interactive:true});
         const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
         const confirm=await Swal.fire({title:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',html:'<pre style="text-align:left;white-space:pre-wrap;max-height:55vh;overflow:auto">'+esc(text)+'</pre>',showCancelButton:true,confirmButtonText:'ยืนยันส่งเมล',cancelButtonText:'ไม่ส่ง',width:740});
-        if(!confirm.isConfirmed)return false;
+        if(!confirm.isConfirmed){if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(context.campaign,'promotion_edited',receipt.editId,'not_sent');return false;}
         Swal.fire({title:'กำลังบันทึกคำขอส่งเมล…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         const result=await client().request('copro/revision',{method:'POST',body:{...body,previewHash:preview.previewHash,confirmed:true}});
         await Swal.fire({icon:'success',title:result.mailStatus==='accepted'?'Gmail รับเมลแล้ว':'บันทึกคำขอส่งเมลแล้ว',text:'รายการแจ้งแก้ไขนี้ไม่ถูกส่งซ้ำ'});

@@ -247,10 +247,11 @@
   }
   async function list(date, options) {
     var who = user(), allSubmitters = canViewAll() && (!options || options.scope !== 'mine');
+    if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});
     var rows = await runTracking(), groups = new Map();
     (rows || []).forEach(function (row) {
       var submitter = norm(row.submittedBy || row.reporter);
-      if (!submitter || (!allSubmitters && submitter !== who) || bangkokDate(row.txnDate) !== date) return;
+      if (!submitter || (!allSubmitters && submitter !== who) || (date && bangkokDate(row.txnDate) !== date)) return;
       var id = norm(row.submissionId), key = id || ['old', row.campaign, row.txnDate, row.submittedBy || row.reporter].join('|');
       if (!groups.has(key)) groups.set(key, { id: id, campaign: row.campaign, form: row.submissionForm || row.promoType || 'Promotion',
         at: row.txnDate, user: submitter, expectedButtons: Number(row.submissionExpectedButtons) || 0, shortNames: [], legacy: !id });
@@ -260,7 +261,7 @@
       if (Number(row.submissionExpectedButtons) > entry.expectedButtons) entry.expectedButtons = Number(row.submissionExpectedButtons);
     });
     var localAttempts = (await allAttempts()).filter(function (a) {
-      return a.user === who && bangkokDate(a.at) === date;
+      return a.user === who && (!date || bangkokDate(a.at) === date);
     });
     var rejectedIds = new Set(localAttempts.filter(function (a) {
       return a.status === 'rejected' && !a.successShownAt;

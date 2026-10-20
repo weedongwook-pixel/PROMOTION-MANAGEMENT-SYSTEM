@@ -24,6 +24,7 @@
       if(path==='/email/copro/adopt'&&request.method==='POST')return json(await api.adoptCoProCampaign(actor,body,env));
       if(path==='/email/copro/revision/preview'&&request.method==='POST')return json(await api.previewPromotionRevision(actor,body,env));
       if(path==='/email/copro/revision'&&request.method==='POST')return json(await api.commitPromotionRevision(actor,body,env));
+      if(path==='/email/copro/mail-history'&&request.method==='GET')return json(await api.mailHistory(actor,env));
       if(path==='/email/copro/preview'&&request.method==='POST')return json(await api.previewCoPromo(actor,body,env));
       if(path==='/email/copro'&&request.method==='POST')return json(await api.commitCoPromo(actor,body,env));
       if(path==='/email/copro'&&request.method==='GET')return json(await api.listCoProCampaigns(actor,env));

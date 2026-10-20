@@ -155,6 +155,11 @@
     statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,d.c.id,d.binding.version,JSON.stringify(d.snap),Date.now(),Date.now()));
     await env.DB.batch(statements);return {saved:true,mailStatus:'queued'};
   };
+  api.mailHistory=async function(actor,env){
+    await api.requireEmailPermission(actor,'submit',env);
+    const rows=(await statement(env,"SELECT c.campaign_key,c.month,c.source_json,o.event_key,o.status,o.sanitized_error,o.created_at,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id WHERE c.owner_tenant=? AND c.owner_oid=? ORDER BY o.created_at DESC",actor.tenantId,actor.objectId).all()).results;
+    return {items:rows.map(r=>{const source=JSON.parse(r.source_json),first=source[0]||{};return {campaign:first.campaign||decodeURIComponent(r.campaign_key.slice(10)),month:r.month,submitter:first.submittedBy||first.reporter||'',eventKey:r.event_key||'',kind:r.event_key?.includes(':revision:')?'promotion_edited':r.event_key?.endsWith(':it_interface_complete')?'it_interface_complete':'submitted',status:r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null};})};
+  };
   api.commitCoPromo=async function(actor,input,env){
     const d=await draft(actor,input,env),{c,thread,records,recipients,contentHash}=d;
     if(input.confirmed!==true||input.previewHash!==contentHash)throw Error('email_confirmation_required');

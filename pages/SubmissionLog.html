@@ -98,9 +98,10 @@
     <div class="sl-controls">
       <div id="sl-scope-wrap" hidden><label for="sl-scope">รายการของใคร</label><select id="sl-scope" class="form-select form-select-sm"><option value="all">ทุกผู้ส่ง</option><option value="mine">เฉพาะของฉัน</option></select></div>
       <div><label for="sl-date">วันที่ส่งงาน (เวลาไทย)</label><input id="sl-date" type="date" class="form-control form-control-sm"></div>
-      <button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
+      <button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('sl-date').value='';window.slRefresh()">ทุกวันที่</button><button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
     </div>
   </div>
+  <section class="mb-4"><h2 class="h5">สถานะอีเมล · บัญชีผู้ส่งที่เชื่อมต่อ</h2><p class="sl-sub">แยกแจ้งโปรฯ / แจ้งแก้ไข / IT–Interface เสร็จ · ส่งเรียบร้อยหมายถึง Gmail รับแล้ว ยังไม่ยืนยันเข้า Inbox ผู้รับ</p><div id="sl-mail-history"></div></section>
   <div id="sl-overview" class="sl-overview empty" role="status" aria-live="polite"><strong>กำลังตรวจรายการที่ส่ง…</strong></div>
   <div id="sl-metrics" class="sl-metrics"><span>กำลังนับแคมเปญ…</span></div>
   <div id="sl-list-tools" hidden>
@@ -123,7 +124,7 @@
   </table></div>
   <section class="sl-activity" aria-labelledby="sl-activity-title">
     <div class="sl-activity-tools">
-      <div><h2 id="sl-activity-title">รายการเปลี่ยนแปลง <span id="sl-activity-count">0</span></h2><p>เพิ่มปุ่มหรือสินค้า · ลดเวลา · ขยายเวลา · ยกเลิก — แยกจากจำนวนแคมเปญที่แจ้งใหม่ · เริ่มเก็บหลังเปิดใช้ฟีเจอร์นี้</p></div>
+      <div><h2 id="sl-activity-title">รายการเปลี่ยนแปลง <span id="sl-activity-count">0</span></h2><p>เพิ่มปุ่มหรือสินค้า · ลดเวลา · ขยายเวลา · ยกเลิก — แยกจากจำนวนแคมเปญที่แจ้งใหม่ · เริ่มเก็บหลังเปิดใช้ฟีเจอร์นี้ · หากไม่เลือกวันที่ ส่วนรายการเปลี่ยนแปลงแสดงวันนี้</p></div>
       <div><label for="sl-activity-filter">ประเภทการเปลี่ยนแปลง</label><select id="sl-activity-filter" class="form-select form-select-sm" onchange="window.slRenderActivity()"><option value="all">ทั้งหมด</option><option value="ADDED">เพิ่ม</option><option value="EDITED">แก้ไขข้อมูล</option><option value="REDUCED">ลด</option><option value="EXTENDED">ขยาย</option><option value="CANCELLED">ยกเลิก</option></select></div>
     </div>
     <p id="sl-activity-result" class="sl-result-count" role="status" aria-live="polite">กำลังตรวจประวัติจาก Cloud…</p>
@@ -306,7 +307,7 @@
     try {
       var scope = document.getElementById('sl-scope');
       var option = { scope: scope ? scope.value : 'mine' };
-      var results = await Promise.allSettled([PC_SubmissionLog.list(date.value, option), PC_SubmissionLog.listActivity(date.value, option)]);
+      var results = await Promise.allSettled([PC_SubmissionLog.list(date.value, option), PC_SubmissionLog.listActivity(date.value || PC_SubmissionLog.today(), option)]);
       if (n !== generation || !document.getElementById('sl-rows')) return;
       if (results[0].status === 'fulfilled') { items = results[0].value; render(); }
       else {
@@ -315,6 +316,7 @@
         if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
         if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(results[0].reason && results[0].reason.message || results[0].reason) + '</td></tr>';
       }
+      if(window.PC_CoProEmailUI?.mountHistory)window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items);
       if (results[1].status === 'fulfilled') { activities = results[1].value; window.slRenderActivity(); }
       else {
         activities = [];
@@ -339,7 +341,7 @@
     var scope = document.getElementById('sl-scope');
     if (scope && canViewAll) scope.addEventListener('change', window.slRefresh);
     updateScopeDescription();
-    date.value = PC_SubmissionLog.today();
+    date.value = ''; // All submission dates; sending mail does not change the original submission date.
     date.addEventListener('change', window.slRefresh);
     window.slRefresh();
   };

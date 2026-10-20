@@ -205,3 +205,10 @@ test('optional recipient message is previewed, bound to confirmation, escaped an
  const snap=JSON.parse(DB.db.prepare('SELECT snapshot_json FROM email_outbox').get().snapshot_json);assert.equal(snap.additionalMessage,draft.additionalMessage);assert.match(a.renderCoProEmail(snap).html,/&lt;note&gt;/);
  await assert.rejects(a.previewCoPromo(actor,{...draft,additionalMessage:'x'.repeat(4001)},env),/invalid_record/);DB.db.close();
 });
+
+test('mail history is owner-scoped, separates milestones and exposes sanitized delivery state only',async()=>{
+ const {a,DB,env,c,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+ DB.db.exec("UPDATE email_outbox SET status='accepted',updated_at=12345");
+ const history=await a.mailHistory(actor,env);assert.equal(history.items.length,1);assert.equal(history.items[0].kind,'submitted');assert.equal(history.items[0].status,'accepted');assert.equal(history.items[0].at,12345);assert.equal(history.items[0].campaign,'UOB test');assert.equal(history.items[0].snapshot_json,undefined);
+ const other={tenantId:actor.tenantId,objectId:'44444444-4444-4444-8444-444444444444'};grant(DB,other,'submit');assert.equal((await a.mailHistory(other,env)).items.length,0);DB.db.close();
+});
