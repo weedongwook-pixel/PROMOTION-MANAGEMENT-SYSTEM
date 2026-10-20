@@ -63,3 +63,17 @@ test('dispatch sends exact original attachments and holds changed or missing byt
   await a.dispatchEmail(env);assert.equal(sent,change==='none'?2:0);DB.db.close();
  }
 });
+
+test('revision delivery validates edited source and original loop and sends once',async()=>{
+ for(const change of [false,true]){
+  const {a,DB,env}=await fixture();DB.db.exec("DELETE FROM email_outbox; CREATE TABLE promo_commit_guard(id INTEGER PRIMARY KEY CHECK(id=1)); CREATE TABLE promo_submission_receipts(submission_id TEXT PRIMARY KEY,response_json TEXT)");
+  const block={m:{'2026-10':[{campaign:'Pilot',shortName:'A',editId:'edit-latest',detail:'Edited source',codePromotion:'IC999'}]}};
+  DB.db.prepare('UPDATE promo_store SET v=?,updated_at=2').run(JSON.stringify(block));
+  DB.db.prepare('INSERT INTO promo_submission_receipts VALUES(?,?)').run('edit-latest',JSON.stringify({kind:'CAMPAIGN_EDIT',versions:{'promo::c::Pilot':2}}));
+  const input={campaignKey:'promo::c::Pilot',month:'2026-10',editId:'edit-latest'};
+  const preview=await a.previewPromotionRevision(actor,input,env);await a.commitPromotionRevision(actor,{...input,previewHash:preview.previewHash,confirmed:true},env);
+  if(change){block.m['2026-10'][0].codePromotion='IC998';DB.db.prepare('UPDATE promo_store SET v=?').run(JSON.stringify(block));}
+  let sends=0;a.sendReply=async(token,snapshot)=>{sends++;assert.equal(snapshot.threadId,'provider');assert.match(a.renderCoProEmail(snapshot).text,/IC999/);return {outcome:'accepted',providerId:'revision'};};
+  await a.dispatchEmail(env);await a.dispatchEmail(env);assert.equal(sends,change?0:1);DB.db.close();
+ }
+});

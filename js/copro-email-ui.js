@@ -54,6 +54,25 @@
     generation++;return result.isConfirmed?result.value:null;
   }
   window.PC_CoProEmailUI={
+    async notifyEdit(context,receipt){
+      const answer=await Swal.fire({icon:'question',title:'ต้องการส่งเมลแจ้งการแก้ไขหรือไม่?',text:context.campaign,showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
+      if(!answer.isConfirmed)return false;
+      try{
+        const body={campaignKey:'promo::c::'+encodeURIComponent(context.campaign),month:context.month,editId:receipt.editId};
+        Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        const preview=await client().request('copro/revision/preview',{method:'POST',body,interactive:true});
+        const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text,'ไฟล์แนบต้นฉบับ: '+(preview.attachments.map(f=>f.name).join(', ')||'ไม่มี')].join('\n\n');
+        const confirm=await Swal.fire({title:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',html:'<pre style="text-align:left;white-space:pre-wrap;max-height:55vh;overflow:auto">'+esc(text)+'</pre>',showCancelButton:true,confirmButtonText:'ยืนยันส่งเมล',cancelButtonText:'ไม่ส่ง',width:740});
+        if(!confirm.isConfirmed)return false;
+        Swal.fire({title:'กำลังบันทึกคำขอส่งเมล…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        const result=await client().request('copro/revision',{method:'POST',body:{...body,previewHash:preview.previewHash,confirmed:true}});
+        await Swal.fire({icon:'success',title:result.mailStatus==='accepted'?'Gmail รับเมลแล้ว':'บันทึกคำขอส่งเมลแล้ว',text:'รายการแจ้งแก้ไขนี้ไม่ถูกส่งซ้ำ'});
+        return true;
+      }catch(e){
+        await Swal.fire({icon:'error',title:'บันทึกโปรฯ แล้ว แต่ยังส่งเมลไม่ได้',text:String(e.message||e)});
+        return false;
+      }
+    },
     async save(record,options={}){
       if(record.id)throw Error(word('รุ่นทดสอบยังไม่ส่งเมลแก้ไขงานเดิม','Revision emails are not enabled in this pilot'));
       let campaigns=(await client().list()).filter(c=>c.key==='promo::c::'+encodeURIComponent(record.campaign));

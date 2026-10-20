@@ -129,6 +129,18 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,2);
     for(const [i,mail] of sent.entries()){const mime=Buffer.from(mail.raw,'base64url').toString('utf8');assert.match(mime,/Content-Disposition: attachment/);fs.writeFileSync('/private/tmp/copro-attachment-'+i+'.eml',mime);}
     assert.equal(sent[0].threadId,'provider-thread');assert.equal(sent[1].threadId,'provider-thread');assert.deepEqual(errors,[]);
+    if(process.argv.includes('--revision')){
+      const key='promo::c::Email%20UOB%20test',stored=DB.db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?').get(key),block=JSON.parse(stored.v),editId='edit-browser-revision';
+      block.m['2026-10'].forEach(r=>{r.editId=editId;r.detail='Updated promotion from saved form';r.codePromotion='IC0900';});
+      DB.db.prepare('UPDATE promo_store SET v=?,updated_at=? WHERE k=?').run(JSON.stringify(block),stored.updated_at+1,key);
+      DB.db.prepare('INSERT INTO promo_submission_receipts(submission_id,request_hash,response_json,actor,expected_buttons,created_at) VALUES(?,?,?,?,?,?)').run(editId,'test',JSON.stringify({kind:'CAMPAIGN_EDIT',versions:{[key]:stored.updated_at+1}}),'Test staff',2,Date.now());
+      const show=()=>page.evaluate(()=>PC_CoProEmailUI.notifyEdit({campaign:'Email UOB test',month:'2026-10'},{editId:'edit-browser-revision'}));
+      const no=show();await page.getByRole('button',{name:'ไม่ส่ง',exact:true}).click();assert.equal(await no,false);assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,2);
+      const yes=show();await page.getByRole('button',{name:'ส่ง',exact:true}).click();await page.getByRole('button',{name:'ยืนยันส่งเมล',exact:true}).waitFor();
+      const text=await page.locator('.swal2-popup').innerText();assert.match(text,/Updated promotion from saved form/);assert.match(text,/IC0900/);assert.doesNotMatch(text,/Internal only|Test partner/);
+      await page.getByRole('button',{name:'ยืนยันส่งเมล',exact:true}).click();await page.getByText('บันทึกคำขอส่งเมลแล้ว',{exact:true}).waitFor();await page.locator('.swal2-confirm').click();assert.equal(await yes,true);
+      await c.PC_Email.dispatchEmail(env,{fetch:provider});await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,3);assert.equal(sent[2].threadId,'provider-thread');
+    }
     env.EMAIL_COPRO_ENABLED='false';
     await page.evaluate(()=>PC_CoProEmailUI.mountSettings(document.getElementById('pilot')));
     await page.getByRole('status').filter({hasText:'ผู้ดูแลยังไม่เปิด'}).waitFor();

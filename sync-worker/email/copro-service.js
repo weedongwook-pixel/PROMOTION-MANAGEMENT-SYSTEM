@@ -116,6 +116,43 @@
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }
+  async function revisionDraft(actor,input,env){
+    await api.requireEmailPermission(actor,'submit',env);
+    if(typeof input.editId!=='string'||!input.editId.startsWith('edit-'))throw Error('email_source_changed');
+    const c=await statement(env,"SELECT c.* FROM email_campaigns c JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND c.month=? AND c.owner_tenant=? AND c.owner_oid=? AND c.status='active' ORDER BY b.confirmed_at DESC LIMIT 1",input.campaignKey,input.month,actor.tenantId,actor.objectId).first();
+    if(!c)throw Error('email_revision_loop_missing');
+    const row=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',c.campaign_key).first();
+    if(!row)throw Error('email_source_changed');
+    const block=JSON.parse(row.v),raw=block.m?.[c.month];
+    if(!raw?.length||raw.some(r=>r.editId!==input.editId||r.changeStatus==='CANCELLED'))throw Error('email_source_changed');
+    const receipt=await statement(env,'SELECT response_json FROM promo_submission_receipts WHERE submission_id=?',input.editId).first();
+    const saved=receipt&&JSON.parse(receipt.response_json);
+    if(saved?.kind!=='CAMPAIGN_EDIT'||!saved.versions?.[c.campaign_key])throw Error('email_source_changed');
+    const binding=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
+    const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',binding.thread_id).first();
+    if(!thread||thread.version!==binding.policy_version||!api.threadAudience(thread,actor))throw Error('email_policy_changed');
+    const rows=api.coProSource(block,c.month),files=await api.readEmailAttachments(raw,env),sourceHash=await api.hash(JSON.stringify(rows));
+    const snap=snapshot(c,thread,JSON.parse(binding.recipients_json),'promotion_edited',rows,[],files.manifest);
+    snap.revision={editId:input.editId,sourceHash};
+    const hash=await api.hash(JSON.stringify({snapshot:snap,bindingVersion:binding.version}));
+    return {c,row,thread,binding,files,snap,hash};
+  }
+  api.previewPromotionRevision=async function(actor,input,env){
+    const d=await revisionDraft(actor,input,env);
+    return {previewHash:d.hash,subject:d.snap.subject,recipients:d.snap.recipients,attachments:d.files.manifest,text:api.renderCoProEmail(d.snap).text};
+  };
+  api.commitPromotionRevision=async function(actor,input,env){
+    const d=await revisionDraft(actor,input,env);
+    if(input.confirmed!==true||input.previewHash!==d.hash)throw Error('email_confirmation_required');
+    const eventKey=d.c.id+':'+d.c.month+':revision:'+input.editId;
+    const old=await statement(env,'SELECT snapshot_json,status FROM email_outbox WHERE event_key=?',eventKey).first();
+    if(old){if(old.snapshot_json!==JSON.stringify(d.snap))throw Error('email_version_conflict');return {saved:true,mailStatus:old.status};}
+    const statements=authorizationGuard(env,actor,'submit',d.c,d.thread,d.row.updated_at);
+    statements.push(statement(env,'INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_bindings WHERE campaign_id=? AND version=? AND thread_id=?) THEN 1 ELSE 0 END',d.c.id,d.binding.version,d.thread.id),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
+    if(d.files.version!==null)statements.push(...fileGuard(env,d.files.version));
+    statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,d.c.id,d.binding.version,JSON.stringify(d.snap),Date.now(),Date.now()));
+    await env.DB.batch(statements);return {saved:true,mailStatus:'queued'};
+  };
   api.commitCoPromo=async function(actor,input,env){
     const d=await draft(actor,input,env),{c,thread,records,recipients,contentHash}=d;
     if(input.confirmed!==true||input.previewHash!==contentHash)throw Error('email_confirmation_required');

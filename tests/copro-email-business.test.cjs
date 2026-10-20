@@ -177,3 +177,22 @@ test('IT cannot confirm a foreign, released, mismatched or missing new promotion
   const before=DB.db.prepare('SELECT k,v FROM promo_store ORDER BY k').all();await assert.rejects(a.commitIT(actor,{campaignId:c.id,buttonId:buttons[0].button_id,expectedVersion:1,codePromotion:'IC9999'},env),/email_counter_conflict/);assert.deepEqual(DB.db.prepare('SELECT k,v FROM promo_store ORDER BY k').all(),before);assert.equal(DB.db.prepare('SELECT SUM(it_done) n FROM email_campaign_buttons').get().n,0);DB.db.close();
  }
 });
+
+test('revision notification uses latest promotion source, original loop and one event per durable edit',async()=>{
+ const {a,DB,env,c,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+ DB.db.exec('CREATE TABLE promo_submission_receipts(submission_id TEXT PRIMARY KEY,response_json TEXT)');
+ const editId='edit-test-notification',key='promo::c::UOB%20test';
+ changeCloud(DB,c,rows=>rows.forEach(r=>Object.assign(r,{editId,detail:'Revised promotion only',codePromotion:'IC0999'})));
+ DB.db.prepare('INSERT INTO promo_submission_receipts VALUES(?,?)').run(editId,JSON.stringify({kind:'CAMPAIGN_EDIT',versions:{[key]:2}}));
+ const input={campaignKey:key,month:'2026-10',editId};
+ const preview=await a.previewPromotionRevision(actor,input,env);
+ assert.match(preview.text,/Revised promotion only/);assert.match(preview.text,/IC0999/);assert.doesNotMatch(preview.text,/Public detail|Test partner/);assert.equal(preview.subject,'Test send to email copro UOB');
+ assert.equal(DB.db.prepare("SELECT COUNT(*) n FROM email_outbox WHERE event_key LIKE '%:revision:%'").get().n,0);
+ const request={...input,previewHash:preview.previewHash,confirmed:true};
+ await a.commitPromotionRevision(actor,request,env);await a.commitPromotionRevision(actor,request,env);
+ assert.equal(DB.db.prepare("SELECT COUNT(*) n FROM email_outbox WHERE event_key LIKE '%:revision:%'").get().n,1);
+ await assert.rejects(a.commitPromotionRevision(actor,{...request,confirmed:false},env),/confirmation/);
+ changeCloud(DB,c,rows=>rows.forEach(r=>r.detail='Changed after preview'));
+ await assert.rejects(a.commitPromotionRevision(actor,request,env),/confirmation/);
+ DB.db.close();
+});

@@ -17,9 +17,9 @@
     return result;
   };
   api.renderCoProEmail=function(snapshot){
-    if(!['submitted','it_interface_complete'].includes(snapshot.milestone))throw Error('email_invalid_milestone');
+    if(!['submitted','it_interface_complete','promotion_edited'].includes(snapshot.milestone))throw Error('email_invalid_milestone');
     const d=snapshot.details||{};
-    const lines=[snapshot.milestone==='submitted'?'แจ้งรายละเอียด Co-Promotion / Co-Promotion submitted':'IT ขึ้นปุ่มและ Interface เรียบร้อย / POS setup and Interface completed',
+    const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?'แจ้งรายละเอียด Co-Promotion / Co-Promotion submitted':'IT ขึ้นปุ่มและ Interface เรียบร้อย / POS setup and Interface completed',
       'แคมเปญ / Campaign: '+String(d.campaign||''), 'เริ่ม / Start: '+String(d.start||''),'สิ้นสุด / End: '+String(d.end||'')];
     if(d.detail)lines.push('รายละเอียด / Details: '+String(d.detail));
     for(const b of d.buttons||[]){

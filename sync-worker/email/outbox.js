@@ -8,7 +8,7 @@
     await statement(env,"UPDATE email_outbox SET status='needs_verification',sanitized_error='lease_expired',updated_at=? WHERE status='sending' AND lease_until<=?",now,now).run();
     for(let index=0;index<5;index++){
       const lease=crypto.randomUUID();
-      const event=await statement(env,"UPDATE email_outbox SET status='sending',lease_token=?,lease_until=?,attempts=attempts+1,updated_at=? WHERE id=(SELECT o.id FROM email_outbox o WHERE o.status IN ('queued','retry') AND o.next_attempt_at<=? AND EXISTS(SELECT 1 FROM email_bindings b JOIN email_threads t ON t.id=b.thread_id WHERE b.campaign_id=o.campaign_id AND ((t.delivery_mode='test' AND ?=1) OR (t.delivery_mode='production' AND ?=1))) AND (o.event_key LIKE '%:submitted' OR EXISTS(SELECT 1 FROM email_outbox prior WHERE prior.campaign_id=o.campaign_id AND prior.event_key LIKE '%:submitted' AND prior.status='accepted')) ORDER BY o.created_at,o.event_key DESC LIMIT 1) AND status IN ('queued','retry') RETURNING *",lease,now+120000,now,now,env.EMAIL_TEST_SEND_ENABLED==='true'?1:0,env.EMAIL_SEND_ENABLED==='true'?1:0).first();
+      const event=await statement(env,"UPDATE email_outbox SET status='sending',lease_token=?,lease_until=?,attempts=attempts+1,updated_at=? WHERE id=(SELECT o.id FROM email_outbox o WHERE o.status IN ('queued','retry') AND o.next_attempt_at<=? AND EXISTS(SELECT 1 FROM email_bindings b JOIN email_threads t ON t.id=b.thread_id WHERE b.campaign_id=o.campaign_id AND ((t.delivery_mode='test' AND ?=1) OR (t.delivery_mode='production' AND ?=1))) AND (o.event_key LIKE '%:submitted' OR o.event_key LIKE '%:revision:%' OR EXISTS(SELECT 1 FROM email_outbox prior WHERE prior.campaign_id=o.campaign_id AND prior.event_key LIKE '%:submitted' AND prior.status='accepted')) ORDER BY o.created_at,o.event_key DESC LIMIT 1) AND status IN ('queued','retry') RETURNING *",lease,now+120000,now,now,env.EMAIL_TEST_SEND_ENABLED==='true'?1:0,env.EMAIL_SEND_ENABLED==='true'?1:0).first();
       if(!event)break;
       const update=(status,error=null,provider=null,next=0)=>statement(env,"UPDATE email_outbox SET status=?,sanitized_error=?,provider_id=?,next_attempt_at=?,updated_at=? WHERE id=? AND lease_token=? AND status='sending'",status,error,provider,next,Date.now(),event.id,lease).run();
       let snapshot,connection;
@@ -16,7 +16,15 @@
         const c=await statement(env,"SELECT * FROM email_campaigns WHERE id=? AND status='active'",event.campaign_id).first();
         if(!c)throw Error();
         await api.requireEmailPermission({tenantId:c.owner_tenant,objectId:c.owner_oid},'submit',env);
-        const source=await api.checkCoProSource(c,env);
+        snapshot=JSON.parse(event.snapshot_json);
+        let source;
+        if(snapshot.milestone==='promotion_edited'){
+          if(!snapshot.revision||event.event_key!==c.id+':'+c.month+':revision:'+snapshot.revision.editId)throw Error();
+          const row=await statement(env,'SELECT v FROM promo_store WHERE k=?',c.campaign_key).first();
+          if(!row)throw Error();const block=JSON.parse(row.v),raw=block.m?.[c.month];
+          if(!raw?.length||raw.some(r=>r.editId!==snapshot.revision.editId||r.changeStatus==='CANCELLED')||await api.hash(JSON.stringify(api.coProSource(block,c.month)))!==snapshot.revision.sourceHash)throw Error();
+          source={block};
+        }else source=await api.checkCoProSource(c,env);
         const b=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
         const t=b&&await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',b.thread_id).first();
         if(!b||b.version!==event.binding_version||!t||!['test','production'].includes(api.emailThreadMode(t))||t.version!==b.policy_version)throw Error();
