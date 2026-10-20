@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 async function render(events,failed=false){
- const context={localStorage:{getItem:()=> 'Owner'},PC_CoProEmail:{request:async()=>{if(failed)throw Error('offline');return {items:events};}},PC_CLOUD:{readCloudKey:async()=>null}};context.window=context;
+ const context={localStorage:{getItem:()=> 'Owner'},PC_CoProEmail:{request:async()=>{throw Error('Gmail session must not be used');}},PC_CLOUD:{readMailHistory:async()=>{if(failed)throw Error('offline');return {items:events};},readCloudKey:async()=>null}};context.window=context;
  vm.runInNewContext(fs.readFileSync('js/copro-email-ui.js','utf8'),context);
  const root={isConnected:true};await context.PC_CoProEmailUI.mountHistory(root,[{campaign:'A'},{campaign:'B'}]);return root.innerHTML;
 }
@@ -15,5 +15,5 @@ test('failed mail lookup remains unknown without inventing an unsent status',asy
 });
 
 test('no edit notification is shown as a dash after a successful lookup',async()=>{
- const html=await render([]);assert.equal((html.match(/<td>-<\/td>/g)||[]).length,2);
+ const html=await render([]);assert.match(html,/ยังไม่ได้ทำรายการ Interface/);assert.equal((html.match(/<td>-<\/td>/g)||[]).length,2);
 });

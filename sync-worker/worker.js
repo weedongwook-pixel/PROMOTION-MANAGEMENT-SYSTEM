@@ -360,6 +360,7 @@ export default {
     if (!authorized(request, env)) return json({ ok: false, error: 'unauthorized' }, env, 401);
 
     try {
+      if(path==='/promo/mail-history'&&request.method==='GET')return json(await globalThis.PC_Email.sharedMailHistory(env),env);
       if(path==='/promo/edit-capabilities'&&request.method==='GET')return json({ok:true,structuralEdits:env.CLOUD_FIRST_ENABLED==='true',version:1},env);
       if (path === '/promo/store' && request.method === 'GET') {
         const rows = await env.DB.prepare('SELECT k,v,updated_at FROM promo_store').all();

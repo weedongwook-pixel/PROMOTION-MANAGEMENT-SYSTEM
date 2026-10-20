@@ -464,6 +464,14 @@
     return check;
   }
 
+  async function readMailHistory() {
+    var response = await api('/promo/mail-history', { cache: 'no-store' });
+    if (!response.ok) throw new Error('อ่านสถานะเมลจาก Cloud ไม่สำเร็จ');
+    var result = await response.json();
+    if (!Array.isArray(result.items)) throw new Error('ข้อมูลสถานะเมลไม่ถูกต้อง');
+    return result;
+  }
+
   async function saveMailDecision(campaign, kind, revisionId, decision) {
     var owner=localStorage.getItem('pc_userName');
     if(!owner||decision!=='not_sent')throw Error('ข้อมูลสถานะเมลไม่ถูกต้อง');
@@ -1416,7 +1424,7 @@
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
-    saveMailDecision:saveMailDecision, readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    readMailHistory:readMailHistory, saveMailDecision:saveMailDecision, readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
     loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,

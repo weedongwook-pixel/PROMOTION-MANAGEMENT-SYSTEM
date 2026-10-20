@@ -212,3 +212,18 @@ test('mail history is owner-scoped, separates milestones and exposes sanitized d
  const history=await a.mailHistory(actor,env);assert.equal(history.items.length,1);assert.equal(history.items[0].kind,'submitted');assert.equal(history.items[0].status,'accepted');assert.equal(history.items[0].at,12345);assert.equal(history.items[0].campaign,'UOB test');assert.equal(history.items[0].snapshot_json,undefined);
  const other={tenantId:actor.tenantId,objectId:'44444444-4444-4444-8444-444444444444'};grant(DB,other,'submit');assert.equal((await a.mailHistory(other,env)).items.length,0);DB.db.close();
 });
+
+test('shared history returns durable accepted status and Interface progress without mailbox secrets or Gmail permissions',async()=>{
+ const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+ DB.db.prepare("UPDATE email_outbox SET status='accepted',provider_id='PRIVATE-PROVIDER'").run();
+ DB.db.exec('DELETE FROM email_actor_permissions');
+ let result=await a.sharedMailHistory(env);
+ assert.equal(result.items.find(i=>i.kind==='submitted').status,'accepted');
+ assert.equal(result.items.find(i=>i.kind==='it_interface_complete').status,'waiting');
+ assert.doesNotMatch(JSON.stringify(result),/PRIVATE|test@example|provider-thread|Test partner|record_json|snapshot_json/);
+ assert.equal(result.items.some(i=>i.kind==='promotion_edited'),false);
+ DB.db.prepare('UPDATE email_copro_records SET interface_done=1 WHERE button_id=?').run(buttons[0].button_id);
+ result=await a.sharedMailHistory(env);assert.equal(result.items.find(i=>i.kind==='it_interface_complete').status,'interface_partial');
+ DB.db.exec('UPDATE email_copro_records SET interface_done=1');
+ result=await a.sharedMailHistory(env);assert.equal(result.items.find(i=>i.kind==='it_interface_complete').status,'interface_done');DB.db.close();
+});

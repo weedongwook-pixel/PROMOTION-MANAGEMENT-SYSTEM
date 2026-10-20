@@ -155,6 +155,15 @@
     statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,d.c.id,d.binding.version,JSON.stringify(d.snap),Date.now(),Date.now()));
     await env.DB.batch(statements);return {saved:true,mailStatus:'queued'};
   };
+  // Read-only projection for the shared promotion history. No mailbox contents,
+  // recipients, policies, credentials, or send capabilities are exposed.
+  api.sharedMailHistory=async function(env){
+    const rows=(await env.DB.prepare("SELECT c.campaign_key,c.month,o.event_key,o.status,o.sanitized_error,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id ORDER BY o.created_at DESC").all()).results;
+    const items=rows.map(r=>({campaign:decodeURIComponent(r.campaign_key.slice(10)),month:r.month,eventKey:r.event_key||'',kind:r.event_key?.includes(':revision:')?'promotion_edited':r.event_key?.endsWith(':it_interface_complete')?'it_interface_complete':'submitted',status:r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null}));
+    const stages=(await env.DB.prepare("SELECT c.campaign_key,c.month,COUNT(b.button_id) AS total,SUM(CASE WHEN r.interface_done=1 THEN 1 ELSE 0 END) AS done FROM email_campaigns c LEFT JOIN email_campaign_buttons b ON b.campaign_id=c.id AND b.cancelled=0 LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id GROUP BY c.id").all()).results;
+    for(const r of stages){const campaign=decodeURIComponent(r.campaign_key.slice(10));if(!items.some(i=>i.campaign===campaign&&i.month===r.month&&i.kind==='it_interface_complete'))items.push({campaign,month:r.month,kind:'it_interface_complete',status:r.total>0&&r.done===r.total?'interface_done':r.done>0?'interface_partial':'waiting',at:null});}
+    return {items};
+  };
   api.mailHistory=async function(actor,env){
     await api.requireEmailPermission(actor,'submit',env);
     const rows=(await statement(env,"SELECT c.campaign_key,c.month,c.source_json,o.event_key,o.status,o.sanitized_error,o.created_at,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id WHERE c.owner_tenant=? AND c.owner_oid=? ORDER BY o.created_at DESC",actor.tenantId,actor.objectId).all()).results;
