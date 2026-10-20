@@ -35,7 +35,7 @@
   async function approveConversation(mode){
     let selected=null, generation=0;
     const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:680,
-      html:'<div style="text-align:left"><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาอีเมล” จากนั้นเลือกลูปที่ตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+recipientAddControls('coproNewCc','CC')+'<p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องคลิกเลือกอีเมลจากผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
+      html:'<div style="text-align:left"><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาอีเมล” จากนั้นกด “เลือกลูปนี้” ที่อีเมลตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+recipientAddControls('coproNewCc','CC')+'<p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องกด “เลือกลูปนี้” ที่ผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
       showCancelButton:true,confirmButtonText:'อนุมัติลูปและทำต่อ',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
       didOpen(){
         bindRecipientAdd('coproNewTo');bindRecipientAdd('coproNewCc');
@@ -48,13 +48,17 @@
             const found=await client().request('threads/search?q='+encodeURIComponent(query)+'&mode='+encodeURIComponent(mode),{interactive:true});
             if(n!==generation||!results.isConnected)return;results.replaceChildren();
             for(const item of found.items){
-              const button=document.createElement('button');button.type='button';button.className='btn btn-outline-success d-block my-2';button.textContent=[item.subject,item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join(' · ');
+              const card=document.createElement('div');card.className='border rounded p-3 my-2';
+              const detail=document.createElement('p');detail.className='mb-2';detail.textContent=[item.subject,item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join(' · ');
+              const button=document.createElement('button');button.type='button';button.className='btn btn-outline-success';button.textContent='เลือกลูปนี้';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','เลือกลูป '+item.subject);
               button.addEventListener('click',()=>{
+                results.querySelectorAll('button').forEach(other=>{other.textContent='เลือกลูปนี้';other.setAttribute('aria-pressed','false');other.className='btn btn-outline-success';});
+                button.textContent='✓ เลือกแล้ว';button.setAttribute('aria-pressed','true');button.className='btn btn-success';
                 selected=item;document.getElementById('coproSelected').textContent='เลือกลูป: '+item.subject;
                 const recipients=conversationRecipients(item);
                 document.getElementById('coproNewTo').value=recipients.to.join(', ');
                 document.getElementById('coproNewCc').value=recipients.cc.join(', ');
-              });results.append(button);
+              });card.append(detail,button);results.append(card);
             }
             if(!found.items.length)results.textContent='ไม่พบเมล กรุณาตรวจหัวข้อและบัญชีผู้ส่ง';
           }catch(e){if(n===generation&&results.isConnected)results.textContent=String(e.message||e);}
