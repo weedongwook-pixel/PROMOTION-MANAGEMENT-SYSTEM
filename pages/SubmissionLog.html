@@ -98,7 +98,7 @@
     <div class="sl-controls">
       <div id="sl-scope-wrap" hidden><label for="sl-scope">รายการของใคร</label><select id="sl-scope" class="form-select form-select-sm"><option value="all">ทุกผู้ส่ง</option><option value="mine">เฉพาะของฉัน</option></select></div>
       <div><label for="sl-date">วันที่ส่งงาน (เวลาไทย)</label><input id="sl-date" type="date" class="form-control form-control-sm"></div>
-      <button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('sl-date').value='';window.slRefresh()">ทุกวันที่</button><button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
+      <button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('sl-date').value='';window.slRefresh()">ดูทั้งหมด</button><button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
     </div>
   </div>
   <section class="mb-4"><h2 class="h5">สถานะอีเมล · บัญชีผู้ส่งที่เชื่อมต่อ</h2><div id="sl-mail-history"></div></section>
@@ -355,7 +355,7 @@
     var scope = document.getElementById('sl-scope');
     if (scope && canViewAll) scope.addEventListener('change', window.slRefresh);
     updateScopeDescription();
-    date.value = ''; // All submission dates; sending mail does not change the original submission date.
+    date.value = PC_SubmissionLog.today(); // Default to today's submissions in Thailand.
     date.addEventListener('change', window.slRefresh);
     window.slRefresh();
   };
