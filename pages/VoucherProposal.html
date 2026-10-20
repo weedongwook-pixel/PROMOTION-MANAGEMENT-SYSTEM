@@ -40,7 +40,7 @@
   </div>
 
   <div id="mainContent" style="display:none;">
-    <div id="pcCustomerGroup"></div>
+    <div id="pcCustomerGroup" data-mapping-scope="voucher"></div>
     <div id="campaignList"></div>
 
     <div class="mb-4 text-center">
@@ -494,12 +494,14 @@
             </tr>
           </tfoot>
         </table>
+        ${window.PC_CustomerGroup?.couponHTML ? PC_CustomerGroup.couponHTML(btnId) : ''}
         <div class="d-flex justify-content-between">
           <button class="btn btn-sm btn-outline-dark btn-add-row" onclick="window.addItemRow('${btnId}')">+ Add Required Item</button>
           <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> <span class="vc-term" data-v="Remove Voucher Button" data-e="Remove E-Coupon Button">Remove Voucher Button</span></small>
         </div>
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.PC_CustomerGroup?.syncCoupons();
     window.handleProductMode(btnId, 'Spec');
     try{ window.vcKindChange(campId); }catch(e){}
   };
@@ -866,6 +868,7 @@ window.submitAllData = async function() {
             const cateRemark = (pMode === 'All') ? 'สินค้าที่ร่วมรายการ' : 'เฉพาะสินค้าที่กำหนดเท่านั้น';
 
             buttons.push({
+                ...(window.PC_CustomerGroup?.couponValue ? PC_CustomerGroup.couponValue(btn) : {}),
                 shortName: shortName,
                 voucherType: voucherType,
                 cateRemark: cateRemark,

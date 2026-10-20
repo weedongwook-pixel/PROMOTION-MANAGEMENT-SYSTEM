@@ -38,7 +38,7 @@
   </div>
 
   <div id="mainContent" style="display:none;">
-    <div id="pcCustomerGroup"></div>
+    <div id="pcCustomerGroup" data-mapping-scope="bill"></div>
     <div id="campaignList"></div>
 
     <div class="mb-4 text-center">
@@ -522,11 +522,13 @@ window._legacyOpenBranchModal = function(campId) {
             <button type="button" class="btn btn-sm btn-success fw-bold border border-dark" onclick="window.commitItems('${btnId}')"><i class="fas fa-plus me-1"></i>เพิ่มเข้าตาราง</button>
           </div>
         </div>
+        ${window.PC_CustomerGroup?.couponHTML ? PC_CustomerGroup.couponHTML(btnId) : ''}
         <div class="d-flex justify-content-end">
           <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove Button</small>
         </div>
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    window.PC_CustomerGroup?.syncCoupons();
     window.handleProductMode(btnId, 'All');
   };
 
@@ -883,6 +885,7 @@ window._legacyOpenBranchModal = function(campId) {
             if (!isValid) break;
 
             buttons.push({
+                ...(window.PC_CustomerGroup?.couponValue ? PC_CustomerGroup.couponValue(btn) : {}),
                 shortName: snEl.value.trim(),
                 items: items,
                 couponType: couponType,

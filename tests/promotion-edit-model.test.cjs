@@ -116,3 +116,11 @@ test('Item Set form preserves Item Coupon type and independent CRM mapping throu
  const next=M.applyRevision(b,f,{actor:'Bow',month:'2026-11',editId:'edit-crm-type'}).m['2026-11'];assert.equal(next[0].crmMappingCode,'VD-NEW');assert.equal(next[0].typePromotion,'Item Coupon');assert.equal(next[0].codePromotion,'IC0688');assert.equal(next[1].crmMappingCode,'');
  f.buttons[0].crmMappingCode='';assert.throws(()=>M.applyRevision(b,f,{actor:'Bow',month:'2026-11',editId:'edit-crm-type'}),/Mapping/);
 });
+
+for(const kind of ['Bill Discount','Voucher'])test(kind+' edit preserves per-button mappings and validates each one',()=>{
+ const b={m:{'2026-11':['First','Second'].map((shortName,i)=>({...row,shortName,submissionForm:kind,promoType:kind,codeItemSet:'',codePromotion:(kind==='Voucher'?'VC':'BD')+i,crmMappingRequired:'yes',customerGroup:'crm',crmMappingCode:'OLD-'+i}))},w:[]};
+ const form=M.toForm(b,'2026-11');form.buttons.forEach((button,i)=>{button.crmMappingCode='NEW-'+i;button.crmMappingDetail='Detail '+i;button.discount=30;});
+ const saved=M.applyRevision(b,form,{actor:'Bow',month:'2026-11',campaign:'TOTO',editId:'mapping-edit'});
+ assert.deepEqual(saved.m['2026-11'].map(r=>r.crmMappingCode),['NEW-0','NEW-1']);
+ form.buttons[1].crmMappingCode='';assert.throws(()=>M.applyRevision(b,form,{actor:'Bow',month:'2026-11',campaign:'TOTO',editId:'mapping-empty'}),/Mapping/);
+});

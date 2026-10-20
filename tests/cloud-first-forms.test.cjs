@@ -150,3 +150,13 @@ test('attachment download reads current Cloud bytes without localStorage caching
  f.context.PC_CLOUD.readCloudKey=async()=>{throw Error('offline');};
  await f.context.pcOpenAttach('file:f1');assert.match(warning.title,/Cloud/);assert.equal(clicks,1);
 });
+
+for(const kind of ['Bill','Voucher'])test(kind+' CRM mapping is independent per button through Cloud and IT projection',async()=>{
+ const f=fixture(),mapping={customerGroup:'crm',crmMappingRequired:'yes',crmMappingCode:'LEGACY'},campaign={...meta,name:'CRM '+kind,...mapping,buttons:['A','B'].map((shortName,i)=>({shortName,crmMappingCode:'MAP-'+i,crmMappingDetail:'Setup '+i,couponType:'Normal',voucherType:'Normal',discountValue:30,discountUnit:'CUR',items:[]}))};
+ const payload={globalMonth:'2026-10',...mapping,campaigns:[campaign]},submit=kind==='Bill'?'submitBillDiscountProposal':'submitVoucherProposal';
+ await f.context.PC_API[submit](payload);
+ assert.deepEqual(Array.from(f.sent.rows,r=>r.crmMappingCode),['MAP-0','MAP-1']);
+ const store=JSON.parse(f.data.get('pc_mock_store_v28'));store.months['2026-10']=JSON.parse(JSON.stringify(f.sent.rows));f.data.set('pc_mock_store_v28',JSON.stringify(store));f.context.PC_API.reloadFromStorage();
+ const tasks=f.context.PC_API.getITTasks('2026-10').filter(r=>r.campaign==='CRM '+kind);assert.deepEqual(Array.from(tasks,r=>r.crmMappingCode),['MAP-0','MAP-1']);
+ campaign.buttons[1].crmMappingCode='';await assert.rejects(()=>f.context.PC_API[submit](payload),/Mapping/);
+});

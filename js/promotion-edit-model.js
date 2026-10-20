@@ -49,7 +49,6 @@
     const old=toForm(original,context.month),byId=new Map(old.buttons.map(b=>[b.id,b]));
     const name=text(form.fields.campaign);if(!name)throw Error('กรุณาระบุชื่อแคมเปญ');
     ['detail','mechanic','stores','saleMode'].forEach(k=>{if(!text(form.fields[k]))throw Error('กรุณากรอกรายละเอียด เงื่อนไข สาขา และช่องทางขายให้ครบ');});
-    if(!['Coupon','Proposal'].includes(old.form)&&form.fields.customerGroup==='crm'&&form.fields.crmMappingRequired==='yes'&&(!text(form.fields.crmMappingCode)||text(form.fields.crmMappingCode).length>200||text(form.fields.crmMappingDetail).length>2000))throw Error('กรุณาระบุรหัส Mapping Code / Value Design ให้ถูกต้อง');
     ['start','end'].forEach(k=>{const date=text(form.fields[k]);if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('วันที่ไม่ถูกต้อง');});
     if(form.fields.end<form.fields.start)throw Error('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
     const used=new Set(),ids=new Set(),out=[];
@@ -87,7 +86,7 @@
           if(isNew||type==='Item Coupon'){row.typePromotion=type;row.promoType=type;}
           if(type!=='Item Coupon'){row.crmMappingRequired='no';row.crmMappingCode='';row.crmMappingDetail='';}
         }
-        if((old.form==='Coupon'||old.form==='Proposal'&&row.typePromotion==='Item Coupon')&&row.customerGroup==='crm'&&row.crmMappingRequired==='yes'){
+        if((['Coupon','BillDiscountProposal','VoucherProposal'].includes(old.form)||old.form==='Proposal'&&row.typePromotion==='Item Coupon')&&row.customerGroup==='crm'&&row.crmMappingRequired==='yes'){
           if(isNew&&!Object.hasOwn(b,'crmMappingCode'))throw Error('กรุณาระบุ Mapping Code ของคูปองใหม่: '+sn);
           row.crmMappingCode=text(Object.hasOwn(b,'crmMappingCode')?b.crmMappingCode:prev.items[0].crmMappingCode||form.fields.crmMappingCode);
           row.crmMappingDetail=text(Object.hasOwn(b,'crmMappingDetail')?b.crmMappingDetail:prev.items[0].crmMappingDetail||form.fields.crmMappingDetail);

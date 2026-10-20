@@ -108,7 +108,7 @@
       put(block,'.btn-disc-input,.btn-disc-val',parseFloat(button.discount)||0);put(block,'.btn-disc-unit',button.discountUnit);
       put(block,'.min-val',button.minAmount);
       if(formName==='Proposal'){put(block,'.btn-promo-type',button.promoType||'Item Set');}
-      if(formName==='Coupon'||formName==='Proposal'){put(block,'.btn-crm-code',button.crmMappingCode??button.items[0]?.crmMappingCode??'');put(block,'.btn-crm-detail',button.crmMappingDetail??button.items[0]?.crmMappingDetail??'');}
+      if(['Coupon','Proposal','BillDiscountProposal','VoucherProposal'].includes(formName)){put(block,'.btn-crm-code',button.crmMappingCode??button.items[0]?.crmMappingCode??'');put(block,'.btn-crm-detail',button.crmMappingDetail??button.items[0]?.crmMappingDetail??'');}
       const minCheck=q(block,'.min-spend-check');if(minCheck){minCheck.checked=Number(button.minAmount)>0;const min=q(block,'.min-val');if(min)min.style.display=minCheck.checked?'':'none';}
       all(block,'input[name^="couponType"],input[name^="voucherType"],input[name^="type-"],.coupon-type').forEach(el=>{el.checked=el.value===button.couponType;el.disabled=true;});
       all(block,'input[type=file]').forEach(el=>{el.disabled=true;el.title='คงไฟล์แนบเดิม หากเปลี่ยนไฟล์กรุณาติดต่อ IT';});
@@ -219,7 +219,7 @@
         }
       }
       if(form.form==='Proposal')b.promoType=val(block,'.btn-promo-type')||original.promoType||'Item Set';
-      if(['Coupon','Proposal'].includes(form.form)&&window.PC_CustomerGroup?.couponValue)Object.assign(b,PC_CustomerGroup.couponValue(block));
+      if(['Coupon','Proposal','BillDiscountProposal','VoucherProposal'].includes(form.form)&&window.PC_CustomerGroup?.couponValue)Object.assign(b,PC_CustomerGroup.couponValue(block));
       const checked=q(block,'input[name^="couponType"]:checked,input[name^="voucherType"]:checked,input[name^="type-"]:checked,.coupon-type:checked');if(checked)b.couponType=checked.value;
       const file=q(block,'input[type=file]')?.files?.[0];if(file)b.fileSelection={name:file.name,size:file.size,lastModified:file.lastModified};
       b.netPrice=form.form==='Proposal'?val(block,'.btn-net'):(original.netPrice===''?0:original.netPrice);b.discount=val(block,'.btn-disc-input,.btn-disc-val')||original.discount;b.discountUnit=val(block,'.btn-disc-unit')||original.discountUnit;

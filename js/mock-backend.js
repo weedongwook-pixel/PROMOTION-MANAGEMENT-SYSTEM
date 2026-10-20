@@ -2679,7 +2679,7 @@
           start: camp.start, end: camp.end, stores: camp.stores, saleMode: camp.saleModes,
           itStatus: 'PENDING', opStatus: 'WAITING', kitchen: '', shortName: btn.shortName,
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: payload.customerGroup || '', crmTarget: payload.crmTarget || '', crmTargetName: payload.crmTargetName || '', ...crmMappingFields(payload),
+          customerGroup: payload.customerGroup || '', crmTarget: payload.crmTarget || '', crmTargetName: payload.crmTargetName || '', ...crmMappingFields({...payload,...btn}),
           attachment: cloudStageUpload(ctx, btn.fileData, 'BILL_' + btn.shortName),
           discountText: discText, items,
         });
@@ -2713,7 +2713,7 @@
           start: camp.start, end: camp.end, stores: camp.stores, saleMode: camp.saleModes,
           itStatus: "PENDING", opStatus: "WAITING", kitchen: "", shortName: btn.shortName,
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: payload.customerGroup || "", crmTarget: payload.crmTarget || "", crmTargetName: payload.crmTargetName || "", ...crmMappingFields(payload),
+          customerGroup: payload.customerGroup || "", crmTarget: payload.crmTarget || "", crmTargetName: payload.crmTargetName || "", ...crmMappingFields({...payload,...btn}),
           attachment: pcSaveUpload(btn.fileData, "BILL_" + btn.shortName),
           discountText: discText, items,
         });
@@ -2767,7 +2767,7 @@
           itStatus: 'PENDING', opStatus: 'WAITING', kitchen: '', shortName: btn.shortName,
           cateRemark: btn.cateRemark || '', detail: camp.detail, mechanic: camp.condition,
           minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: camp.customerGroup || '', crmTarget: camp.crmTarget || '', crmTargetName: camp.crmTargetName || '', ...crmMappingFields(camp),
+          customerGroup: camp.customerGroup || '', crmTarget: camp.crmTarget || '', crmTargetName: camp.crmTargetName || '', ...crmMappingFields({...camp,...btn}),
           attachment: cloudStageUpload(ctx, btn.fileData, 'VOUCHER_' + btn.shortName),
           items,
         });
@@ -2821,7 +2821,7 @@
           itStatus: "PENDING", opStatus: "WAITING", kitchen: "", shortName: btn.shortName,
           cateRemark: btn.cateRemark || "",
           detail: camp.detail, mechanic: camp.condition, minAmount: Number(btn.minSpendAmount) || 0,
-          customerGroup: camp.customerGroup || "", crmTarget: camp.crmTarget || "", crmTargetName: camp.crmTargetName || "", ...crmMappingFields(camp),
+          customerGroup: camp.customerGroup || "", crmTarget: camp.crmTarget || "", crmTargetName: camp.crmTargetName || "", ...crmMappingFields({...camp,...btn}),
           attachment,
           items,
         });
