@@ -40,7 +40,7 @@
     if(refs.join(' ').length>900)throw Error('email_invalid_reference');
     const utf8=value=>{const bytes=new TextEncoder().encode(value);let binary='';for(let offset=0;offset<bytes.length;offset+=8192)binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));return btoa(binary);};
     const content=api.renderCoProEmail(snapshot),boundary='pc_'+crypto.randomUUID().replace(/-/g,'');
-    const headers=['From: Potato Corner - =?UTF-8?B?'+utf8('แจ้งโปรโมชั่น')+'?= <it@rocks-foods.com>','To: '+recipients.to.join(', '),...(recipients.cc.length?['Cc: '+recipients.cc.join(', ')]:[]),
+    const headers=['From: Potato Promotion Mail <it@rocks-foods.com>','To: '+recipients.to.join(', '),...(recipients.cc.length?['Cc: '+recipients.cc.join(', ')]:[]),
       'Subject: =?UTF-8?B?'+utf8(subject)+'?=','In-Reply-To: '+original,'References: '+refs.join(' '),'MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"'];
     const part=(type,body)=>'--'+boundary+'\r\nContent-Type: '+type+'; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+body+'\r\n';
     let mime=headers.join('\r\n')+'\r\n\r\n'+part('text/plain',content.text)+part('text/html',content.html)+'--'+boundary+'--\r\n';
