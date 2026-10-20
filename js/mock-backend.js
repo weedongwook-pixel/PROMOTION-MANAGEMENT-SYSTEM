@@ -2505,16 +2505,15 @@
     });
     Object.keys(groups).forEach(k => {
       const g = groups[k], info = g.info;
-      // ⚠️ งานจากฟอร์ม Item Set = Type Promotion "Item Set" เสมอ (ต่างจาก Coupon/Bill/Voucher)
-      //    → IT กรอกครบทุกช่อง · postCate (Promotion set/Combo/Value set/E-Voucher) เก็บใน cate
-      //    ไว้บอก "หมวดที่ปุ่มไปขึ้น" เท่านั้น ไม่เปลี่ยนชนิดงาน
-      const ptype = "Item Set";
+      const isItemCoupon = info.typePromotion === 'Item Coupon';
+      if(info.typePromotion && !['Item Set','Item Coupon'].includes(info.typePromotion))throw Error('Type Promotion ไม่ถูกต้อง');
+      const ptype = isItemCoupon ? 'Item Coupon' : 'Item Set';
       // Reserve the complete pair once per button. Category counters follow
       // the same prefixes used by IT and the product master.
       const category = String(info.postCate || info.cateRemark || '').toLowerCase();
       const cat = /combo/.test(category) ? '105' : /value/.test(category) ? '106' : /voucher/.test(category) ? '109' : '107';
-      const promoType = cat === '109' ? 'coupon' : 'promo';
-      const promoTag = cat === '109' ? 'ItemSet EV' : 'ItemSet Promo';
+      const promoType = isItemCoupon || cat === '109' ? 'coupon' : 'promo';
+      const promoTag = isItemCoupon ? 'ItemSet Coupon' : cat === '109' ? 'ItemSet EV' : 'ItemSet Promo';
       const itemType = cat === '107' ? 'itemset' : 'item';
       const itemCat = itemType === 'item' ? cat : null;
       const itemField = 'itccf-' + (itemCat ? 'item-' + cat : 'itemset') + '-' +
@@ -2522,7 +2521,7 @@
       const promoCode = cloudFirst
         ? cloudReserveFormCode(cloudCtx, promoType, promoTag, info.campaign, info.shortName)
         : reserveFormCode(promoType, promoTag, info.campaign, info.shortName, '');
-      const itemSetCode = cloudFirst
+      const itemSetCode = isItemCoupon ? '' : cloudFirst
         ? cloudReserveFormCode(cloudCtx, itemType, 'ItemSet Code', info.campaign, info.shortName, itemCat, itemField)
         : reserveFormCode(itemType, 'ItemSet Code', info.campaign, info.shortName, '', itemCat, itemField);
       const totalGross = g.items.reduce((a, it) => a + (parseFloat(it.originalPrice) || 0) * (parseInt(it.qty) || 1), 0);
@@ -2537,7 +2536,7 @@
         itStatus: "PENDING", opStatus: "WAITING", kitchen: info.kitchenName, shortName: info.shortName,
         detail: info.promotionDetail, mechanic: info.mechanic, minAmount: Number(info.minSpendAmount) || 0,
         cateRemark: info.cateRemark || "", cate: info.postCate || "",
-        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "", ...crmMappingFields(info),
+        customerGroup: info.customerGroup || "", crmTarget: info.crmTarget || "", crmTargetName: info.crmTargetName || "", ...crmMappingFields(isItemCoupon ? info : {...info,crmMappingRequired:'no',crmMappingCode:'',crmMappingDetail:''}),
         items: g.items.map((it, i) => ({
           catCode: it.cateCode, itemCode: it.itemCode, itemNameEN: it.itemNameEN, qty: it.qty,
           gross: parseFloat(it.originalPrice) || 0, discount: i === 0 ? (totalGross - net).toFixed(2) : 0,

@@ -110,3 +110,9 @@ test('real stored Bill and Voucher all-products rows retain their nonnumeric dis
   const r=next.m['2026-11'][0];assert.equal(r.qty,'All');assert.equal(r.gross,form==='VoucherProposal'?'50 ฿':'All');assert.equal(r.netPrice,'');assert.equal(r.detail,'แก้รายละเอียด');
  }
 });
+test('Item Set form preserves Item Coupon type and independent CRM mapping through an edit',()=>{
+ const b={m:{'2026-11':[{...row,submissionForm:'Item Set',typePromotion:'Item Coupon',promoType:'Item Coupon',customerGroup:'crm',crmMappingRequired:'yes',crmMappingCode:'VD-A',codeItemSet:'',kitchen:'Fries'},{...row,submissionForm:'Item Set',typePromotion:'Item Set',promoType:'Item Set',shortName:'Set B',kitchen:'Set',customerGroup:'crm',crmMappingRequired:'no',crmMappingCode:'',codePromotion:'P12'}]},w:[]};
+ const f=M.toForm(b,'2026-11');assert.equal(f.form,'Proposal');assert.equal(f.buttons[0].promoType,'Item Coupon');f.buttons[0].crmMappingCode='VD-NEW';
+ const next=M.applyRevision(b,f,{actor:'Bow',month:'2026-11',editId:'edit-crm-type'}).m['2026-11'];assert.equal(next[0].crmMappingCode,'VD-NEW');assert.equal(next[0].typePromotion,'Item Coupon');assert.equal(next[0].codePromotion,'IC0688');assert.equal(next[1].crmMappingCode,'');
+ f.buttons[0].crmMappingCode='';assert.throws(()=>M.applyRevision(b,f,{actor:'Bow',month:'2026-11',editId:'edit-crm-type'}),/Mapping/);
+});

@@ -20,14 +20,15 @@
     if(!data||data.customerGroup!=='crm'||data.crmMappingRequired!=='yes')return '';
     return '<section class="crm-mapping-it px-4 py-3 border-bottom bg-light"><strong data-th="CRM — ข้อมูลตั้งค่า Mapping Code" data-en="CRM — code mapping setup">CRM — ข้อมูลตั้งค่า Mapping Code</strong>'+(data.shortName?'<div class="fw-bold mt-1" translate="no">'+esc(data.shortName)+'</div>':'')+'<div class="mt-2"><span data-th="รหัส Mapping Code / Value Design:" data-en="Mapping Code / Value Design:">รหัส Mapping Code / Value Design:</span> <b translate="no" style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(data.crmMappingCode||'')+'</b></div>'+(data.crmMappingDetail?'<div class="mt-1" translate="no" style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(data.crmMappingDetail)+'</div>':'')+'</section>';
   }
-  function perCoupon(){return host()?.getAttribute('data-mapping-scope')==='coupon';}
+  function perCoupon(){return ['coupon','proposal'].includes(host()?.getAttribute('data-mapping-scope'));}
+  function eligible(block){return host()?.getAttribute('data-mapping-scope')!=='proposal'||block.querySelector('.btn-promo-type')?.value==='Item Coupon';}
   function syncCoupons(){
     if(!perCoupon()||!document.querySelectorAll)return;
     var required=cur.customerGroup==='crm'&&cur.crmMappingRequired==='yes';
-    document.querySelectorAll('.crm-coupon-mapping').forEach(function(panel){panel.hidden=!required;var code=panel.querySelector('.btn-crm-code');if(code)code.required=required;});
+    document.querySelectorAll('.crm-coupon-mapping').forEach(function(panel){var active=required&&eligible(panel.closest('.pos-button-block'));panel.hidden=!active;var code=panel.querySelector('.btn-crm-code');if(code)code.required=active;});
   }
   function couponHTML(id){return '<section class="crm-coupon-mapping border-top mt-3 pt-3" hidden><h6 class="fw-bold" data-th="CRM — Mapping Code ของคูปองนี้" data-en="CRM — Mapping Code for this coupon">CRM — Mapping Code ของคูปองนี้</h6><div class="row g-3"><div class="col-md-5"><label class="form-label fw-bold" for="crm-code-'+esc(id)+'" data-th="รหัส Mapping Code / Value Design *" data-en="Mapping Code / Value Design code *">รหัส Mapping Code / Value Design *</label><input id="crm-code-'+esc(id)+'" class="form-control btn-crm-code" maxlength="200" oninput="this.classList.remove(\'is-invalid\')"></div><div class="col-md-7"><label class="form-label fw-bold" for="crm-detail-'+esc(id)+'" data-th="รายละเอียดสำหรับ IT (ถ้ามี)" data-en="IT setup instructions (optional)">รายละเอียดสำหรับ IT (ถ้ามี)</label><textarea id="crm-detail-'+esc(id)+'" class="form-control btn-crm-detail" rows="2" maxlength="2000"></textarea></div></div></section>';}
-  function couponValue(block){var required=cur.customerGroup==='crm'&&cur.crmMappingRequired==='yes';return {crmMappingCode:required?String(block.querySelector('.btn-crm-code')?.value||'').trim():'',crmMappingDetail:required?String(block.querySelector('.btn-crm-detail')?.value||'').trim():''};}
+  function couponValue(block){var required=eligible(block)&&cur.customerGroup==='crm'&&cur.crmMappingRequired==='yes';return {crmMappingCode:required?String(block.querySelector('.btn-crm-code')?.value||'').trim():'',crmMappingDetail:required?String(block.querySelector('.btn-crm-detail')?.value||'').trim():''};}
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); }
 
@@ -121,7 +122,7 @@
         if(msg){var el=document.getElementById(field);if(el){el.classList?.add('is-invalid');el.scrollIntoView?.({block:'center'});el.focus?.();}return {ok:false,msg:msg};}
         if(perCoupon()&&cur.crmMappingRequired==='yes'){
           var blocks=Array.from(document.querySelectorAll('.pos-button-block'));
-          for(var block of blocks){var value=couponValue(block);if(!value.crmMappingCode||value.crmMappingCode.length>200||value.crmMappingDetail.length>2000){var input=block.querySelector('.btn-crm-code');input?.classList.add('is-invalid');input?.scrollIntoView({block:'center'});input?.focus();return {ok:false,msg:'กรุณาระบุรหัส Mapping Code / Value Design ให้ครบทุกคูปอง'};}}
+          for(var block of blocks){if(!eligible(block))continue;var value=couponValue(block);if(!value.crmMappingCode||value.crmMappingCode.length>200||value.crmMappingDetail.length>2000){var input=block.querySelector('.btn-crm-code');input?.classList.add('is-invalid');input?.scrollIntoView({block:'center'});input?.focus();return {ok:false,msg:'กรุณาระบุรหัส Mapping Code / Value Design ให้ครบทุกคูปอง'};}}
         }
       }
       return { ok:true, msg:'' };

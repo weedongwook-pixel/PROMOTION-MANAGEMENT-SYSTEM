@@ -175,3 +175,47 @@ for (const [category, itemCode] of [['Promotion set', '107201'], ['Combo', '1050
   assert.equal(Object.values(confirmed.reservations).filter(r=>r.where==='Pair test').length,2);
  });
 }
+
+test('Item Coupon in Item Set reserves IC only and retains per-button CRM mapping', async () => {
+  const data = new Map([['pc_userName', 'Bow'], ['pc_mock_store_v28', JSON.stringify({
+    months: { '2026-10': [] }, _itemSetDemoVer: 1, _showcaseVer: 1, _recipeCustomVer: 1,
+    _billDiscVer: 4, _vcCouponVer: 2, _proJulyVer: 2,
+  })]]);
+  const context = { URL, Date, Math, console: { log() {}, warn() {}, error() {} },
+    setTimeout() {}, clearTimeout() {}, location: { hostname: 'localhost' }, PC_REAL_PROMOS: [] };
+  context.localStorage = {
+    getItem: key => data.get(key) ?? null,
+    setItem: (key, value) => data.set(key, String(value)),
+    removeItem: key => data.delete(key),
+  };
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/form-code-allocation.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/mock-backend.js'), 'utf8'), context);
+  const original = [...data.entries()];
+  let sent;
+  context.PC_CLOUD_FIRST_FORMS = true;
+  context.PC_CLOUD = {
+    async readCloudKey(key) {
+      assert.equal(key, 'pc_code_counter_v1');
+      return { value: JSON.stringify(counter()), updatedAt: 7 };
+    },
+    async savePreparedCampaignRows(rows, batchId, actor, extraWrites) {
+      sent = { rows, batchId, actor, extraWrites };
+      return { ok: true };
+    },
+    async pull() {},
+  };
+  const item = [{ monthYear: '2026-10', campaign: 'Cloud EV test', shortName: 'EV A', postCate: 'Promotion set', typePromotion:'Item Coupon', customerGroup:'crm', crmMappingRequired:'yes', crmMappingCode:'VD-ONE',
+    itemCode: '101003', itemNameEN: 'Fries', originalPrice: 100, netPrice: 80, qty: 1,
+    submissionId: 'itemset-ev-receipt-001', submissionBatchId: 'itemset-ev-batch-001', submittedBy: 'Bow' }];
+  assert.equal(await context.PC_API.saveBulkProposal(item), 'SUCCESS');
+  assert.equal(sent.rows[0].codePromotion, 'IC0501');
+  assert.equal(sent.rows[0].codeItemSet, '');
+  assert.equal(sent.rows[0].typePromotion,'Item Coupon');
+  assert.equal(sent.rows[0].crmMappingCode,'VD-ONE');
+  assert.equal(Object.keys(JSON.parse(sent.extraWrites[0].value).reservations).length,1);
+  assert.equal(sent.extraWrites[0].key, 'pc_code_counter_v1');
+  assert.equal(sent.extraWrites[0].expectedUpdatedAt, 7);
+  assert.deepEqual([...data.entries()], original);
+});

@@ -59,7 +59,7 @@
   </div>
 
   <div id="mainContent" style="display:none;">
-    <div id="pcCustomerGroup"></div>
+    <div id="pcCustomerGroup" data-mapping-scope="proposal"></div>
     <div id="campaignList"></div>
     
     <div class="mb-4">
@@ -650,6 +650,7 @@
                   end: endInput.value, 
                   storeSelection: storeInput.value,
                   saleMode: modes, 
+                  typePromotion: btn.querySelector('.btn-promo-type').value,
                   kitchenName: kitchen.value, 
                   shortName: shortName.value, 
                   itemCode: ic, 
@@ -668,7 +669,7 @@
                   isSubset: row.querySelector('.row-issubset').value === '1' ? 'Y' : '',
                   chooseMin: (row.querySelector('.row-ssmin')||{}).value || '',
                   chooseMax: (row.querySelector('.row-ssmax')||{}).value || '',
-                  ...(window.PC_CustomerGroup ? PC_CustomerGroup.value() : {})
+                  ...(window.PC_CustomerGroup ? {...PC_CustomerGroup.value(),...PC_CustomerGroup.couponValue(btn),crmMappingRequired:btn.querySelector('.btn-promo-type').value==='Item Coupon'?PC_CustomerGroup.value().crmMappingRequired:'no'} : {})
               });
           }
       }
@@ -894,6 +895,7 @@
     const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
     const html = `
       <div class="pos-button-block mb-4 p-3 border border-secondary rounded bg-white shadow-sm" id="${btnId}">
+        <div class="mb-3"><label class="small fw-bold" for="type-${btnId}">Type Promotion *</label><select id="type-${btnId}" class="form-select btn-promo-type" onchange="window.PC_CustomerGroup?.syncCoupons()"><option value="Item Set">Item Set</option><option value="Item Coupon">Item Coupon</option></select></div>
         <div class="row g-2 mb-3">
           <div class="col-md-6">
             <label class="small fw-bold text-uppercase">KITCHEN NAME (BILL) * <span class="text-danger">(Max 40)</span></label>
@@ -921,6 +923,7 @@
             </tr>
           </tfoot>
         </table>
+        ${window.PC_CustomerGroup ? PC_CustomerGroup.couponHTML(btnId) : ''}
         <div class="d-flex justify-content-between">
           <button class="btn btn-sm btn-dark fw-bold" onclick="window.addItemRow('${btnId}', '${campId}')"><i class="fas fa-plus"></i> ADD ITEM</button>
           <small class="text-danger cursor-pointer pt-1" onclick="document.getElementById('${btnId}').remove()"><i class="fas fa-trash"></i> Remove Button</small>
@@ -928,6 +931,7 @@
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
     window.addItemRow(btnId, campId);
+    window.PC_CustomerGroup?.syncCoupons();
   };
 
   window.addItemRow = function(btnId, campId) {

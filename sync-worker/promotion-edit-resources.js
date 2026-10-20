@@ -34,12 +34,14 @@
   }
   for(const [order,button] of form.buttons.entries()){
    const rows=next.m[month].filter(r=>r.buttonOrder===order);
-   const type=kind==='Coupon'?'coupon':kind==='BillDiscountProposal'?'bill':kind==='VoucherProposal'?'voucher':form.fields.cate==='E-Voucher'?'coupon':null;
+   const itemCoupon=kind==='Proposal'&&button.promoType==='Item Coupon';
+   const type=kind==='Coupon'||itemCoupon?'coupon':kind==='BillDiscountProposal'?'bill':kind==='VoucherProposal'?'voucher':form.fields.cate==='E-Voucher'?'coupon':null;
    if(button.isNew===true&&(type||button.codeAllocation)){
     if(!counter){counterRecord=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind('pc_code_counter_v1').first();if(!counterRecord)throw Error('ไม่พบทะเบียนจองรหัสบน Cloud');counter=JSON.parse(counterRecord.v);}
-    const choices=button.codeAllocation||{};
+    const choices={...(button.codeAllocation||{})};
+    if(itemCoupon)delete choices.itemset;
     const fields=[['promotion',type||'promo','codePromotion']];
-    if(kind==='Proposal'&&button.codeAllocation)fields.push(['itemset','itemset','codeItemSet']);
+    if(kind==='Proposal'&&!itemCoupon&&button.codeAllocation)fields.push(['itemset','itemset','codeItemSet']);
     if(Object.keys(choices).some(k=>!fields.some(f=>f[0]===k)))throw Error('ประเภทช่องรหัสไม่ถูกต้อง');
     const occupied=button.codeAllocation?await loadUsedCodes():undefined;
     for(const [name,codeType,column] of fields){

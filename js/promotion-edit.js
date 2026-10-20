@@ -107,7 +107,8 @@
       put(block,'.btn-sn',button.shortName);put(block,'.btn-kitchen',button.kitchen);put(block,'.btn-net',button.netPrice);
       put(block,'.btn-disc-input,.btn-disc-val',parseFloat(button.discount)||0);put(block,'.btn-disc-unit',button.discountUnit);
       put(block,'.min-val',button.minAmount);
-      if(formName==='Coupon'){put(block,'.btn-crm-code',button.crmMappingCode??button.items[0]?.crmMappingCode??'');put(block,'.btn-crm-detail',button.crmMappingDetail??button.items[0]?.crmMappingDetail??'');}
+      if(formName==='Proposal'){put(block,'.btn-promo-type',button.promoType||'Item Set');const type=q(block,'.btn-promo-type');if(type)type.disabled=true;}
+      if(formName==='Coupon'||formName==='Proposal'){put(block,'.btn-crm-code',button.crmMappingCode??button.items[0]?.crmMappingCode??'');put(block,'.btn-crm-detail',button.crmMappingDetail??button.items[0]?.crmMappingDetail??'');}
       const minCheck=q(block,'.min-spend-check');if(minCheck){minCheck.checked=Number(button.minAmount)>0;const min=q(block,'.min-val');if(min)min.style.display=minCheck.checked?'':'none';}
       all(block,'input[name^="couponType"],input[name^="voucherType"],input[name^="type-"],.coupon-type').forEach(el=>{el.checked=el.value===button.couponType;el.disabled=true;});
       all(block,'input[type=file]').forEach(el=>{el.disabled=true;el.title='คงไฟล์แนบเดิม หากเปลี่ยนไฟล์กรุณาติดต่อ IT';});
@@ -140,7 +141,7 @@
       });
       const allProducts=button.items.every(i=>/^ALL(?: ITEMS)?$/i.test(i.itemCode));
       if(formName==='Coupon'&&window.couponGroupView)window.couponGroupView(block.id);
-      if(formName==='Coupon'&&window.PC_CustomerGroup?.syncCoupons)PC_CustomerGroup.syncCoupons();
+      if(['Coupon','Proposal'].includes(formName)&&window.PC_CustomerGroup?.syncCoupons)PC_CustomerGroup.syncCoupons();
       all(block,'.p-mode').forEach(el=>{el.checked=el.value===(allProducts?'All':'Spec');});
       // Keep stored per-item coupon prices exact on initial open. Subsequent
       // quantity/discount edits use the form's existing updateTotals handler.
@@ -211,13 +212,14 @@
           const code=val(block,'.promotion-edit-code-'+name).trim().toUpperCase();
           if(mode.value==='manual'&&!code)throw Error('กรุณากรอก '+(name==='promotion'?'Code Promotion':'Code Item Set')+' ของปุ่ม '+b.shortName);
           if(mode.value==='manual'&&window.PC_API?.checkCode){
-            const type=name==='itemset'?'itemset':({Coupon:'coupon',BillDiscountProposal:'bill',VoucherProposal:'voucher'}[form.form]||(form.fields.cate==='E-Voucher'?'coupon':'promo'));
+            const type=name==='itemset'?'itemset':({Coupon:'coupon',BillDiscountProposal:'bill',VoucherProposal:'voucher'}[form.form]||(val(block,'.btn-promo-type')==='Item Coupon'||form.fields.cate==='E-Voucher'?'coupon':'promo'));
             const result=PC_API.checkCode(type,code);if(result.status==='dup')throw Error(result.message);
           }
           b.codeAllocation[name]={mode:mode.value,...(mode.value==='manual'?{code}: {})};
         }
       }
-      if(form.form==='Coupon'&&window.PC_CustomerGroup?.couponValue)Object.assign(b,PC_CustomerGroup.couponValue(block));
+      if(form.form==='Proposal')b.promoType=val(block,'.btn-promo-type')||original.promoType||'Item Set';
+      if(['Coupon','Proposal'].includes(form.form)&&window.PC_CustomerGroup?.couponValue)Object.assign(b,PC_CustomerGroup.couponValue(block));
       const checked=q(block,'input[name^="couponType"]:checked,input[name^="voucherType"]:checked,input[name^="type-"]:checked,.coupon-type:checked');if(checked)b.couponType=checked.value;
       const file=q(block,'input[type=file]')?.files?.[0];if(file)b.fileSelection={name:file.name,size:file.size,lastModified:file.lastModified};
       b.netPrice=form.form==='Proposal'?val(block,'.btn-net'):(original.netPrice===''?0:original.netPrice);b.discount=val(block,'.btn-disc-input,.btn-disc-val')||original.discount;b.discountUnit=val(block,'.btn-disc-unit')||original.discountUnit;

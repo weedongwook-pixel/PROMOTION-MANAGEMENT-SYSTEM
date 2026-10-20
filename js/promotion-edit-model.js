@@ -27,7 +27,7 @@
       const discountSource=form==='VoucherProposal'?(r.discountText||r.gross):(r.discountText||r.discount);
       if(!groups.has(key))groups.set(key,{id:text(r.editButtonId)||'b'+groups.size,shortName:r.shortName||'',kitchen:r.kitchen||'',netPrice:['BillDiscountProposal','VoucherProposal'].includes(form)?0:(r.netPrice??r.net??''),discount:amount(discountSource),discountUnit:r.couponDiscountUnit||r.discountUnit||(/%/.test(String(discountSource))?'PCT':'CUR'),minAmount:r.minAmount||0,couponType:r.codeChannel||r.proStatus||r.couponType||r.voucherType||(/online/i.test(r.promoType||'')?'Online':'Normal'),attachment:r.attachment||'',items:[]});
       groups.get(key).items.push({...clone(r),selectionMode:r.selectionMode||(/^ALL(?: ITEMS)?$/i.test(r.itemCode)?'ALL':r.catCode&&String(r.catCode)===String(r.itemCode)?'CATE':'ITEM'),id:'r'+index});
-      if(form==='Coupon'){groups.get(key).crmMappingCode=r.crmMappingCode||'';groups.get(key).crmMappingDetail=r.crmMappingDetail||'';}
+      if(form==='Coupon'||form==='Proposal'){groups.get(key).promoType=r.typePromotion==='Item Coupon'?'Item Coupon':'Item Set';groups.get(key).crmMappingCode=r.crmMappingCode||'';groups.get(key).crmMappingDetail=r.crmMappingDetail||'';}
     });
     // Older Coupon rows retained the discount per item, not its original unit.
     // Recover a common percentage only where different amounts prove it;
@@ -49,7 +49,7 @@
     const old=toForm(original,context.month),byId=new Map(old.buttons.map(b=>[b.id,b]));
     const name=text(form.fields.campaign);if(!name)throw Error('กรุณาระบุชื่อแคมเปญ');
     ['detail','mechanic','stores','saleMode'].forEach(k=>{if(!text(form.fields[k]))throw Error('กรุณากรอกรายละเอียด เงื่อนไข สาขา และช่องทางขายให้ครบ');});
-    if(old.form!=='Coupon'&&form.fields.customerGroup==='crm'&&form.fields.crmMappingRequired==='yes'&&(!text(form.fields.crmMappingCode)||text(form.fields.crmMappingCode).length>200||text(form.fields.crmMappingDetail).length>2000))throw Error('กรุณาระบุรหัส Mapping Code / Value Design ให้ถูกต้อง');
+    if(!['Coupon','Proposal'].includes(old.form)&&form.fields.customerGroup==='crm'&&form.fields.crmMappingRequired==='yes'&&(!text(form.fields.crmMappingCode)||text(form.fields.crmMappingCode).length>200||text(form.fields.crmMappingDetail).length>2000))throw Error('กรุณาระบุรหัส Mapping Code / Value Design ให้ถูกต้อง');
     ['start','end'].forEach(k=>{const date=text(form.fields[k]);if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('วันที่ไม่ถูกต้อง');});
     if(form.fields.end<form.fields.start)throw Error('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม');
     const used=new Set(),ids=new Set(),out=[];
@@ -79,8 +79,15 @@
         const base=clone(match||prev.items[0]);delete base.id;
         const code=text(item.itemCode);if(!code)throw Error('กรุณาเลือกสินค้าจากรายการ');
         const row={...base};
-        fields.forEach(k=>{if(old.form==='Coupon'&&['crmMappingCode','crmMappingDetail'].includes(k))return;if(k.startsWith('crmMapping')&&!Object.hasOwn(form.fields,k))return;if(form.fields[k]!==old.fields[k])row[k]=String(form.fields[k]??'');});
-        if(old.form==='Coupon'&&row.customerGroup==='crm'&&row.crmMappingRequired==='yes'){
+        fields.forEach(k=>{if(['Coupon','Proposal'].includes(old.form)&&['crmMappingCode','crmMappingDetail'].includes(k))return;if(k.startsWith('crmMapping')&&!Object.hasOwn(form.fields,k))return;if(form.fields[k]!==old.fields[k])row[k]=String(form.fields[k]??'');});
+        if(old.form==='Proposal'){
+          const type=b.promoType||prev.items[0].typePromotion||'Item Set';
+          if(!['Item Set','Item Coupon'].includes(type))throw Error('Type Promotion ไม่ถูกต้อง');
+          if(!isNew&&type!==(prev.items[0].typePromotion==='Item Coupon'?'Item Coupon':'Item Set'))throw Error('เปลี่ยน Type ของปุ่มเดิมไม่ได้ กรุณาเพิ่มปุ่มใหม่');
+          if(isNew||type==='Item Coupon'){row.typePromotion=type;row.promoType=type;}
+          if(type!=='Item Coupon'){row.crmMappingRequired='no';row.crmMappingCode='';row.crmMappingDetail='';}
+        }
+        if((old.form==='Coupon'||old.form==='Proposal'&&row.typePromotion==='Item Coupon')&&row.customerGroup==='crm'&&row.crmMappingRequired==='yes'){
           if(isNew&&!Object.hasOwn(b,'crmMappingCode'))throw Error('กรุณาระบุ Mapping Code ของคูปองใหม่: '+sn);
           row.crmMappingCode=text(Object.hasOwn(b,'crmMappingCode')?b.crmMappingCode:prev.items[0].crmMappingCode||form.fields.crmMappingCode);
           row.crmMappingDetail=text(Object.hasOwn(b,'crmMappingDetail')?b.crmMappingDetail:prev.items[0].crmMappingDetail||form.fields.crmMappingDetail);

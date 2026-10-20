@@ -41,3 +41,11 @@ test('removed codes are retained in the registry instead of becoming orphan retu
  const r=await R.prepareEditResources(db,input),counter=JSON.parse(r.writes.find(w=>w.key==='pc_code_counter_v1').value);
  assert.equal(counter.reservations['coupon::IC0001'].retainForHistory,true);assert.equal(counter.reservations['coupon::IC0001'].status,'RESERVED');
 });
+test('adding Item Coupon through Item Set edit reserves only a coupon code',async()=>{
+ const R=require('../sync-worker/promotion-edit-resources.js'),input=fixture();
+ Object.assign(input.original.m['2026-11'][0],{submissionForm:'Item Set',typePromotion:'Item Set',promoType:'Item Set'});
+ input.form=M.toForm(input.original,input.month);input.form.buttons.push({...input.form.buttons[0],id:'new:coupon001',isNew:true,shortName:'Coupon',promoType:'Item Coupon',kitchen:'Fries',codeAllocation:{promotion:{mode:'auto'},itemset:{mode:'auto'}},items:[{...input.form.buttons[0].items[0],id:''}]});
+ input.next=M.applyRevision(input.original,input.form,{actor:'Bow',month:input.month,editId:input.editId});
+ const counter={types:{coupon:{seeded:true,cursor:1}},reservations:{},log:[]};const db={prepare(){return {all:async()=>({results:[]}),bind(){return {first:async()=>({v:JSON.stringify(counter),updated_at:1})};}};}};
+ const result=await R.prepareEditResources(db,input),r=result.next.m[input.month].at(-1);assert.equal(r.codePromotion,'IC0002');assert.equal(r.codeItemSet,'');assert.equal(r.typePromotion,'Item Coupon');
+});
