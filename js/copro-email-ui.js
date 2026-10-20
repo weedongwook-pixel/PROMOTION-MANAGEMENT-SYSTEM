@@ -126,31 +126,44 @@
         if(!policies.length)throw Error('ยังตรวจยืนยันลูปที่อนุมัติไม่ได้ กรุณาลองอีกครั้ง');
       }
       const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียด CoPromo (ไม่ส่งเมล) / Internal CoPromo details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
-      const recordForms=campaigns.map(c=>{
-        const matches=c.buttons.filter(b=>{const identity=JSON.parse(b.source_identity_json);return record.emailButtonId ? b.button_id===record.emailButtonId : (record.cmposName||record.buttonName)?identity.shortName===(record.cmposName||record.buttonName)&&(!record.codePromotion||identity.codePromotion===record.codePromotion):c.buttons.length===1;});
-        return '<section data-copro-records="'+esc(c.id)+'"'+(c.id!==campaigns[0].id?' hidden':'')+'>'+c.buttons.map((b,i)=>{
-          const identity=JSON.parse(b.source_identity_json),prefill=matches.length===1&&matches[0].button_id===b.button_id?record:{};
-          return '<fieldset class="border rounded p-3 my-3"><legend class="float-none w-auto fs-6 px-2">'+esc(identity.shortName+' · '+[identity.codePromotion,identity.codeItemSet].filter(Boolean).join(' / '))+'</legend>'+fields.map(([key,label])=>'<label class="d-block mb-1" for="coproRecord-'+c.id+'-'+i+'-'+key+'">'+esc(label)+(key==='brand'?' *':'')+'</label><textarea class="form-control mb-2" id="coproRecord-'+c.id+'-'+i+'-'+key+'" rows="'+(['detail','remark','paymentCondition'].includes(key)?2:1)+'" maxlength="8000">'+esc(prefill[key]||'')+'</textarea>').join('')+'</fieldset>';
-        }).join('')+'</section>';
-      }).join('');
+      const stored=await window.PC_CLOUD.readCloudKey('pc_co_promotions');
+      const savedRecords=stored?JSON.parse(stored.value):[];
+      const recordsFor=c=>c.buttons.map(b=>{
+        const identity=JSON.parse(b.source_identity_json);
+        const matches=r=>r.emailButtonId? r.emailButtonId===b.button_id : (r.cmposName||r.buttonName)===identity.shortName&&(!r.codePromotion||r.codePromotion===identity.codePromotion);
+        const saved=matches(record)?record:(c.records||[]).find(matches)||savedRecords.find(r=>r.campaign===record.campaign&&matches(r))||{};
+        const result={buttonId:b.button_id,cmposName:identity.shortName,buttonName:identity.shortName};
+        for(const [key] of fields)result[key]=String(saved[key]??'').trim();
+        return result;
+      });
+      let previewGeneration=0;
+      const showDetails=async()=>{
+        const generation=++previewGeneration,target=document.getElementById('coproMailDetails');
+        target.textContent='กำลังโหลดรายละเอียดที่จะส่งเมล…';
+        try{
+          const campaign=campaigns.find(c=>c.id===document.getElementById('coproCampaign').value),policy=policies.find(p=>p.id===document.getElementById('coproLoop').value);
+          const preview=await client().request('copro/preview',{method:'POST',body:{campaignId:campaign.id,expectedVersion:campaign.version,policyId:policy.id,policyVersion:policy.version,recipients:policy.recipients,records:recordsFor(campaign)}});
+          if(generation===previewGeneration&&target.isConnected)target.textContent=preview.text;
+        }catch(e){if(generation===previewGeneration&&target.isConnected)target.textContent='โหลดรายละเอียดเมลไม่ได้: '+e.message;}
+      };
       const choose=await Swal.fire({
         title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
-        html:'<div style="text-align:left"><p>'+esc(word('เมลใช้รายละเอียดจากหน้าแจ้งโปรโมชั่นและไฟล์แนบต้นฉบับ ข้อมูล CoPromo ด้านล่างเก็บภายในระบบเท่านั้น','Email uses the promotion submission and original attachments. CoPromo fields below are stored internally only.'))+'</p>'+
+        html:'<div style="text-align:left"><p>'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
-          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+recordForms+'</div>',
+          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre></div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
           const field=document.getElementById('coproLoop'),describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
-          document.getElementById('coproCampaign').addEventListener('change',event=>document.querySelectorAll('[data-copro-records]').forEach(section=>{section.hidden=section.dataset.coproRecords!==event.target.value;}));
+          document.getElementById('coproCampaign').addEventListener('change',showDetails);field.addEventListener('change',showDetails);showDetails();
         },
         showLoaderOnConfirm:true,
         async preConfirm(){
           const campaign=campaigns.find(c=>c.id===document.getElementById('coproCampaign').value),policy=policies.find(p=>p.id===document.getElementById('coproLoop').value),to=addresses(document.getElementById('coproTestTo').value),cc=addresses(document.getElementById('coproTestCc').value);
           if(!to.length){Swal.showValidationMessage(word('กรุณาระบุผู้รับ To','Enter at least one To recipient'));return false;}
-          const records=campaign.buttons.map((b,i)=>{const identity=JSON.parse(b.source_identity_json),saved={buttonId:b.button_id,cmposName:identity.shortName,buttonName:identity.shortName};for(const [key]of fields)saved[key]=document.getElementById('coproRecord-'+campaign.id+'-'+i+'-'+key).value.trim();return saved;});
-          const invalid=records.findIndex(r=>!r.brand);if(invalid!==-1){const field=document.getElementById('coproRecord-'+campaign.id+'-'+invalid+'-brand');field.classList.add('is-invalid');field.focus();field.scrollIntoView({block:'center'});Swal.showValidationMessage(word('กรุณาระบุพาร์ทเนอร์ให้ครบทุกปุ่ม','Enter a partner for every button'));return false;}
+          const records=recordsFor(campaign);
+          if(records.some(r=>!r.brand)){Swal.showValidationMessage('ข้อมูลพาร์ทเนอร์ยังไม่ครบ กรุณากลับไปบันทึกข้อมูล CoPromo ของทุกปุ่มก่อน');return false;}
           let selectedPolicy=policy;
           if(JSON.stringify({to,cc})!==JSON.stringify(policy.recipients)){
             try{
