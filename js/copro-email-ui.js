@@ -2,6 +2,10 @@
   'use strict';
   const en=()=>window.PC_LANG==='EN',word=(th,english)=>en()?english:th;
   const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  function mailDetailsHtml(text){
+    const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
+    return String(text||'').split('\n').map(line=>{const match=line.match(label);return match?'<strong>'+esc(match[0])+'</strong>'+esc(line.slice(match[0].length)):esc(line);}).join('\n');
+  }
   const addresses=value=>String(value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
   function conversationRecipients(item){
     const seen=new Set(['it@rocks-foods.com']),result={to:[],cc:[]};
@@ -89,7 +93,7 @@
         Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         const preview=await client().request('copro/revision/preview',{method:'POST',body,interactive:true});
         const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
-        const confirm=await Swal.fire({title:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',html:'<pre style="text-align:left;white-space:pre-wrap;max-height:55vh;overflow:auto">'+esc(text)+'</pre>',showCancelButton:true,confirmButtonText:'ยืนยันส่งเมล',cancelButtonText:'ไม่ส่ง',width:740});
+        const confirm=await Swal.fire({title:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',html:'<pre style="text-align:left;white-space:pre-wrap;max-height:55vh;overflow:auto;font-weight:400">'+mailDetailsHtml(text)+'</pre>',showCancelButton:true,confirmButtonText:'ยืนยันส่งเมล',cancelButtonText:'ไม่ส่ง',width:740});
         if(!confirm.isConfirmed){if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(context.campaign,'promotion_edited',receipt.editId,'not_sent');return false;}
         Swal.fire({title:'กำลังบันทึกคำขอส่งเมล…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         const result=await client().request('copro/revision',{method:'POST',body:{...body,previewHash:preview.previewHash,confirmed:true}});
@@ -143,7 +147,7 @@
         try{
           const campaign=campaigns.find(c=>c.id===document.getElementById('coproCampaign').value),policy=policies.find(p=>p.id===document.getElementById('coproLoop').value);
           const preview=await client().request('copro/preview',{method:'POST',body:{campaignId:campaign.id,expectedVersion:campaign.version,policyId:policy.id,policyVersion:policy.version,recipients:policy.recipients,records:recordsFor(campaign)}});
-          if(generation===previewGeneration&&target.isConnected)target.textContent=preview.text;
+          if(generation===previewGeneration&&target.isConnected)target.innerHTML=mailDetailsHtml(preview.text);
         }catch(e){if(generation===previewGeneration&&target.isConnected)target.textContent='โหลดรายละเอียดเมลไม่ได้: '+e.message;}
       };
       let previousDraft=null;
@@ -154,7 +158,7 @@
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
-          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre></div>',
+          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
           const field=document.getElementById('coproLoop');
@@ -184,7 +188,7 @@
       const draft=choose.value,preview=await client().request('copro/preview',{method:'POST',body:draft});
       previousDraft=draft;
       const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
-      const confirm=await Swal.fire({title:word('ตรวจสอบรายละเอียดก่อนส่งเมล','Review email before sending'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit">'+esc(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันส่งเมล','Confirm send'),cancelButtonText:word('กลับไปแก้ไข','Back to edit'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonColor:'#1b5e20',width:740});
+      const confirm=await Swal.fire({title:word('ตรวจสอบรายละเอียดก่อนส่งเมล','Review email before sending'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit;font-weight:400">'+mailDetailsHtml(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันส่งเมล','Confirm send'),cancelButtonText:word('กลับไปแก้ไข','Back to edit'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonColor:'#1b5e20',width:740});
       if(!confirm.isConfirmed){if(confirm.dismiss==='cancel')continue;return null;}
       const result=await client().request('copro',{method:'POST',body:{...draft,previewHash:preview.previewHash,confirmed:true}});
       return {status:'success',...result};
