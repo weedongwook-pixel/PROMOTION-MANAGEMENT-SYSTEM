@@ -86,7 +86,7 @@
     list.innerHTML='';window.campaignCount=0;window.addCampaign();
     const card=q(list,'.campaign-card');if(!card)throw Error('เปิดฟอร์มเดิมไม่สำเร็จ');
     ['name','start','end','detail'].forEach(k=>put(card,'.camp-'+k,form.fields[k==='name'?'campaign':k]));
-    put(card,'.camp-mechanic, .camp-condition',form.fields.mechanic);put(card,'.camp-postcate',form.fields.cate||'Promotion set');
+    put(card,'.camp-mechanic, .camp-condition',form.fields.mechanic);put(card,'.camp-postcate',form.fields.cate==='Item Coupon'?'Promotion set':form.fields.cate||'Promotion set');
     const name=q(card,'.camp-name');name.readOnly=true;name.removeAttribute('oninput');name.removeAttribute('onchange');name.title='คงชื่อเดิมเพื่ออ้างอิงรหัส หากต้องการเปลี่ยนชื่อกรุณาติดต่อ IT';
     const month=document.getElementById('globalMonth');if(month){month.value=context.month;month.disabled=true;}
     all(card,'.camp-start,.camp-end').forEach(el=>el.removeAttribute('min'));
