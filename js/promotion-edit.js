@@ -107,7 +107,7 @@
       put(block,'.btn-sn',button.shortName);put(block,'.btn-kitchen',button.kitchen);put(block,'.btn-net',button.netPrice);
       put(block,'.btn-disc-input,.btn-disc-val',parseFloat(button.discount)||0);put(block,'.btn-disc-unit',button.discountUnit);
       put(block,'.min-val',button.minAmount);
-      if(formName==='Proposal'){put(block,'.btn-promo-type',button.promoType||'Item Set');const type=q(block,'.btn-promo-type');if(type)type.disabled=true;}
+      if(formName==='Proposal'){put(block,'.btn-promo-type',button.promoType||'Item Set');}
       if(formName==='Coupon'||formName==='Proposal'){put(block,'.btn-crm-code',button.crmMappingCode??button.items[0]?.crmMappingCode??'');put(block,'.btn-crm-detail',button.crmMappingDetail??button.items[0]?.crmMappingDetail??'');}
       const minCheck=q(block,'.min-spend-check');if(minCheck){minCheck.checked=Number(button.minAmount)>0;const min=q(block,'.min-val');if(min)min.style.display=minCheck.checked?'':'none';}
       all(block,'input[name^="couponType"],input[name^="voucherType"],input[name^="type-"],.coupon-type').forEach(el=>{el.checked=el.value===button.couponType;el.disabled=true;});
@@ -165,14 +165,14 @@
     const previousReason=document.getElementById('promotionEditReason');if(previousReason)context.form.editReason=previousReason.value;
     document.getElementById('promotionEditReasonPanel')?.remove();
     const banner=document.createElement('div');banner.id='promotionEditBanner';banner.className='alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2';banner.setAttribute('role','status');
-    const message=document.createElement('div');message.textContent='กำลังแก้ไขรายการเดิม: '+context.campaign+' — คงรหัสและผู้ส่งเดิม บันทึกแทนงานเดิมบน Cloud';
+    const message=document.createElement('div');message.textContent='กำลังแก้ไขรายการเดิม: '+context.campaign+' — คงผู้ส่งเดิม · เปลี่ยนเป็น Item Coupon จะใช้รหัส IC · บันทึกแทนงานเดิมบน Cloud';
     const policy=M().policy(context.original,context.actor,context.month);
     if(policy.requiresReason){
       const reasonBox=document.createElement('div');reasonBox.id='promotionEditReasonPanel';reasonBox.className='w-100 text-start my-3';
       const label=document.createElement('label');label.htmlFor='promotionEditReason';label.className='form-label fw-bold';label.textContent='เหตุผลและรายละเอียดที่แก้ไข';
       const reason=document.createElement('textarea');reason.id='promotionEditReason';reason.className='form-control';reason.rows=3;reason.maxLength=2000;reason.required=true;reason.value=context.form.editReason||'';
       const feedback=document.createElement('div');feedback.id='promotionEditReasonError';feedback.className='invalid-feedback';feedback.setAttribute('role','alert');feedback.textContent='กรุณาระบุเหตุผลและจุดที่แก้ไขในช่องนี้ เพื่อให้ IT ดำเนินการได้ถูกต้อง';
-      const help=document.createElement('div');help.id='promotionEditReasonHelp';help.className='small mt-1';help.textContent='งานนี้ผ่าน IT แล้ว เมื่อบันทึกจะส่งกลับให้ IT ดำเนินการแก้ไข และให้ OP ตรวจซ้ำ โดยใช้รหัสเดิม';
+      const help=document.createElement('div');help.id='promotionEditReasonHelp';help.className='small mt-1';help.textContent='งานนี้ผ่าน IT แล้ว เมื่อบันทึกจะส่งกลับให้ IT ดำเนินการแก้ไข และให้ OP ตรวจซ้ำ คงรหัสเดิมเมื่อประเภทไม่เปลี่ยน หากเปลี่ยนเป็น Item Coupon ระบบจะจัดรหัส IC';
       reason.setAttribute('aria-describedby',help.id);
       reason.addEventListener('input',()=>{if(reason.value.trim()){reason.classList.remove('is-invalid');reason.removeAttribute('aria-invalid');reason.setAttribute('aria-describedby',help.id);}});
       reasonBox.append(label,reason,feedback,help);banner.append(reasonBox);

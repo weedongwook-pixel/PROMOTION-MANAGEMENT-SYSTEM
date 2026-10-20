@@ -2505,7 +2505,7 @@
     });
     Object.keys(groups).forEach(k => {
       const g = groups[k], info = g.info;
-      const isItemCoupon = info.typePromotion === 'Item Coupon';
+      const isItemCoupon = info.typePromotion === 'Item Coupon' || info.postCate === 'Item Coupon';
       if(info.typePromotion && !['Item Set','Item Coupon'].includes(info.typePromotion))throw Error('Type Promotion ไม่ถูกต้อง');
       const ptype = isItemCoupon ? 'Item Coupon' : 'Item Set';
       // Reserve the complete pair once per button. Category counters follow

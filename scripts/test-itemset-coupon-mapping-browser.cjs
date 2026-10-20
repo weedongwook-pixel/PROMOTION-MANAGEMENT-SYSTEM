@@ -1,9 +1,10 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});try{
- const page=await browser.newPage();await page.route('https://mapping.test/',r=>r.fulfill({body:'<div id="pcCustomerGroup" data-mapping-scope="proposal"></div><div id="btn-container-camp"></div>',contentType:'text/html'}));await page.goto('https://mapping.test/');
+ const page=await browser.newPage();await page.route('https://mapping.test/',r=>r.fulfill({body:'<div id="camp"><select class="camp-postcate" onchange="syncProposalCategory(\'camp\')"><option>Promotion set</option><option>Item Coupon</option></select></div><div id="pcCustomerGroup" data-mapping-scope="proposal"></div><div id="btn-container-camp"></div>',contentType:'text/html'}));await page.goto('https://mapping.test/');
  await page.addScriptTag({content:fs.readFileSync('js/customer-group.js','utf8')});
- await page.evaluate(source=>{window.categories=[];window.updateDatalist=()=>{};eval(source.slice(source.indexOf('window.addButton ='),source.indexOf('window.updateTotals =')));window.addButton('camp');window.addButton('camp');PC_CustomerGroup._set('crm');PC_CustomerGroup._mappingRequired('yes');},fs.readFileSync('pages/Proposal.html','utf8'));
+ await page.evaluate(source=>{window.categories=[];window.updateDatalist=()=>{};eval(source.slice(source.indexOf('window.syncProposalCategory ='),source.indexOf('window.updateTotals =')));window.addButton('camp');window.addButton('camp');PC_CustomerGroup._set('crm');PC_CustomerGroup._mappingRequired('yes');},fs.readFileSync('pages/Proposal.html','utf8'));
+ await page.evaluate(()=>document.getElementById('camp').append(document.getElementById('btn-container-camp')));
  const blocks=page.locator('.pos-button-block');assert.equal(await blocks.count(),2);
  assert.equal(await blocks.nth(0).locator('.crm-coupon-mapping').isVisible(),false);
  await blocks.nth(0).locator('.btn-promo-type').selectOption('Item Coupon');assert.equal(await blocks.nth(0).locator('.crm-coupon-mapping').isVisible(),true);assert.equal(await blocks.nth(1).locator('.crm-coupon-mapping').isVisible(),false);
@@ -13,5 +14,8 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('.pos-button-block')].map(b=>PC_CustomerGroup.couponValue(b).crmMappingCode)),['VD-A','VD-B']);
  await blocks.nth(0).locator('.btn-promo-type').selectOption('Item Set');assert.equal(await blocks.nth(0).locator('.crm-coupon-mapping').isVisible(),false);assert.equal(await page.evaluate(()=>PC_CustomerGroup.couponValue(document.querySelector('.pos-button-block')).crmMappingCode),'');
  await page.evaluate(()=>PC_CustomerGroup._set('normal'));assert.equal(await blocks.nth(1).locator('.crm-coupon-mapping').isVisible(),false);
+ await page.locator('.camp-postcate').selectOption('Item Coupon');assert.deepEqual(await blocks.locator('.btn-promo-type').evaluateAll(els=>els.map(e=>e.value)),['Item Coupon','Item Coupon']);
+ await page.evaluate(()=>window.addButton('camp'));assert.equal(await blocks.last().locator('.btn-promo-type').inputValue(),'Item Coupon');
+ assert.match(fs.readFileSync('pages/Proposal.html','utf8'),/<option value="Item Coupon">Item Coupon<\/option>/);
  console.log('Item Set browser: Mapping CRM shown only for CRM Item Coupon; per-button values and validation stay independent; type/customer changes exclude stale mapping.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

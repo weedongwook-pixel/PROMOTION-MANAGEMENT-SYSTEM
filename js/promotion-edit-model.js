@@ -83,7 +83,7 @@
         if(old.form==='Proposal'){
           const type=b.promoType||prev.items[0].typePromotion||'Item Set';
           if(!['Item Set','Item Coupon'].includes(type))throw Error('Type Promotion ไม่ถูกต้อง');
-          if(!isNew&&type!==(prev.items[0].typePromotion==='Item Coupon'?'Item Coupon':'Item Set'))throw Error('เปลี่ยน Type ของปุ่มเดิมไม่ได้ กรุณาเพิ่มปุ่มใหม่');
+          if(!isNew&&prev.promoType==='Item Coupon'&&type!=='Item Coupon')throw Error('เปลี่ยน Item Coupon กลับเป็น Item Set กรุณาเพิ่มปุ่มใหม่');
           if(isNew||type==='Item Coupon'){row.typePromotion=type;row.promoType=type;}
           if(type!=='Item Coupon'){row.crmMappingRequired='no';row.crmMappingCode='';row.crmMappingDetail='';}
         }
@@ -115,6 +115,7 @@
       });
     }
     const structural=[];
+    form.buttons.forEach(b=>{const prev=byId.get(b.id);if(prev&&b.promoType&&b.promoType!==prev.promoType)structural.push('เปลี่ยน Type: '+prev.shortName+' → '+b.promoType);});
     old.buttons.filter(b=>!ids.has(b.id)).forEach(b=>structural.push('ลบปุ่ม: '+b.shortName));
     form.buttons.forEach((b,i)=>{if(b.isNew)structural.push('เพิ่มปุ่ม: '+b.shortName);else if(old.buttons.findIndex(p=>p.id===b.id)!==i)structural.push('เลื่อนลำดับปุ่ม: '+b.shortName);});
     form.buttons.filter(b=>b.fileData||b.fileSelection).forEach(b=>structural.push('ไฟล์แนบ: '+b.shortName));

@@ -49,3 +49,16 @@ test('adding Item Coupon through Item Set edit reserves only a coupon code',asyn
  const counter={types:{coupon:{seeded:true,cursor:1}},reservations:{},log:[]};const db={prepare(){return {all:async()=>({results:[]}),bind(){return {first:async()=>({v:JSON.stringify(counter),updated_at:1})};}};}};
  const result=await R.prepareEditResources(db,input),r=result.next.m[input.month].at(-1);assert.equal(r.codePromotion,'IC0002');assert.equal(r.codeItemSet,'');assert.equal(r.typePromotion,'Item Coupon');
 });
+test('existing Item Set converts to Item Coupon with a new IC, retaining old code history and other months',async()=>{
+ const R=require('../sync-worker/promotion-edit-resources.js'),input=fixture();
+ Object.assign(input.original.m['2026-11'][0],{submissionForm:'Item Set',typePromotion:'Item Set',promoType:'Item Set',codePromotion:'P12',codeItemSet:'107123',itemPromotion:'107123',builderCode:'107123',typeSel:'Price Promotion',codeBurned:true,kitchen:'Fries'});
+ input.original.m['2026-12']=[{...input.original.m['2026-11'][0]}];
+ input.form=M.toForm(input.original,input.month);input.form.fields.cate='Item Coupon';input.form.buttons[0].promoType='Item Coupon';input.form.editReason='เปลี่ยนเป็นคูปอง CRM';
+ input.next=M.applyRevision(input.original,input.form,{actor:'Bow',month:input.month,editId:input.editId});
+ const state={types:{coupon:{seeded:true,cursor:1},promo:{seeded:true,cursor:12},itemset:{seeded:true,cursor:123}},reservations:{},log:[]};
+ const db={prepare(){return {all:async()=>({results:[]}),bind(){return {first:async()=>({v:JSON.stringify(state),updated_at:1})};}};}};
+ const result=await R.prepareEditResources(db,input),r=result.next.m[input.month][0],counter=JSON.parse(result.writes[0].value);
+ assert.equal(r.codePromotion,'IC0002');assert.equal(r.typePromotion,'Item Coupon');assert.equal(r.codeItemSet,'');assert.equal(r.itemPromotion,'');assert.equal(r.builderCode,'');assert.equal(r._wasItemSet,false);assert.equal(r.typeSel,'Item Coupon');assert.equal(r.codeBurned,false);
+ assert.equal(counter.reservations['promo::P12'].retainForHistory,true);assert.equal(counter.reservations['itemset::107123'].retainForHistory,true);assert.equal(counter.reservations['coupon::IC0002'].status,'RESERVED');
+ assert.equal(result.next.m['2026-12'][0].codePromotion,'P12');assert.equal(result.codeClaims[0],'IC0002');assert.match(r.revisionChanges.join(','),/เปลี่ยน Type/);
+});

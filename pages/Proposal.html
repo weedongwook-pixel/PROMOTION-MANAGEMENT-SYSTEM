@@ -824,15 +824,16 @@
             <label class="small fw-bold text-uppercase d-block mb-1"><i class="fas fa-shapes me-1" style="color:#6d3bd1"></i>ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด *</label>
             <div class="row g-2 align-items-end">
               <div class="col-md-5">
-                <select class="form-select camp-postcate border-dark fw-bold shadow-none">
+                <select class="form-select camp-postcate border-dark fw-bold shadow-none" onchange="window.syncProposalCategory('${campId}')">
                   <option value="Promotion set">Promotion set</option>
                   <option value="Combo">Combo</option>
                   <option value="Value set">Value set</option>
                   <option value="E-Voucher">E-Voucher</option>
+                  <option value="Item Coupon">Item Coupon</option>
                 </select>
               </div>
               <div class="col-md-7">
-                <div class="small text-muted" style="font-size:.74rem;line-height:1.4"><i class="fas fa-circle-info me-1" style="color:#6d3bd1"></i>Promotion set / Combo / Value set → ผูก <b>Price Promotion</b> · E-Voucher → ผูก <b>item coupon online</b></div>
+                <div class="small text-muted" style="font-size:.74rem;line-height:1.4"><i class="fas fa-circle-info me-1" style="color:#6d3bd1"></i>Promotion set / Combo / Value set → ผูก <b>Price Promotion</b> · E-Voucher → ผูก <b>item coupon online</b> · Item Coupon → รหัส <b>IC</b></div>
               </div>
             </div>
           </div>
@@ -891,6 +892,13 @@
     window.addButton(campId); 
   };
 
+  window.syncProposalCategory = function(campId) {
+    const card=document.getElementById(campId);
+    const type=card.querySelector('.camp-postcate').value==='Item Coupon'?'Item Coupon':'Item Set';
+    card.querySelectorAll('.btn-promo-type').forEach(el=>{el.value=type;});
+    window.PC_CustomerGroup?.syncCoupons();
+  };
+
   window.addButton = function(campId) {
     const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
     const html = `
@@ -931,6 +939,7 @@
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
     window.addItemRow(btnId, campId);
+    if(document.getElementById(campId)?.querySelector('.camp-postcate')?.value==='Item Coupon')document.getElementById(btnId).querySelector('.btn-promo-type').value='Item Coupon';
     window.PC_CustomerGroup?.syncCoupons();
   };
 

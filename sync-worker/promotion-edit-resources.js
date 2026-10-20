@@ -14,8 +14,9 @@
    for(const rec of records.results||[]){const parsed=JSON.parse(rec.v);if(rec.k.startsWith('promo::c::'))scan({m:parsed.m});else if(rec.k==='promo::meta'){scan({npd:parsed.npd,npdProducts:parsed.npdProducts,recipeCustom:parsed.recipeCustom});}else scan(parsed);}
    return usedCodes;
   }
+  const converted=new Set(form.buttons.filter(b=>b.isNew!==true&&b.promoType==='Item Coupon'&&old.buttons.some(p=>p.id===b.id&&p.promoType!=='Item Coupon')).map(b=>b.id));
   const kept=new Set(form.buttons.filter(b=>b.isNew!==true).map(b=>b.id));
-  const removedCodes=[...new Set(old.buttons.filter(b=>!kept.has(b.id)).flatMap(b=>b.items.flatMap(r=>[r.codePromotion,r.codeItemSet,r.itemPromotion])).filter(Boolean))];
+  const removedCodes=[...new Set(old.buttons.filter(b=>!kept.has(b.id)||converted.has(b.id)).flatMap(b=>b.items.flatMap(r=>[converted.has(b.id)&&/^IC[0-9]+$/.test(r.codePromotion||'')?'':r.codePromotion,r.codeItemSet,r.itemPromotion])).filter(Boolean))];
   if(removedCodes.length){
     counterRecord=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind('pc_code_counter_v1').first();
     if(!counterRecord)throw Error('ไม่พบทะเบียนรหัส จึงยังลบปุ่มที่มีรหัสไม่ได้ กรุณาติดต่อ IT');
@@ -36,14 +37,17 @@
    const rows=next.m[month].filter(r=>r.buttonOrder===order);
    const itemCoupon=kind==='Proposal'&&button.promoType==='Item Coupon';
    const type=kind==='Coupon'||itemCoupon?'coupon':kind==='BillDiscountProposal'?'bill':kind==='VoucherProposal'?'voucher':form.fields.cate==='E-Voucher'?'coupon':null;
-   if(button.isNew===true&&(type||button.codeAllocation)){
+   const conversion=converted.has(button.id),prior=old.buttons.find(b=>b.id===button.id);
+   const keepIC=conversion&&/^IC[0-9]+$/.test(prior?.items[0]?.codePromotion||'');
+   if(conversion)rows.forEach(r=>{r.codeItemSet='';r.itemPromotion='';r.builderCode='';r.posReady=false;r._wasItemSet=false;r.typeSel='Item Coupon';if(!keepIC)r.codeBurned=false;});
+   if((button.isNew===true&&(type||button.codeAllocation))||(conversion&&!keepIC)){
     if(!counter){counterRecord=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind('pc_code_counter_v1').first();if(!counterRecord)throw Error('ไม่พบทะเบียนจองรหัสบน Cloud');counter=JSON.parse(counterRecord.v);}
     const choices={...(button.codeAllocation||{})};
     if(itemCoupon)delete choices.itemset;
     const fields=[['promotion',type||'promo','codePromotion']];
     if(kind==='Proposal'&&!itemCoupon&&button.codeAllocation)fields.push(['itemset','itemset','codeItemSet']);
     if(Object.keys(choices).some(k=>!fields.some(f=>f[0]===k)))throw Error('ประเภทช่องรหัสไม่ถูกต้อง');
-    const occupied=button.codeAllocation?await loadUsedCodes():undefined;
+    const occupied=button.codeAllocation||conversion?await loadUsedCodes():undefined;
     for(const [name,codeType,column] of fields){
      const choice=choices[name]||{mode:'auto'};
      if(!choice||!['auto','manual'].includes(choice.mode))throw Error('กรุณาเลือกใส่รหัสเองหรือให้ระบบจอง');
