@@ -79,7 +79,7 @@
         policies=(await client().request('threads')).items.filter(p=>!options.mode||p.mode===options.mode);
         if(!policies.length)throw Error('ยังตรวจยืนยันลูปที่อนุมัติไม่ได้ กรุณาลองอีกครั้ง');
       }
-      const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียดสำหรับเมล / Public details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
+      const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียด CoPromo (ไม่ส่งเมล) / Internal CoPromo details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
       const recordForms=campaigns.map(c=>{
         const matches=c.buttons.filter(b=>{const identity=JSON.parse(b.source_identity_json);return record.emailButtonId ? b.button_id===record.emailButtonId : (record.cmposName||record.buttonName)?identity.shortName===(record.cmposName||record.buttonName)&&(!record.codePromotion||identity.codePromotion===record.codePromotion):c.buttons.length===1;});
         return '<section data-copro-records="'+esc(c.id)+'"'+(c.id!==campaigns[0].id?' hidden':'')+'>'+c.buttons.map((b,i)=>{
@@ -89,7 +89,7 @@
       }).join('');
       const choose=await Swal.fire({
         title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
-        html:'<div style="text-align:left"><p>'+esc(word('ตรวจข้อมูลแต่ละปุ่มและรายชื่อ To/CC ที่เลือกไว้ก่อนส่ง','Review each button and the selected To/CC recipients before sending.'))+'</p>'+
+        html:'<div style="text-align:left"><p>'+esc(word('เมลใช้รายละเอียดจากหน้าแจ้งโปรโมชั่นและไฟล์แนบต้นฉบับ ข้อมูล CoPromo ด้านล่างเก็บภายในระบบเท่านั้น','Email uses the promotion submission and original attachments. CoPromo fields below are stored internally only.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+

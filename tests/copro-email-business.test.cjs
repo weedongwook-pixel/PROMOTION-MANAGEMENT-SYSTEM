@@ -81,7 +81,7 @@ test('queue failure rolls back final IT settlement, product and completion evide
 });
 test('email preview shows saved items and quantities without leaking accounting remarks',async()=>{
   const {a,DB,env,draft}=await fixture();draft.records[0].remark='Private accounting note';
-  const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/101001/);assert.match(preview.text,/55/);assert.match(preview.text,/Public detail/);assert.doesNotMatch(preview.text,/Private accounting note/);DB.db.close();
+  const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/101001/);assert.match(preview.text,/55/);assert.doesNotMatch(preview.text,/Public detail/);assert.doesNotMatch(preview.text,/Private accounting note/);DB.db.close();
 });
 test('same-name buttons with distinct codes cannot complete each other',async()=>{
   const {a,DB,env,c,buttons,draft}=await fixture({sameName:true});await a.commitCoPromo(actor,draft,env);
@@ -160,7 +160,7 @@ test('IT completed in trusted Cloud before binding is preserved and interface co
 });
 test('stable button IDs keep separate records when mutable names and codes converge',async()=>{
  const {a,DB,env,c,draft}=await fixture();changeCloud(DB,c,rows=>{rows[1].shortName=rows[0].shortName;rows[1].codePromotion=rows[0].codePromotion;});draft.records[0].brand='First partner';draft.records[1].brand='Second partner';
- const preview=await a.previewCoPromo(actor,draft,env);assert.equal(preview.details.buttons.length,2);assert.equal(preview.details.buttons[0].items.length,1);assert.equal(preview.details.buttons[1].items.length,1);assert.equal(new Set(preview.details.buttons.map(b=>b.brand)).size,2);DB.db.close();
+ const preview=await a.previewCoPromo(actor,draft,env);assert.equal(preview.details.buttons.length,2);assert.equal(preview.details.buttons[0].items.length,1);assert.equal(preview.details.buttons[1].items.length,1);assert.ok(preview.details.buttons.every(b=>b.brand===undefined&&b.detail===undefined));DB.db.close();
 });
 test('protected IT settlement confirms live promotion reservations for every counter prefix',async()=>{
  for(const [type,code] of [['promo','P9999'],['coupon','IC9999'],['bill','BD9999'],['voucher','VC9999']]){

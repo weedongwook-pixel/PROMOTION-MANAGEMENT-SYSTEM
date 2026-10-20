@@ -12,6 +12,7 @@ test('mail attachments preserve original bytes, deduplicate references and bind 
 test('missing, external, malformed or oversized attachment cannot silently disappear from email',async()=>{
  const {a,DB,file}=fixture();
  await assert.rejects(a.readEmailAttachments([{attachment:'file:gone'}],{DB}),/email_attachment_missing/);
+ await assert.rejects(a.readEmailAttachments([{attachment:'nofile:original.xlsx'}],{DB}),/email_attachment_missing/);
  await assert.rejects(a.readEmailAttachments([{attachment:'https://example.net/file'}],{DB}),/email_attachment_unsupported/);
  for(const patch of [{base64:'bad!!'},{name:'a\r\nBcc: bad'},{mime:'x\r\ny'},{base64:'AAAA'.repeat(5000000)}]){
   DB.db.prepare('UPDATE promo_store SET v=?').run(JSON.stringify({f1:{...file,...patch}}));await assert.rejects(a.readEmailAttachments([{attachment:'file:f1'}],{DB}));

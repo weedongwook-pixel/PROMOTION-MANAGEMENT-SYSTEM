@@ -25,7 +25,10 @@
     for(const b of d.buttons||[]){
       lines.push(String(b.name||'')+' — '+String(b.code||''));
       if(b.promotionDetail)lines.push('รายละเอียดโปรฯ / Promotion details: '+b.promotionDetail);
-      if(b.brand)lines.push('Partner: '+b.brand);if(b.detail)lines.push('Details: '+b.detail);if(b.saleMode)lines.push('Sale Mode: '+b.saleMode);
+      if(b.promoType)lines.push('Type Promotion: '+b.promoType);
+      if(b.saleMode)lines.push('Sale Mode: '+b.saleMode);
+      if(b.stores)lines.push('Stores: '+(Array.isArray(b.stores)?b.stores.join(', '):String(b.stores)));
+      if(b.minAmount!==undefined&&b.minAmount!=='')lines.push('Minimum amount: '+b.minAmount);
       for(const item of b.items||[])lines.push([item.code,item.name,'Qty: '+item.qty,'Unit price: '+item.unitPrice].join(' · '));
       if(b.netPrice!==' '&&b.netPrice!==undefined&&b.netPrice!=='')lines.push('Net: '+b.netPrice);if(b.discount!==undefined&&b.discount!=='')lines.push('Discount: '+b.discount);if(b.condition)lines.push('Conditions: '+b.condition);
     }

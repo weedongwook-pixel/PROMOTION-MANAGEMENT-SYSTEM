@@ -2,6 +2,7 @@
   'use strict';const api=root.PC_Email;
   api.readEmailAttachments=async function(rows,env,expected){
     const refs=[...new Set(rows.map(r=>String(r.attachment||'').trim()).filter(Boolean))].sort();
+    if(refs.some(ref=>ref.startsWith('nofile:')))throw Error('email_attachment_missing');
     if(refs.length>20)throw Error('email_attachment_too_large');
     if(refs.some(ref=>!/^file:[a-zA-Z0-9_-]{1,128}$/.test(ref)))throw Error('email_attachment_unsupported');
     const record=refs.length?await env.DB.prepare("SELECT v,updated_at FROM promo_store WHERE k='pc_promo_files'").first():null;
