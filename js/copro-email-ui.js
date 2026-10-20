@@ -67,7 +67,16 @@
         const campaigns=new Set([...(entries||[]).map(e=>e.campaign),...rows.map(e=>e.campaign)]);
         for(const campaign of campaigns)for(const kind of Object.keys(kinds))if(!rows.some(e=>e.campaign===campaign&&e.kind===kind))rows.push({campaign,kind,status:results[0].status==='rejected'?'unknown':kind==='it_interface_complete'?'waiting':'unselected'});
         const reason={approval_or_source_changed:'ข้อมูลโปรฯ หรือสิทธิ์เปลี่ยนหลังยืนยัน',approval_or_target_changed:'ลูปเมลหรือสิทธิ์เปลี่ยน',connection_unavailable:'บัญชี Gmail ยังไม่พร้อม',provider_rejected:'Gmail ปฏิเสธการส่ง',provider_rate_limited:'Gmail จำกัดการส่งชั่วคราว',provider_outcome_unknown:'ยังยืนยันผลตอบกลับจาก Gmail ไม่ได้',lease_expired:'ระบบไม่ได้รับผลส่งภายในเวลาที่กำหนด',acknowledgement_not_saved:'บันทึกผลตอบกลับ Gmail ไม่สำเร็จ'};
-        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังตรวจสถานะจาก Gmail ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th><th>ประเภทเมล</th><th>สถานะ</th><th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.campaign)+'</td><td>'+esc(kinds[r.kind]||r.kind)+'</td><td>'+esc(labels[r.status]||r.status)+'</td><td>'+esc(r.at?new Date(r.at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(reason[r.error]||r.error||'—')+'</td></tr>').join('')+'</tbody></table></div>';
+        const time=r=>{const n=typeof r.at==='number'?r.at:Date.parse(r.at);return Number.isFinite(n)?n:0;};
+        const grouped=Array.from(campaigns,campaign=>{
+          const latest={};
+          for(const r of rows.filter(r=>r.campaign===campaign))if(!latest[r.kind]||time(r)>time(latest[r.kind]))latest[r.kind]=r;
+          const events=Object.values(latest),at=Math.max(0,...events.map(time));
+          const errors=events.filter(r=>r.error).map(r=>(kinds[r.kind]||r.kind)+': '+(reason[r.error]||r.error));
+          return '<tr><td>'+esc(campaign)+'</td>'+Object.keys(kinds).map(kind=>'<td>'+esc(labels[latest[kind]?.status]||latest[kind]?.status||'ยังตรวจสถานะไม่ได้')+'</td>').join('')+'<td>'+esc(at?new Date(at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(errors.join(' · ')||'—')+'</td></tr>';
+        });
+        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังตรวจสถานะจาก Gmail ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th>'+Object.values(kinds).map(kind=>'<th>'+esc(kind)+'</th>').join('')+'<th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+grouped.join('')+'</tbody></table></div>';
+
       }catch(e){root.textContent='อ่านสถานะเมลไม่สำเร็จ: '+e.message;}
     },
     async notifyEdit(context,receipt){
