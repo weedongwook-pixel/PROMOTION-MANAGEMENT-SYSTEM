@@ -47,7 +47,7 @@
   const client=()=>window.PC_CoProEmail;
   function error(error){return Swal.fire({icon:'error',title:word('ยังดำเนินการอีเมลไม่ได้','Email not completed'),text:String(error?.message||error)});}
   function recipientAddControls(id,label){
-    return '<div class="d-flex gap-2 my-2"><input type="email" id="'+id+'Add" class="form-control" aria-label="อีเมลที่จะเพิ่มใน '+label+'" placeholder="เพิ่มอีเมลผู้รับ"><button type="button" id="'+id+'Button" class="btn btn-outline-success" style="white-space:nowrap">เพิ่ม '+label+'</button></div>';
+    return '<div class="d-flex gap-2 my-2"><input type="email" id="'+id+'Add" class="form-control" aria-label="อีเมลที่จะเพิ่มใน '+label+'" placeholder="อีเมลผู้รับเพิ่มเติม"><button type="button" id="'+id+'Button" class="btn btn-outline-success" style="white-space:nowrap">เพิ่ม '+label+' ในลูปนี้</button></div><p class="small">เพิ่มผู้รับในลูปอีเมลเดิมที่เลือก ไม่ได้สร้างลูปใหม่</p>';
   }
   function bindRecipientAdd(id){
     const input=document.getElementById(id+'Add'),button=document.getElementById(id+'Button'),target=document.getElementById(id);
