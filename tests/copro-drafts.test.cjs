@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function fixture(){
  const store=new Map();let user='MKT A',fail=false,rows=[{campaign:'Test',shortName:'A',submissionBatchId:'batch-1',submissionForm:'Bill Discount',emailButtonId:'button-1',codePromotion:'BD001'}];
- const context={console,Date,localStorage:{getItem:()=>user},PC_CLOUD:{
-  async readCloudKey(key){return store.get(key)||null;},async readCampaignRows(){return rows;},
+ const context={console,Date,crypto:require('node:crypto').webcrypto,localStorage:{getItem:()=>user},PC_CLOUD:{
+  async readCloudKey(key){return store.get(key)||null;},async saveCoPromoRecords(value,version){if(fail)throw Error('Cloud unavailable');const key='pc_co_promotions';assert.equal(store.get(key)?.updatedAt??null,version);const row={value,updatedAt:(version||0)+1};store.set(key,row);return row;},async readCampaignRows(){return rows;},
   async saveCoPromoDrafts(owner,value,version){if(fail)throw Error('Cloud unavailable');const key='pc_copro_drafts::'+encodeURIComponent(owner),old=store.get(key);assert.equal(old?.updatedAt??null,version);const next={value,updatedAt:(version||0)+1};store.set(key,next);return next;}
  }};context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync('js/copro-drafts.js','utf8'),context);
  return {api:context.PC_CoPromoDrafts,context,store,setUser:x=>user=x,setRows:x=>rows=x,fail:()=>fail=true};
@@ -25,4 +25,11 @@ test('resume uses latest Cloud codes and exact submission, never submits the pro
 });
 test('completion removes only the saved draft and makes no email call',async()=>{
  const f=fixture(),d=await f.api.save('Test',{brand:'UOB'},null);await f.api.remove(d);assert.equal((await f.api.list()).length,0);
+});
+
+test('CoPromo Yes creates Cloud records before email, repeats are idempotent and email failure cannot erase fields',async()=>{
+ const f=fixture();await f.api.recordCoPromo('Test');let rows=JSON.parse(f.store.get('pc_co_promotions').value);assert.equal(rows.length,1);assert.equal(rows[0].emailPending,true);
+ await f.api.recordCoPromo('Test',{emailButtonId:'button-1',brand:'UOB',billingEntity:'Saved before mail'});
+ rows=JSON.parse(f.store.get('pc_co_promotions').value);assert.equal(rows.length,1);assert.equal(rows[0].billingEntity,'Saved before mail');assert.equal(rows[0].mailStatus,'not_queued');
+ f.fail();await assert.rejects(f.api.recordCoPromo('Test',{},'queued'),/Cloud unavailable/);assert.equal(JSON.parse(f.store.get('pc_co_promotions').value)[0].emailPending,true);
 });

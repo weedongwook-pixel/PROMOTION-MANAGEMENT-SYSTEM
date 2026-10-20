@@ -11,7 +11,7 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
   if(!ownerMode)for(const role of ['manage','submit','it'])grant(DB,actor,role);
   const env={DB,SYNC_TOKEN:'test-cloud-token',EMAIL_AUTH_MODE:ownerMode?'gmail_owner':'microsoft',CLOUD_FIRST_ENABLED:'true',EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:mode==='test'?'true':'false',EMAIL_SEND_ENABLED:mode==='production'?'true':'false',EMAIL_TENANT_ID:actor.tenantId,EMAIL_API_AUDIENCE:'22222222-2222-4222-8222-222222222222',EMAIL_API_SCOPE:'api://22222222-2222-4222-8222-222222222222/access_as_user',GMAIL_CLIENT_SECRET:'mock',EMAIL_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')};
   const sent=[];
-  const provider=async(url,opts)=>{if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:subject},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'external-test@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
+  const provider=async(url,opts)=>{if(/messages\?/.test(url))return Response.json({messages:[{id:'m1'}]});if(url.includes('messages/send')){sent.push(JSON.parse(opts.body));return Response.json({id:'mock-send-'+sent.length});}return Response.json({id:'m1',threadId:'provider-thread',payload:{headers:[{name:'Subject',value:subject},{name:'Message-ID',value:'<m1@example.com>'},{name:'To',value:'external-test@example.net'},{name:'Cc',value:'it@rocks-foods.com'}]}});};
   const c={crypto:webcrypto,fetch:provider,URL,URLSearchParams,TextEncoder,TextDecoder,atob,btoa,AbortSignal,Request,Response,Headers,console};
   vm.createContext(c);vm.runInContext(require('../tests/helpers/sync-worker-source.cjs')().replace('export default','globalThis.worker='),c);
   if(!ownerMode)c.PC_Email.verifyEmailActor=async()=>actor;
@@ -39,7 +39,7 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
       const callback=await fetch('/email/gmail/callback?state='+auth.searchParams.get('state')+'&code=mock');if(!callback.ok)throw Error('mock Gmail callback failed');
       const session=await PC_EmailAuth.ownerSession();if(session.sender!=='it@rocks-foods.com')throw Error('owner missing');
     });
-  await c.PC_Email.publishThread(actor,{mode,messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
+  if(!process.argv.includes('--new-loop'))await c.PC_Email.publishThread(actor,{mode,messageId:'m1',recipients:{to:['external-test@example.net'],cc:[]},audience:[actor]},env);
     await page.evaluate(async()=>{await PC_CoProEmail.enable();PC_CoProEmailUI.mountSettings(document.getElementById('pilot'));});
     const attachment={name:process.env.EMAIL_ATTACHMENT_FIXTURE?path.basename(process.env.EMAIL_ATTACHMENT_FIXTURE):'original.xlsx',mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base64:(process.env.EMAIL_ATTACHMENT_FIXTURE?fs.readFileSync(process.env.EMAIL_ATTACHMENT_FIXTURE):Buffer.from('mock original')).toString('base64')};
     const row={attachment:'file:original',campaign:'Email UOB test',shortName:'Button A',submissionBatchId:'batch-test-1234',month:'2026-10',itemCode:'101001',itemNameEN:'Fries',qty:1,gross:55,netPrice:45,promoType:'Item Coupon',codePromotion:'IC001',start:'2026-10-19',end:'2026-11-01'};
@@ -52,11 +52,12 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
         window.PC_CLOUD={
           async readCloudKey(key){const r=await fetch('/promo/store/'+encodeURIComponent(key));if(r.status===404)return null;const v=await r.json();if(!r.ok)throw Error(v.error);return {value:v.value,updatedAt:v.updated_at};},
           async readCampaignRows(campaign){const r=await this.readCloudKey('promo::c::'+encodeURIComponent(campaign));return r?Object.values(JSON.parse(r.value).m).flat():[];},
+          async saveCoPromoRecords(value,expectedUpdatedAt){const r=await fetch('/promo/store/pc_co_promotions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value,expectedUpdatedAt})});if(!r.ok)throw Error('CoPromo save failed');return this.readCloudKey('pc_co_promotions');},
           async saveCoPromoDrafts(owner,value,expectedUpdatedAt){if(window.failDraft)throw Error('Cloud offline');const key='pc_copro_drafts::'+encodeURIComponent(owner);const r=await fetch('/promo/store/'+encodeURIComponent(key),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value,expectedUpdatedAt})});if(!r.ok)throw Error('Cloud save failed');const check=await this.readCloudKey(key);if(check.value!==value)throw Error('Readback failed');return check;}
         };
       });
     }
-    if(process.argv.includes('--draft'))await draftScripts();
+    if(process.argv.includes('--form'))await draftScripts();
     let operation;
     if(process.argv.includes('--form')){
       await page.addScriptTag({path:path.join(process.cwd(),'js/co-promo.js')});
@@ -88,6 +89,11 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
       operation=page.evaluate(()=>formDone);operation.catch(()=>{});
     }else{
       operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
+    }
+    if(process.argv.includes('--new-loop')){
+      await page.locator('#coproFindSubject').fill(subject);await page.locator('#coproFind').click();
+      await page.locator('#coproFound button').first().click();await page.locator('#coproNewTo').fill('external-test@example.net');
+      await page.getByRole('button',{name:'อนุมัติลูปและทำต่อ',exact:true}).click();
     }
     await page.locator('#coproTestTo').fill('external-test@example.net',{timeout:5000});
     const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});

@@ -204,7 +204,7 @@
 
   window.cpLoad = function () {
     run('getCoPromotions').then(function (rows) { ROWS = rows || []; cpKpis(); cpBuildDatalists(); cpRender(); })
-      .catch(function (e) { ROWS = []; cpRender(); });
+      .catch(function (e) { Swal.fire({icon:'error',title:'โหลดข้อมูล CoPromo ไม่สำเร็จ',text:String(e.message||e)}); });
   };
 
   // ตัวเลือกในช่องกรอง (datalist) — เลือกได้ + พิมพ์กรองได้
@@ -283,7 +283,7 @@
       var types = String(r.type || '').split(',').map(function (t) { return '<span class="tag' + (/คูปอง/.test(t) ? ' cash' : '') + '">' + esc(t.trim()) + '</span>'; }).join(' ');
       var so = [r.soNo, r.quota].filter(Boolean).join(' / ');
       var price = (r.priceIncVat ? esc(r.priceIncVat) : '-') + (r.priceExcVat ? ' <span class="muted">/ ' + esc(Number(r.priceExcVat).toFixed(2)) + '</span>' : '');
-      var st = r.interfaceSetup
+      var st = r.emailPending ? '<span class="st wait">รอส่งเมล</span>' : r.interfaceSetup
         ? '<span class="st done"><i class="fas fa-check"></i> Interface แล้ว</span>' + (r.interfaceBy ? '<div class="muted" style="font-size:.66rem;margin-top:2px">' + esc(r.interfaceBy) + '</div>' : '')
         : '<span class="st wait"><i class="fas fa-hourglass-half"></i> รอ IT</span>';
       var acts = (canEdit(r) ? '<button class="rowbtn edit" title="แก้ไข" onclick="cpEdit(\'' + r.id + '\')"><i class="fas fa-pen"></i></button>' : '') +
@@ -291,6 +291,7 @@
           ? '<button class="rowbtn undo" title="คืนสถานะเป็น Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',0)"><i class="fas fa-rotate-left"></i></button>'
           : '<button class="rowbtn ban" title="ยกเลิก — ทำเครื่องหมายว่าไม่ใช่ Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',1)"><i class="fas fa-ban"></i></button>') : '') +
         (canDelete() ? '<button class="rowbtn del" title="ลบ" onclick="cpDel(\'' + r.id + '\')"><i class="fas fa-trash"></i></button>' : '');
+      if(r.emailIntake)acts=canEdit(r)?'<button class="btn btn-sm btn-outline-success" onclick="cpEdit(\''+r.id+'\')">'+(r.emailPending?'ทำต่อ / ส่งเมล':'ตรวจงาน')+'</button>':'';
       return '<tr>' +
         '<td>' + (i + 1) + '</td>' +
         '<td>' + types + '</td>' +
@@ -333,6 +334,16 @@
   window.cpEdit = function (id) {
     var r = ROWS.find(function (x) { return x.id === id; });
     if (!r || !window.PC_CoPromo) return;
+    if(r.emailIntake){
+      if(!r.emailPending){Swal.fire({icon:'info',title:'อีเมลเข้าคิวแล้ว',text:'เปิดตั้งค่าอีเมลเพื่อตรวจสถานะการส่ง ไม่ต้องส่งโปรฯ ซ้ำ'});return;}
+      window.PC_CoPromoDrafts.list().then(function(items){
+        var saved=items.find(d=>d.campaign===r.campaign&&d.submissionId===r.submissionId);
+        if(saved)return window.PC_CoPromoDrafts.resume(saved);
+        var record=Object.assign({},r);delete record.id;
+        return window.PC_CoPromo.openForm(r.campaign,record,{requireEmail:true,selection:record});
+      }).then(cpLoad).catch(e=>Swal.fire({icon:'error',title:'เปิดงานต่อไม่ได้',text:e.message}));
+      return;
+    }
     window.PC_CoPromo.openForm(r.campaign, r).then(function () { cpLoad(); });
   };
   window.cpToggleCopro = function (id, val) {

@@ -5,6 +5,41 @@
   const addresses=value=>String(value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
   const client=()=>window.PC_CoProEmail;
   function error(error){return Swal.fire({icon:'error',title:word('ยังดำเนินการอีเมลไม่ได้','Email not completed'),text:String(error?.message||error)});}
+  async function approveConversation(mode){
+    let selected=null, generation=0;
+    const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:680,
+      html:'<div style="text-align:left"><label for="coproFindSubject">Subject / หัวข้อเมลเดิม</label><input id="coproFindSubject" class="form-control" maxlength="200"><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาใน Gmail</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea><label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea><p class="small">เลือกเมลจริงและยืนยันผู้รับ ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
+      showCancelButton:true,confirmButtonText:'อนุมัติลูปและทำต่อ',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
+      didOpen(){
+        document.getElementById('coproFind').addEventListener('click',async()=>{
+          const query=document.getElementById('coproFindSubject').value.trim(),results=document.getElementById('coproFound'),n=++generation;
+          selected=null;document.getElementById('coproSelected').textContent='';results.replaceChildren();
+          if(!query){results.textContent='กรุณากรอกหัวข้อเมล';return;}
+          results.textContent='กำลังค้นหา…';
+          try{
+            const found=await client().request('threads/search?q='+encodeURIComponent(query)+'&mode='+encodeURIComponent(mode),{interactive:true});
+            if(n!==generation||!results.isConnected)return;results.replaceChildren();
+            for(const item of found.items){
+              const button=document.createElement('button');button.type='button';button.className='btn btn-outline-success d-block my-2';button.textContent=[item.subject,item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join(' · ');
+              button.addEventListener('click',()=>{selected=item;document.getElementById('coproSelected').textContent='เลือกลูป: '+item.subject;});results.append(button);
+            }
+            if(!found.items.length)results.textContent='ไม่พบเมล กรุณาตรวจหัวข้อและบัญชีผู้ส่ง';
+          }catch(e){if(n===generation&&results.isConnected)results.textContent=String(e.message||e);}
+        });
+      },
+      async preConfirm(){
+        try{
+          if(!selected)throw Error('กรุณาค้นหาและเลือกเมลในลูปเดิม');
+          const recipients={to:addresses(document.getElementById('coproNewTo').value),cc:addresses(document.getElementById('coproNewCc').value)};
+          if(!recipients.to.length)throw Error('กรุณาระบุผู้รับ To');
+          const caps=await client().capabilities(),context=caps.authMode==='gmail_owner'?await window.PC_EmailAuth.ownerSession():await window.PC_EmailMsalContext();
+          if(!context.identity?.tenantId||!context.identity?.objectId)throw Error('กรุณาเชื่อมบัญชีผู้ส่งอีกครั้ง');
+          return await client().request('threads',{method:'POST',body:{mode,messageId:selected.messageId,recipients,audience:[context.identity]},interactive:true});
+        }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
+      }
+    });
+    generation++;return result.isConfirmed?result.value:null;
+  }
   window.PC_CoProEmailUI={
     async save(record,options={}){
       if(record.id)throw Error(word('รุ่นทดสอบยังไม่ส่งเมลแก้ไขงานเดิม','Revision emails are not enabled in this pilot'));
@@ -25,8 +60,12 @@
         campaigns=(await client().list()).filter(c=>c.key===key);
         if(!campaigns.length)throw Error('ยังตรวจยืนยันการผูกงานไม่ได้ กรุณาเปิดงานเดิมอีกครั้ง ไม่ต้องส่งโปรฯ ซ้ำ');
       }
-      const policies=(await client().request('threads')).items.filter(p=>!options.mode||p.mode===options.mode);
-      if(!policies.length)throw Error(word('ยังไม่มีลูปที่อนุมัติให้บัญชีนี้ กรุณาให้ผู้ดูแลตั้งค่าลูปอีเมล','No approved conversation is available to this account'));
+      let policies=(await client().request('threads')).items.filter(p=>!options.mode||p.mode===options.mode);
+      if(!policies.length){
+        if(!await approveConversation(options.mode||'production'))return null;
+        policies=(await client().request('threads')).items.filter(p=>!options.mode||p.mode===options.mode);
+        if(!policies.length)throw Error('ยังตรวจยืนยันลูปที่อนุมัติไม่ได้ กรุณาลองอีกครั้ง');
+      }
       const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียดสำหรับเมล / Public details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
       const recordForms=campaigns.map(c=>{
         const matches=c.buttons.filter(b=>{const identity=JSON.parse(b.source_identity_json);return record.emailButtonId ? b.button_id===record.emailButtonId : (record.cmposName||record.buttonName)?identity.shortName===(record.cmposName||record.buttonName)&&(!record.codePromotion||identity.codePromotion===record.codePromotion):c.buttons.length===1;});

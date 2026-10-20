@@ -3,12 +3,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
  try{
-  const page=await browser.newPage();await page.route('**/*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><body><div id="pending"></div></body>'}));await page.goto('http://draft.test/');
+  const page=await browser.newPage();await page.route('**/*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><body><div id="pending"></div></body>'}));await page.goto('https://draft.test/');
   for(const file of ['vendor/sweetalert2/sweetalert2.all.min.js','js/co-promo.js','js/copro-drafts.js'])await page.addScriptTag({content:fs.readFileSync(path.join(process.cwd(),file),'utf8')});
   await page.evaluate(()=>{
    localStorage.setItem('pc_userName','MKT');window.saved=null;
    window.rows=['A','B'].map((shortName,i)=>({campaign:'Legacy',shortName,codePromotion:'BD00'+i,submissionBatchId:'batch-legacy',submissionForm:'Bill Discount'}));
-   window.PC_CLOUD={readCampaignRows:async()=>rows,readCloudKey:async()=>saved,saveCoPromoDrafts:async(user,value,version)=>saved={value,updatedAt:(version||0)+1}};
+   window.PC_CLOUD={readCampaignRows:async()=>rows,readCloudKey:async key=>key==='pc_co_promotions'?window.coRecords:saved,saveCoPromoRecords:async(value,version)=>window.coRecords={value,updatedAt:(version||0)+1},saveCoPromoDrafts:async(user,value,version)=>saved={value,updatedAt:(version||0)+1}};
    window.done=PC_CoPromo.openForm('Legacy',null,{requireEmail:true});
   });
   await page.locator('#cpBtn').selectOption('1');await page.locator('#cpBrand').fill('Partner B');await page.locator('#cpfDraft').click();

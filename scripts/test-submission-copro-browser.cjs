@@ -9,7 +9,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.goto('http://copro.test/');
   for(const file of ['vendor/sweetalert2/sweetalert2.all.min.js','js/submission-log.js','js/co-promo.js'])await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'..',file),'utf8')});
   await page.evaluate(()=>{
-   localStorage.setItem('pc_userName','MKT');window.navigation=[];window.ordinarySaves=0;window.loadPage=name=>navigation.push(name);
+   window.PC_CoPromoDrafts={recordCoPromo:async()=>{window.intakeSaved=true;}};localStorage.setItem('pc_userName','MKT');window.navigation=[];window.ordinarySaves=0;window.loadPage=name=>navigation.push(name);
    const rows=[{campaign:'Co-Promo test',shortName:'Discount',month:'2026-10'}];
    window.PC_CLOUD={enabled:()=>true,readCampaignRows:async()=>rows};
    const run={withSuccessHandler(fn){this.success=fn;return this;},withFailureHandler(){return this;},saveCoPromotion(){window.ordinarySaves++;this.success({status:'success'});},getAllCampaignData(){this.success(rows);},getCoPromoContext(){this.success({campaign:'Co-Promo test',buttons:[{buttonName:'Discount',codePromotion:'BD001'}]});}};
@@ -25,6 +25,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.deepEqual(await page.evaluate(()=>navigation),[],'navigation cannot skip Co-Promo');
   await page.locator(copro?'.swal2-confirm':'.swal2-cancel').click();
   if(copro){
+   assert.equal(await page.evaluate(()=>intakeSaved),true,'Yes persists CoPromo before email selection');
    await page.locator('#cpfCancel').waitFor();assert.deepEqual(await page.evaluate(()=>navigation),[]);
    await page.locator('#cpBrand').fill('Test partner');await page.locator('#cpfSave').click();
    await page.locator('#cpfErr').filter({hasText:'ยังยืนยันการส่งอีเมลไม่ได้'}).waitFor();

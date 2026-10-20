@@ -464,6 +464,26 @@
     return check;
   }
 
+  async function saveCoPromoRecords(value, expectedUpdatedAt) {
+    var key='pc_co_promotions';
+    if (_inFlight || _pending[key]) throw Error('ยังมีข้อมูล CoPromo ค้างซิงก์ กรุณารอสักครู่แล้วลองใหม่');
+    var localBefore = localStorage.getItem(key);
+    if(typeof value!=='string'||!Array.isArray(JSON.parse(value)))throw Error('ข้อมูล CoPromo ไม่ถูกต้อง');
+    var response=await api('/promo/store/'+key,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:value,expectedUpdatedAt:expectedUpdatedAt})});
+    if(response.status===409)throw Error('ข้อมูล CoPromo เปลี่ยนจากอีกหน้าต่าง กรุณาลองอีกครั้ง');
+    if(!response.ok)throw Error('บันทึกข้อมูล CoPromo บน Cloud ไม่สำเร็จ');
+    var ack=await response.json(),check=await readCloudKey(key);
+    if(!ack.ok||!check||check.value!==value||Number(check.updatedAt)!==Number(ack.updated_at))throw Error('ยังตรวจยืนยันการบันทึก CoPromo ไม่สำเร็จ');
+    // Keep the old version on concurrent edits: their next sync must conflict,
+    // never overwrite the intake that has just committed on Cloud.
+    if (localStorage.getItem(key) !== localBefore || _pending[key] || _inFlight) throw Error('ข้อมูล CoPromo บันทึกบน Cloud แล้ว แต่มีการแก้ไขพร้อมกัน กรุณาโหลดข้อมูลใหม่');
+    _set(key,value);
+    markKeyFromCloud(key,value,check.updatedAt);
+    delete _pending[key];
+    _cloudMtime[key]=Number(check.updatedAt);_cloudCache[key]=value;
+    return check;
+  }
+
   async function loadCampaignEdit(campaign, month, actor) {
     var model=window.PC_PromotionEditModel;
     if(!model)throw new Error('ระบบแก้ไขยังไม่พร้อม กรุณารีเฟรช');
@@ -1359,7 +1379,7 @@
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
-    readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
     loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,

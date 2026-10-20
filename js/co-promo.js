@@ -34,8 +34,10 @@
       html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6">โปรที่ร่วมกับพาร์ทเนอร์ (เช่น Samsung, KTC, Grab, Central ฯลฯ)<br>เลือกลูปอีเมลเดิมและตรวจรายละเอียดโปรฯ ก่อนยืนยันส่ง<br><b style="color:#1a1d20">' + esc(campaigns.join(", ")) + "</b></div>",
       showCancelButton: true, confirmButtonText: '<i class="fas fa-handshake"></i> ใช่ · เตรียมส่งเมลเข้าลูป',
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
-    }).then(function (res) {
+    }).then(async function (res) {
       if (!res.isConfirmed) return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
+      if(!window.PC_CoPromoDrafts?.recordCoPromo)throw Error('ระบบบันทึก CoPromo ยังไม่พร้อม กรุณาเปิดเว็บใหม่');
+      for(const campaign of campaigns)await window.PC_CoPromoDrafts.recordCoPromo(campaign);
       return openFormsSequential(campaigns.slice()).then(function (completed) {
         return completed === true ? { coPromo: true, completed: true } : completed;
       });
@@ -79,7 +81,7 @@
     var editing = !!ex.id;
     var btns = ctx.buttons || [];
     var resumeIndex = 0;
-    if (options.draft && (ex.emailButtonId || ex.buttonName || ex.cmposName)) {
+    if ((options.draft || options.selection) && (ex.emailButtonId || ex.buttonName || ex.cmposName)) {
       const matches = btns.map((button,index)=>({button,index})).filter(x=>ex.emailButtonId
         ? x.button.emailButtonId===ex.emailButtonId : x.button.buttonName===(ex.buttonName||ex.cmposName));
       if(matches.length!==1)throw Error('ไม่พบปุ่มเดิมของฉบับร่าง หรือชื่อปุ่มซ้ำ กรุณาตรวจงานต้นฉบับก่อนส่งเมล');
@@ -202,6 +204,7 @@
         const record=collect(); controls.forEach(el=>el.disabled=true);
         try {
           if(!window.PC_CoPromoDrafts)throw Error('ระบบฉบับร่างยังไม่พร้อม กรุณาเก็บข้อมูลก่อนเปิดเว็บใหม่');
+          await window.PC_CoPromoDrafts.recordCoPromo(ctx.campaign,record);
           draftState=await window.PC_CoPromoDrafts.save(ctx.campaign,record,draftState); dirty=false;
           await Swal.fire({icon:'success',title:'บันทึกฉบับร่างแล้ว',text:'เปิดทำต่อได้ที่งานค้างของฉัน · ยังไม่ส่งเมล',timer:1800,showConfirmButton:false});
           close({draftSaved:true});
@@ -229,7 +232,7 @@
           if (!nm.value || requireEmail) nm.value = b.buttonName || "";
           if (!ds.value) ds.value = b.detail || "";
         };
-        if (sel && sel.tagName === 'SELECT' && options.draft) sel.value=String(resumeIndex);
+        if (sel && sel.tagName === 'SELECT' && (options.draft||options.selection)) sel.value=String(resumeIndex);
         fill();
         if (sel && sel.tagName === "SELECT") sel.onchange = function () { nm.value = ""; ds.value = ""; fill(); };
       }
@@ -257,6 +260,7 @@
         var useEmail=requireEmail || (window.PC_CoProEmail&&window.PC_CoProEmail.active());
         var operation=Promise.resolve().then(async function () {
           if (requireEmail) {
+            await window.PC_CoPromoDrafts.recordCoPromo(ctx.campaign,rec);
             if (!window.PC_CoProEmail || !window.PC_CoProEmailUI) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาติดต่อผู้ดูแล');
             var caps = await window.PC_CoProEmail.capabilities();
             if (!caps.coproEnabled || !caps.sendingEnabled) throw Error('ยังไม่ได้เปิดบริการส่งอีเมลหรือเชื่อมบัญชีผู้ส่ง กรุณาติดต่อผู้ดูแล');
@@ -268,6 +272,10 @@
           if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> ' + saveLabel;return;}
           if(result.status==='error')throw new Error(result.message||'บันทึกไม่สำเร็จ');
           if(requireEmail && result.mailStatus!=='queued') throw Error('ยังไม่ได้รับการยืนยันว่าอีเมลเข้าคิวส่ง กรุณาให้ผู้ดูแลตรวจสถานะก่อนทำซ้ำ');
+          if(requireEmail){
+            try{await window.PC_CoPromoDrafts.recordCoPromo(ctx.campaign,rec,'queued');}
+            catch(e){await Swal.fire({icon:'warning',title:'อีเมลเข้าคิวแล้ว',text:'ไม่ต้องส่งซ้ำ แต่สถานะในหน้า CoPromo ยังอัปเดตไม่สำเร็จ: '+e.message});}
+          }
           if (draftState && window.PC_CoPromoDrafts) {
             try { await window.PC_CoPromoDrafts.remove(draftState); }
             catch(e) { await Swal.fire({icon:'warning',title:'อีเมลเข้าคิวแล้ว แต่ยังล้างฉบับร่างไม่สำเร็จ',text:'ไม่ต้องส่งซ้ำ: '+e.message}); }

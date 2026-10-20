@@ -62,10 +62,18 @@
   if(backend){
     const originalList=backend.getCoPromotions,originalInterface=backend.confirmErpInterface,originalIT=backend.saveSettlementBatch;
     backend.getCoPromotions=async function(){
-      const ordinary=originalList();if(!active())return ordinary;
-      const campaigns=await list();return ordinary.concat(campaigns.flatMap(c=>c.records));
+      let ordinary=await originalList();
+      if(window.PC_CLOUD?.readCloudKey){const saved=await window.PC_CLOUD.readCloudKey('pc_co_promotions');if(saved)ordinary=JSON.parse(saved.value);}
+      api.lastListError='';
+      if(!active())return ordinary;
+      try{
+        const campaigns=await list(),protectedRows=campaigns.flatMap(c=>c.records);
+        return ordinary.filter(r=>!r.emailIntake||!protectedRows.some(p=>p.emailButtonId&&p.emailButtonId===r.emailButtonId)).concat(protectedRows);
+      }catch(error){api.lastListError=String(error.message||error);return ordinary;}
     };
     backend.confirmErpInterface=async function(id,by){
+      const ordinary=(await backend.getCoPromotions()).find(r=>r.id===id);
+      if(ordinary?.emailIntake)throw Error('กรุณายืนยันส่งเมล CoPromo ก่อนทำ Interface');
       if(!active())return originalInterface(id,by);
       const record=(await list()).flatMap(c=>c.records).find(r=>r.id===id);
       return record?api.interfaceRecord(record):originalInterface(id,by);
