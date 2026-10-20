@@ -144,8 +144,8 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
       await c.PC_Email.dispatchEmail(env,{fetch:provider});await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,3);assert.equal(sent[2].threadId,'provider-thread');
     }
     await page.evaluate(()=>PC_CoProEmailUI.mountHistory(document.getElementById('pilot'),[{campaign:'Email UOB test'}]));
-    await page.getByRole('cell',{name:'ส่งเรียบร้อย (Gmail รับแล้ว)',exact:true}).first().waitFor();
-    assert.equal(await page.getByRole('cell',{name:'ส่งเรียบร้อย (Gmail รับแล้ว)',exact:true}).count(),process.argv.includes('--revision')?3:2);
+    await page.getByRole('cell',{name:'ส่งสำเร็จ',exact:true}).first().waitFor();
+    assert.equal(await page.getByRole('cell',{name:'ส่งสำเร็จ',exact:true}).count(),process.argv.includes('--revision')?2:1);
     env.EMAIL_COPRO_ENABLED='false';
     await page.evaluate(()=>PC_CoProEmailUI.mountSettings(document.getElementById('pilot')));
     await page.getByRole('status').filter({hasText:'ผู้ดูแลยังไม่เปิด'}).waitFor();
