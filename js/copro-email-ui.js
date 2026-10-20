@@ -146,6 +146,8 @@
           if(generation===previewGeneration&&target.isConnected)target.textContent=preview.text;
         }catch(e){if(generation===previewGeneration&&target.isConnected)target.textContent='โหลดรายละเอียดเมลไม่ได้: '+e.message;}
       };
+      let previousDraft=null;
+      while(true){
       const choose=await Swal.fire({
         title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
         html:'<div style="text-align:left"><p>'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
@@ -155,7 +157,10 @@
           '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre></div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
-          const field=document.getElementById('coproLoop'),describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
+          const field=document.getElementById('coproLoop');
+          if(previousDraft){document.getElementById('coproCampaign').value=previousDraft.campaignId;field.value=previousDraft.policyId;}
+          const describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
+          if(previousDraft){document.getElementById('coproTestTo').value=previousDraft.recipients.to.join(', ');document.getElementById('coproTestCc').value=previousDraft.recipients.cc.join(', ');document.getElementById('coproAdditionalMessage').value=previousDraft.additionalMessage;}
           document.getElementById('coproCampaign').addEventListener('change',showDetails);field.addEventListener('change',showDetails);showDetails();
         },
         showLoaderOnConfirm:true,
@@ -171,16 +176,19 @@
               selectedPolicy=await client().request('threads',{method:'POST',body:{mode:policy.mode,policyId:policy.id,recipients:{to,cc},audience:[context.identity]},interactive:true});
             }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
           }
+          if(selectedPolicy!==policy){const index=policies.findIndex(p=>p.id===policy.id);policies[index]=selectedPolicy;}
           return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:selectedPolicy.id,policyVersion:selectedPolicy.version,recipients:selectedPolicy.recipients,records,additionalMessage:document.getElementById('coproAdditionalMessage').value.trim()};
         }
       });
       if(!choose.isConfirmed)return null;
       const draft=choose.value,preview=await client().request('copro/preview',{method:'POST',body:draft});
-      const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text,word('ฉบับแรก: เมื่อบันทึก Co-Promotion สำเร็จ\nฉบับที่สอง: เมื่อขึ้นปุ่มและ Interface ครบ','First: after Co-Promotion save\nSecond: after POS setup and Interface are both complete')].join('\n\n');
-      const confirm=await Swal.fire({title:word('ตรวจเนื้อหาและผู้รับก่อนบันทึก','Review content and recipients'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit">'+esc(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันบันทึกและเข้าคิวเมล','Confirm save and queue email'),cancelButtonText:word('ยกเลิก','Cancel'),confirmButtonColor:'#1b5e20',width:740});
-      if(!confirm.isConfirmed)return null;
+      previousDraft=draft;
+      const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
+      const confirm=await Swal.fire({title:word('ตรวจสอบรายละเอียดก่อนส่งเมล','Review email before sending'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit">'+esc(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันส่งเมล','Confirm send'),cancelButtonText:word('กลับไปแก้ไข','Back to edit'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonColor:'#1b5e20',width:740});
+      if(!confirm.isConfirmed){if(confirm.dismiss==='cancel')continue;return null;}
       const result=await client().request('copro',{method:'POST',body:{...draft,previewHash:preview.previewHash,confirmed:true}});
       return {status:'success',...result};
+      }
     },
     mountSettings(root){
       if(!root)return;
