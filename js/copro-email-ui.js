@@ -17,12 +17,28 @@
   }
   const client=()=>window.PC_CoProEmail;
   function error(error){return Swal.fire({icon:'error',title:word('ยังดำเนินการอีเมลไม่ได้','Email not completed'),text:String(error?.message||error)});}
+  function recipientAddControls(id,label){
+    return '<div class="d-flex gap-2 my-2"><input type="email" id="'+id+'Add" class="form-control" aria-label="อีเมลที่จะเพิ่มใน '+label+'" placeholder="เพิ่มอีเมลผู้รับ"><button type="button" id="'+id+'Button" class="btn btn-outline-success" style="white-space:nowrap">เพิ่ม '+label+'</button></div>';
+  }
+  function bindRecipientAdd(id){
+    const input=document.getElementById(id+'Add'),button=document.getElementById(id+'Button'),target=document.getElementById(id);
+    const add=()=>{
+      input.value=input.value.trim();input.required=true;
+      if(!input.reportValidity())return;
+      const values=addresses(target.value),address=input.value.toLowerCase();
+      if(!values.some(value=>value.toLowerCase()===address))values.push(address);
+      target.value=values.join(', ');input.value='';input.required=false;input.focus();
+    };
+    button.addEventListener('click',add);
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();add();}});
+  }
   async function approveConversation(mode){
     let selected=null, generation=0;
     const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:680,
-      html:'<div style="text-align:left"><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาใน Gmail” จากนั้นเลือกลูปที่ตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาใน Gmail</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea><label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea><p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องคลิกเลือกอีเมลจากผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
+      html:'<div style="text-align:left"><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาอีเมล” จากนั้นเลือกลูปที่ตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+recipientAddControls('coproNewCc','CC')+'<p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องคลิกเลือกอีเมลจากผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
       showCancelButton:true,confirmButtonText:'อนุมัติลูปและทำต่อ',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
       didOpen(){
+        bindRecipientAdd('coproNewTo');bindRecipientAdd('coproNewCc');
         document.getElementById('coproFind').addEventListener('click',async()=>{
           const query=document.getElementById('coproFindSubject').value.trim(),results=document.getElementById('coproFound'),n=++generation;
           selected=null;document.getElementById('coproSelected').textContent='';results.replaceChildren();
@@ -158,10 +174,11 @@
         html:'<div style="text-align:left"><p>'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปอีเมลที่จะตอบกลับ','Email conversation to reply to'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select><button type="button" id="coproSearchLoop" class="btn btn-outline-success mb-3">ค้นหาลูปเมลจากหัวข้อเดิม</button><p class="small">เลือกลูปที่ตรงกับโปรฯ นี้ หากยังไม่มีในรายการ ให้กด “ค้นหาลูปเมลจากหัวข้อเดิม” แล้วคัดลอกหัวข้ออีเมลเดิมมาค้นหา ตรวจ To/CC ให้ถูกต้องก่อนส่ง</p>'+
-          '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
-          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
+          '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestTo','To')+''+
+          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestCc','CC')+'<label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
+          bindRecipientAdd('coproTestTo');bindRecipientAdd('coproTestCc');
           const field=document.getElementById('coproLoop');
           if(previousDraft){document.getElementById('coproCampaign').value=previousDraft.campaignId;field.value=previousDraft.policyId;}
           const describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
@@ -210,7 +227,7 @@
         '<p data-th="เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที" data-en="Choose the real conversation for each promotion and confirm recipients. Connecting does not send email.">เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที</p>'+
         '<p data-copro-note role="status" aria-live="polite"></p><button type="button" class="btn btn-outline-success mb-3" data-copro-enable>เปิดใช้อีเมลในแท็บนี้</button>'+
         '<details><summary data-th="ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ" data-en="Administrator: approve conversation and recipients">ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ</summary>'+
-        '<label class="d-block mt-3" for="coproMode">ประเภทลูป / Conversation type</label><select id="coproMode" class="form-select"><option value="production">งานจริง / Production</option><option value="test">ทดสอบ / Test</option></select><label class="d-block mt-3" for="coproSearch">Subject / หัวข้อเมล</label><input id="coproSearch" class="form-control" placeholder="หัวข้อเมลของโปรฯ" maxlength="200"><button type="button" class="btn btn-outline-success my-3" data-copro-search>ค้นหาใน Gmail / Search Gmail</button><div data-copro-results></div>'+
+        '<label class="d-block mt-3" for="coproMode">ประเภทลูป / Conversation type</label><select id="coproMode" class="form-select"><option value="production">งานจริง / Production</option><option value="test">ทดสอบ / Test</option></select><label class="d-block mt-3" for="coproSearch">Subject / หัวข้อเมล</label><input id="coproSearch" class="form-control" placeholder="หัวข้อเมลของโปรฯ" maxlength="200"><button type="button" class="btn btn-outline-success my-3" data-copro-search>ค้นหาอีเมล / Search email</button><div data-copro-results></div>'+
         '<label class="d-block" for="coproPublishTo">To — ผู้รับ / Recipients</label><textarea id="coproPublishTo" class="form-control mb-3" rows="2"></textarea><label for="coproPublishCc">CC</label><textarea id="coproPublishCc" class="form-control mb-3" rows="2"></textarea>'+
         '<label for="coproAudience">Microsoft Object ID — ผู้แจ้งที่เห็นลูปนี้ (ว่าง = บัญชีนี้) / Allowed submitters (blank = this account)</label><textarea id="coproAudience" class="form-control mb-3" rows="2"></textarea>'+
         '<button type="button" class="btn btn-success" data-copro-publish disabled>อนุมัติลูปและผู้รับ / Approve conversation and recipients</button></details>'+
