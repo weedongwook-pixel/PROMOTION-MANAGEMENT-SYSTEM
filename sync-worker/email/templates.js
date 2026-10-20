@@ -38,6 +38,11 @@
     if(snapshot.attachments!==undefined)lines.push('ไฟล์แนบต้นฉบับ / Original attachments: '+(snapshot.attachments.map(file=>file.name).join(', ')||'ไม่มี / None'));
     const text=lines.join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map(x=>'<p>'+escape(x)+'</p>').join('')+'</div>'};
+    const label=/^(ชื่อแคมเปญ \/ Campaign Name|วันที่เริ่ม \/ Start|วันที่สิ้นสุด \/ End|SHORT NAME \(POS\)|Code Promotion \/ Item Set|สาขา \/ Stores|PROMOTION DETAIL|เงื่อนไข \/ Conditions|Type Promotion|Sale Mode|Minimum amount|Net|Discount|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบต้นฉบับ \/ Original attachments):/;
+    return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map((x,i)=>{
+      const match=x.match(label);
+      const content=i===0?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);
+      return '<p style="white-space:pre-wrap">'+content+'</p>';
+    }).join('')+'</div>'};
   };
 })(globalThis);

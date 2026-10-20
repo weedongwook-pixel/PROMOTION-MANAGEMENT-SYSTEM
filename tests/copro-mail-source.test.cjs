@@ -19,3 +19,11 @@ test('preview and email present every requested promotion field and original att
  const missing=a.renderCoProEmail({milestone:'submitted',details:{buttons:[{}]},attachments:[]});
  for(const label of ['SHORT NAME (POS): -','PROMOTION DETAIL: -','Conditions: -','Stores: -'])assert.ok(missing.text.includes(label));
 });
+
+test('HTML mail bolds headings and field labels while retaining escaped regular values and plain text',()=>{
+ const a=load(['templates']);const result=a.renderCoProEmail({milestone:'submitted',details:{campaign:'A <B>',buttons:[{name:'POS',promotionDetail:'Detail: <script>bad</script>',condition:'Terms'}]},attachments:[{name:'original.xlsx'}]});
+ assert.match(result.html,/<strong>ชื่อแคมเปญ \/ Campaign Name:<\/strong> A &lt;B&gt;/);
+ assert.match(result.html,/<strong>PROMOTION DETAIL:<\/strong> Detail: &lt;script&gt;bad&lt;\/script&gt;/);
+ assert.match(result.html,/<strong>ไฟล์แนบต้นฉบับ \/ Original attachments:<\/strong> original.xlsx/);
+ assert.doesNotMatch(result.text,/<strong>/);assert.doesNotMatch(result.html,/<script>/);
+});
