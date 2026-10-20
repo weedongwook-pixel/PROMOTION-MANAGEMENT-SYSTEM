@@ -8,13 +8,28 @@
   window.PC_CoProEmailUI={
     async save(record,options={}){
       if(record.id)throw Error(word('รุ่นทดสอบยังไม่ส่งเมลแก้ไขงานเดิม','Revision emails are not enabled in this pilot'));
-      const campaigns=(await client().list()).filter(c=>c.key==='promo::c::'+encodeURIComponent(record.campaign));
-      if(!campaigns.length)throw Error(word('งานนี้ยังไม่มีหลักฐานสิทธิ์ส่งอีเมล กรุณาให้ผู้ดูแลตรวจสอบ ไม่ต้องส่งโปรฯ ซ้ำ','This job has no verified email ownership receipt. Ask an administrator to review it; do not resubmit.'));
+      let campaigns=(await client().list()).filter(c=>c.key==='promo::c::'+encodeURIComponent(record.campaign));
+      if(!campaigns.length){
+        const caps=await client().capabilities();
+        if(caps.authMode!=='gmail_owner'||!window.PC_CLOUD?.readCloudKey)throw Error(word('ยังผูกงานกับบัญชีผู้ส่งไม่ได้ กรุณาเชื่อม Gmail ผู้ส่ง','Connect the sending Gmail account to link this job'));
+        const key='promo::c::'+encodeURIComponent(record.campaign),source=await window.PC_CLOUD.readCloudKey(key);
+        if(!source)throw Error('ไม่พบงานต้นฉบับบน Cloud');
+        const block=JSON.parse(source.value),months=Object.keys(block.m||{}).filter(m=>block.m[m]?.length);
+        if(!months.length)throw Error('ไม่พบปุ่มโปรฯ ต้นฉบับบน Cloud');
+        const choice=await Swal.fire({icon:'question',title:'ผูกงานเดิมกับบัญชีผู้ส่ง',
+          text:record.campaign+' — ใช้ข้อมูลล่าสุดที่บันทึกบน Cloud งาน IT ไม่ถูกสร้างซ้ำ ขั้นตอนนี้ยังไม่ส่งเมล',
+          input:'select',inputOptions:Object.fromEntries(months.map(m=>[m,m])),showCancelButton:true,
+          confirmButtonText:'ผูกงานและเลือกลูป',cancelButtonText:'กลับไปแก้ข้อมูล',confirmButtonColor:'#1b5e20'});
+        if(!choice.isConfirmed)return null;
+        await client().request('copro/adopt',{method:'POST',body:{campaignKey:key,month:choice.value,expectedSourceVersion:source.updatedAt,confirmed:true}});
+        campaigns=(await client().list()).filter(c=>c.key===key);
+        if(!campaigns.length)throw Error('ยังตรวจยืนยันการผูกงานไม่ได้ กรุณาเปิดงานเดิมอีกครั้ง ไม่ต้องส่งโปรฯ ซ้ำ');
+      }
       const policies=(await client().request('threads')).items.filter(p=>!options.mode||p.mode===options.mode);
       if(!policies.length)throw Error(word('ยังไม่มีลูปที่อนุมัติให้บัญชีนี้ กรุณาให้ผู้ดูแลตั้งค่าลูปอีเมล','No approved conversation is available to this account'));
       const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียดสำหรับเมล / Public details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
       const recordForms=campaigns.map(c=>{
-        const matches=c.buttons.filter(b=>{const identity=JSON.parse(b.source_identity_json);return (record.cmposName||record.buttonName)?identity.shortName===(record.cmposName||record.buttonName)&&(!record.codePromotion||identity.codePromotion===record.codePromotion):c.buttons.length===1;});
+        const matches=c.buttons.filter(b=>{const identity=JSON.parse(b.source_identity_json);return record.emailButtonId ? b.button_id===record.emailButtonId : (record.cmposName||record.buttonName)?identity.shortName===(record.cmposName||record.buttonName)&&(!record.codePromotion||identity.codePromotion===record.codePromotion):c.buttons.length===1;});
         return '<section data-copro-records="'+esc(c.id)+'"'+(c.id!==campaigns[0].id?' hidden':'')+'>'+c.buttons.map((b,i)=>{
           const identity=JSON.parse(b.source_identity_json),prefill=matches.length===1&&matches[0].button_id===b.button_id?record:{};
           return '<fieldset class="border rounded p-3 my-3"><legend class="float-none w-auto fs-6 px-2">'+esc(identity.shortName+' · '+[identity.codePromotion,identity.codeItemSet].filter(Boolean).join(' / '))+'</legend>'+fields.map(([key,label])=>'<label class="d-block mb-1" for="coproRecord-'+c.id+'-'+i+'-'+key+'">'+esc(label)+(key==='brand'?' *':'')+'</label><textarea class="form-control mb-2" id="coproRecord-'+c.id+'-'+i+'-'+key+'" rows="'+(['detail','remark','paymentCondition'].includes(key)?2:1)+'" maxlength="8000">'+esc(prefill[key]||'')+'</textarea>').join('')+'</fieldset>';

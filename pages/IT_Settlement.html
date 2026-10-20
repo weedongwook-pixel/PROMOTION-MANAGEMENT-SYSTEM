@@ -1298,7 +1298,7 @@
                     /* FX-P86 — งานจากฟอร์ม Item Set: Type Promo มาจากช่อง "ประเภท Item Set — ให้ปุ่มขึ้นที่หมวด"
                        Promotion set / Combo / Value set → Price Promotion (โค้ด P + Item Set 107/105/106)
                        E-Voucher → E-Voucher (โค้ด IC + Item Set 109) */
-                    const _isCateName = String(it.cateRemark || it.cate || it.postCate || '');
+                    const _isCateName = String(it.cate || it.postCate || it.cateRemark || '');
                     const _isEvCate = /e[-\s]?voucher/i.test(_isCateName);
                     let _curType = it.typeSel || (/item\s*set/i.test(String(it.promoType||'')) ? (_isEvCate ? 'E-Voucher' : 'Price Promotion') : it.promoType) || '';
                     if (!String(_curType).trim()) {
@@ -1313,7 +1313,7 @@
                     const _typeOptsHtml = _typeList.map(t => `<option ${t===_curType?'selected':''}>${t}</option>`).join('');
                     // Code Promotion autorun — ขึ้นกับ Type Promo: online ต้อง run โค้ดจริง · Normal/Offline เก็บ label เดิม
                     const _ptU = (it.promoType || '').toUpperCase();
-                    const _typeStr = ((it.typeSel || '') + ' ' + (it.promoType || '')).toUpperCase();
+                    const _typeStr = ((_curType || '') + ' ' + (it.promoType || '')).toUpperCase();
                     const _bcRaw = String(it.builderCode||'').trim();   // Code Item Set ที่หน้า POS Button Setup จอง+เซฟไว้ (codeItemSet)
                     const _chg = String(it.changeStatus || '').toUpperCase();
                     const _dateChange = _chg === 'EXTENDED' || _chg === 'REDUCED';
@@ -1371,7 +1371,7 @@
                     // Code Item Set / Kitchen ใช้เฉพาะ Item Set · Coupon/Bill/Voucher ไม่มี (ส่วนลดมาจากฟอร์ม)
                     const isItemSet = _isIS;
                     // Code Item Set จองเลขตามหมวด (postCate/cateRemark): Promotion set→107 · Combo→105 · Value set→106 · E-Voucher→109
-                    const _isCate = (function(){ var s=String(first.cateRemark||first.cate||first.postCate||'').toLowerCase(); if(/combo/.test(s)) return '105'; if(/value\s*set/.test(s)) return '106'; if(/e[-\s]?voucher/.test(s)) return '109'; return '107'; })();   /* FX-P78 — หมวดอยู่ที่ cate ก็ได้ (เดิมอ่านแค่ cateRemark → E-Voucher ได้เลข 107 ผิดหมวด) */
+                    const _isCate = (function(){ var s=String(it.cate||it.postCate||it.cateRemark||'').toLowerCase(); if(/combo/.test(s)) return '105'; if(/value\s*set/.test(s)) return '106'; if(/e[-\s]?voucher/.test(s)) return '109'; return '107'; })();   /* FX-P78 — หมวดอยู่ที่ cate ก็ได้ (เดิมอ่านแค่ cateRemark → E-Voucher ได้เลข 107 ผิดหมวด) */
                     // ค่ารหัส Item Set ที่จะโชว์ = เลขที่ POS Button Setup จองไว้ก่อน (itemPromo/builderCode)
                     // ถ้ายังไม่มี → จอง/อ่านจาก "ตัวนับกลาง" ด้วย identity เดียวกับหน้า POS Button Setup
                     // (where='ItemSet Builder', field=camp|shortName) → แคมเปญ/ปุ่มเดียวกัน 2 หน้าได้ "เลขเดียวกันเสมอ"

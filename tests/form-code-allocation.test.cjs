@@ -23,3 +23,14 @@ test('automatic promotion and item-set allocation skips actual codes outside the
   assert.equal(A.reserveFormCode(s,{type,tag:'Edit',campaign:'UOB',shortName:'New',usedCodes:new Set([type==='promo'?'P3508':'1073508'])}).code,code);
  }
 });
+
+test('category allocation uses independent cursors and preserves confirmed identity',()=>{
+ const A=require('../js/form-code-allocation.js');
+ const state={types:{},cats:{'105':{cursor:10,seeded:true},'109':{cursor:20,seeded:true}},reservations:{},log:[]};
+ const opts={type:'item',tag:'ItemSet',campaign:'Test',shortName:'Button',cat:'109'};
+ assert.equal(A.reserveFormCode(state,opts).code,'109021');
+ state.reservations['item::109021'].status='CONFIRMED';
+ assert.equal(A.reserveFormCode(state,opts).changed,false);
+ assert.equal(A.reserveFormCode(state,{...opts,cat:'105'}).code,'105011');
+ assert.throws(()=>A.reserveFormCode(state,{...opts,cat:'106'}),/ยังไม่พร้อม/);
+});

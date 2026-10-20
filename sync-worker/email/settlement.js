@@ -7,7 +7,8 @@
     const resourceKeys=['promo::meta','pc_product_promo','pc_itemset_comp','pc_code_counter_v1'];
     const resources={};for(const key of resourceKeys)resources[key]=await read(key);
     const meta=resources['promo::meta']?JSON.parse(resources['promo::meta'].v):{};
-    const selected=s.block.m[c.month].filter(r=>api.coProButtonIdentity(r)===button.source_identity_json);
+    const belongs=row=>row.emailButtonId?row.emailCampaignId===c.id&&row.emailButtonId===button.button_id:api.coProButtonIdentity(row)===button.source_identity_json;
+    const selected=s.block.m[c.month].filter(belongs);
     if(!selected.length||input.updates&&(!Array.isArray(input.updates)||input.updates.length!==selected.length))throw Error('email_invalid_settlement');
     const code=String(input.codePromotion||'').trim(),item=String(input.codeItemSet||'').trim();
     if(!code&&!item||code&&!/^[a-zA-Z0-9-]{1,32}$/.test(code)||item&&!/^[0-9]{6,12}$/.test(item))throw Error('email_invalid_codes');
@@ -27,7 +28,7 @@
     const all=(await env.DB.prepare("SELECT k,v FROM promo_store WHERE k LIKE 'promo::c::%'").all()).results;
     const working=[];
     for(const entry of all){const block=JSON.parse(entry.v);for(const [month,rows]of Object.entries(block.m||{}))for(const row of rows){
-      if(entry.k===c.campaign_key&&month===c.month&&api.coProButtonIdentity(row)===button.source_identity_json)continue;
+      if(entry.k===c.campaign_key&&month===c.month&&belongs(row))continue;
       if((code&&String(row.codePromotion||'').toUpperCase()===code.toUpperCase())||(item&&String(row.codeItemSet||row.itemPromotion||'')===item))throw Error('email_duplicate_code');
       working.push({...row,month});
     }}
@@ -37,16 +38,25 @@
     const result=root.PC_Settlement.applySettlement({store:{...meta,months:{[c.month]:selected},working:[selectedWorking,...working]},master:[...catalog.categories,...catalog.codes.map(itemCode=>({itemCode}))],values,now:date,day},c.month,updates);
     if(result.status!=='SUCCESS')throw Error('email_invalid_settlement');
     const nextRows=result.store.months[c.month];let index=0;
-    s.block.m[c.month]=s.block.m[c.month].map(row=>api.coProButtonIdentity(row)===button.source_identity_json?{...nextRows[index++],codeItemSet:item,itemPromotion:item}:row);
+    s.block.m[c.month]=s.block.m[c.month].map(row=>belongs(row)?{...nextRows[index++],codeItemSet:item,itemPromotion:item}:row);
     // Rebuild the compatibility working view by exact button identity, not name alone.
-    const summaries=[],seen=new Set();for(const [month,rows]of Object.entries(s.block.m))for(const row of rows){const id=month+'|'+api.coProButtonIdentity(row);if(!seen.has(id)){seen.add(id);summaries.push({...row,month,itemCode:'',itemNameEN:'',qty:'',gross:''});}}
+    const summaries=[],seen=new Set();for(const [month,rows]of Object.entries(s.block.m))for(const row of rows){const id=month+'|'+(row.emailButtonId||api.coProButtonIdentity(row));if(!seen.has(id)){seen.add(id);summaries.push({...row,month,itemCode:'',itemNameEN:'',qty:'',gross:''});}}
     s.block.w=summaries;
     const products=(result.store.npdProducts||[]).map(product=>{const old=(meta.npdProducts||[]).find(p=>p.itemCode===product.itemCode);return JSON.stringify(old)===JSON.stringify(product)?product:{...product,updatedAt:date};});
     const writes=[{key:'promo::meta',value:JSON.stringify({...meta,npdProducts:products})}];
     for(const key of ['pc_product_promo','pc_itemset_comp'])if(result.values[key]!==values[key])writes.push({key,value:result.values[key]});
-    if(result.confirmations.length){
-      const counter=resources.pc_code_counter_v1&&JSON.parse(resources.pc_code_counter_v1.v);if(!counter?.reservations)throw Error('email_counter_unavailable');
-      for(const claim of result.confirmations){const entry=counter.reservations[claim.type+'::'+claim.code];if(!entry||entry.status==='RELEASED'||entry.where!==selected[0].campaign)throw Error('email_counter_conflict');entry.status='CONFIRMED';entry.confirmedAt=entry.confirmedAt||date;}
+    const counter=resources.pc_code_counter_v1&&JSON.parse(resources.pc_code_counter_v1.v),confirmations=[...result.confirmations];
+    const promotionType=[['promo',/^P\d+$/i],['coupon',/^IC\d+$/i],['bill',/^BD\d+$/i],['voucher',/^VC\d+$/i]].find(([,pattern])=>pattern.test(code))?.[0];
+    if(promotionType){
+      const reserved=counter?.reservations?.[promotionType+'::'+code];
+      if(reserved)confirmations.push({type:promotionType,code});
+      // Existing legacy codes may predate the counter. A newly selected code
+      // must have a live reservation owned by this campaign.
+      else if(selected.some(r=>String(r.codePromotion||'')!==code))throw Error('email_counter_conflict');
+    }
+    if(confirmations.length){
+      if(!counter?.reservations)throw Error('email_counter_unavailable');
+      for(const claim of confirmations){const entry=counter.reservations[claim.type+'::'+claim.code];if(!entry||entry.code!==claim.code||entry.type!==claim.type||!['RESERVED','CONFIRMED'].includes(entry.status)||entry.where!==selected[0].campaign)throw Error('email_counter_conflict');entry.status='CONFIRMED';entry.confirmedAt=entry.confirmedAt||date;}
       writes.push({key:'pc_code_counter_v1',value:JSON.stringify(counter)});
     }
     return {rows:api.coProSource(s.block,c.month),identity:api.coProButtonIdentity(s.block.m[c.month].find(r=>r.emailButtonId===button.button_id)||nextRows[0]),writes:writes.map(w=>({...w,expectedUpdatedAt:resources[w.key]?.updated_at??null}))};

@@ -6,12 +6,29 @@
   const audit=(env,c,a,event)=>statement(env,'INSERT INTO email_audit VALUES (?,?,?,?,?,?)',crypto.randomUUID(),c,api.emailActorKey(a),event,'{}',Date.now());
   function authorizationGuard(env,actor,permission,c,thread,sourceVersion){return [statement(env,"INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_actor_permissions WHERE tenant_id=? AND object_id=? AND permission=? AND enabled=1) AND EXISTS(SELECT 1 FROM email_threads WHERE id=? AND version=? AND audience_json=? AND to_json=? AND cc_json=? AND enabled=1) AND EXISTS(SELECT 1 FROM promo_store WHERE k=? AND updated_at=?) THEN 1 ELSE 0 END",actor.tenantId,actor.objectId,permission,thread.id,thread.version,thread.audience_json,thread.to_json,thread.cc_json,c.campaign_key,sourceVersion),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];}
   async function campaign(id,env){const c=await statement(env,'SELECT * FROM email_campaigns WHERE id=?',id).first();if(!c||c.status!=='active')throw Error('email_campaign_unavailable');return c;}
-  async function source(c,env){
+  async function source(c,env,allowDraft=false){
     const row=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',c.campaign_key).first();
     if(!row)throw Error('email_source_changed');
     const block=JSON.parse(row.v),rows=api.coProSource(block,c.month);
-    if(await api.hash(JSON.stringify(rows))!==c.source_hash)throw Error('email_source_changed');
-    return {row,block,rows};
+    const hash=await api.hash(JSON.stringify(rows));
+    const binding=allowDraft?await statement(env,'SELECT campaign_id FROM email_bindings WHERE campaign_id=?',c.id).first():true;
+    if(allowDraft&&!binding){
+      // Registration owns the membership forever. Names/codes are mutable labels.
+      const original=JSON.parse(c.source_json),registered=new Map(original.map(r=>[r.emailRowId,r])),seen=new Set(),identities=new Map();
+      if(rows.length!==original.length||registered.size!==original.length)throw Error('email_source_changed');
+      for(const r of rows){
+        const old=registered.get(r.emailRowId),identity=api.coProButtonIdentity(r);
+        if(!r.emailRowId||seen.has(r.emailRowId)||!old||r.emailCampaignId!==c.id||r.emailCampaignId!==old.emailCampaignId||!r.emailButtonId||r.emailButtonId!==old.emailButtonId||r.submissionBatchId!==c.submission_id||r.submissionBatchId!==old.submissionBatchId||r.campaign!==old.campaign||!String(r.shortName||'').trim()||['changeStatus','cancelReason','revisionId','revisionPending'].some(k=>JSON.stringify(r[k])!==JSON.stringify(old[k])))throw Error('email_source_changed');
+        if(identities.has(r.emailButtonId)&&identities.get(r.emailButtonId)!==identity)throw Error('email_source_changed');
+        seen.add(r.emailRowId);identities.set(r.emailButtonId,identity);
+      }
+      const buttons=(await statement(env,'SELECT * FROM email_campaign_buttons WHERE campaign_id=?',c.id).all()).results;
+      if(buttons.length!==identities.size||buttons.some(b=>b.cancelled||!identities.has(b.button_id)))throw Error('email_source_changed');
+      c.source_json=JSON.stringify(rows);c.source_hash=hash;
+      return {row,block,rows,draft:true,identities};
+    }
+    if(hash!==c.source_hash)throw Error('email_source_changed');
+    return {row,block,rows,draft:false};
   }
   api.preparePilotSubmission=async function(actor,body,env){
     await api.requireEmailPermission(actor,'submit',env);
@@ -39,6 +56,32 @@
     }
     if(!campaigns.length)throw Error('email_invalid_campaign');return {statements,campaigns};
   };
+  // Explicit administrative recovery of a pre-pilot campaign; never sends mail.
+  api.adoptCoProCampaign=async function(actor,input,env){
+    if(env.EMAIL_AUTH_MODE!=='gmail_owner'||!api.isGmailOwner?.(actor))throw Error('email_admin_required');
+    await api.requireEmailPermission(actor,'manage',env);await api.requireEmailPermission(actor,'submit',env);
+    if(input.confirmed!==true)throw Error('email_confirmation_required');
+    if(typeof input.campaignKey!=='string'||!input.campaignKey.startsWith('promo::c::')||!Number.isSafeInteger(input.expectedSourceVersion))throw Error('email_source_changed');
+    const connection=await statement(env,"SELECT generation FROM email_connections WHERE id=1 AND status='connected'").first();
+    if(!connection)throw Error('email_reconnect_required');
+    const live=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',input.campaignKey).first();
+    if(!live||live.updated_at!==input.expectedSourceVersion)throw Error('email_source_changed');
+    const block=JSON.parse(live.v),rows=api.coProSource(block,input.month),name=rows[0].campaign;
+    if(!name||input.campaignKey!=='promo::c::'+encodeURIComponent(name)||rows.some(r=>r.campaign!==name||!String(r.shortName||'').trim()||r.changeStatus||r.revisionPending||r.revisionId||r.cancelReason))throw Error('email_source_changed');
+    if(block.m[input.month].some(r=>/^(CANCELLED|DELETED)$/.test(String(r.itStatus||r.opStatus||'').toUpperCase())))throw Error('email_source_changed');
+    if(Object.values(block.m||{}).some(list=>!Array.isArray(list)||list.some(r=>r.emailCampaignId||r.emailButtonId||r.emailRowId))||(block.w||[]).some(r=>r.emailCampaignId||r.emailButtonId||r.emailRowId))throw Error('email_source_changed');
+    if(await statement(env,'SELECT id FROM email_campaigns WHERE campaign_key=?',input.campaignKey).first())throw Error('email_campaign_denied');
+    const batches=new Set(rows.map(r=>r.submissionBatchId||''));if(batches.size!==1)throw Error('email_source_changed');
+    const submissionId=rows[0].submissionBatchId||crypto.randomUUID(),id=crypto.randomUUID(),identities=new Map();
+    for(const r of block.m[input.month]){const identity=api.coProButtonIdentity(r);if(!identities.has(identity))identities.set(identity,crypto.randomUUID());Object.assign(r,{submissionBatchId:submissionId,emailCampaignId:id,emailButtonId:identities.get(identity),emailRowId:crypto.randomUUID()});}
+    for(const r of block.w||[])if(r.month===input.month&&identities.has(api.coProButtonIdentity(r)))Object.assign(r,{submissionBatchId:submissionId,emailCampaignId:id,emailButtonId:identities.get(api.coProButtonIdentity(r))});
+    const canonical=api.coProSource(block,input.month),now=Date.now();
+    const statements=[statement(env,"INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_actor_permissions WHERE tenant_id=?1 AND object_id=?2 AND permission='submit' AND enabled=1) AND (EXISTS(SELECT 1 FROM email_actor_permissions WHERE tenant_id=?1 AND object_id=?2 AND permission='manage' AND enabled=1) OR EXISTS(SELECT 1 FROM email_admin_grants WHERE tenant_id=?1 AND object_id=?2 AND enabled=1)) AND EXISTS(SELECT 1 FROM email_connections WHERE id=1 AND status='connected' AND generation=?3) AND NOT EXISTS(SELECT 1 FROM email_campaigns WHERE campaign_key=?4) AND NOT EXISTS(SELECT 1 FROM promo_store p,json_each(p.v) t WHERE p.k='promo::deleted' AND t.key=?5 AND CAST(t.value AS INTEGER)>0 AND CAST(t.value AS INTEGER)>=?6) THEN 1 ELSE 0 END",actor.tenantId,actor.objectId,connection.generation,input.campaignKey,name,Number(block._ts)||0),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1'),
+      statement(env,'UPDATE promo_store SET v=?,updated_at=? WHERE k=? AND updated_at=?',JSON.stringify(block),Math.max(now,live.updated_at+1),input.campaignKey,live.updated_at),...guard(env),
+      statement(env,"INSERT INTO email_campaigns VALUES (?,?,?,?,?,?,?,?,1,'active')",id,input.campaignKey,input.month,submissionId,actor.tenantId,actor.objectId,await api.hash(JSON.stringify(canonical)),JSON.stringify(canonical))];
+    for(const [identity,buttonId] of identities)statements.push(statement(env,'INSERT INTO email_campaign_buttons(campaign_id,button_id,source_identity_json) VALUES (?,?,?)',id,buttonId,identity));
+    statements.push(audit(env,id,actor,'adopted'));await env.DB.batch(statements);return {id,key:input.campaignKey,month:input.month,version:1};
+  };
   api.registerPilotSubmission=async function(actor,body,env){
     await api.requireEmailPermission(actor,'submit',env);
     if(!api.commitPilotPrimary)throw Error('email_primary_unavailable');
@@ -48,7 +91,7 @@
   async function draft(actor,input,env){
     await api.requireEmailPermission(actor,'submit',env);
     const c=await campaign(input.campaignId,env);if(!owner(c,actor))throw Error('email_campaign_denied');
-    const current=await source(c,env);
+    const current=await source(c,env,true);
     const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',input.policyId).first();
     if(!thread||thread.version!==input.policyVersion||!api.threadAudience(thread,actor)||!['test','production'].includes(api.emailThreadMode(thread)))throw Error('email_policy_changed');
     const recipients=api.emailRecipients(input.recipients),approved={to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)};
@@ -66,7 +109,7 @@
     }).sort((a,b)=>a.buttonId.localeCompare(b.buttonId));
     const attachmentData=await api.readEmailAttachments(current.block.m[c.month],env);
     const contentHash=await api.hash(JSON.stringify({source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
-    return {c,thread,recipients,records,contentHash,attachmentData,sourceVersion:current.row.updated_at};
+    return {c,thread,recipients,records,contentHash,attachmentData,sourceVersion:current.row.updated_at,current};
   }
   api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({milestone:'submitted',details}).text,recipients:d.recipients,subject:d.thread.subject};};
   function snapshot(c,t,recipients,milestone,rows,records,attachments){return {attachments,deliveryMode:api.emailThreadMode(t),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
@@ -79,9 +122,14 @@
     const existing=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
     if(existing){if(existing.content_hash!==contentHash)throw Error('email_revision_not_enabled');return {saved:true,mailStatus:'queued',campaignId:c.id,version:c.version};}
     if(input.expectedVersion!==c.version)throw Error('email_version_conflict');
-    const statements=[...authorizationGuard(env,actor,'submit',c,thread,d.sourceVersion),statement(env,'UPDATE email_campaigns SET version=version+1 WHERE id=? AND version=?',c.id,c.version),...guard(env)];
+    const statements=[...authorizationGuard(env,actor,'submit',c,thread,d.sourceVersion),statement(env,'UPDATE email_campaigns SET source_json=?,source_hash=?,version=version+1 WHERE id=? AND version=?',c.source_json,c.source_hash,c.id,c.version),...guard(env)];
     if(d.attachmentData.version!==null) statements.push(...fileGuard(env,d.attachmentData.version));
     statements.push(statement(env,'INSERT INTO email_bindings VALUES (?,?,?,?,?,?,?,1)',c.id,thread.id,thread.version,JSON.stringify(recipients),contentHash,api.emailActorKey(actor),Date.now()));
+    for(const [buttonId,identity] of d.current.identities||[]){
+      const rows=d.current.block.m[c.month].filter(r=>r.emailButtonId===buttonId);
+      const done=rows.length>0&&rows.every(r=>/^(COMPLETE|DONE)$/.test(String(r.itStatus||'').toUpperCase())&&!r.revisionPending&&!r.changeStatus);
+      statements.push(statement(env,'UPDATE email_campaign_buttons SET source_identity_json=?,it_done=?,it_by=?,it_at=? WHERE campaign_id=? AND button_id=?',identity,done?1:0,done?'cloud-before-binding':null,done?Date.now():null,c.id,buttonId),...guard(env));
+    }
     for(const r of records)statements.push(statement(env,'INSERT INTO email_copro_records(id,campaign_id,button_id,record_json) VALUES (?,?,?,?)',crypto.randomUUID(),c.id,r.buttonId,JSON.stringify(r)));
     statements.push(queued(env,c,1,'submitted',snapshot(c,thread,recipients,'submitted',JSON.parse(c.source_json),records,d.attachmentData.manifest)),audit(env,c.id,actor,'submitted'));
     await env.DB.batch(statements);return {saved:true,mailStatus:'queued',campaignId:c.id,version:c.version+1};
@@ -126,8 +174,10 @@
   api.coProStatus=async function(actor,id,env){
     const c=await campaign(id,env);if(!owner(c,actor))await api.requireEmailPermission(actor,'it',env);
     const buttons=(await statement(env,'SELECT b.button_id,b.source_identity_json,b.it_done,b.version,r.id record_id,r.interface_done,r.version interface_version FROM email_campaign_buttons b LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id WHERE b.campaign_id=?',id).all()).results;
+    const current=await source(c,env,true);
+    if(current.draft)for(const b of buttons)b.source_identity_json=current.identities.get(b.button_id);
     const history=(await statement(env,'SELECT event_key,status,provider_id,sanitized_error,created_at,updated_at FROM email_outbox WHERE campaign_id=? ORDER BY created_at',id).all()).results;
-    return {id:c.id,key:c.campaign_key,month:c.month,version:c.version,buttons,history};
+    return {id:c.id,key:c.campaign_key,month:c.month,version:c.version,buttons,history,sourceRows:current.rows};
   };
   api.listCoProCampaigns=async function(actor,env){
     let isIT=false;try{await api.requireEmailPermission(actor,'it',env);isIT=true;}catch(_){await api.requireEmailPermission(actor,'submit',env);}

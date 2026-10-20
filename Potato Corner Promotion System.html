@@ -28,7 +28,7 @@
       "js/themes.js",
       "js/email-auth.js", "js/copro-email-client.js", "js/copro-email-ui.js",
       "data/evoucher-copro-seed.js", "js/format.js", "js/code-pack.js", "js/mock-backend.js", "js/subset-catalog.js", "js/code-counter.js", "js/store-select.js", "js/customer-group.js", "js/voucher-tag.js", "js/form-subset.js", "js/promo-code-convert.js",
-      "js/form-code-allocation.js", "js/code-guard.js", "js/abbr-rename.js", "js/save-verify.js", "js/submission-log.js", "js/name-limit.js", "js/flavor-import.js", "js/lock-enforce.js", "js/item-picker.js", "js/item-cate-picker.js", "js/table-engine.js", "js/npd-readonly-view.js", "js/promo-import.js", "js/i18n-dict.js", "js/i18n.js", "js/easy-datepicker.js", "js/promo-report.js", "js/co-promo.js", "js/calendar-reminder.js", "js/email-templates.js", "js/notify.js", "js/promotion-edit-model.js", "js/promotion-edit.js", "js/cloud-store.js"
+      "js/form-code-allocation.js", "js/code-guard.js", "js/abbr-rename.js", "js/save-verify.js", "js/submission-log.js", "js/name-limit.js", "js/flavor-import.js", "js/lock-enforce.js", "js/item-picker.js", "js/item-cate-picker.js", "js/table-engine.js", "js/npd-readonly-view.js", "js/promo-import.js", "js/i18n-dict.js", "js/i18n.js", "js/easy-datepicker.js", "js/promo-report.js", "js/co-promo.js", "js/copro-drafts.js", "js/calendar-reminder.js", "js/email-templates.js", "js/notify.js", "js/promotion-edit-model.js", "js/promotion-edit.js", "js/cloud-store.js"
     ];
     var ITEM_MASTER = "data/item-master.js";
     var ready = false, cbs = [], bootFailed = null;
@@ -448,6 +448,7 @@
       <div class="nav-link" id="nav-Dashboard" onclick="loadPage('Dashboard', this)"><i class="fas fa-chart-line me-2"></i> <span class="navlbl" data-en="DASHBOARD" data-th="แดชบอร์ด">DASHBOARD</span></div>
       <div class="nav-sub" style="font-size:.68rem;font-weight:700;color:#9db3a6;letter-spacing:.07em;padding:10px 16px 3px;text-transform:uppercase;">เสนอ / สร้างโปร</div>
       <div id="nav-CreatePromotion" class="nav-link" onclick="loadPage('CreatePromotion', this)"><i class="fas fa-bullhorn me-2"></i> <span class="navlbl" data-en="CREATE PROMOTION" data-th="แจ้งโปรโมชั่น">CREATE PROMOTION</span></div>
+      <div id="nav-MyPending" class="nav-link" onclick="loadPage('MyPending', this)"><i class="fas fa-file-pen me-2"></i> <span class="navlbl" data-en="MY PENDING WORK" data-th="งานค้างของฉัน">งานค้างของฉัน</span></div>
       <div id="nav-SubmissionLog" class="nav-link" onclick="loadPage('SubmissionLog', this)"><i class="fas fa-clipboard-check me-2"></i> <span class="navlbl" data-en="PROMOTION SUBMISSIONS" data-th="ประวัติการแจ้งโปรฯ">ประวัติการแจ้งโปรฯ</span></div>
       <div id="nav-Proposal" class="nav-link" onclick="loadPage('Proposal', this)" style="display:none;"><i class="fas fa-file-invoice me-2"></i> <span class="navlbl" data-en="ITEM SET PROPOSAL" data-th="เสนอ Item Set">ITEM SET PROPOSAL</span></div>
       <div id="nav-Coupon" class="nav-link" onclick="loadPage('Coupon', this)" style="display:none;"><i class="fas fa-ticket-alt me-2"></i> <span class="navlbl" data-en="COUPON PROPOSAL" data-th="เสนอคูปอง">COUPON PROPOSAL</span></div>
@@ -731,7 +732,7 @@
         Branch: ['Branch_View','ProductLookup','BranchWork','BranchCards','BranchVoucher','BranchTickets','Tender','BillDiff','BranchEDC','BranchHours','BranchIssues'],
       };
       ['Admin','IT'].forEach(function (role) { defaults[role].push('Email_Settings'); });
-      ['Admin','MKT','IT','RD','SC'].forEach(function (role) { if (defaults[role] && !defaults[role].includes('SubmissionLog')) defaults[role].push('SubmissionLog'); });
+      ['Admin','MKT','IT','RD','SC'].forEach(function (role) { if (defaults[role] && !defaults[role].includes('SubmissionLog')) defaults[role].push('SubmissionLog'); if(defaults[role]&&!defaults[role].includes('MyPending'))defaults[role].push('MyPending'); });
       ['Admin','IT','OP','ACC','MKT','SC'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchEDC')<0) defaults[rr].push('BranchEDC'); });
       ['Admin','IT','OP'].forEach(function(rr){ if(defaults[rr] && defaults[rr].indexOf('BranchIssues')<0) defaults[rr].push('BranchIssues'); });
       let saved = null;
@@ -758,7 +759,7 @@
       const BACKFILL_VER = 17;
       let _bfv = 0; try { _bfv = +localStorage.getItem('pc_perm_backfill_ver') || 0; } catch (e) {}
       if (_bfv < BACKFILL_VER) {
-        const NEW_MODULES = ['Products','ImportSettings','DiscountReport','CompCode','CodeCounter','BranchHours','ProductLookup','Branch_View','Campaign_Tracking','Flavor','CreatePromotion','SubmissionLog','CreateRD','Tender','BillDiff','BranchWork','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','TeamQueue','Products','CoPromotion','InterfaceERP','RDReopen','BranchEDC','BranchIssues','CardLink','Email_Settings'];
+        const NEW_MODULES = ['Products','ImportSettings','DiscountReport','CompCode','CodeCounter','BranchHours','ProductLookup','Branch_View','Campaign_Tracking','Flavor','CreatePromotion','MyPending','SubmissionLog','CreateRD','Tender','BillDiff','BranchWork','RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide','MemberCard','VoucherMaster','CodeMgmt','BranchCards','BranchVoucher','BranchTickets','TeamQueue','Products','CoPromotion','InterfaceERP','RDReopen','BranchEDC','BranchIssues','CardLink','Email_Settings'];
         Object.keys(defaults).forEach(role => {
           if (!Array.isArray(saved[role])) { saved[role] = defaults[role].slice(); return; }   // บทบาทใหม่ → ใส่ค่าเริ่มต้น
           NEW_MODULES.forEach(m => { if (defaults[role].includes(m) && !saved[role].includes(m)) saved[role].push(m); });
@@ -778,6 +779,7 @@
         localStorage.setItem('pc_permissions',JSON.stringify(saved));
         localStorage.setItem('pc_email_nav_v1','1');
       }
+      ['Admin','MKT','IT','RD','SC'].forEach(function(role){if(Array.isArray(saved[role])&&!saved[role].includes('MyPending'))saved[role].push('MyPending');});
       // Grant the Log page to existing IT/MKT accounts once without re-running the broad module backfill.
       try {
         if (!localStorage.getItem('pc_perm_submission_log_it_mkt_v1')) {
@@ -808,7 +810,7 @@
     }
     window.PC_getPermissions = getPermissions;
     const SECTIONS = [
-      { key:'promo', label:'PROMOTION', th:'งานโปรโมชั่น & งานสาขา', color:'#2e934a', icon:'fa-bullhorn', pages:['Dashboard','CreatePromotion','SubmissionLog','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','ITWork','CodeCounter','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','CardLink','CompCode','BranchCards','BranchVoucher','BranchHours','BranchIssues','CoPromotion','InterfaceERP','RDReopen'] },
+      { key:'promo', label:'PROMOTION', th:'งานโปรโมชั่น & งานสาขา', color:'#2e934a', icon:'fa-bullhorn', pages:['Dashboard','CreatePromotion','MyPending','SubmissionLog','Proposal','Coupon','BillDiscountProposal','VoucherProposal','IT_Settlement','ITWork','CodeCounter','Campaign_Tracking','Op_Tracking','DiscountReport','Memo','Branch_View','ProductLookup','BranchWork','BranchTickets','Tender','BillDiff','DiffAnalysis','ITTicketQueue','TeamQueue','CreateRD','NPD','Flavor','ItemSet','Products','CatModeMaster','MemberCard','VoucherMaster','CodeMgmt','CardLink','CompCode','BranchCards','BranchVoucher','BranchHours','BranchIssues','CoPromotion','InterfaceERP','RDReopen'] },
       { key:'it', label:'IT WORK', th:'งาน IT · อุปกรณ์', color:'#9a6700', icon:'fa-desktop', pages:['Asset','Plan2026','ITForms','DeviceSwap','AssetLogistics','ITPlan','CmposForm','Maintenance'] },
       { key:'rd', label:'RD STICKER', th:'งานสติ๊กเกอร์สรรพากร', color:'#c0392b', icon:'fa-receipt', pages:['RDSticker','RDCancel','RDWorkflow','RDAccess','RDGuide'] },
       { key:'sys', label:'SYSTEM', th:'ตั้งค่าระบบ', color:'#1a1d20', icon:'fa-gear', pages:['MasterData','ImportSettings','SaleModePrice','CatBranchSetting','CatModeMaster','ReportButtons','ReportSettings','TenderSettings','NotificationSettings','Email_Settings','CalendarReminder','LockSettings','Permissions'] },

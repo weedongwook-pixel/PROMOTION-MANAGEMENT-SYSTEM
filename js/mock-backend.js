@@ -338,7 +338,7 @@
         detail: f.detail, mechanic: f.mechanic, attachment: f.attachment || "",
         updatedBy: f.updatedBy || "", updatedDate: f.updatedDate || "", cancelReason: f.cancelReason || "",
         editedBy: f.editedBy || "", editedAt: f.editedAt || "",
-        cateRemark: f.cateRemark || "", minAmount: f.minAmount || 0, memoUrl: f.memoUrl || "",
+        cateRemark: f.cateRemark || "", cate: f.cate || f.postCate || "", postCate: f.postCate || f.cate || "", minAmount: f.minAmount || 0, memoUrl: f.memoUrl || "",
         changeStatus: f.changeStatus || "", reason: f.reason || "", submittedDate: f.submittedDate || "",
         itDoneDate: f.itDoneDate || "", itSettlementSavedAt: f.itSettlementSavedAt || "", opDoneDate: f.opDoneDate || "", posReady: !!f.posReady,
         itemSetReuse: f.itemSetReuse || null,
@@ -2029,7 +2029,7 @@
         campaign: w.campaign, shortName: w.shortName, month: w.month,
         start: w.start || "", end: w.end || "",
         codeItemSet: reusableItemSetCode(w), itemSetReuse: itemSetReuseFor(w.campaign, w.shortName, w.codeItemSet), kitchen: w.kitchen || "", saleMode: w.saleMode || "",
-        cateRemark: w.cateRemark || w.postCate || "",
+        cateRemark: w.cate || w.postCate || w.cateRemark || "",
         branchNote: w.branchNote || "",
         typeSel: w.typeSel || "",
         itStatus: String(w.itStatus || "PENDING").toUpperCase(), opStatus: String(w.opStatus || "WAITING").toUpperCase(), changeStatus: String(w.changeStatus || "").toUpperCase(), posReady: !!w.posReady,
@@ -2092,7 +2092,7 @@
     let counter = window.PC_COUNTER;
     try { if (!counter && window.top) counter = window.top.PC_COUNTER; } catch (e) {}
     if (!cloudCounterState && (!counter || !counter.findForField)) return '';
-    const category = String(w.cateRemark || w.postCate || '').toLowerCase();
+    const category = String(w.cate || w.postCate || w.cateRemark || '').toLowerCase();
     const cat = /combo/.test(category) ? '105' : /value/.test(category) ? '106' : /voucher/.test(category) ? '109' : '107';
     const type = cat === '107' ? 'itemset' : 'item';
     const field = 'itccf-' + (type === 'itemset' ? type : 'item-' + cat) + '-' + encodeURIComponent(JSON.stringify([campaign, shortName, w.month]));
@@ -2392,14 +2392,15 @@
      ถึงจะจอง → งานเข้าคิว/ศูนย์ติดตามโดย "ไม่มีเลขจอง" (เหมือน FX-P68 ที่ทำให้ E-Voucher แล้ว)
      จองแบบ RESERVED ด้วย identity เดิมทุกครั้ง → ส่งซ้ำไม่ได้เลขใหม่ · IT แค่ตรวจ+ยืนยันตอนบันทึก
      ไม่มี PC_COUNTER (โหลดไม่ทัน) = คืนค่าเดิม (Online/Normal) ไม่ทำให้ฟอร์มพัง */
-  function reserveFormCode(type, tag, campaign, shortName, fallback) {
+  function reserveFormCode(type, tag, campaign, shortName, fallback, cat, fieldId) {
     fallback = fallback == null ? "" : fallback;
     try {
       if (!window.PC_COUNTER || !PC_COUNTER.reserve) return fallback;
-      var fld = tag + "|" + String(campaign || "") + "|" + String(shortName || "");
-      var ex = PC_COUNTER.findReservedFor ? PC_COUNTER.findReservedFor(type, null, campaign, fld) : null;
+      var fld = fieldId || tag + "|" + String(campaign || "") + "|" + String(shortName || "");
+      var ex = PC_COUNTER.findReservedFor ? PC_COUNTER.findReservedFor(type, cat || null, campaign, fld) : null;
       if (ex && ex.code) return ex.code;
-      var e = PC_COUNTER.reserve(type, { where: campaign, field: fld, by: currentUser() });
+      var opts = { where: campaign, field: fld, by: currentUser() };
+      var e = cat ? PC_COUNTER.reserveCat(cat, opts) : PC_COUNTER.reserve(type, opts);
       return (e && e.code) ? e.code : fallback;
     } catch (err) { return fallback; }
   }
@@ -2428,20 +2429,21 @@
     return ctx;
   }
 
-  function cloudReserveFormCode(ctx, type, tag, campaign, shortName) {
+  function cloudReserveFormCode(ctx, type, tag, campaign, shortName, cat, fieldId) {
     if(window.PC_FormCodeAllocation){
-      const result=window.PC_FormCodeAllocation.reserveFormCode(ctx.counter,{type,tag,campaign,shortName,actor:currentUser(),at:NOW()});
+      const result=window.PC_FormCodeAllocation.reserveFormCode(ctx.counter,{type,tag,campaign,shortName,cat,fieldId,actor:currentUser(),at:NOW()});
       if(result.changed)ctx.counterChanged=true;
       return result.code;
     }
     // Compatibility for older cached shells; current shells load the shared allocator.
-    const state = ctx.counter, field = tag + '|' + String(campaign || '') + '|' + String(shortName || '');
-    const found = Object.values(state.reservations).find(e => e && e.type === type && e.status === 'RESERVED' &&
-      String(e.where || '') === String(campaign || '') && String(e.field || '') === field);
+    const state = ctx.counter, field = fieldId || tag + '|' + String(campaign || '') + '|' + String(shortName || '');
+    const found = Object.values(state.reservations).find(e => e && e.type === type && (e.status === 'RESERVED' || e.status === 'CONFIRMED') &&
+      (type !== 'item' || String(e.cat || '') === String(cat || '')) && String(e.where || '') === String(campaign || '') && String(e.field || '') === field);
     if (found) return found.code;
-    const t = state.types[type];
+    const t = cat ? (state.cats || {})[cat] : state.types[type];
     if (!t || !t.seeded || !Number.isSafeInteger(Number(t.cursor))) throw new Error('ทะเบียนรหัส ' + type + ' ยังไม่พร้อมบน Cloud');
-    const format = { coupon: ['IC', 4], bill: ['BD', 3], voucher: ['VC', 4] }[type];
+    const format = type === 'item' && /^(105|106|109)$/.test(cat) ? [cat, 3] :
+      { coupon: ['IC', 4], bill: ['BD', 3], voucher: ['VC', 4], promo: ['P', 0], itemset: ['107', 3] }[type];
     if (!format) throw new Error('ประเภทรหัสไม่ถูกต้อง');
     let n = Number(t.cursor), code;
     do { n++; code = format[0] + String(n).padStart(format[1], '0'); }
@@ -2449,7 +2451,7 @@
     t.cursor = n;
     const at = NOW();
     state.reservations[type + '::' + code.toUpperCase()] = {
-      code, type, num: n, status: 'RESERVED', where: campaign, field,
+      code, type, ...(cat ? { cat } : {}), num: n, status: 'RESERVED', where: campaign, field,
       by: currentUser(), at, confirmedAt: '', releasedAt: '',
     };
     state.log = state.log || [];
@@ -2491,7 +2493,7 @@
     const cloudFirst = window.PC_CLOUD_FIRST_FORMS === true;
     if (cloudFirst && (!window.PC_CLOUD || !PC_CLOUD.savePreparedCampaignRows))
       return "บันทึกไม่ได้ — ระบบ Cloud-first ยังไม่พร้อม";
-    if (cloudFirst && !cloudCtx && allData.some(d => /e[-\s]?voucher/i.test(String(d.postCate || d.cateRemark || ""))))
+    if (cloudFirst && !cloudCtx)
       return cloudFormContext(true, false).then(ctx => API.saveBulkProposal(allData, ctx));
     const target = cloudFirst ? { months: {} } : store;
     const month = allData[0].monthYear;
@@ -2507,21 +2509,22 @@
       //    → IT กรอกครบทุกช่อง · postCate (Promotion set/Combo/Value set/E-Voucher) เก็บใน cate
       //    ไว้บอก "หมวดที่ปุ่มไปขึ้น" เท่านั้น ไม่เปลี่ยนชนิดงาน
       const ptype = "Item Set";
-      /* ⭐ FX-P68 — หมวด E-Voucher = ต้องมีเลข Item Coupon (IC) · จองให้ตั้งแต่ตอน MKT แจ้งโปร
-         (เดิมรอ IT เปิดหน้า IT Settlement ถึงจะจอง → งานเข้าคิวโดยไม่มีเลข)
-         จองแบบ RESERVED ด้วย identity เดียวกันทุกครั้ง → เรียกซ้ำ/ส่งซ้ำ ไม่ได้เลขใหม่ · IT แค่ตรวจ+ยืนยัน */
-      const _isEV = /e[-\s]?voucher/i.test(String(info.postCate || info.cateRemark || ""));
-      let _evCode = "";
-      if (_isEV && cloudFirst) {
-        _evCode = cloudReserveFormCode(cloudCtx, "coupon", "ItemSet EV", info.campaign, info.shortName);
-      } else if (_isEV && window.PC_COUNTER) {
-        const _fld = "ItemSet EV|" + String(info.campaign || "") + "|" + String(info.shortName || "");
-        try {
-          const _ex = PC_COUNTER.findReservedFor ? PC_COUNTER.findReservedFor("coupon", null, info.campaign, _fld) : null;
-          if (_ex && _ex.code) _evCode = _ex.code;
-          else { const _e = PC_COUNTER.reserve("coupon", { where: info.campaign, field: _fld, by: currentUser() }); if (_e && _e.code) _evCode = _e.code; }
-        } catch (e) {}
-      }
+      // Reserve the complete pair once per button. Category counters follow
+      // the same prefixes used by IT and the product master.
+      const category = String(info.postCate || info.cateRemark || '').toLowerCase();
+      const cat = /combo/.test(category) ? '105' : /value/.test(category) ? '106' : /voucher/.test(category) ? '109' : '107';
+      const promoType = cat === '109' ? 'coupon' : 'promo';
+      const promoTag = cat === '109' ? 'ItemSet EV' : 'ItemSet Promo';
+      const itemType = cat === '107' ? 'itemset' : 'item';
+      const itemCat = itemType === 'item' ? cat : null;
+      const itemField = 'itccf-' + (itemCat ? 'item-' + cat : 'itemset') + '-' +
+        encodeURIComponent(JSON.stringify([info.campaign, info.shortName, month]));
+      const promoCode = cloudFirst
+        ? cloudReserveFormCode(cloudCtx, promoType, promoTag, info.campaign, info.shortName)
+        : reserveFormCode(promoType, promoTag, info.campaign, info.shortName, '');
+      const itemSetCode = cloudFirst
+        ? cloudReserveFormCode(cloudCtx, itemType, 'ItemSet Code', info.campaign, info.shortName, itemCat, itemField)
+        : reserveFormCode(itemType, 'ItemSet Code', info.campaign, info.shortName, '', itemCat, itemField);
       const totalGross = g.items.reduce((a, it) => a + (parseFloat(it.originalPrice) || 0) * (parseInt(it.qty) || 1), 0);
       const net = Number(info.netPrice) || 0;
       addButtonGroup(target, {
@@ -2529,8 +2532,7 @@
         submissionId: info.submissionId, submissionBatchId: info.submissionBatchId,
         submissionForm: info.submissionForm, submissionExpectedButtons: info.submissionExpectedButtons,
         txnDate: info.txnDate || NOW(), submittedDate: info.txnDate || NOW(), promoType: ptype, typePromotion: ptype,
-        // ⛔ ไม่ pre-gen Code Item Set — ปล่อยว่างให้หน้า IT autorun (จอง 107 จาก PC_COUNTER + ป้าย "รอ IT ยืนยันเลข")
-        codePromotion: _evCode, codeItemSet: "", itemPromotion: "",
+        codePromotion: promoCode, codeItemSet: itemSetCode, itemPromotion: itemSetCode,
         start: info.start, end: info.end, stores: info.storeSelection, saleMode: info.saleMode,
         itStatus: "PENDING", opStatus: "WAITING", kitchen: info.kitchenName, shortName: info.shortName,
         detail: info.promotionDetail, mechanic: info.mechanic, minAmount: Number(info.minSpendAmount) || 0,
@@ -3173,7 +3175,7 @@
           catCode: r.catCode, itemCode: r.itemCode, itemNameEN: r.itemNameEN, qty: r.qty,
           price: r.gross, discount: r.discount, netPrice: r.netPrice, detail: r.detail,
           mechanic: r.mechanic, fileUrl: r.attachment || "", itStatus: status,
-          changeStatus: chg, cateRemark: r.cateRemark || "", rejectReason: String(r.rejectReason || ""),
+          changeStatus: chg, cateRemark: r.cateRemark || "", cate: r.cate || r.postCate || "", postCate: r.postCate || r.cate || "", rejectReason: String(r.rejectReason || ""),
           editButtonId:r.editButtonId||'',
           revisionPending: !!r.revisionPending, revisionId:r.revisionId||'', revisionReason:r.revisionReason||'', revisionRequestedBy:r.revisionRequestedBy||'', revisionRequestedAt:r.revisionRequestedAt||'', revisionChanges:r.revisionChanges||[],
           extendCodeNote: r.extendCodeNote || "",

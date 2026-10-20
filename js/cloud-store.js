@@ -450,6 +450,20 @@
     return { value: item.value, updatedAt: item.updated_at };
   }
 
+  async function saveCoPromoDrafts(owner, value, expectedUpdatedAt) {
+    if (!owner || typeof value !== 'string' || value.length > 500000) throw new Error('ข้อมูลฉบับร่างไม่ถูกต้อง');
+    var key = 'pc_copro_drafts::' + encodeURIComponent(owner);
+    var response = await api('/promo/store/' + encodeURIComponent(key), {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({value:value, expectedUpdatedAt:expectedUpdatedAt})
+    });
+    if (response.status === 409) throw new Error('ฉบับร่างเปลี่ยนจากอีกหน้าต่าง กรุณาเปิดงานค้างใหม่ก่อนแก้ไข');
+    if (!response.ok) throw new Error('บันทึกฉบับร่างบน Cloud ไม่สำเร็จ');
+    var ack = await response.json(), check = await readCloudKey(key);
+    if (!ack.ok || !check || check.value !== value || Number(check.updatedAt) !== Number(ack.updated_at)) throw new Error('ยังตรวจยืนยันฉบับร่างบน Cloud ไม่สำเร็จ');
+    return check;
+  }
+
   async function loadCampaignEdit(campaign, month, actor) {
     var model=window.PC_PromotionEditModel;
     if(!model)throw new Error('ระบบแก้ไขยังไม่พร้อม กรุณารีเฟรช');
@@ -1345,7 +1359,7 @@
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
-    readCloudKey: readCloudKey, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
     loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,

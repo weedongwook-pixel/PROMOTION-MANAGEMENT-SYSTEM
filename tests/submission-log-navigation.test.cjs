@@ -86,6 +86,6 @@ test('existing RD account receives only the log permission', () => {
     pc_perm_mig_staffdisc_removed: '1',
     pc_perm_submission_log_it_mkt_v1: '1',
   });
-  assert.deepEqual(Array.from(get().RD), ['Dashboard', 'SubmissionLog']);
+  assert.deepEqual(Array.from(get().RD), ['Dashboard', 'MyPending', 'SubmissionLog']);
   assert.equal(storage.get('pc_perm_submission_log_rd_v1'), '1');
 });

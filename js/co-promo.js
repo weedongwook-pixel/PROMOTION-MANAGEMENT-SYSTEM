@@ -37,21 +37,38 @@
     }).then(function (res) {
       if (!res.isConfirmed) return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
       return openFormsSequential(campaigns.slice()).then(function (completed) {
-        return completed ? { coPromo: true, completed: true } : undefined;
+        return completed === true ? { coPromo: true, completed: true } : completed;
       });
     });
   }
   function openFormsSequential(list) {
     if (!list.length) return Promise.resolve(true);
     var c = list.shift();
-    return openForm(c, null, { requireEmail: true }).then(function (saved) { return saved === true ? openFormsSequential(list) : undefined; });
+    return openForm(c, null, { requireEmail: true }).then(async function (saved) {
+      if (saved === true) return openFormsSequential(list);
+      if (saved && saved.draftSaved && window.PC_CoPromoDrafts) {
+        for (const pending of list) await window.PC_CoPromoDrafts.save(pending, {}, null);
+      }
+      return saved;
+    });
   }
 
-  function openForm(campaign, existing, options) {
-    return run("getCoPromoContext", campaign).then(function (ctx) {
-      ctx = ctx || { campaign: campaign, buttons: [] };
-      return showFormPage(ctx, existing || null, options || {});
-    });
+  async function openForm(campaign, existing, options) {
+    options = options || {};
+    var ctx;
+    if (options.requireEmail && window.PC_CLOUD && window.PC_CLOUD.readCampaignRows) {
+      const rows = options.cloudRows || await window.PC_CLOUD.readCampaignRows(campaign);
+      if (!rows.length) throw Error('ไม่พบโปรฯ ต้นฉบับบน Cloud กรุณาตรวจประวัติ');
+      const seen = new Set(), buttons = [];
+      for (const row of rows) {
+        const key = row.emailButtonId || row.shortName;
+        if (seen.has(key)) continue; seen.add(key);
+        buttons.push({buttonName:row.shortName, emailButtonId:row.emailButtonId, codePromotion:row.codePromotion,
+          codeItemSet:row.codeItemSet||row.itemPromotion, detail:row.detail, typePromotion:row.typePromotion||row.promoType});
+      }
+      ctx = {campaign, start:rows[0].start, end:rows[0].end, typePromotion:rows[0].typePromotion||rows[0].promoType, buttons};
+    } else ctx = await run("getCoPromoContext", campaign);
+    return showFormPage(ctx || {campaign,buttons:[]}, existing || {}, options);
   }
 
   /* ---- ฟอร์มหน้าเต็ม ---- */
@@ -61,6 +78,13 @@
     var saveLabel = requireEmail ? 'เลือกลูปและตรวจเมล' : 'บันทึก & แจ้ง ACC';
     var editing = !!ex.id;
     var btns = ctx.buttons || [];
+    var resumeIndex = 0;
+    if (options.draft && (ex.emailButtonId || ex.buttonName || ex.cmposName)) {
+      const matches = btns.map((button,index)=>({button,index})).filter(x=>ex.emailButtonId
+        ? x.button.emailButtonId===ex.emailButtonId : x.button.buttonName===(ex.buttonName||ex.cmposName));
+      if(matches.length!==1)throw Error('ไม่พบปุ่มเดิมของฉบับร่าง หรือชื่อปุ่มซ้ำ กรุณาตรวจงานต้นฉบับก่อนส่งเมล');
+      resumeIndex=matches[0].index;
+    }
 
     // โหมดแก้ไข: ล็อกโค้ดของเรคคอร์ดเดิม · โหมดสร้าง: เลือกปุ่มจาก dropdown
     var codeBlock;
@@ -116,7 +140,7 @@
       '#pcCoproPage .cpf-exc{font-size:.76rem;color:#1f6b40;font-weight:700;margin-top:4px}' +
       '#pcCoproPage .cpf-sec{font-family:Montserrat,sans-serif;font-weight:700;font-size:.82rem;color:#0e5c37;letter-spacing:.5px;text-transform:uppercase;margin:22px 0 2px;padding-top:16px;border-top:1px solid #eef1f4}' +
       '#pcCoproPage .cpf-sec:first-of-type{border-top:0;padding-top:0;margin-top:4px}' +
-      '#pcCoproPage .cpf-foot{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e4e8ec;padding:14px 22px;display:flex;justify-content:flex-end;gap:10px;box-shadow:0 -4px 18px rgba(20,32,43,.06)}' +
+      '#pcCoproPage .cpf-foot{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e4e8ec;padding:14px 22px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;box-shadow:0 -4px 18px rgba(20,32,43,.06)}' +
       '#pcCoproPage .cpf-btn{border:0;border-radius:11px;padding:12px 26px;font-family:inherit;font-weight:800;font-size:.95rem;cursor:pointer}' +
       '#pcCoproPage .cpf-save{background:#2e934a;color:#fff}#pcCoproPage .cpf-save:hover{background:#237a3b}' +
       '#pcCoproPage .cpf-cancel{background:#fff;color:#5a616b;border:1.5px solid #d8dde2}#pcCoproPage .cpf-cancel:hover{background:#f4f6f8}' +
@@ -154,13 +178,44 @@
       '<label>Remark (หมายเหตุ)</label><textarea id="cpRemark">' + esc(ex.remark || "") + "</textarea>" +
       "</div></div>" +
       '<div class="cpf-foot"><span class="cpf-err" id="cpfErr" role="alert"></span>' +
-      '<button class="cpf-btn cpf-cancel" id="cpfCancel">ยกเลิก</button>' +
+      (requireEmail ? '<button type="button" class="cpf-btn cpf-cancel" id="cpfDraft">บันทึกฉบับร่าง</button>' : '') +
+      '<button class="cpf-btn cpf-cancel" id="cpfCancel">พัก / ปิด</button>' +
       '<button class="cpf-btn cpf-save" id="cpfSave"><i class="fas fa-paper-plane"></i> ' + saveLabel + '</button></div>';
 
     document.body.appendChild(host);
 
     return new Promise(function (resolve) {
-      function close() { try { host.remove(); } catch (e) {} resolve(); }
+      var draftState = options.draft || null, selectedButtonId = ex.emailButtonId || '';
+      var dirty = false;
+      function beforeLeave(event) { if (dirty) { event.preventDefault(); event.returnValue = ''; } }
+      window.addEventListener('beforeunload', beforeLeave);
+      host.addEventListener('input', function () { dirty = true; });
+      function close(value) { window.removeEventListener('beforeunload', beforeLeave); try { host.remove(); } catch (e) {} resolve(value); }
+      function collect() {
+        var g = id => String(document.getElementById(id)?.value || '').trim();
+        return {campaign:ctx.campaign, emailButtonId:selectedButtonId, cmposName:g('cpName'),buttonName:g('cpName'),
+          brand:g('cpBrand'),billingEntity:g('cpBill'),detail:g('cpDesc'),paymentType:g('cpPay'),soNo:g('cpSo'),
+          quota:g('cpQuota'),priceIncVat:g('cpPrice'),paymentCondition:g('cpCond'),remark:g('cpRemark')};
+      }
+      async function saveDraft() {
+        const controls=Array.from(host.querySelectorAll('input,select,textarea,button')),disabled=controls.map(el=>el.disabled);
+        const record=collect(); controls.forEach(el=>el.disabled=true);
+        try {
+          if(!window.PC_CoPromoDrafts)throw Error('ระบบฉบับร่างยังไม่พร้อม กรุณาเก็บข้อมูลก่อนเปิดเว็บใหม่');
+          draftState=await window.PC_CoPromoDrafts.save(ctx.campaign,record,draftState); dirty=false;
+          await Swal.fire({icon:'success',title:'บันทึกฉบับร่างแล้ว',text:'เปิดทำต่อได้ที่งานค้างของฉัน · ยังไม่ส่งเมล',timer:1800,showConfirmButton:false});
+          close({draftSaved:true});
+        } catch(e) { const error=document.getElementById('cpfErr');error.textContent=e.message;error.style.display='block'; }
+        finally { controls.forEach((el,i)=>el.disabled=disabled[i]); }
+      }
+      async function requestClose() {
+        if (!requireEmail) return close();
+        const choice=await Swal.fire({icon:'question',title:'เก็บ CoPromo ไว้ทำต่อหรือไม่?',showCancelButton:true,showDenyButton:true,
+          confirmButtonText:'บันทึกฉบับร่าง',denyButtonText:'ปิดโดยไม่บันทึกเพิ่ม',cancelButtonText:'กรอกต่อ'});
+        if(choice.isConfirmed)return saveDraft();
+        if(choice.isDenied)close();
+      }
+      if(requireEmail)document.getElementById('cpfDraft').onclick=saveDraft;
       // prefill codes
       var sel = document.getElementById("cpBtn");
       var cP = document.getElementById("cpCodeP"), cI = document.getElementById("cpCodeI");
@@ -168,11 +223,13 @@
       if (!editing && btns.length) {
         var fill = function () {
           var b = btns[sel && sel.tagName === "SELECT" ? (sel.value | 0) : 0]; if (!b) return;
+          selectedButtonId = b.emailButtonId || '';
           cP.value = b.codePromotion || ""; cI.value = b.codeItemSet || "";
           var tp = document.getElementById("cpTypePromo"); if (tp) tp.value = b.typePromotion || ctx.typePromotion || "";
-          if (!nm.value) nm.value = b.buttonName || "";
+          if (!nm.value || requireEmail) nm.value = b.buttonName || "";
           if (!ds.value) ds.value = b.detail || "";
         };
+        if (sel && sel.tagName === 'SELECT' && options.draft) sel.value=String(resumeIndex);
         fill();
         if (sel && sel.tagName === "SELECT") sel.onchange = function () { nm.value = ""; ds.value = ""; fill(); };
       }
@@ -180,15 +237,15 @@
       function calcExc() { var p = parseFloat(pr.value) || 0; exc.textContent = p ? "Exc. VAT ≈ " + (p / 1.07).toFixed(2) + " ฿" : ""; }
       pr.oninput = calcExc; calcExc();
 
-      document.getElementById("cpfBack").onclick = close;
-      document.getElementById("cpfCancel").onclick = close;
+      document.getElementById("cpfBack").onclick = requestClose;
+      document.getElementById("cpfCancel").onclick = requestClose;
       document.getElementById("cpfSave").onclick = function () {
         var g = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ""; };
         var errEl = document.getElementById("cpfErr");
         if (!g("cpBrand")) { errEl.textContent = "กรอก Brand / พาร์ทเนอร์"; errEl.style.display = "block"; return; }
         errEl.style.display = "none";
         var rec = {
-          id: ex.id || undefined, campaign: ctx.campaign, type: ex.type || "Co-Promotion",
+          emailButtonId:selectedButtonId, id: ex.id || undefined, campaign: ctx.campaign, type: ex.type || "Co-Promotion",
           codePromotion: editing ? ex.codePromotion : cP.value, codeItemSet: editing ? ex.codeItemSet : cI.value,
           cmposName: g("cpName"), buttonName: g("cpName"), brand: g("cpBrand"), billingEntity: g("cpBill"),
           detail: g("cpDesc"), periodText: g("cpPeriod"), start: ctx.start || ex.start || "", end: ctx.end || ex.end || "",
@@ -211,6 +268,12 @@
           if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> ' + saveLabel;return;}
           if(result.status==='error')throw new Error(result.message||'บันทึกไม่สำเร็จ');
           if(requireEmail && result.mailStatus!=='queued') throw Error('ยังไม่ได้รับการยืนยันว่าอีเมลเข้าคิวส่ง กรุณาให้ผู้ดูแลตรวจสถานะก่อนทำซ้ำ');
+          if (draftState && window.PC_CoPromoDrafts) {
+            try { await window.PC_CoPromoDrafts.remove(draftState); }
+            catch(e) { await Swal.fire({icon:'warning',title:'อีเมลเข้าคิวแล้ว แต่ยังล้างฉบับร่างไม่สำเร็จ',text:'ไม่ต้องส่งซ้ำ: '+e.message}); }
+          }
+          dirty=false;
+          window.removeEventListener('beforeunload', beforeLeave);
           host.remove();
           if (window.Swal) await Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
           resolve(true);

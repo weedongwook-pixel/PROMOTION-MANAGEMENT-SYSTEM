@@ -24,6 +24,7 @@
     if(d.detail)lines.push('รายละเอียด / Details: '+String(d.detail));
     for(const b of d.buttons||[]){
       lines.push(String(b.name||'')+' — '+String(b.code||''));
+      if(b.promotionDetail)lines.push('รายละเอียดโปรฯ / Promotion details: '+b.promotionDetail);
       if(b.brand)lines.push('Partner: '+b.brand);if(b.detail)lines.push('Details: '+b.detail);if(b.saleMode)lines.push('Sale Mode: '+b.saleMode);
       for(const item of b.items||[])lines.push([item.code,item.name,'Qty: '+item.qty,'Unit price: '+item.unitPrice].join(' · '));
       if(b.netPrice!==' '&&b.netPrice!==undefined&&b.netPrice!=='')lines.push('Net: '+b.netPrice);if(b.discount!==undefined&&b.discount!=='')lines.push('Discount: '+b.discount);if(b.condition)lines.push('Conditions: '+b.condition);

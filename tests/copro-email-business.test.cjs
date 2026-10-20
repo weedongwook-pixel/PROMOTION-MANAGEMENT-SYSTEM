@@ -125,3 +125,55 @@ test('legacy completion without attachment approval preserves legacy delivery in
  for(const b of buttons){await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);await a.commitIT(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1,codePromotion:JSON.parse(b.source_identity_json).codePromotion},env);}
  const completion=JSON.parse(DB.db.prepare("SELECT snapshot_json FROM email_outbox WHERE event_key LIKE '%it_interface_complete'").get().snapshot_json);assert.equal(Object.hasOwn(completion,'attachments'),false);DB.db.close();
 });
+function changeCloud(DB,c,mutate){
+ const block=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v);mutate(block.m[c.month]);DB.db.prepare('UPDATE promo_store SET v=?,updated_at=updated_at+1 WHERE k=?').run(JSON.stringify(block),c.key);return block.m[c.month];
+}
+test('first CoPro preview and list follow latest Cloud labels and details with registered stable IDs',async()=>{
+ const {a,DB,env,c,draft}=await fixture();
+ const before=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v).m[c.month];
+ const latest=changeCloud(DB,c,rows=>{rows[0].codePromotion='IC999';rows[0].shortName='Current name';rows[0].gross=99;rows[0].condition='Current condition';rows[0].detail='Current promotion detail';});
+ const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/Current promotion detail/);assert.match(preview.text,/IC999/);assert.match(preview.text,/Current name/);assert.match(preview.text,/Current condition/);assert.match(preview.text,/99/);
+ const listed=(await a.listCoProCampaigns(actor,env)).items[0];assert.equal(JSON.parse(listed.buttons.find(b=>b.button_id===before[0].emailButtonId).source_identity_json).codePromotion,'IC999');assert.equal(listed.sourceRows[0].emailRowId,before[0].emailRowId);
+ draft.previewHash=preview.previewHash;await a.commitCoPromo(actor,draft,env);
+ const saved=JSON.parse(DB.db.prepare('SELECT source_json FROM email_campaigns').get().source_json);assert.deepEqual(saved,latest);assert.match(DB.db.prepare('SELECT snapshot_json FROM email_outbox').get().snapshot_json,/IC999/);DB.db.close();
+});
+test('source changing after preview and at transaction boundary cannot queue stale first mail',async()=>{
+ for(const race of [false,true]){
+  const {a,DB,env,c,draft}=await fixture();const change=()=>changeCloud(DB,c,rows=>rows[0].codePromotion='IC999');
+  if(race){const batch=DB.batch.bind(DB);DB.batch=async statements=>{change();return batch(statements);};}else change();
+  await assert.rejects(a.commitCoPromo(actor,draft,env));assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,0);assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_bindings').get().n,0);DB.db.close();
+ }
+});
+test('prebinding refresh rejects missing, additional, reassigned and replacement source members',async()=>{
+ const mutations=[r=>r.pop(),r=>r.push({...r[0],emailRowId:'new'}),r=>r[0].emailRowId='replacement',r=>r[0].emailButtonId=r[1].emailButtonId,r=>r[0].emailCampaignId='another',r=>r[0].submissionBatchId='another',r=>r[0].campaign='another',r=>r[0].revisionPending=true];
+ for(const mutate of mutations){const {a,DB,env,c,draft}=await fixture();changeCloud(DB,c,mutate);await assert.rejects(a.previewCoPromo(actor,draft,env),/email_source_changed/);assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,0);DB.db.close();}
+});
+test('post-binding edits still require protected settlement and original owner is enforced before refresh',async()=>{
+ const {a,DB,env,c,draft}=await fixture();const other={...actor,objectId:'44444444-4444-4444-8444-444444444444'};grant(DB,other,'submit');changeCloud(DB,c,r=>r[0].codePromotion='IC999');await assert.rejects(a.previewCoPromo(other,draft,env),/email_campaign_denied/);
+ draft.previewHash=(await a.previewCoPromo(actor,draft,env)).previewHash;await a.commitCoPromo(actor,draft,env);changeCloud(DB,c,r=>r[0].codePromotion='IC888');await assert.rejects(a.previewCoPromo(actor,draft,env),/email_source_changed/);DB.db.close();
+});
+test('IT completed in trusted Cloud before binding is preserved and interface completion queues final mail',async()=>{
+ const {a,DB,env,c,buttons,draft}=await fixture();changeCloud(DB,c,rows=>rows.forEach(r=>{r.itStatus='COMPLETE';r.codePromotion+='9';}));draft.previewHash=(await a.previewCoPromo(actor,draft,env)).previewHash;await a.commitCoPromo(actor,draft,env);
+ assert.equal(DB.db.prepare('SELECT SUM(it_done) n FROM email_campaign_buttons').get().n,2);
+ for(const b of buttons)await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);
+ assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,2);DB.db.close();
+});
+test('stable button IDs keep separate records when mutable names and codes converge',async()=>{
+ const {a,DB,env,c,draft}=await fixture();changeCloud(DB,c,rows=>{rows[1].shortName=rows[0].shortName;rows[1].codePromotion=rows[0].codePromotion;});draft.records[0].brand='First partner';draft.records[1].brand='Second partner';
+ const preview=await a.previewCoPromo(actor,draft,env);assert.equal(preview.details.buttons.length,2);assert.equal(preview.details.buttons[0].items.length,1);assert.equal(preview.details.buttons[1].items.length,1);assert.equal(new Set(preview.details.buttons.map(b=>b.brand)).size,2);DB.db.close();
+});
+test('protected IT settlement confirms live promotion reservations for every counter prefix',async()=>{
+ for(const [type,code] of [['promo','P9999'],['coupon','IC9999'],['bill','BD9999'],['voucher','VC9999']]){
+  const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+  DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_code_counter_v1',JSON.stringify({reservations:{[type+'::'+code]:{type,code,status:'RESERVED',where:'UOB test'}}}));
+  await a.commitIT(actor,{campaignId:c.id,buttonId:buttons[0].button_id,expectedVersion:1,codePromotion:code},env);
+  const counter=JSON.parse(DB.db.prepare("SELECT v FROM promo_store WHERE k='pc_code_counter_v1'").get().v);assert.equal(counter.reservations[type+'::'+code].status,'CONFIRMED');assert.ok(counter.reservations[type+'::'+code].confirmedAt);DB.db.close();
+ }
+});
+test('IT cannot confirm a foreign, released, mismatched or missing new promotion reservation',async()=>{
+ for(const invalid of [{where:'Other'}, {status:'RELEASED'}, {type:'bill'}, {code:'IC8888'},null]){
+  const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+  const reservations=invalid?{'coupon::IC9999':{type:'coupon',code:'IC9999',where:'UOB test',status:'RESERVED',...invalid}}:{};DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_code_counter_v1',JSON.stringify({reservations}));
+  const before=DB.db.prepare('SELECT k,v FROM promo_store ORDER BY k').all();await assert.rejects(a.commitIT(actor,{campaignId:c.id,buttonId:buttons[0].button_id,expectedVersion:1,codePromotion:'IC9999'},env),/email_counter_conflict/);assert.deepEqual(DB.db.prepare('SELECT k,v FROM promo_store ORDER BY k').all(),before);assert.equal(DB.db.prepare('SELECT SUM(it_done) n FROM email_campaign_buttons').get().n,0);DB.db.close();
+ }
+});
