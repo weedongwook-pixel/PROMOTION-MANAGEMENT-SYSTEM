@@ -20,25 +20,19 @@
     if(!['submitted','it_interface_complete','promotion_edited'].includes(snapshot.milestone))throw Error('email_invalid_milestone');
     const d=snapshot.details||{};
     const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?'แจ้งรายละเอียดขึ้นปุ่ม Co-Promotion':'แจ้งสถานะขึ้นปุ่ม และ Interface เรียบร้อย',
-      'ชื่อแคมเปญ / Campaign Name: '+String(d.campaign||'-'), 'วันที่เริ่ม / Start: '+String(d.start||'-'),'วันที่สิ้นสุด / End: '+String(d.end||'-')];
+      'ชื่อแคมเปญ: '+String(d.campaign||'-'), 'วันที่เริ่ม - วันที่สิ้นสุด: '+String(d.start||'-')+' - '+String(d.end||'-')];
     for(const b of d.buttons||[]){
-      lines.push('SHORT NAME (POS): '+String(b.name||'-'));
-      if(b.code)lines.push('Code Promotion / Item Set: '+String(b.code));
-      const stores=Array.isArray(b.stores)?b.stores.join(', '):String(b.stores||'');
-      lines.push('สาขา / Stores: '+(/^ALL$/i.test(stores)?'ทุกสาขา / ALL':stores||'-'));
-      lines.push('PROMOTION DETAIL: '+String(b.promotionDetail||'-'));
-      lines.push('เงื่อนไข / Conditions: '+String(b.condition||'-'));
-      if(b.promoType)lines.push('Type Promotion: '+b.promoType);
-      if(b.saleMode)lines.push('Sale Mode: '+b.saleMode);
-      if(b.minAmount!==undefined&&b.minAmount!=='')lines.push('Minimum amount: '+b.minAmount);
-      for(const item of b.items||[])lines.push([item.code,item.name,'Qty: '+item.qty,'Unit price: '+item.unitPrice].join(' · '));
-      if(b.netPrice!==' '&&b.netPrice!==undefined&&b.netPrice!=='')lines.push('Net: '+b.netPrice);if(b.discount!==undefined&&b.discount!=='')lines.push('Discount: '+b.discount);
+      lines.push('Type Promotion: '+String(b.promoType||'-'));
+      lines.push('Code Promotion: '+String((b.codePromotion??(b.code||'').split(' / ')[0])||'-'));
+      lines.push('ชื่อปุ่ม (SHORT NAME (POS)): '+String(b.name||'-'));
+      lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));
+      lines.push('เงื่อนไข: '+String(b.condition||'-'));
     }
     if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
-    if(snapshot.attachments!==undefined)lines.push('ไฟล์แนบต้นฉบับ / Original attachments: '+(snapshot.attachments.map(file=>file.name).join(', ')||'ไม่มี / None'));
+    lines.push('ไฟล์แนบ: '+((snapshot.attachments||[]).map(file=>file.name).join(', ')||'ไม่มี'));
     const text=lines.join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const label=/^(ชื่อแคมเปญ \/ Campaign Name|วันที่เริ่ม \/ Start|วันที่สิ้นสุด \/ End|SHORT NAME \(POS\)|Code Promotion \/ Item Set|สาขา \/ Stores|PROMOTION DETAIL|เงื่อนไข \/ Conditions|Type Promotion|Sale Mode|Minimum amount|Net|Discount|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบต้นฉบับ \/ Original attachments):/;
+    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม \(SHORT NAME \(POS\)\)|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ):/;
     return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map((x,i)=>{
       const match=x.match(label);
       const content=i===0?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);
