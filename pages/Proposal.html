@@ -895,7 +895,7 @@
     const btnId = 'btn-' + (Date.now() + Math.random().toString(36).substr(2, 5));
     const html = `
       <div class="pos-button-block mb-4 p-3 border border-secondary rounded bg-white shadow-sm" id="${btnId}">
-        <div class="mb-3"><label class="small fw-bold" for="type-${btnId}">Type Promotion *</label><select id="type-${btnId}" class="form-select btn-promo-type" onchange="window.PC_CustomerGroup?.syncCoupons()"><option value="Item Set">Price Promotion</option><option value="Item Coupon">Item Coupon</option></select></div>
+        <div class="mb-3"><label class="small fw-bold" for="type-${btnId}">Type Promotion *</label><select id="type-${btnId}" class="form-select btn-promo-type" autocomplete="off" onchange="window.PC_CustomerGroup?.syncCoupons()"><option value="Item Set" selected>Price Promotion</option><option value="Item Coupon">Item Coupon</option></select></div>
         <div class="row g-2 mb-3">
           <div class="col-md-6">
             <label class="small fw-bold text-uppercase">KITCHEN NAME (BILL) * <span class="text-danger">(Max 40)</span></label>
@@ -930,6 +930,7 @@
         </div>
       </div>`;
     document.getElementById('btn-container-' + campId).insertAdjacentHTML('beforeend', html);
+    document.getElementById('type-' + btnId).value = 'Item Set';
     window.addItemRow(btnId, campId);
     window.PC_CustomerGroup?.syncCoupons();
   };
