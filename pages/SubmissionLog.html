@@ -86,6 +86,12 @@
     #sl-page td:last-child { padding-top: 10px; }
     #sl-page td:first-child::before, #sl-page td:last-child::before, #sl-page td.sl-empty::before { content: none; }
   }
+  #sl-page .sl-tabs { display: flex; gap: 8px; border-bottom: 1px solid #cfe2d3; margin-bottom: 20px; }
+  #sl-page .sl-tabs button { min-height: 44px; padding: 10px 16px; background: transparent; border: 0; border-bottom: 3px solid transparent; color: #344c40; font: inherit; cursor: pointer; }
+  #sl-page .sl-tabs button[aria-selected="true"] { color: #145c32; border-bottom-color: #2e934a; font-weight: 700; }
+  #sl-page .sl-tabs button:hover { background: #eaf6ee; }
+  #sl-page .sl-tabs button:focus-visible { outline: 2px solid #145c32; outline-offset: 2px; }
+  #sl-page [hidden] { display: none !important; }
 </style>
 
 <div id="sl-page">
@@ -95,13 +101,21 @@
       <p id="sl-description" class="sl-sub">ดูรายการที่คุณแจ้งและผลตรวจการบันทึกใน Cloud กับศูนย์ติดตามงาน</p>
       <span id="sl-active-scope" class="sl-scope-note"><i class="fas fa-user" aria-hidden="true"></i>เฉพาะรายการของฉัน</span>
     </div>
-    <div class="sl-controls">
+    <div id="sl-history-controls" class="sl-controls">
       <div id="sl-scope-wrap" hidden><label for="sl-scope">รายการของใคร</label><select id="sl-scope" class="form-select form-select-sm"><option value="all">ทุกผู้ส่ง</option><option value="mine">เฉพาะของฉัน</option></select></div>
       <div><label for="sl-date">วันที่ส่งงาน (เวลาไทย)</label><input id="sl-date" type="date" class="form-control form-control-sm"></div>
       <button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('sl-date').value='';window.slRefresh()">ดูทั้งหมด</button><button id="sl-refresh" type="button" class="btn btn-success btn-sm" onclick="window.slRefresh()"><i class="fas fa-rotate me-1" aria-hidden="true"></i>ตรวจอีกครั้ง</button>
     </div>
   </div>
-  <section class="mb-4"><h2 class="h5">สถานะอีเมล · บัญชีผู้ส่งที่เชื่อมต่อ</h2><div id="sl-mail-history"></div></section>
+  <div class="sl-tabs" role="tablist" aria-label="เลือกข้อมูลประวัติ">
+    <button id="sl-tab-history" type="button" role="tab" aria-selected="true" aria-controls="sl-panel-history" onclick="window.slSwitchTab('history')" onkeydown="window.slTabKey(event,'history')">ประวัติการแจ้งโปรฯ</button>
+    <button id="sl-tab-mail" type="button" role="tab" aria-selected="false" aria-controls="sl-panel-mail" tabindex="-1" onclick="window.slSwitchTab('mail')" onkeydown="window.slTabKey(event,'mail')">สถานะอีเมล</button>
+  </div>
+  <section id="sl-panel-mail" role="tabpanel" aria-labelledby="sl-tab-mail" hidden>
+    <div class="sl-list-head"><h2 class="h5">สถานะอีเมล · บัญชีผู้ส่งที่เชื่อมต่อ</h2><button type="button" class="btn btn-outline-success btn-sm" onclick="window.slRefreshMail()">ตรวจสถานะเมลอีกครั้ง</button></div>
+    <div id="sl-mail-history"></div>
+  </section>
+  <section id="sl-panel-history" role="tabpanel" aria-labelledby="sl-tab-history">
   <div id="sl-overview" class="sl-overview empty" role="status" aria-live="polite"><strong>กำลังตรวจรายการที่ส่ง…</strong></div>
   <div id="sl-metrics" class="sl-metrics"><span>กำลังนับแคมเปญ…</span></div>
   <div id="sl-list-tools" hidden>
@@ -133,11 +147,31 @@
       <tbody id="sl-activity-rows"><tr><td colspan="7" class="sl-empty">กำลังโหลด…</td></tr></tbody>
     </table></div>
   </section>
+  </section>
 </div>
 
 <script>
 (function () {
   var items = [], activities = [], generation = 0, activeFilter = 'all';
+  window.slSwitchTab = function (tab) {
+    if (tab !== 'mail' && tab !== 'history') return;
+    ['history','mail'].forEach(function (name) {
+      var button = document.getElementById('sl-tab-' + name), panel = document.getElementById('sl-panel-' + name);
+      if (button) { button.setAttribute('aria-selected', String(name === tab)); button.tabIndex = name === tab ? 0 : -1; }
+      if (panel) panel.hidden = name !== tab;
+    });
+    ['sl-history-controls','sl-description','sl-active-scope'].forEach(function(id){var el=document.getElementById(id);if(el)el.hidden=tab==='mail';});
+  };
+  window.slTabKey = function (event, tab) {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    var next = event.key === 'Home' ? 'history' : event.key === 'End' ? 'mail' : tab === 'mail' ? 'history' : 'mail';
+    window.slSwitchTab(next); document.getElementById('sl-tab-' + next).focus();
+  };
+  window.slRefreshMail = function () {
+    if(window.PC_CoProEmailUI?.mountHistory)return window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items);
+  };
+
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
   function time(v) { var d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('th-TH', { timeZone:'Asia/Bangkok', hour:'2-digit', minute:'2-digit' }); }
   function state(item) {

@@ -53,6 +53,13 @@ test('submission history shows only Cloud-confirmed success and failure statuses
   vm.runInContext(script, context);
   context.window.initSubmissionLog();
   await context.window.slRefresh();
+  context.window.slSwitchTab('mail');
+  assert.equal(element('sl-panel-history').hidden,true);
+  assert.equal(element('sl-panel-mail').hidden,false);
+  assert.equal(element('sl-tab-mail')['aria-selected'],'true');
+  context.window.slSwitchTab('history');
+  assert.equal(element('sl-panel-mail').hidden,true);
+  assert.equal(element('sl-history-controls').hidden,false);
   assert.match(element('sl-overview').innerHTML, /บันทึกสำเร็จ 1 รายการ/);
   assert.match(element('sl-overview').innerHTML, /บันทึกไม่สำเร็จ 1/);
   assert.match(element('sl-overview').innerHTML, /<progress[^>]*value="1" max="2"/);
