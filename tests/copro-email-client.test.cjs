@@ -36,3 +36,21 @@ test('email setup or permission failure does not prevent ordinary promotion subm
  vm.runInNewContext(fs.readFileSync('js/copro-email-client.js','utf8'),c);
  assert.equal(await w.PC_CoProEmail.prepareSubmission(),false);assert.equal(w.PC_CoProEmail.active(),false);
 });
+
+test('successful CoPromo IT close opens Interface; ordinary and failed work retain existing flow',async()=>{
+ const navigations=[];let rows=[],result='SUCCESS';
+ const w={loadPage:page=>navigations.push(page),PC_CLOUD:{readCloudKey:async()=>({value:JSON.stringify(rows)})},PC_API:{getCoPromotions:async()=>[],confirmErpInterface:async()=>{},saveSettlementBatch:async()=>result}};
+ const c={window:w,document:{getElementById:()=>null},sessionStorage:{getItem:()=>null},AbortSignal,fetch:async()=>{throw Error('ordinary work must not call email');}};
+ vm.runInNewContext(fs.readFileSync('js/copro-email-client.js','utf8'),c);
+ await w.PC_API.saveSettlementBatch('2026-10',[{campaign:'Ordinary'}]);assert.equal(w.PC_CoProEmail.afterITClosed('Ordinary'),false);
+ rows=[{campaign:'CoPromo'}];await w.PC_API.saveSettlementBatch('2026-10',[{campaign:'CoPromo'}]);assert.equal(w.PC_CoProEmail.afterITClosed('CoPromo'),true);assert.deepEqual(navigations,['InterfaceERP']);assert.equal(w.PC_CoProEmail.afterITClosed('CoPromo'),false);
+ result='STORAGE_ERROR';await w.PC_API.saveSettlementBatch('2026-10',[{campaign:'CoPromo'}]);assert.equal(w.PC_CoProEmail.afterITClosed('CoPromo'),false);
+});
+
+test('new tab must verify email context before closing a mailed CoPromo task',async()=>{
+ const session=new Map(),calls=[];
+ const w={PC_EmailAuth:{acquireToken:async()=>{throw Error('sender session expired');}},PC_CLOUD:{readCloudKey:async()=>({value:JSON.stringify([{campaign:'CoPromo',emailIntake:true,emailPending:false}])})},PC_API:{getCoPromotions:async()=>[],saveSettlementBatch:async()=>{calls.push('ordinary save');return 'SUCCESS';}}};
+ const c={window:w,sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v)},AbortSignal,fetch:async()=>Response.json({coproEnabled:true,sendingEnabled:true})};
+ vm.runInNewContext(fs.readFileSync('js/copro-email-client.js','utf8'),c);
+ await assert.rejects(w.PC_API.saveSettlementBatch('2026-10',[{campaign:'CoPromo'}]),/expired/);assert.deepEqual(calls,[]);
+});

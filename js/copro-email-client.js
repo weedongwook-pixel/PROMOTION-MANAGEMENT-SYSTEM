@@ -2,6 +2,7 @@
   'use strict';
   let caps=null;
   const key='pc_copro_email_pilot';
+  const closedCoPromo=new Set();
   const active=()=>{try{return sessionStorage.getItem(key)==='on';}catch(_){return false;}};
   async function capabilities(){
     const r=await fetch('/email/capabilities',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(15000)});
@@ -21,6 +22,11 @@
   async function refresh(){if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});}
   const api=window.PC_CoProEmail={
     active,request,capabilities,list,
+    afterITClosed(campaign){
+      if(!closedCoPromo.delete(campaign))return false;
+      window.loadPage('InterfaceERP',document.getElementById('nav-InterfaceERP'));
+      return true;
+    },
     async prepareSubmission(){
       if(active())return true;
       try {
@@ -50,7 +56,9 @@
         if(match.updates.some(u=>u.promoCode!==match.update.promoCode||u.itemPromo!==match.update.itemPromo))throw Error('รหัสในปุ่มเดียวกันไม่ตรงกัน / Inconsistent button codes');
         await request('copro/'+match.campaign.id+'/it',{method:'POST',body:{buttonId:match.button.button_id,expectedVersion:match.button.version,codePromotion:match.update.promoCode,codeItemSet:match.update.itemPromo,updates:match.updates}});
       }
-      await refresh();return {_emailPersisted:true,value:'SUCCESS'};
+      await refresh();
+      for(const match of matches)closedCoPromo.add(match.update.campaign);
+      return {_emailPersisted:true,value:'SUCCESS'};
     },
     async interfaceRecord(record){
       const result=await request('copro/'+record.emailCampaignId+'/interface',{method:'POST',body:{buttonId:record.emailButtonId,expectedVersion:record.emailVersion}});
@@ -65,8 +73,11 @@
       let ordinary=await originalList();
       if(window.PC_CLOUD?.readCloudKey){const saved=await window.PC_CLOUD.readCloudKey('pc_co_promotions');if(saved)ordinary=JSON.parse(saved.value);}
       api.lastListError='';
-      if(!active())return ordinary;
       try{
+        if(!active()){
+          if(!ordinary.some(r=>r.emailIntake&&r.emailPending===false))return ordinary;
+          await api.enable();
+        }
         const campaigns=await list(),protectedRows=campaigns.flatMap(c=>c.records);
         return ordinary.filter(r=>!r.emailIntake||!protectedRows.some(p=>p.emailButtonId&&p.emailButtonId===r.emailButtonId)).concat(protectedRows);
       }catch(error){api.lastListError=String(error.message||error);return ordinary;}
@@ -79,8 +90,18 @@
       return record?api.interfaceRecord(record):originalInterface(id,by);
     };
     backend.saveSettlementBatch=async function(month,updates){
+      let copro=[];
+      if(window.PC_CLOUD?.readCloudKey){
+        const saved=await window.PC_CLOUD.readCloudKey('pc_co_promotions');
+        if(saved)copro=JSON.parse(saved.value).filter(r=>updates.some(u=>u.campaign===r.campaign));
+      }
+      const mailedCoPromo=copro.some(r=>r.emailIntake&&r.emailPending===false);
+      if(mailedCoPromo&&!active())await api.enable();
       if(active()){const result=await api.saveIT(month,updates);if(result)return result;}
-      return originalIT(month,updates);
+      if(mailedCoPromo)throw Error('ไม่พบงาน CoPromo ที่ผูกลูปเมล กรุณาโหลดงานใหม่ก่อนปิดงาน');
+      const result=await originalIT(month,updates);
+      if(result==='SUCCESS'||result?.value==='SUCCESS')for(const row of copro)closedCoPromo.add(row.campaign);
+      return result;
     };
   }
 })(window);

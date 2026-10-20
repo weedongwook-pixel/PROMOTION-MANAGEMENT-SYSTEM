@@ -1746,7 +1746,7 @@
         google.script.run.withSuccessHandler(function(res) {
           delete card.dataset.itSavePending;
           if (res === 'SUCCESS') {
-            Swal.fire({ title: 'ปิดงานลด/ขยายสำเร็จ', text: 'คงรหัสและข้อมูลเดิมทั้งหมดแล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
+            Swal.fire({ title: 'ปิดงานลด/ขยายสำเร็จ', text: 'คงรหัสและข้อมูลเดิมทั้งหมดแล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => { if(!window.PC_CoProEmail?.afterITClosed(campName))window.loadITTasks(); });
           } else if (res === 'CHANGE_CONFLICT') {
             Swal.fire('ยังไม่ปิดงาน', 'ข้อมูลหรือสถานะงานเปลี่ยนไป กรุณารีเฟรชและตรวจสอบก่อนลองอีกครั้ง', 'warning');
           } else if (res === 'STORAGE_ERROR') {
@@ -1867,7 +1867,10 @@
           try { updates.forEach(function (u) { itConfirmIfReserved(u.promoCode, campName); itConfirmIfReserved(u.itemPromo, campName); }); } catch (e) {}
           try { if (window.PC_CodeConvert) PC_CodeConvert.confirmForCampaign(campName); } catch (e) {}  // โค้ดจากฟอร์มแจ้งโปร → CONFIRMED → สาขาค้นเจอ
           try { if (window.PC_API && PC_API.savePosButtonNoteCampaign) PC_API.savePosButtonNoteCampaign(campName, branchNote, month); } catch (e) {}  // เฉพาะเดือนที่บันทึก
-          Swal.fire({ title: 'ปิดงานสำเร็จ!', text: 'แคมเปญถูกตั้งค่าและเปลี่ยนสถานะเป็น COMPLETE แล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => window.loadITTasks());
+          Swal.fire({ title: 'ปิดงานสำเร็จ!', text: 'แคมเปญถูกตั้งค่าและเปลี่ยนสถานะเป็น COMPLETE แล้ว', icon: 'success', timer: 1800, showConfirmButton: false }).then(() => {
+            if(window.PC_CoProEmail?.afterITClosed(campName))return;
+            window.loadITTasks();
+          });
         } else if (String(res).startsWith('DUP_PROMO|')) {
           const p = String(res).split('|');
           const reason = reusedItemSets.length && p[3]
