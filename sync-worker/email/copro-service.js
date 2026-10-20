@@ -167,10 +167,10 @@
       if(existing.length)existing.forEach(i=>i.interfaceStatus=interfaceStatus);
       else items.push({campaign,month:r.month,kind:'it_interface_complete',status:interfaceStatus,interfaceStatus,at:null});
     }
-    // CoPromo drafts and older records are still CoPromo even before mail is queued.
+    // Include explicit CoPromo intake drafts before mail is queued, not imported accounting records.
     const stored=await env.DB.prepare("SELECT v FROM promo_store WHERE k='pc_co_promotions'").first();
     const legacy=stored?JSON.parse(stored.v):[],groups=new Map();
-    for(const r of legacy){if(!r.campaign)continue;if(!groups.has(r.campaign))groups.set(r.campaign,[]);groups.get(r.campaign).push(r);}
+    for(const r of legacy){if(!r.campaign||r.emailIntake!==true)continue;if(!groups.has(r.campaign))groups.set(r.campaign,[]);groups.get(r.campaign).push(r);}
     for(const [campaign,records] of groups){if(items.some(i=>i.campaign===campaign))continue;
       items.push({campaign,kind:'submitted',status:'not_recorded',at:null});
       const done=records.every(r=>r.status==='INTERFACED'&&Number(r.interfaceSetup)===1);

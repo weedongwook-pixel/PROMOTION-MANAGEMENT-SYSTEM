@@ -232,10 +232,11 @@ test('shared history requires provider confirmation and excludes ordinary promot
  const {a,DB,env,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
  DB.db.prepare("UPDATE email_outbox SET status='accepted',provider_id=NULL").run();
  DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('promo::c::Ordinary',JSON.stringify({m:{'2026-10':[{campaign:'Ordinary'}]}}));
- DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_co_promotions',JSON.stringify([{campaign:'Legacy CoPromo',status:'PENDING_EMAIL',interfaceSetup:0}]));
+ DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_co_promotions',JSON.stringify([{campaign:'Legacy CoPromo',emailIntake:true,status:'PENDING_EMAIL',interfaceSetup:0},{campaign:'Imported old promotion',status:'INTERFACED',interfaceSetup:1}]));
  let result=await a.sharedMailHistory(env);
  assert.equal(result.items.find(i=>i.campaign==='UOB test'&&i.kind==='submitted').status,'needs_verification');
  assert.equal(result.items.some(i=>i.campaign==='Ordinary'),false);
+ assert.equal(result.items.some(i=>i.campaign==='Imported old promotion'),false);
  assert.equal(result.items.find(i=>i.campaign==='Legacy CoPromo'&&i.kind==='submitted').status,'not_recorded');
  DB.db.prepare("UPDATE email_outbox SET provider_id='gmail-message-id'").run();
  result=await a.sharedMailHistory(env);assert.equal(result.items.find(i=>i.campaign==='UOB test'&&i.kind==='submitted').status,'accepted');DB.db.close();
