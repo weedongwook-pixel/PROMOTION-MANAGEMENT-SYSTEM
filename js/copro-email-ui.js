@@ -54,7 +54,7 @@
     generation++;return result.isConfirmed?result.value:null;
   }
   window.PC_CoProEmailUI={
-    async mountHistory(root,entries){
+    async mountHistory(root,entries,options={}){
       const kinds={submitted:'แจ้งโปรฯ',promotion_edited:'แจ้งแก้ไข',it_interface_complete:'Interface'};
       const labels={not_recorded:'ไม่ได้ส่งเมล',none:'-',unknown:'ยังตรวจสถานะไม่ได้',unselected:'ยังไม่เลือก',not_sent:'ไม่ส่ง',queued:'รอส่ง',retry:'รอส่ง · กำลังลองใหม่',sending:'รอส่ง · กำลังส่ง',accepted:'ส่งสำเร็จ',failed:'ส่งไม่สำเร็จ',held:'ส่งไม่สำเร็จ',needs_verification:'ต้องตรวจผลส่งก่อนส่งซ้ำ',cancelled:'ยกเลิกการส่ง',waiting:'-',interface_partial:'-',interface_done:'Interfaced'};
       root.textContent='กำลังอ่านสถานะเมล…';
@@ -68,14 +68,16 @@
         for(const campaign of campaigns)for(const kind of Object.keys(kinds))if(!rows.some(e=>e.campaign===campaign&&e.kind===kind))rows.push({campaign,kind,status:results[0].status==='rejected'?'unknown':kind==='it_interface_complete'?'waiting':kind==='promotion_edited'?'none':'not_recorded'});
         const reason={approval_or_source_changed:'ข้อมูลโปรฯ หรือสิทธิ์เปลี่ยนหลังยืนยัน',approval_or_target_changed:'ลูปเมลหรือสิทธิ์เปลี่ยน',connection_unavailable:'บัญชี Gmail ยังไม่พร้อม',provider_rejected:'Gmail ปฏิเสธการส่ง',provider_rate_limited:'Gmail จำกัดการส่งชั่วคราว',provider_outcome_unknown:'ยังยืนยันผลตอบกลับจาก Gmail ไม่ได้',lease_expired:'ระบบไม่ได้รับผลส่งภายในเวลาที่กำหนด',acknowledgement_not_saved:'บันทึกผลตอบกลับ Gmail ไม่สำเร็จ'};
         const time=r=>{const n=typeof r.at==='number'?r.at:Date.parse(r.at);return Number.isFinite(n)?n:0;};
+        const day=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
         const grouped=Array.from(campaigns,campaign=>{
           const latest={};
           for(const r of rows.filter(r=>r.campaign===campaign))if(!latest[r.kind]||time(r)>time(latest[r.kind]))latest[r.kind]=r;
           const events=Object.values(latest),at=Math.max(0,...events.map(time));
           const errors=events.filter(r=>r.error).map(r=>(kinds[r.kind]||r.kind)+': '+(reason[r.error]||r.error));
-          return '<tr><td>'+esc(campaign)+'</td>'+Object.keys(kinds).map(kind=>'<td>'+esc(kind==='it_interface_complete'?(latest[kind]?.interfaceStatus==='interface_done'||latest[kind]?.status==='interface_done'?'Interfaced':'-'):(labels[latest[kind]?.status]||latest[kind]?.status||'ยังตรวจสถานะไม่ได้'))+'</td>').join('')+'<td>'+esc(at?new Date(at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(errors.join(' · ')||'—')+'</td></tr>';
+          if(options.date&&(!at||day(at)!==options.date))return {at,html:''};
+          return {at,html:'<tr><td>'+esc(campaign)+'</td>'+Object.keys(kinds).map(kind=>'<td>'+esc(kind==='it_interface_complete'?(latest[kind]?.interfaceStatus==='interface_done'||latest[kind]?.status==='interface_done'?'✓ Interfaced':'✕ Interface (ยังไม่เสร็จ)'):(labels[latest[kind]?.status]||latest[kind]?.status||'ยังตรวจสถานะไม่ได้'))+'</td>').join('')+'<td>'+esc(at?new Date(at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(errors.join(' · ')||'—')+'</td></tr>'};
         });
-        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังอ่านประวัติส่งเมลจาก Cloud ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th>'+Object.values(kinds).map(kind=>'<th>'+esc(kind)+'</th>').join('')+'<th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+grouped.join('')+'</tbody></table></div>';
+        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังอ่านประวัติส่งเมลจาก Cloud ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th>'+Object.values(kinds).map(kind=>'<th>'+esc(kind)+'</th>').join('')+'<th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+(grouped.sort((a,b)=>b.at-a.at).map(r=>r.html).join('')||'<tr><td colspan="6">ไม่พบรายการในวันที่เลือก กดดูทั้งหมดเพื่อดูประวัติ</td></tr>')+'</tbody></table></div>';
 
       }catch(e){root.textContent='อ่านสถานะเมลไม่สำเร็จ: '+e.message;}
     },

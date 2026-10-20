@@ -112,7 +112,7 @@
     <button id="sl-tab-mail" type="button" role="tab" aria-selected="false" aria-controls="sl-panel-mail" tabindex="-1" onclick="window.slSwitchTab('mail')" onkeydown="window.slTabKey(event,'mail')">สถานะอีเมล</button>
   </div>
   <section id="sl-panel-mail" role="tabpanel" aria-labelledby="sl-tab-mail" hidden>
-    <div class="sl-list-head"><h2 class="h5">สถานะการส่งอีเมล</h2><button type="button" class="btn btn-outline-success btn-sm" onclick="window.slRefreshMail()">ตรวจสถานะเมลอีกครั้ง</button></div>
+    <div class="sl-list-head"><h2 class="h5">สถานะการส่งอีเมล</h2><div><label for="sl-mail-date">วันที่ล่าสุด (เวลาไทย)</label><input id="sl-mail-date" type="date" class="form-control form-control-sm" onchange="window.slRefreshMail()"></div><button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('sl-mail-date').value='';window.slRefreshMail()">ดูทั้งหมด</button><button type="button" class="btn btn-outline-success btn-sm" onclick="window.slRefreshMail()">ตรวจสถานะเมลอีกครั้ง</button></div>
     <div id="sl-mail-history"></div>
   </section>
   <section id="sl-panel-history" role="tabpanel" aria-labelledby="sl-tab-history">
@@ -169,7 +169,7 @@
     window.slSwitchTab(next); document.getElementById('sl-tab-' + next).focus();
   };
   window.slRefreshMail = function () {
-    if(window.PC_CoProEmailUI?.mountHistory)return window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items);
+    if(window.PC_CoProEmailUI?.mountHistory)return window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items,{date:document.getElementById('sl-mail-date').value});
   };
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; }); }
@@ -359,7 +359,7 @@
             if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
             if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(result.reason && result.reason.message || result.reason) + '</td></tr>';
           }
-          if(window.PC_CoProEmailUI?.mountHistory)window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items);
+          if(window.PC_CoProEmailUI?.mountHistory)window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items,{date:document.getElementById('sl-mail-date').value});
         }),
         settle(PC_SubmissionLog.listActivity(date.value || PC_SubmissionLog.today(), option)).then(function(result){
           if (!active()) return;
@@ -389,6 +389,7 @@
     var scope = document.getElementById('sl-scope');
     if (scope && canViewAll) scope.addEventListener('change', window.slRefresh);
     updateScopeDescription();
+    document.getElementById('sl-mail-date').value = PC_SubmissionLog.today();
     date.value = PC_SubmissionLog.today(); // Default to today's submissions in Thailand.
     date.addEventListener('change', window.slRefresh);
     window.slRefresh();

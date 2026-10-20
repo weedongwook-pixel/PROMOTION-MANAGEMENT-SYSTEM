@@ -172,7 +172,8 @@
     const legacy=stored?JSON.parse(stored.v):[],groups=new Map();
     for(const r of legacy){if(!r.campaign||r.emailIntake!==true)continue;if(!groups.has(r.campaign))groups.set(r.campaign,[]);groups.get(r.campaign).push(r);}
     for(const [campaign,records] of groups){if(items.some(i=>i.campaign===campaign))continue;
-      items.push({campaign,kind:'submitted',status:'not_recorded',at:null});
+      const at=records.map(r=>r.updatedAt||r.createdAt).filter(Boolean).sort().pop()||null;
+      items.push({campaign,kind:'submitted',status:'not_recorded',at});
       const done=records.every(r=>r.status==='INTERFACED'&&Number(r.interfaceSetup)===1);
       items.push({campaign,kind:'it_interface_complete',status:done?'interface_done':'waiting',interfaceStatus:done?'interface_done':'waiting',at:null});
     }
