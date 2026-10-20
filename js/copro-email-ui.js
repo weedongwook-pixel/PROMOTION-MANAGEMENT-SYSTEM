@@ -55,10 +55,10 @@
   }
   window.PC_CoProEmailUI={
     async notifyEdit(context,receipt){
-      const answer=await Swal.fire({icon:'question',title:'ต้องการส่งเมลแจ้งการแก้ไขหรือไม่?',text:context.campaign,showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
+      const answer=await Swal.fire({icon:'question',title:'ต้องการส่งเมลแจ้งการแก้ไขหรือไม่?',text:context.campaign,input:'textarea',inputLabel:'ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)',inputAttributes:{maxlength:4000},showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
       if(!answer.isConfirmed)return false;
       try{
-        const body={campaignKey:'promo::c::'+encodeURIComponent(context.campaign),month:context.month,editId:receipt.editId};
+        const body={campaignKey:'promo::c::'+encodeURIComponent(context.campaign),month:context.month,editId:receipt.editId,additionalMessage:answer.value||''};
         Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
         const preview=await client().request('copro/revision/preview',{method:'POST',body,interactive:true});
         const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
@@ -112,7 +112,7 @@
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
-          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recordForms+'</div>',
+          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+recordForms+'</div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
         didOpen(){
           const field=document.getElementById('coproLoop'),describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
@@ -131,7 +131,7 @@
               selectedPolicy=await client().request('threads',{method:'POST',body:{mode:policy.mode,policyId:policy.id,recipients:{to,cc},audience:[context.identity]},interactive:true});
             }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
           }
-          return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:selectedPolicy.id,policyVersion:selectedPolicy.version,recipients:selectedPolicy.recipients,records};
+          return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:selectedPolicy.id,policyVersion:selectedPolicy.version,recipients:selectedPolicy.recipients,records,additionalMessage:document.getElementById('coproAdditionalMessage').value.trim()};
         }
       });
       if(!choose.isConfirmed)return null;

@@ -34,6 +34,7 @@
       for(const item of b.items||[])lines.push([item.code,item.name,'Qty: '+item.qty,'Unit price: '+item.unitPrice].join(' · '));
       if(b.netPrice!==' '&&b.netPrice!==undefined&&b.netPrice!=='')lines.push('Net: '+b.netPrice);if(b.discount!==undefined&&b.discount!=='')lines.push('Discount: '+b.discount);
     }
+    if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
     if(snapshot.attachments!==undefined)lines.push('ไฟล์แนบต้นฉบับ / Original attachments: '+(snapshot.attachments.map(file=>file.name).join(', ')||'ไม่มี / None'));
     const text=lines.join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

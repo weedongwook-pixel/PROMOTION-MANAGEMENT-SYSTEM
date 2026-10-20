@@ -196,3 +196,12 @@ test('revision notification uses latest promotion source, original loop and one 
  await assert.rejects(a.commitPromotionRevision(actor,request,env),/confirmation/);
  DB.db.close();
 });
+
+test('optional recipient message is previewed, bound to confirmation, escaped and stored only in the selected mail',async()=>{
+ const {a,DB,env,draft}=await fixture();draft.additionalMessage='Please review <note>\nThank you';
+ const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/Please review <note>\nThank you/);
+ await assert.rejects(a.commitCoPromo(actor,{...draft,previewHash:preview.previewHash,additionalMessage:'Changed'},env),/confirmation/);
+ await a.commitCoPromo(actor,{...draft,previewHash:preview.previewHash},env);
+ const snap=JSON.parse(DB.db.prepare('SELECT snapshot_json FROM email_outbox').get().snapshot_json);assert.equal(snap.additionalMessage,draft.additionalMessage);assert.match(a.renderCoProEmail(snap).html,/&lt;note&gt;/);
+ await assert.rejects(a.previewCoPromo(actor,{...draft,additionalMessage:'x'.repeat(4001)},env),/invalid_record/);DB.db.close();
+});

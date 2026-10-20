@@ -107,12 +107,14 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
     assert.equal(await page.locator('#coproTestTo').inputValue(),'external-test@example.net');
     if(process.argv.includes('--new-loop')&&ownerMode&&mode==='production')assert.equal(await page.locator('#coproTestCc').inputValue(),'added@example.net');
     if(ownerMode&&mode==='production')await page.locator('#coproTestCc').fill('edited@example.net');
+    await page.locator('#coproAdditionalMessage').fill('Additional message for recipients');
     const emptyBrand=page.locator('textarea[id$="-brand"]').filter({visible:true});
     const brands=await emptyBrand.all();assert.equal(brands.length,2);
     const blank=[];for(const brand of brands)if(!await brand.inputValue())blank.push(brand);assert.equal(blank.length,1,'no silent copying to another button');await blank[0].fill('Partner B');
     await page.getByRole('button',{name:'ตรวจตัวอย่างเมล',exact:true}).click();
     await page.getByRole('button',{name:'ยืนยันบันทึกและเข้าคิวเมล',exact:true}).waitFor();
     assert.ok((await page.locator('.swal2-popup').innerText()).includes(attachment.name));
+    assert.ok((await page.locator('.swal2-popup').innerText()).includes('Additional message for recipients'));
     if(ownerMode&&mode==='production')assert.ok((await page.locator('.swal2-popup').innerText()).includes('edited@example.net'));
     await page.locator('.swal2-popup').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished));});
     for(const width of [1366,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:'/tmp/copro-email-preview-'+width+'.png',fullPage:true});}
@@ -136,8 +138,8 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
       DB.db.prepare('INSERT INTO promo_submission_receipts(submission_id,request_hash,response_json,actor,expected_buttons,created_at) VALUES(?,?,?,?,?,?)').run(editId,'test',JSON.stringify({kind:'CAMPAIGN_EDIT',versions:{[key]:stored.updated_at+1}}),'Test staff',2,Date.now());
       const show=()=>page.evaluate(()=>PC_CoProEmailUI.notifyEdit({campaign:'Email UOB test',month:'2026-10'},{editId:'edit-browser-revision'}));
       const no=show();await page.getByRole('button',{name:'ไม่ส่ง',exact:true}).click();assert.equal(await no,false);assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,2);
-      const yes=show();await page.getByRole('button',{name:'ส่ง',exact:true}).click();await page.getByRole('button',{name:'ยืนยันส่งเมล',exact:true}).waitFor();
-      const text=await page.locator('.swal2-popup').innerText();assert.match(text,/Updated promotion from saved form/);assert.match(text,/IC0900/);assert.doesNotMatch(text,/Internal only|Test partner/);
+      const yes=show();await page.locator('.swal2-textarea').fill('Revision message');await page.getByRole('button',{name:'ส่ง',exact:true}).click();await page.getByRole('button',{name:'ยืนยันส่งเมล',exact:true}).waitFor();
+      const text=await page.locator('.swal2-popup').innerText();assert.match(text,/Updated promotion from saved form/);assert.match(text,/IC0900/);assert.match(text,/Revision message/);assert.doesNotMatch(text,/Internal only|Test partner/);
       await page.getByRole('button',{name:'ยืนยันส่งเมล',exact:true}).click();await page.getByText('บันทึกคำขอส่งเมลแล้ว',{exact:true}).waitFor();await page.locator('.swal2-confirm').click();assert.equal(await yes,true);
       await c.PC_Email.dispatchEmail(env,{fetch:provider});await c.PC_Email.dispatchEmail(env,{fetch:provider});assert.equal(sent.length,3);assert.equal(sent[2].threadId,'provider-thread');
     }
