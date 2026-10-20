@@ -152,11 +152,12 @@
       };
       let previousDraft=null;
       while(true){
+      let searchRequested=false;
       const choose=await Swal.fire({
         title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
         html:'<div style="text-align:left"><p>'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
-          '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select>'+
+          '<label for="coproLoop">'+esc(word('ลูปที่อนุมัติ','Approved conversation'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select><button type="button" id="coproSearchLoop" class="btn btn-outline-success mb-3">ค้นหาลูปเมล / ใส่หัวข้อเมลใหม่</button>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+
           '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea><label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
         showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
@@ -165,6 +166,10 @@
           if(previousDraft){document.getElementById('coproCampaign').value=previousDraft.campaignId;field.value=previousDraft.policyId;}
           const describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
           if(previousDraft){document.getElementById('coproTestTo').value=previousDraft.recipients.to.join(', ');document.getElementById('coproTestCc').value=previousDraft.recipients.cc.join(', ');document.getElementById('coproAdditionalMessage').value=previousDraft.additionalMessage;}
+          document.getElementById('coproSearchLoop').addEventListener('click',()=>{
+            previousDraft={campaignId:document.getElementById('coproCampaign').value,policyId:field.value,recipients:{to:addresses(document.getElementById('coproTestTo').value),cc:addresses(document.getElementById('coproTestCc').value)},additionalMessage:document.getElementById('coproAdditionalMessage').value};
+            searchRequested=true;++previewGeneration;Swal.close();
+          });
           document.getElementById('coproCampaign').addEventListener('change',showDetails);field.addEventListener('change',showDetails);showDetails();
         },
         showLoaderOnConfirm:true,
@@ -184,6 +189,11 @@
           return {campaignId:campaign.id,expectedVersion:campaign.version,policyId:selectedPolicy.id,policyVersion:selectedPolicy.version,recipients:selectedPolicy.recipients,records,additionalMessage:document.getElementById('coproAdditionalMessage').value.trim()};
         }
       });
+      if(searchRequested){
+        const selected=await approveConversation(options.mode||'production');
+        if(selected){policies=policies.filter(p=>p.id!==selected.id).concat(selected);previousDraft.policyId=selected.id;previousDraft.recipients=selected.recipients;}
+        continue;
+      }
       if(!choose.isConfirmed)return null;
       const draft=choose.value,preview=await client().request('copro/preview',{method:'POST',body:draft});
       previousDraft=draft;
