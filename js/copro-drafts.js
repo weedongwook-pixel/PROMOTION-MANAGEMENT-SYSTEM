@@ -55,27 +55,44 @@
     if(prior.revision!==item.revision)throw Error('ฉบับร่างถูกแก้จากอีกหน้าต่าง กรุณาตรวจงานค้าง');
     delete state.data.items[item.id];await cloud().saveCoPromoDrafts(state.user,JSON.stringify(state.data),state.version);
   }
-  async function list(){return Object.values((await read()).data.items).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));}
+  async function list(){
+    const state=await read(),shared=await cloud().readCloudKey('pc_co_promotions'),rows=shared?JSON.parse(shared.value):[];
+    if(!Array.isArray(rows))throw Error('ข้อมูล CoPromo ไม่ถูกต้อง');
+    const key=r=>JSON.stringify([r.campaign,r.submissionId]);
+    const completed=new Set(rows.filter(r=>r.emailIntake&&r.emailPending===false).map(key));
+    const items=new Map(Object.values(state.data.items).filter(d=>!completed.has(key(d))).map(d=>[key(d),d]));
+    for(const row of rows){
+      if(!row.emailIntake||!row.emailPending||row.createdBy!==state.user||!row.submissionId||completed.has(key(row))||items.has(key(row)))continue;
+      const record={...row};delete record.id;
+      items.set(key(row),{id:key(row),source:'intake',campaign:row.campaign,submissionId:row.submissionId,record,updatedAt:row.updatedAt||row.createdAt||'',owner:state.user});
+    }
+    return [...items.values()].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  }
+  async function chooseSend(item){
+    const choice=await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแจ้งโปรฯ นี้หรือไม่?',text:item.campaign,showCancelButton:true,confirmButtonText:'ส่งเมล',cancelButtonText:'ยังไม่ส่ง เก็บไว้ในงานค้าง',confirmButtonColor:'#2e934a'});
+    if(!choice.isConfirmed)return null;
+    return resume(item);
+  }
   async function resume(item){
     const rows=await current(item.campaign);if(batch(rows)!==item.submissionId)throw Error('โปรฯ ต้นฉบับเปลี่ยนไป ไม่สามารถใช้ฉบับร่างนี้ส่งเมลได้');
-    const outcome=await window.PC_CoPromo.openForm(item.campaign,item.record,{requireEmail:true,draft:item,cloudRows:rows});
+    const outcome=await window.PC_CoPromo.openForm(item.campaign,item.record,{requireEmail:true,...(item.source==='intake'?{selection:item.record}:{draft:item}),cloudRows:rows});
     if(outcome===true){
       const next=await Swal.fire({icon:'success',title:'ส่งและบันทึกข้อมูลสำเร็จ',text:'อีเมลรายละเอียดอยู่ในคิวส่ง',showCancelButton:true,confirmButtonText:'ดูประวัติการแจ้งโปรฯ',cancelButtonText:'ทำงานต่อ',confirmButtonColor:'#2e934a'});
-      const page=next.isConfirmed?'SubmissionLog':item.sourcePage;window.loadPage(page,document.getElementById('nav-'+page));
+      const page=next.isConfirmed?'SubmissionLog':(item.sourcePage||pageFor(rows));window.loadPage(page,document.getElementById('nav-'+page));
     }
     return outcome;
   }
   async function mount(root){
-    root.innerHTML='<p role="status">กำลังโหลดฉบับร่างจาก Cloud…</p>';
+    root.innerHTML='<p role="status">กำลังโหลดงานรอส่งเมลจาก Cloud…</p>';
     try{
       const items=await list();root.innerHTML=items.length?'':'<p class="text-muted">ไม่มีงาน CoPromo ที่ค้างไว้</p>';
       for(const item of items){
         const card=document.createElement('div');card.className='border rounded p-3 mb-3 bg-white';
-        card.innerHTML='<strong>'+esc(item.campaign)+'</strong><div class="small text-muted my-2">รอทำ CoPromo ต่อ · ยังไม่ส่งเมล<br>บันทึกล่าสุด '+esc(new Date(item.updatedAt).toLocaleString('th-TH'))+'</div><button type="button" class="btn btn-success">ทำต่อ</button><span role="alert" class="text-danger ms-3"></span>';
-        const button=card.querySelector('button');button.onclick=async()=>{button.disabled=true;try{await resume(item);if(root.isConnected)await mount(root);}catch(e){card.querySelector('[role="alert"]').textContent=e.message;}finally{button.disabled=false;}};
+        card.innerHTML='<strong>'+esc(item.campaign)+'</strong><div class="small text-muted my-2">รอส่งเมล · โปรฯ บันทึกให้ IT แล้ว<br>บันทึกล่าสุด '+esc(new Date(item.updatedAt).toLocaleString('th-TH'))+'</div><button type="button" class="btn btn-success">ทำต่อ</button><span role="alert" class="text-danger ms-3"></span>';
+        const button=card.querySelector('button');button.onclick=async()=>{button.disabled=true;try{await chooseSend(item);if(root.isConnected)await mount(root);}catch(e){card.querySelector('[role="alert"]').textContent=e.message;}finally{button.disabled=false;}};
         root.appendChild(card);
       }
     }catch(e){root.textContent=e.message;}
   }
-  window.PC_CoPromoDrafts={save,remove,list,resume,mount,current,recordCoPromo};
+  window.PC_CoPromoDrafts={save,remove,list,resume,chooseSend,mount,current,recordCoPromo};
 })(window);

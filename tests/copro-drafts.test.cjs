@@ -33,3 +33,11 @@ test('CoPromo Yes creates Cloud records before email, repeats are idempotent and
  rows=JSON.parse(f.store.get('pc_co_promotions').value);assert.equal(rows.length,1);assert.equal(rows[0].billingEntity,'Saved before mail');assert.equal(rows[0].mailStatus,'not_queued');
  f.fail();await assert.rejects(f.api.recordCoPromo('Test',{},'queued'),/Cloud unavailable/);assert.equal(JSON.parse(f.store.get('pc_co_promotions').value)[0].emailPending,true);
 });
+test('pending list includes saved CoPromo intake without an explicit draft, scoped to owner and deduplicated',async()=>{
+ const f=fixture();await f.api.recordCoPromo('Test',{emailButtonId:'button-1',brand:'UOB'});
+ let list=await f.api.list();assert.equal(list.length,1);assert.equal(list[0].source,'intake');assert.equal(list[0].record.brand,'UOB');assert.equal(list[0].record.id,undefined);
+ let seen;f.context.PC_CoPromo={openForm:async(c,r,o)=>{seen=o;return null;}};await f.api.resume(list[0]);assert.equal(seen.draft,undefined);assert.equal(seen.selection.brand,'UOB');
+ f.setUser('MKT B');assert.equal((await f.api.list()).length,0);f.setUser('MKT A');
+ await f.api.save('Test',{brand:'Unfinished edit'},null);list=await f.api.list();assert.equal(list.length,1);assert.equal(list[0].record.brand,'Unfinished edit');
+ await f.api.recordCoPromo('Test',{},'queued');assert.equal((await f.api.list()).length,0,'already queued mail must not remain actionable');
+});

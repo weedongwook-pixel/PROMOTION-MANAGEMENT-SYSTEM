@@ -338,7 +338,7 @@
       if(!r.emailPending){Swal.fire({icon:'info',title:'อีเมลเข้าคิวแล้ว',text:'เปิดตั้งค่าอีเมลเพื่อตรวจสถานะการส่ง ไม่ต้องส่งโปรฯ ซ้ำ'});return;}
       window.PC_CoPromoDrafts.list().then(function(items){
         var saved=items.find(d=>d.campaign===r.campaign&&d.submissionId===r.submissionId);
-        if(saved)return window.PC_CoPromoDrafts.resume(saved);
+        if(saved)return window.PC_CoPromoDrafts.chooseSend(saved);
         var record=Object.assign({},r);delete record.id;
         return window.PC_CoPromo.openForm(r.campaign,record,{requireEmail:true,selection:record});
       }).then(cpLoad).catch(e=>Swal.fire({icon:'error',title:'เปิดงานต่อไม่ได้',text:e.message}));
