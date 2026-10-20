@@ -636,6 +636,23 @@
     return rows;
   }
 
+  // Fresh server snapshot shared by every receipt in one history view.
+  // Never use local tracking rows as evidence of a successful Cloud save.
+  async function readSubmissionSnapshot() {
+    await pull();
+    if (!_hydrated) throw new Error('Cloud ยังโหลดไม่สำเร็จ');
+    var keys = Object.assign({}, _cloudCache);
+    var deleted = JSON.parse(keys[DEL_CLOUDKEY] || '{}');
+    return function (campaign) {
+      var name = String(campaign || '').trim(), raw = keys[CAMP_PREFIX + encodeURIComponent(name)];
+      if (raw == null) throw new Error('อ่านแคมเปญจาก Cloud ไม่สำเร็จ (404)');
+      var block = JSON.parse(raw);
+      if (Number(deleted[name]) && Number(deleted[name]) >= (Number(block._ts) || 0))
+        throw new Error('แคมเปญถูกซ่อนด้วยทะเบียนลบเก่า');
+      return Object.keys(block.m || {}).flatMap(function (month) { return block.m[month] || []; });
+    };
+  }
+
   // One immutable Cloud key per action avoids losing an audit entry when two
   // people change different campaigns at the same time. Do not use the large
   // campaign store or a shared localStorage array for this history.
@@ -1404,7 +1421,7 @@
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,
     readCampaignRows: readCampaignRows,
-    readActivity: readActivity, appendActivity: appendActivity,
+    readSubmissionSnapshot: readSubmissionSnapshot, readActivity: readActivity, appendActivity: appendActivity,
     hasPending: function () { return _inFlight || Object.keys(_pending).length > 0; },
     ready: function () { return _hydrated; }, whenReady: whenReady,
     exportFile: exportFile, exportInfo: exportInfo, backupNow: backupNow, exportLatestHistory: exportLatestHistory,

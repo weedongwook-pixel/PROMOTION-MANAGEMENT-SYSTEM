@@ -353,3 +353,13 @@ test('all-date history includes older submissions without changing the mine filt
  setTracking([row,{...row,campaign:'Other user',submittedBy:'Other'}]);setRemote({'Older promo':[row]});
  const result=await log.list('',{scope:'mine'});assert.equal(result.length,1);assert.equal(result[0].campaign,'Older promo');assert.equal(result[0].status,'verified');
 });
+
+test('history verifies many campaigns against one fresh Cloud snapshot without per-campaign requests',async()=>{
+ const f=setup();const rows=Array.from({length:60},(_,i)=>({campaign:'Campaign '+i,submissionId:'S'+i,submittedBy:'Bow',txnDate:new Date().toISOString(),shortName:'Button',submissionExpectedButtons:1}));
+ f.setTracking(rows);let snapshots=0;
+ f.context.PC_CLOUD.readSubmissionSnapshot=async()=>{snapshots++;return name=>rows.filter(r=>r.campaign===name);};
+ f.context.PC_CLOUD.readCampaignRows=async()=>{throw Error('redundant network request');};
+ const entries=await f.log.list('');assert.equal(snapshots,1);assert.equal(entries.length,60);assert.ok(entries.every(e=>e.status==='verified'));
+ f.context.PC_CLOUD.readSubmissionSnapshot=async()=>{throw Error('Cloud unavailable');};
+ await assert.rejects(()=>f.log.list(''),/Cloud unavailable/);
+});

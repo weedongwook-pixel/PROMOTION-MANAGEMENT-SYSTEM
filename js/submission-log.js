@@ -247,7 +247,8 @@
   }
   async function list(date, options) {
     var who = user(), allSubmitters = canViewAll() && (!options || options.scope !== 'mine');
-    if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});
+    var snapshot = window.PC_CLOUD?.readSubmissionSnapshot ? await window.PC_CLOUD.readSubmissionSnapshot() : null;
+    if (!snapshot && window.PC_CLOUD?.pull) await window.PC_CLOUD.pull();
     var rows = await runTracking(), groups = new Map();
     (rows || []).forEach(function (row) {
       var submitter = norm(row.submittedBy || row.reporter);
@@ -284,7 +285,7 @@
       if (!entry.legacy && !entry.id) { entry.status = 'needs_check'; return; }
       var promise = cloudCache.get(entry.campaign);
       if (!promise) {
-        promise = window.PC_CLOUD && window.PC_CLOUD.readCampaignRows ? window.PC_CLOUD.readCampaignRows(entry.campaign) : Promise.reject(new Error('Cloud ไม่พร้อม'));
+        promise = snapshot ? Promise.resolve().then(function () { return snapshot(entry.campaign); }) : window.PC_CLOUD && window.PC_CLOUD.readCampaignRows ? window.PC_CLOUD.readCampaignRows(entry.campaign) : Promise.reject(new Error('Cloud ไม่พร้อม'));
         cloudCache.set(entry.campaign, promise);
       }
       try {

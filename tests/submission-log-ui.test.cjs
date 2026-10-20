@@ -42,6 +42,7 @@ test('submission history shows only Cloud-confirmed success and failure statuses
     },
   };
   const context = {
+    setTimeout, clearTimeout,
     window: { PC_SubmissionLog: log }, PC_SubmissionLog: log,
     document: {
       getElementById: element,
