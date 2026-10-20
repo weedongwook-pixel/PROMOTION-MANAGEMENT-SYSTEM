@@ -4960,7 +4960,7 @@
   window.pcSaveUpload = pcSaveUpload;
 
   /* เปิดไฟล์แนบ — ใช้แทน window.open(url) ทุกที่ (รองรับ token file:/memo:/nofile: · data: · ลิงก์จริง · ลิงก์เดโม) */
-  window.pcOpenAttach = function (url, name) {
+  window.pcOpenAttach = async function (url, name) {
     url = String(url == null ? "" : url).trim();
     var info = function (t, x) { if (window.Swal) Swal.fire({ icon: "info", title: t, text: x }); else alert(t + "\n" + x); };
     if (!url || url === "undefined" || url === "null") return info("ไม่มีไฟล์แนบ", "รายการนี้ยังไม่ได้แนบไฟล์");
@@ -4968,6 +4968,16 @@
     if (url.indexOf("nofile:") === 0) return info("ไฟล์ใหญ่เกินเก็บในโหมดทดลอง", url.slice(7) + " — ระบบจริงเก็บไฟล์ไว้บนเซิร์ฟเวอร์ เปิดได้ปกติ");
     if (url.indexOf("file:") === 0) {
       var box = {}; try { box = JSON.parse(localStorage.getItem("pc_promo_files") || "{}"); } catch (e) {}
+      if (window.PC_CLOUD && PC_CLOUD.enabled && PC_CLOUD.enabled()) {
+        try {
+          var cloudFiles = await PC_CLOUD.readCloudKey('pc_promo_files');
+          var originals = cloudFiles ? JSON.parse(cloudFiles.value) : {};
+          // Keep a local-only original usable; prefer the current Cloud file.
+          if (originals[url.slice(5)]) box[url.slice(5)] = originals[url.slice(5)];
+        } catch (e) {
+          return info('โหลดไฟล์แนบจาก Cloud ไม่สำเร็จ', 'กรุณาลองอีกครั้ง');
+        }
+      }
       var d = box[url.slice(5)];
       if (!d || !d.base64) return info("ไม่พบไฟล์แนบ", "ไฟล์นี้ถูกลบออกจากเครื่องนี้ หรือแนบไว้จากเครื่องอื่น");
       try {

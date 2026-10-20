@@ -11,14 +11,14 @@ const local = { months: { [month]: [row('A', 'PENDING', ''), row('B', 'PENDING',
 const cloudA = { w: [], m: { [month]: [row('A', 'COMPLETE', 'P100')] }, _ts: 100 };
 const cloudB = { w: [], m: { [month]: [row('B', 'COMPLETE', 'P200')] }, _ts: 100 };
 const cloud = {
-  keys: { 'promo::meta': '{}', 'promo::c::A': JSON.stringify(cloudA), 'promo::c::B': JSON.stringify(cloudB) },
-  meta: { 'promo::meta': 1, 'promo::c::A': 2, 'promo::c::B': 3 },
+  keys: { 'pc_promo_files': JSON.stringify({f1:{base64:'ORIGINAL'}}), 'promo::meta': '{}', 'promo::c::A': JSON.stringify(cloudA), 'promo::c::B': JSON.stringify(cloudB) },
+  meta: { 'pc_promo_files': 1, 'promo::meta': 1, 'promo::c::A': 2, 'promo::c::B': 3 },
   posts: [], nextVersion: 4,
 };
 const data = new Map([[storeKey, JSON.stringify(local)]]);
 const localStorage = {
   getItem: key => data.has(key) ? data.get(key) : null,
-  setItem: (key, value) => data.set(key, String(value)),
+  setItem: (key, value) => { if(key==='pc_promo_files') throw new Error('QuotaExceededError pc_promo_files'); data.set(key, String(value)); },
   removeItem: key => data.delete(key),
   key: index => [...data.keys()][index] || null,
   get length() { return data.size; },
@@ -97,7 +97,9 @@ vm.runInContext(source, sandbox);
 (async () => {
   // A restored tab may hold old PENDING rows. Pull must archive them, use Cloud,
   // and refresh the backend's in-memory store without POSTing old campaigns.
+  data.set('pc_promo_files',cloud.keys.pc_promo_files);
   await sandbox.PC_CLOUD.pull();
+  assert.equal(data.has('pc_promo_files'),false,'Cloud files must not be copied into limited localStorage');
   const campaignRows = await sandbox.PC_CLOUD.readCampaignRows('A');
   assert.equal(campaignRows[0].campaign, 'A', 'submission checks must read the campaign key directly from Cloud');
   assert.equal(archives, 1);
@@ -107,6 +109,12 @@ vm.runInContext(source, sandbox);
   assert.equal(afterPull.months[month].find(x => x.campaign === 'B').itStatus, 'COMPLETE');
   await sandbox.PC_CLOUD.pushAll();
   assert.equal(cloud.posts.length, 0, 'an unchanged pull must not bulk-upload every campaign');
+  data.set('pc_promo_files',JSON.stringify({localOnly:{base64:'UNSYNCED'}}));
+  await sandbox.PC_CLOUD.pull();
+  assert.match(data.get('pc_promo_files'),/UNSYNCED/,'preserve local-only originals');
+  await sandbox.PC_CLOUD.pushAll();
+  assert.equal(cloud.posts.length,0,'old local file cache must not replace Cloud originals');
+  data.delete('pc_promo_files');
 
   // A real edit of A sends only A and waits for a read-back acknowledgment.
   afterPull.months[month][0].codePromotion = 'P101';

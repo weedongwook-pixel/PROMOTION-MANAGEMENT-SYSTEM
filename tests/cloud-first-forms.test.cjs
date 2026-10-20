@@ -133,3 +133,20 @@ test('Voucher requires mapping attachment for Online and stages code and file at
   assert.equal((await f.context.PC_API.submitVoucherProposal(payload)).status, 'error');
   assertNoLocalWrite(f);
 });
+
+
+test('attachment download reads current Cloud bytes without localStorage caching and reports network failure',async()=>{
+ const f=fixture();let blob,download,warning,clicks=0;
+ f.context.atob=value=>Buffer.from(value,'base64').toString('binary');
+ f.context.Uint8Array=Uint8Array;f.context.Blob=Blob;
+ f.context.URL={createObjectURL(value){blob=value;return 'blob:test';},revokeObjectURL(){}};
+ f.context.document={body:{appendChild(){}},createElement(){return {click(){clicks++;download=this.download;},remove(){}};}};
+ f.context.Swal={fire(value){warning=value;}};
+ f.context.PC_CLOUD.enabled=()=>true;
+ f.context.PC_CLOUD.readCloudKey=async key=>{assert.equal(key,'pc_promo_files');return {value:JSON.stringify({f1:{base64:Buffer.from('ORIGINAL CLOUD BYTES').toString('base64'),name:'original.xlsx',mime:'application/octet-stream'}})};};
+ await f.context.pcOpenAttach('file:f1');
+ assert.equal(await blob.text(),'ORIGINAL CLOUD BYTES');assert.equal(download,'original.xlsx');assert.equal(clicks,1);
+ assert.equal(f.data.has('pc_promo_files'),false);
+ f.context.PC_CLOUD.readCloudKey=async()=>{throw Error('offline');};
+ await f.context.pcOpenAttach('file:f1');assert.match(warning.title,/Cloud/);assert.equal(clicks,1);
+});

@@ -834,6 +834,16 @@
       throw new Error('LOCAL_CHANGED_DURING_PULL');
     }
     if (keys[META_CLOUDKEY] == null && keys[STORE_KEY] == null) throw new Error('CLOUD_EMPTY_NEEDS_ADMIN');
+    // Attachments are read from Cloud on demand. Reclaim only local copies
+    // whose every original byte is already present in this verified response.
+    if (keys.pc_promo_files != null && !_pending.pc_promo_files) {
+      try {
+        var localFiles = JSON.parse(localStorage.getItem('pc_promo_files') || '{}');
+        var remoteFiles = JSON.parse(keys.pc_promo_files);
+        if (Object.keys(localFiles).every(function (id) { return JSON.stringify(localFiles[id]) === JSON.stringify(remoteFiles[id]); }))
+          localStorage.removeItem('pc_promo_files');
+      } catch (e) {} // Preserve unknown/local-only originals.
+    }
     var changed = false, n = 0;
     // (1) งานโปร: ประกอบร่างจาก key ราย campaign (promo::c::*) + meta
     var campKeys = Object.keys(keys).filter(function (k) { return k.indexOf(CAMP_PREFIX) === 0; });
@@ -863,7 +873,7 @@
     }
     // (2) key อื่น ๆ (ตั้งค่า/สิทธิ์): ยังใช้ทั้งก้อน (แก้พร้อมกันน้อย)
     TRACKED.forEach(function (k) {
-      if (k === STORE_KEY) return;
+      if (k === STORE_KEY || k === 'pc_promo_files') return;
       if (keys[k] == null) return;
       n++;
       var cur = localStorage.getItem(k);
@@ -997,7 +1007,7 @@
     if (!enabled() || !_hydrated) return false;
     await pushStore();  // งานโปร → แยกราย campaign (+ migrate ก้อนเก่า)
     var body = {}; TRACKED.forEach(function (k) {
-      if (k === STORE_KEY) return;
+      if (k === STORE_KEY || (k === 'pc_promo_files' && !_pending[k])) return;
       var v = localStorage.getItem(k);
       if (v != null && v !== _cloudCache[k]) body[k] = v;
     });
