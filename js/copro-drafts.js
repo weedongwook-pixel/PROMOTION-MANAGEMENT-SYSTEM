@@ -68,14 +68,25 @@
     }
     return [...items.values()].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
   }
-  async function chooseSend(item){
-    const choice=await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแจ้งโปรฯ นี้หรือไม่?',text:item.campaign,showCancelButton:true,confirmButtonText:'ส่งเมล',cancelButtonText:'ยังไม่ส่ง เก็บไว้ในงานค้าง',confirmButtonColor:'#2e934a'});
-    if(!choice.isConfirmed)return null;
-    return resume(item);
+  async function loadPendingSource(item){
+    let timer;
+    try{
+      const rows=await Promise.race([current(item.campaign),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('อ่านข้อมูลจาก Cloud นานเกินไป กรุณากดส่งเพื่อลองอีกครั้ง')),15000);})]);
+      if(batch(rows)!==item.submissionId)throw Error('โปรฯ ต้นฉบับเปลี่ยนไป กรุณาโหลดงานค้างใหม่ก่อนส่งเมล');
+      return rows;
+    }finally{clearTimeout(timer);}
   }
-  async function resume(item){
-    const rows=await current(item.campaign);if(batch(rows)!==item.submissionId)throw Error('โปรฯ ต้นฉบับเปลี่ยนไป ไม่สามารถใช้ฉบับร่างนี้ส่งเมลได้');
-    const outcome=await window.PC_CoPromo.openForm(item.campaign,item.record,{requireEmail:true,...(item.source==='intake'?{selection:item.record}:{draft:item}),cloudRows:rows});
+  async function chooseSend(item){
+    const choice=await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแจ้งโปรฯ นี้หรือไม่?',text:item.campaign,showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',confirmButtonColor:'#2e934a',showLoaderOnConfirm:true,
+      allowOutsideClick:()=>!Swal.isLoading(),
+      async preConfirm(){try{return await loadPendingSource(item);}catch(e){Swal.showValidationMessage(e.message);return false;}}
+    });
+    if(!choice.isConfirmed)return null;
+    try{return await resume(item,choice.value,true);}catch(e){await Swal.fire({icon:'error',title:'เปิดหน้าส่งเมลไม่สำเร็จ',text:e.message,confirmButtonText:'ปิด'});return null;}
+  }
+  async function resume(item,sourceRows,openEmail){
+    const rows=sourceRows||await current(item.campaign);if(batch(rows)!==item.submissionId)throw Error('โปรฯ ต้นฉบับเปลี่ยนไป ไม่สามารถใช้ฉบับร่างนี้ส่งเมลได้');
+    const outcome=await window.PC_CoPromo.openForm(item.campaign,item.record,{requireEmail:true,openEmail:!!openEmail,...(item.source==='intake'?{selection:item.record}:{draft:item}),cloudRows:rows});
     if(outcome===true){
       const next=await Swal.fire({icon:'success',title:'ส่งและบันทึกข้อมูลสำเร็จ',text:'อีเมลรายละเอียดอยู่ในคิวส่ง',showCancelButton:true,confirmButtonText:'ดูประวัติการแจ้งโปรฯ',cancelButtonText:'ทำงานต่อ',confirmButtonColor:'#2e934a'});
       const page=next.isConfirmed?'SubmissionLog':(item.sourcePage||pageFor(rows));window.loadPage(page,document.getElementById('nav-'+page));

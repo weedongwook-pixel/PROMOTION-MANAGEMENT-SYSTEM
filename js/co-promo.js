@@ -288,8 +288,13 @@
         }).catch(function (e) {
           btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> ' + saveLabel;
           errEl.textContent = (requireEmail ? 'ยังยืนยันการส่งอีเมลไม่ได้ — โปรฯ บันทึกแล้ว ไม่ต้องส่งข้อมูลโปรฯ ซ้ำ: ' : '') + String(e && e.message || e); errEl.style.display = "block";
+          if(options.openEmail&&window.Swal)Swal.fire({icon:"error",title:"เปิดหน้าส่งเมลไม่สำเร็จ",text:String(e && e.message || e),confirmButtonText:"กลับไปแก้ไข / ลองใหม่"});
         });
       };
+      if(options.openEmail){
+        if(String(ex.brand||'').trim())queueMicrotask(()=>document.getElementById('cpfSave')?.click());
+        else {const error=document.getElementById('cpfErr');error.textContent='กรอก Brand / พาร์ทเนอร์ แล้วกดเลือกลูปและตรวจเมล';error.style.display='block';document.getElementById('cpBrand').focus();}
+      }
     });
   }
 

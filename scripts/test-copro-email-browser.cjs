@@ -80,12 +80,12 @@ const {database,actor:staffActor,grant}=require('../tests/helpers/copro-context.
         block.m['2026-10'][0].codePromotion='IC0999';block.m['2026-10'][0].shortName='Renamed Button A';
         DB.db.prepare('UPDATE promo_store SET v=?,updated_at=? WHERE k=?').run(JSON.stringify(block),stored.updated_at+1,key);
         await page.reload();await draftScripts();
-        await page.evaluate(async()=>{const items=await PC_CoPromoDrafts.list();window.formDone=PC_CoPromoDrafts.resume(items[0]);});
+        await page.evaluate(async pending=>{const items=await PC_CoPromoDrafts.list();window.formDone=pending?PC_CoPromoDrafts.chooseSend(items[0]):PC_CoPromoDrafts.resume(items[0]);},process.argv.includes('--pending'));
+        if(process.argv.includes('--pending'))await page.getByRole('button',{name:'ส่ง',exact:true}).click();
         await page.locator('#cpfSave').waitFor();assert.equal(await page.locator('#cpBrand').inputValue(),'Test partner');
         assert.equal(await page.locator('#cpCodeP').inputValue(),'IC0999');
       }
-      await page.evaluate(()=>PC_CoProEmail.disable());
-      await page.locator('#cpfSave').click();
+      if(!process.argv.includes('--pending')){await page.evaluate(()=>PC_CoProEmail.disable());await page.locator('#cpfSave').click();}
       operation=page.evaluate(()=>formDone);operation.catch(()=>{});
     }else{
       operation=page.evaluate(mode=>PC_CoProEmailUI.save({campaign:'Email UOB test',buttonName:'Button A',brand:'Test partner',detail:'Test details <script>not HTML</script>',billingEntity:'Test billing',soNo:'SO123',paymentCondition:'30 days',remark:'Internal only'},{mode}),mode);
