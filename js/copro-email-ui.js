@@ -2,6 +2,35 @@
   'use strict';
   const en=()=>window.PC_LANG==='EN',word=(th,english)=>en()?english:th;
   const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const mailDialogStyle=`<style>
+    .pc-mail-popup{padding:0!important;border-radius:16px!important;color:#243b2d!important;max-width:calc(100vw - 24px)!important;overflow:hidden}
+    .pc-mail-popup .swal2-title{text-align:left;padding:24px 28px 16px!important;font-size:24px!important;line-height:1.4;color:#145c32;border-bottom:1px solid #dce4df}
+    .pc-mail-popup .swal2-html-container{margin:0!important;padding:20px 28px!important;text-align:left;font-size:15px!important;line-height:1.65;font-weight:400;color:#243b2d;max-height:65vh;overflow:auto}
+    .pc-mail-popup label{display:block;font-size:14px;font-weight:700;margin:16px 0 6px}
+    .pc-mail-popup input,.pc-mail-popup textarea,.pc-mail-popup select{font:inherit!important;font-weight:400!important;border:1px solid #b9cabe!important;border-radius:8px!important;padding:10px 12px!important;background:#fff;min-height:44px;max-width:100%;box-sizing:border-box}
+    .pc-mail-popup input::placeholder{color:#637369}
+    .pc-mail-popup textarea{min-height:72px;resize:vertical}
+    .pc-mail-popup :is(input,textarea,select,button):focus-visible{outline:3px solid #d3a710!important;outline-offset:2px}
+    .pc-mail-popup .small{font-size:13px;line-height:1.6;color:#526258;font-weight:400;margin:8px 0 14px}
+    .pc-mail-popup .btn{min-height:44px;padding:9px 16px;font-size:14px;border-radius:8px;font-weight:600}
+    .pc-mail-popup .btn-outline-success{color:#155e35;border-color:#92b39d;background:#fff}
+    .pc-mail-popup .btn-outline-success:hover{background:#edf7ef}
+    .pc-mail-popup .btn-success{background:#1b6a3c;border-color:#1b6a3c;color:#fff}
+    .pc-mail-popup .swal2-actions{margin:0!important;padding:16px 24px!important;width:100%;border-top:1px solid #dce4df;background:#f6f9f7;gap:10px;justify-content:flex-end;box-sizing:border-box}
+    .pc-mail-popup .swal2-actions button{margin:0!important;min-height:44px;border-radius:8px;font-size:15px;padding:10px 20px}
+    .pc-mail-popup .swal2-confirm{background:#1b6a3c!important;color:#fff}
+    .pc-mail-popup .swal2-cancel{background:#fff!important;color:#344c3c!important;border:1px solid #bdcfc3!important}
+    .pc-mail-popup #coproSelected:not(:empty){padding:12px 16px;background:#edf7ef;border-left:3px solid #247b43;color:#155e35;font-size:14px;margin:14px 0}
+    .pc-mail-popup #coproFound{max-height:300px;overflow:auto}
+    .pc-mail-popup .pc-mail-result{border:1px solid #dce4df;border-radius:10px;padding:16px;margin:12px 0;background:#fff}
+    .pc-mail-popup .pc-mail-result:has([aria-pressed="true"]){border-color:#247b43;background:#f2faf4}
+    .pc-mail-popup .pc-mail-result strong{display:block;font-size:16px;margin-bottom:4px;color:#173d27;overflow-wrap:anywhere}
+    .pc-mail-popup .pc-mail-result p{font-size:13px;color:#526258;overflow-wrap:anywhere;white-space:pre-line;margin:0 0 12px}
+    .pc-mail-popup pre{background:#f6f9f7;border:1px solid #e0e8e2;padding:18px;border-radius:10px;font-size:14px!important;line-height:1.8;max-width:100%;margin-bottom:0}
+    .pc-mail-popup pre strong{color:#173d27;font-weight:700}
+    .pc-mail-steps{font-size:12px;color:#526258;margin:0 0 18px;letter-spacing:.02em}
+    @media(max-width:600px){.pc-mail-popup .swal2-title{font-size:20px!important;padding:18px!important}.pc-mail-popup .swal2-html-container{padding:16px!important;max-height:63vh}.pc-mail-popup .swal2-actions{padding:12px!important}.pc-mail-popup .swal2-actions button{flex:1;padding:10px}.pc-mail-popup .d-flex input{min-width:0}.pc-mail-popup pre{padding:12px}}
+  </style>`;
   function mailDetailsHtml(text){
     const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
     return String(text||'').split('\n').map(line=>{const match=line.match(label);return match?'<strong>'+esc(match[0])+'</strong>'+esc(line.slice(match[0].length)):esc(line);}).join('\n');
@@ -34,10 +63,11 @@
   }
   async function approveConversation(mode){
     let selected=null, generation=0;
-    const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:680,
-      html:'<div style="text-align:left"><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาอีเมล” จากนั้นกด “เลือกลูปนี้” ที่อีเมลตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+recipientAddControls('coproNewCc','CC')+'<p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องกด “เลือกลูปนี้” ที่ผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
+    const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:760,customClass:{popup:'pc-mail-popup'},
+      html:mailDialogStyle+'<div style="text-align:left"><p class="pc-mail-steps">ค้นหาอีเมล → เลือกลูป → ตรวจผู้รับ</p><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">คัดลอกหัวข้อจากอีเมลเดิมที่ต้องการส่งรายละเอียดโปรฯ กลับเข้าไป แล้วกด “ค้นหาอีเมล” จากนั้นกด “เลือกลูปนี้” ที่อีเมลตรงกับงาน และตรวจสอบ To/CC ก่อนทำต่อ</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+recipientAddControls('coproNewCc','CC')+'<p class="small">การพิมพ์หัวข้ออย่างเดียวยังไม่ได้เลือกลูป ต้องกด “เลือกลูปนี้” ที่ผลค้นหา ระบบจึงจะตอบกลับในลูปนั้น ขั้นตอนนี้ยังไม่ส่งเมล</p></div>',
       showCancelButton:true,confirmButtonText:'อนุมัติลูปและทำต่อ',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
       didOpen(){
+        document.getElementById('coproFindSubject').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.getElementById('coproFind').click();}});
         bindRecipientAdd('coproNewTo');bindRecipientAdd('coproNewCc');
         document.getElementById('coproFind').addEventListener('click',async()=>{
           const query=document.getElementById('coproFindSubject').value.trim(),results=document.getElementById('coproFound'),n=++generation;
@@ -48,8 +78,8 @@
             const found=await client().request('threads/search?q='+encodeURIComponent(query)+'&mode='+encodeURIComponent(mode),{interactive:true});
             if(n!==generation||!results.isConnected)return;results.replaceChildren();
             for(const item of found.items){
-              const card=document.createElement('div');card.className='border rounded p-3 my-2';
-              const detail=document.createElement('p');detail.className='mb-2';detail.textContent=[item.subject,item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join(' · ');
+              const card=document.createElement('div');card.className='pc-mail-result';const subject=document.createElement('strong');subject.textContent=item.subject;
+              const detail=document.createElement('p');detail.className='mb-2';detail.textContent=[item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join('\n');
               const button=document.createElement('button');button.type='button';button.className='btn btn-outline-success';button.textContent='เลือกลูปนี้';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','เลือกลูป '+item.subject);
               button.addEventListener('click',()=>{
                 results.querySelectorAll('button').forEach(other=>{other.textContent='เลือกลูปนี้';other.setAttribute('aria-pressed','false');other.className='btn btn-outline-success';});
@@ -58,7 +88,7 @@
                 const recipients=conversationRecipients(item);
                 document.getElementById('coproNewTo').value=recipients.to.join(', ');
                 document.getElementById('coproNewCc').value=recipients.cc.join(', ');
-              });card.append(detail,button);results.append(card);
+              });card.append(subject,detail,button);results.append(card);
             }
             if(!found.items.length)results.textContent='ไม่พบเมล กรุณาตรวจหัวข้อและบัญชีผู้ส่ง';
           }catch(e){if(n===generation&&results.isConnected)results.textContent=String(e.message||e);}
@@ -174,13 +204,13 @@
       while(true){
       let searchRequested=false;
       const choose=await Swal.fire({
-        title:word('เลือกลูปอีเมล Co-Promotion','Choose a Co-Promotion conversation'),
-        html:'<div style="text-align:left"><p>'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
+        title:word('เตรียมส่งอีเมลโปรโมชั่น','Prepare promotion email'),customClass:{popup:'pc-mail-popup'},
+        html:mailDialogStyle+'<div style="text-align:left"><p class="pc-mail-steps">1 เลือกลูปและผู้รับ → 2 ตรวจรายละเอียด → 3 ยืนยันส่ง</p><p class="small">'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
           '<label for="coproLoop">'+esc(word('ลูปอีเมลที่จะตอบกลับ','Email conversation to reply to'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select><button type="button" id="coproSearchLoop" class="btn btn-outline-success mb-3">ค้นหาลูปเมลจากหัวข้อเดิม</button><p class="small">เลือกลูปที่ตรงกับโปรฯ นี้ หากยังไม่มีในรายการ ให้กด “ค้นหาลูปเมลจากหัวข้อเดิม” แล้วคัดลอกหัวข้ออีเมลเดิมมาค้นหา ตรวจ To/CC ให้ถูกต้องก่อนส่ง</p>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestTo','To')+''+
           '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestCc','CC')+'<label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
-        showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:680,
+        showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:760,
         didOpen(){
           bindRecipientAdd('coproTestTo');bindRecipientAdd('coproTestCc');
           const field=document.getElementById('coproLoop');
@@ -219,7 +249,7 @@
       const draft=choose.value,preview=await client().request('copro/preview',{method:'POST',body:draft});
       previousDraft=draft;
       const rendered=[word('หัวข้อ: ','Subject: ')+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
-      const confirm=await Swal.fire({title:word('ตรวจสอบรายละเอียดก่อนส่งเมล','Review email before sending'),html:'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit;font-weight:400">'+mailDetailsHtml(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันส่งเมล','Confirm send'),cancelButtonText:word('กลับไปแก้ไข','Back to edit'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonColor:'#1b5e20',width:740});
+      const confirm=await Swal.fire({title:word('ตรวจสอบรายละเอียดก่อนส่งเมล','Review email before sending'),customClass:{popup:'pc-mail-popup'},html:mailDialogStyle+'<pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit;font-weight:400">'+mailDetailsHtml(rendered)+'</pre>',showCancelButton:true,confirmButtonText:word('ยืนยันส่งเมล','Confirm send'),cancelButtonText:word('กลับไปแก้ไข','Back to edit'),allowOutsideClick:false,allowEscapeKey:false,confirmButtonColor:'#1b5e20',width:740});
       if(!confirm.isConfirmed){if(confirm.dismiss==='cancel')continue;return null;}
       const result=await client().request('copro',{method:'POST',body:{...draft,previewHash:preview.previewHash,confirmed:true}});
       return {status:'success',...result};
