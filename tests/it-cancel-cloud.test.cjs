@@ -12,7 +12,7 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
   db.db.prepare("INSERT INTO email_campaigns VALUES('mail-c',?,'2026-11','batch','t','o','hash','[]',1,'active')").run(key);
   db.db.exec("INSERT INTO email_campaign_buttons(campaign_id,button_id,source_identity_json) VALUES('mail-c','b','{}');INSERT INTO email_copro_records(id,campaign_id,button_id,record_json) VALUES('r','mail-c','b','{}');INSERT INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES('mail','event','mail-c',1,'{}','queued',1,1);");
   const meta={_npdSeeded:true,_flvSeeded:true,_itemSetDemoVer:1,_showcaseVer:1,_recipeCustomVer:1,_billDiscVer:4,_vcCouponVer:2,_proJulyVer:2};
-  const row={campaign,shortName:'UOB 30',promoType:'Bill Discount',codePromotion:'BD9001',itStatus:'PENDING',opStatus:'WAITING'};
+  const row={campaign,submissionId:'SUB-ORIGINAL',submittedBy:'MKT',txnDate:'2026-10-01T01:00:00Z',submissionExpectedButtons:1,shortName:'UOB 30',promoType:'Bill Discount',codePromotion:'BD9001',itStatus:'PENDING',opStatus:'WAITING'};
   const block={m:{'2026-11':[row],'2026-12':[{...row}],'2027-01':[{...row}]},w:[],_ts:10};
   const counter={v:1,migItemset:2,types:{bill:{cursor:9001,seeded:true}},reservations:{'bill::BD9001':{type:'bill',code:'BD9001',num:9001,status:'RESERVED',where:campaign,field:'test'}},log:[]};
   const requests=[{id:'CR-1',campaign,createdAt:1,codes:[],codeSeq:[['UOB',1,6001,5]]},{id:'CR-2',campaign:'Other',createdAt:1,codes:['OTHER']}];
@@ -21,7 +21,7 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
   const c={URL,Date,Math,localStorage:storage,console:{log(){},warn(){},error(){}},setTimeout(){return 1;},clearTimeout(){},setInterval(){},location:{hostname:'localhost'},navigator:{onLine:true},document:{readyState:'loading',addEventListener(){},querySelectorAll(){return[];}},addEventListener(){},PC_REAL_PROMOS:[],fetch:async(url,o={})=>worker.fetch(new Request('https://test'+new URL(url).pathname,{...o,headers:{Authorization:'Bearer test','Content-Type':'application/json'}}),{DB:db,SYNC_TOKEN:'test',CLOUD_FIRST_ENABLED:'true'})};c.window=c;vm.createContext(c);
   c.indexedDB={open(){const request={};queueMicrotask(()=>{request.result={close(){},transaction(){const tx={objectStore(){return{add(){queueMicrotask(()=>tx.oncomplete?.());},getAllKeys(){const q={};queueMicrotask(()=>{q.result=[];q.onsuccess?.();tx.oncomplete?.();});return q;},delete(){}};}};return tx;}};request.onsuccess();});return request;}};
   for(const file of ['js/mock-backend.js','js/code-counter.js','js/cloud-store.js'])vm.runInContext(fs.readFileSync(file,'utf8'),c);
-  await c.PC_CLOUD.pull();c.PC_API.reloadFromStorage();c.PC_COUNTER.reloadFromStorage();
+  await c.PC_CLOUD.pull();c.PC_API.reloadFromStorage();c.PC_COUNTER.reloadFromStorage();data.set('pc_userName','IT tester');
   const cancelled=c.PC_API.cancelUnsettledITCampaign(campaign,'2026-11');assert.equal(cancelled.status,'success');
   if(race){block.m['2027-01'][0].itStatus='COMPLETE';db.db.prepare('UPDATE promo_store SET v=?,updated_at=2 WHERE k=?').run(JSON.stringify(block),key);}
   if(race)await assert.rejects(()=>c.PC_CLOUD.syncNow());else await c.PC_CLOUD.syncNow();
@@ -39,6 +39,12 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
    data.set('pc_code_requests',JSON.stringify(requests));
    await c.PC_CLOUD.pull({force:true});
    assert.deepEqual(JSON.parse(data.get('pc_code_requests')),[requests[1]]);
+   const snapshot=await c.PC_CLOUD.readSubmissionSnapshot();
+   assert.ok(snapshot.deletedRows.some(r=>r.submissionId==='SUB-ORIGINAL'));
+   const evidence=snapshot.deletionFor({campaign,id:'SUB-ORIGINAL'});assert.equal(evidence.user,'IT tester');assert.ok(evidence.at);
+   assert.equal(snapshot.deletionFor({campaign,id:'SUB-ORIGINAL',at:row.txnDate,cloudSeenAt:Date.parse(evidence.at)+1000}),null,'a deletion older than restored confirmed presence cannot explain later absence');
+   assert.equal(snapshot.deletionFor({campaign,id:'SUB-NEW',at:new Date(Date.now()+1000).toISOString(),successShownAt:Date.now()}),null,'old deletion cannot mark a later same-name submission deleted');
+   assert.equal((await c.PC_CLOUD.readActivity(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}))).some(e=>e.kind==='DELETED'&&e.user==='IT tester'),true);
    const fresh={id:'CR-new',campaign,createdAt:Date.now()+1000,codes:['NEW']};
    db.db.prepare("UPDATE promo_store SET v=?,updated_at=updated_at+1 WHERE k='pc_code_requests'").run(JSON.stringify([...requests,fresh]));
    data.delete('pc_code_requests');

@@ -45,6 +45,7 @@ test('campaign deletion and tombstone are atomic and reject a saved job that rac
   assert.equal(response.status,race?409:200);
   assert.equal(f.db.db.prepare("SELECT count(*) n FROM promo_store WHERE k='promo::c::TOTO'").get().n,race?1:0);
   assert.equal(f.db.db.prepare("SELECT count(*) n FROM promo_store WHERE k='promo::deleted'").get().n,race?0:1);
+  assert.equal(f.db.db.prepare("SELECT count(*) n FROM promo_store WHERE k LIKE 'promo::activity::%'").get().n,race?0:1);
  }
 });
 test('structural Coupon edit commits counter once and rolls back on concurrent allocation',async()=>{

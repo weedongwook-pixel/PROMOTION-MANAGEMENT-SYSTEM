@@ -651,7 +651,10 @@
     if (!_hydrated) throw new Error('Cloud ยังโหลดไม่สำเร็จ');
     var keys = Object.assign({}, _cloudCache);
     var deleted = JSON.parse(keys[DEL_CLOUDKEY] || '{}');
-    return function (campaign) {
+    var events=Object.keys(keys).filter(function(k){return k.indexOf('promo::activity::')===0;}).map(function(k){return JSON.parse(keys[k]);}).filter(function(e){return e.kind==='DELETED';});
+    var trash=JSON.parse(keys[META_CLOUDKEY]||'{}').trash||[];
+    var evidence=events.map(function(e){return {at:e.at,user:e.user,rows:e.submissionRows||[]};}).concat(trash.map(function(t){return {at:t.deletedAt,user:t.deletedBy,rows:Object.values(t.months||{}).flat()};}));
+    var snapshot=function (campaign) {
       var name = String(campaign || '').trim(), raw = keys[CAMP_PREFIX + encodeURIComponent(name)];
       if (raw == null) throw new Error('อ่านแคมเปญจาก Cloud ไม่สำเร็จ (404)');
       var block = JSON.parse(raw);
@@ -659,6 +662,16 @@
         throw new Error('แคมเปญถูกซ่อนด้วยทะเบียนลบเก่า');
       return Object.keys(block.m || {}).flatMap(function (month) { return block.m[month] || []; });
     };
+    snapshot.deletedRows=evidence.flatMap(function(e){return e.rows;});
+    snapshot.deletionFor=function(entry){
+      var seen=Math.max(Number(entry.cloudSeenAt)||0,Number(entry.successShownAt)||0);
+      var match=evidence.filter(function(e){return Date.parse(e.at)>=seen && e.rows.some(function(r){return r.campaign===entry.campaign && (entry.id?r.submissionId===entry.id:r.txnDate===entry.at && (r.submittedBy||r.reporter)===entry.user);});}).sort(function(a,b){return String(b.at).localeCompare(String(a.at));})[0];
+      if(match)return {at:match.at,user:match.user};
+      var stamp=Number(deleted[entry.campaign])||0,submitted=Date.parse(entry.at);
+      if(!evidence.some(function(e){return e.rows.some(function(r){return r.campaign===entry.campaign;});}) && seen && stamp>=seen && Number.isFinite(submitted)&&stamp>=submitted)return {at:new Date(stamp).toISOString(),user:''};
+      return null;
+    };
+    return snapshot;
   }
 
   // One immutable Cloud key per action avoids losing an audit entry when two
@@ -766,7 +779,7 @@
       var r = await api('/promo/store/' + encodeURIComponent(k), {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: body[k], expectedUpdatedAt: expected,
-          ...(k===DEL_CLOUDKEY&&deleteVersions&&Object.keys(deleteVersions).length?{deletedCampaignVersions:deleteVersions}:{}) })
+          ...(k===DEL_CLOUDKEY&&deleteVersions&&Object.keys(deleteVersions).length?{deletedCampaignVersions:deleteVersions,actor:localStorage.getItem('pc_userName')||''}:{}) })
       });
       if (r.status === 409) throw new Error('CLOUD_CONFLICT:' + k);
       if (!r.ok) throw new Error('push ' + r.status);

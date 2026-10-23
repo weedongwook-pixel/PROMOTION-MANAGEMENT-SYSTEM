@@ -722,7 +722,7 @@
                   })
                   .withFailureHandler(err => {
                     if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, err && err.message || err);
-                    Swal.fire('เกิดข้อผิดพลาดทางเทคนิค', err.message, 'error'); 
+                    Swal.fire('ยังยืนยันผลการบันทึกไม่ได้', 'กรุณาตรวจในประวัติการแจ้งโปรฯ ก่อนส่งซ้ำ · ' + String(err && err.message || err), 'warning');
                   })
                   .saveBulkProposal(allData);
             } else {

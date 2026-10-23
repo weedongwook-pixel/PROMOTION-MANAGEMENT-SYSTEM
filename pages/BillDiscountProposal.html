@@ -986,7 +986,7 @@ if (!isValid) return;
           })
           .withFailureHandler(function(err) {
             if (_submissionPlan) PC_SubmissionLog.fail(_submissionPlan, err && err.message || err);
-            Swal.close(); Swal.fire('Error', 'การเชื่อมต่อขัดข้อง: ' + err, 'error');
+            Swal.close(); Swal.fire('ยังยืนยันผลการบันทึกไม่ได้', 'การเชื่อมต่อขัดข้อง กรุณาตรวจในประวัติการแจ้งโปรฯ ก่อนส่งซ้ำ · ' + String(err && err.message || err), 'warning');
           })
           .submitBillDiscountProposal(finalPayload);
 };

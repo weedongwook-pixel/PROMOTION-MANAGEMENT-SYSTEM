@@ -230,7 +230,7 @@
     }).sort(function (a, b) { return String(b.at || '').localeCompare(String(a.at || '')); });
   }
   function summarize(entries) {
-    var result = { campaigns: 0, submissions: 0, verified: 0, pending: 0, failed: 0, legacy: 0 };
+    var result = { campaigns: 0, submissions: 0, verified: 0, pending: 0, failed: 0, deleted: 0, legacy: 0 };
     // Cloud-confirmed receipts are counted as saved; Tracking mismatches remain visible separately.
     // Failed attempts remain in the history but never inflate this number.
     var campaigns = new Set();
@@ -239,6 +239,7 @@
       result.submissions++;
       if (entry.status === 'verified') { result.verified++; if (name) campaigns.add(name); }
       else if (entry.status === 'failed') result.failed++;
+      else if (entry.status === 'deleted') result.deleted++;
       else if (entry.status === 'legacy') result.legacy++;
       else result.pending++;
     });
@@ -250,7 +251,7 @@
     var snapshot = window.PC_CLOUD?.readSubmissionSnapshot ? await window.PC_CLOUD.readSubmissionSnapshot() : null;
     if (!snapshot && window.PC_CLOUD?.pull) await window.PC_CLOUD.pull();
     var rows = await runTracking(), groups = new Map();
-    (rows || []).forEach(function (row) {
+    (rows || []).concat(snapshot && snapshot.deletedRows || []).forEach(function (row) {
       var submitter = norm(row.submittedBy || row.reporter);
       if (!submitter || (!allSubmitters && submitter !== who) || (date && bangkokDate(row.txnDate) !== date)) return;
       var id = norm(row.submissionId), key = id || ['old', row.campaign, row.txnDate, row.submittedBy || row.reporter].join('|');
@@ -281,6 +282,12 @@
     });
     var entries = Array.from(groups.values());
     var cloudCache = new Map();
+    function markMissing(entry) {
+      var deletion=snapshot && snapshot.deletionFor && snapshot.deletionFor(entry);
+      entry.status=deletion?'deleted':'needs_check';
+      if(deletion){entry.deletedAt=deletion.at;entry.deletedBy=deletion.user;entry.error='งานถูกลบออกจากรายการใช้งาน'+(deletion.user?' โดย '+deletion.user:'')+(deletion.at?' · '+new Date(deletion.at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'');}
+      else entry.error=entry.successShownAt||entry.cloudSeenAt?'เคยบันทึกสำเร็จ แต่ยังยืนยันสถานะปัจจุบันไม่ได้ กรุณาตรวจอีกครั้ง ไม่ต้องส่งซ้ำ':'ไม่พบรายการใน Cloud และยังยืนยันผลการส่งเดิมไม่ได้ กรุณาตรวจอีกครั้ง';
+    }
     async function checkEntry(entry) {
       if (!entry.legacy && !entry.id) { entry.status = 'needs_check'; return; }
       var promise = cloudCache.get(entry.campaign);
@@ -303,30 +310,25 @@
           entry.trackingMismatch = !entry.trackingComplete;
           entry.status = 'verified';
           entry.error = '';
+          if(entry.id){setAttempt(entry,'verified','',{cloudSaved:true});entry.cloudSeenAt=Date.now();}
         } else if (cloudRows.length) {
           entry.status = 'needs_check';
           entry.cloudPartial = true;
           entry.error = 'พบข้อมูลบางส่วนใน Cloud แต่ปุ่มยังไม่ครบ กรุณาแจ้ง IT ก่อนส่งซ้ำ';
         } else if (entry.status !== 'sending' || Date.now() - Date.parse(entry.at) >= 120000) {
-          entry.status = entry.successShownAt ? 'failed' : 'needs_check';
-          entry.error = entry.successShownAt
-            ? 'เคยยืนยันว่าบันทึกสำเร็จ แต่ตรวจ Cloud ล่าสุดไม่พบรายการ กรุณาแจ้ง IT'
-            : 'ไม่พบรายการใน Cloud และยังยืนยันผลการส่งเดิมไม่ได้ กรุณาแจ้ง IT';
+          markMissing(entry);
         }
       } catch (e) {
         var detail = norm(e && e.message || e);
         var absent = /\(404\)|ถูกซ่อนด้วยทะเบียนลบ/.test(detail);
-        entry.status = absent && entry.successShownAt ? 'failed' : 'needs_check';
-        entry.error = absent ? (entry.successShownAt
-          ? 'เคยยืนยันว่าบันทึกสำเร็จ แต่ตรวจ Cloud ล่าสุดไม่พบรายการ กรุณาแจ้ง IT'
-          : 'ไม่พบรายการใน Cloud และยังยืนยันผลการส่งเดิมไม่ได้ กรุณาแจ้ง IT')
-          : 'ตรวจ Cloud ไม่ได้ กรุณากดตรวจอีกครั้ง';
+        if(absent)markMissing(entry);
+        else {entry.status='needs_check';entry.error='ยังตรวจสอบสถานะไม่ได้ เนื่องจากติดต่อ Cloud ไม่สำเร็จ กรุณาตรวจอีกครั้ง ไม่ต้องส่งซ้ำ';}
       }
     }
     for (var i = 0; i < entries.length; i += 6) await Promise.all(entries.slice(i, i + 6).map(checkEntry));
     var successful = entries.filter(function (entry) { return entry.status === 'verified'; });
     entries = entries.filter(function (entry) {
-      if (entry.status === 'verified') return true;
+      if (entry.status === 'verified' || entry.status === 'deleted') return true;
       if (rejectedIds.has(entry.id) && !entry.cloudPartial) return false;
       var requested = unique(entry.shortNames || []), attemptedAt = Date.parse(entry.at);
       if (!requested.length || !Number.isFinite(attemptedAt)) return true;

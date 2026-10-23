@@ -69,6 +69,17 @@ async function guardedPut(db, key, body, env) {
       statements.push(db.prepare('INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN changes()=1 THEN 1 ELSE 0 END)'));
       statements.push(db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
     }
+    // Keep the deletion and its audit evidence in the same guarded transaction.
+    for(const [campaignKey,version] of Object.entries(versions)){
+      const original=await db.prepare('SELECT v FROM promo_store WHERE k=? AND updated_at=?').bind(campaignKey,version).first();
+      if(!original)continue; // The version guard above rejects the transaction.
+      const block=JSON.parse(original.v),name=decodeURIComponent(campaignKey.slice(10));
+      const fields=['campaign','submissionId','submissionForm','submissionExpectedButtons','shortName','submittedBy','reporter','txnDate','promoType'];
+      const receipts=Object.values(block.m||{}).flat().map(row=>Object.fromEntries(fields.filter(k=>row[k]!==undefined).map(k=>[k,row[k]])));
+      const at=new Date(now).toISOString(),date=new Date(now+7*60*60*1000).toISOString().slice(0,10),id='ACT-DELETE-'+crypto.randomUUID();
+      const event={id,date,at,user:String(body.actor||'').trim().slice(0,160),kind:'DELETED',campaign:name,scope:'campaign',note:'ลบงานออกจากรายการใช้งาน',submissionRows:receipts};
+      statements.push(db.prepare('INSERT INTO promo_store(k,v,updated_at) VALUES(?,?,?)').bind('promo::activity::'+date+'::'+id,JSON.stringify(event),now));
+    }
     const removedNames=new Set(Object.keys(versions).map(k=>decodeURIComponent(k.slice(10))));
     const linked=(await db.prepare("SELECT k,v,updated_at FROM promo_store WHERE k='pc_co_promotions' OR k LIKE 'pc_copro_drafts::%'").all()).results||[];
     for(const row of linked){

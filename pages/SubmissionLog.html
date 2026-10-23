@@ -53,6 +53,8 @@
   #sl-page .sl-button-count small { display: block; color: #805400; font-weight: 600; font-size: .73rem; white-space: normal; overflow-wrap: anywhere; }
   #sl-page .sl-state { font-size: .76rem; font-weight: 700; display: inline-flex; gap: 5px; align-items: center; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
   #sl-page .sl-state.verified { background: #e5f5eb; color: #126a37; }
+  #sl-page .sl-state.deleted { background: #edf0f2; color: #4b5961; }
+  #sl-page .sl-state.needs_check, #sl-page .sl-state.sending { background: #fff3d9; color: #755000; }
   #sl-page .sl-state.failed { background: #fce7e7; color: #a22323; }
   #sl-page .sl-empty { padding: 46px 20px; text-align: center; color: #59675f; }
   #sl-page .sl-activity { margin-top: 30px; }
@@ -120,26 +122,28 @@
   <div id="sl-metrics" class="sl-metrics"><span>กำลังนับแคมเปญ…</span></div>
   <div id="sl-list-tools" hidden>
     <div class="sl-list-head">
-      <div><h2>รายการที่แจ้ง</h2><p>แสดงงานที่ตรวจพบใน Cloud และแจ้งเตือนหากงานที่เคยยืนยันสำเร็จหายไป</p></div>
+      <div><h2>รายการที่แจ้ง</h2><p>ผลการบันทึกและสถานะล่าสุดของแต่ละรายการ</p></div>
       <label class="visually-hidden" for="sl-search">ค้นหาแคมเปญหรือผู้ส่ง</label>
       <input id="sl-search" class="form-control form-control-sm sl-search" type="search" placeholder="ค้นหาแคมเปญ / ผู้ส่ง" oninput="window.slApplyFilters()">
     </div>
     <div class="sl-filters" role="group" aria-label="กรองตามสถานะการบันทึก">
       <button type="button" data-filter="all" aria-pressed="true" onclick="window.slSetFilter('all')">ทั้งหมด <span id="sl-count-all">0</span></button>
       <button type="button" data-filter="verified" aria-pressed="false" onclick="window.slSetFilter('verified')">บันทึกสำเร็จ <span id="sl-count-verified">0</span></button>
+      <button type="button" data-filter="deleted" aria-pressed="false" onclick="window.slSetFilter('deleted')">งานถูกลบ <span id="sl-count-deleted">0</span></button>
+      <button type="button" data-filter="needs_check" aria-pressed="false" onclick="window.slSetFilter('needs_check')">ยังตรวจสอบไม่ได้ <span id="sl-count-needs_check">0</span></button>
       <button type="button" data-filter="failed" aria-pressed="false" onclick="window.slSetFilter('failed')">บันทึกไม่สำเร็จ <span id="sl-count-failed">0</span></button>
     </div>
     <p id="sl-result-count" class="sl-result-count" aria-live="polite"></p>
   </div>
-  <details class="sl-note"><summary>ความหมายของสถานะ</summary><p>“บันทึกสำเร็จ” คือพบรายการใน Cloud ส่วน “บันทึกไม่สำเร็จ” จะแสดงเฉพาะงานที่เคยยืนยันสำเร็จ แต่ตรวจ Cloud ล่าสุดไม่พบรายการ ระบบตรวจเทียบจำนวนปุ่มโปรฯ กับศูนย์ติดตามงานอีกชั้น</p></details>
+  <details class="sl-note"><summary>ความหมายของสถานะ</summary><p>“บันทึกสำเร็จ” คือยืนยันข้อมูลใน Cloud แล้ว · “งานถูกลบ” คือมีประวัติการลบ · “ยังตรวจสอบไม่ได้” คือยังยืนยันสถานะปัจจุบันไม่ได้ ไม่ได้หมายความว่าบันทึกล้มเหลว · “บันทึกไม่สำเร็จ” ใช้เมื่อมีผลยืนยันว่าการบันทึกถูกปฏิเสธเท่านั้น</p></details>
   <div class="sl-table-wrap"><table>
-    <thead><tr><th>แคมเปญ</th><th>สถานะบันทึก</th><th>จำนวนปุ่มโปรฯ</th><th>เวลาส่ง</th><th>ผู้ทำรายการ</th><th>ประเภท</th><th>ตรวจงาน</th></tr></thead>
+    <thead><tr><th>แคมเปญ</th><th>สถานะล่าสุด</th><th>จำนวนปุ่มโปรฯ</th><th>เวลาส่ง</th><th>ผู้ทำรายการ</th><th>ประเภท</th><th>ตรวจงาน</th></tr></thead>
     <tbody id="sl-rows"><tr><td colspan="7" class="sl-empty">กำลังโหลด…</td></tr></tbody>
   </table></div>
   <section class="sl-activity" aria-labelledby="sl-activity-title">
     <div class="sl-activity-tools">
-      <div><h2 id="sl-activity-title">รายการเปลี่ยนแปลง <span id="sl-activity-count">0</span></h2><p>เพิ่มปุ่มหรือสินค้า · ลดเวลา · ขยายเวลา · ยกเลิก — แยกจากจำนวนแคมเปญที่แจ้งใหม่ · เริ่มเก็บหลังเปิดใช้ฟีเจอร์นี้ · หากไม่เลือกวันที่ ส่วนรายการเปลี่ยนแปลงแสดงวันนี้</p></div>
-      <div><label for="sl-activity-filter">ประเภทการเปลี่ยนแปลง</label><select id="sl-activity-filter" class="form-select form-select-sm" onchange="window.slRenderActivity()"><option value="all">ทั้งหมด</option><option value="ADDED">เพิ่ม</option><option value="EDITED">แก้ไขข้อมูล</option><option value="REDUCED">ลด</option><option value="EXTENDED">ขยาย</option><option value="CANCELLED">ยกเลิก</option></select></div>
+      <div><h2 id="sl-activity-title">รายการเปลี่ยนแปลง <span id="sl-activity-count">0</span></h2><p>เพิ่มปุ่มหรือสินค้า · ลดเวลา · ขยายเวลา · ยกเลิก · ลบงาน — แยกจากจำนวนแคมเปญที่แจ้งใหม่ · เริ่มเก็บหลังเปิดใช้ฟีเจอร์นี้ · หากไม่เลือกวันที่ ส่วนรายการเปลี่ยนแปลงแสดงวันนี้</p></div>
+      <div><label for="sl-activity-filter">ประเภทการเปลี่ยนแปลง</label><select id="sl-activity-filter" class="form-select form-select-sm" onchange="window.slRenderActivity()"><option value="all">ทั้งหมด</option><option value="ADDED">เพิ่ม</option><option value="EDITED">แก้ไขข้อมูล</option><option value="REDUCED">ลด</option><option value="EXTENDED">ขยาย</option><option value="CANCELLED">ยกเลิก</option><option value="DELETED">ลบงาน</option></select></div>
     </div>
     <p id="sl-activity-result" class="sl-result-count" role="status" aria-live="polite">กำลังตรวจประวัติจาก Cloud…</p>
     <div class="sl-table-wrap"><table>
@@ -178,7 +182,9 @@
     var s = item.status;
     if (s === 'verified') return ['fa-circle-check', 'บันทึกสำเร็จ'];
     if (s === 'failed') return ['fa-circle-xmark', 'บันทึกไม่สำเร็จ'];
-    return null;
+    if(s==='deleted')return ['fa-trash-can','งานถูกลบ'];
+    if(s==='sending')return ['fa-clock','กำลังส่งข้อมูล'];
+    return ['fa-circle-question','ยังตรวจสอบไม่ได้'];
   }
   function updateScopeDescription() {
     var canViewAll = PC_SubmissionLog.canViewAll(), scope = document.getElementById('sl-scope');
@@ -198,12 +204,10 @@
     var actor = PC_SubmissionLog.canViewAll() && scope && scope.value === 'all' ? 'ทุกผู้ส่ง' : (PC_SubmissionLog.user() || 'ไม่ระบุชื่อ');
     var search = document.getElementById('sl-search');
     var query = String(search && search.value || '').trim().toLocaleLowerCase();
-    var checkedCount = items.filter(function (item) { return item.status === 'verified' || item.status === 'failed'; }).length;
+    var checkedCount = items.length;
     var visible = items.map(function (item, index) { return { item: item, index: index }; }).filter(function (entry) {
       var item = entry.item;
-      if (item.status !== 'verified' && item.status !== 'failed') return false;
-      if (activeFilter === 'verified' && item.status !== 'verified') return false;
-      if (activeFilter === 'failed' && item.status !== 'failed') return false;
+      if(activeFilter!=='all' && (activeFilter==='needs_check'? !['needs_check','sending','legacy'].includes(item.status):item.status!==activeFilter))return false;
       return !query || [item.campaign, item.form, item.user].some(function (value) {
         return String(value || '').toLocaleLowerCase().indexOf(query) !== -1;
       });
@@ -212,7 +216,7 @@
         return a.item.status === 'verified' ? 1 : -1;
       return String(b.item.at || '').localeCompare(String(a.item.at || ''));
     });
-    if (resultCount) resultCount.textContent = 'แสดง ' + visible.length + ' จาก ' + checkedCount + ' รายการที่ตรวจผลได้';
+    if (resultCount) resultCount.textContent = 'แสดง ' + visible.length + ' จาก ' + checkedCount + ' รายการ';
     if (!items.length) {
       body.innerHTML = '<tr><td colspan="7" class="sl-empty"><i class="fas fa-inbox fa-2x mb-2 d-block" aria-hidden="true"></i>ไม่พบรายการแจ้งของ ' + esc(actor) + ' ในวันที่เลือก · ลองเปลี่ยนวันที่หรือกดตรวจอีกครั้ง</td></tr>';
       return;
@@ -227,8 +231,8 @@
     }
     body.innerHTML = visible.map(function (entry) {
       var x = entry.item, st = state(x), buttonsFound = Number(x.foundButtons) || 0, expected = Number(x.expectedButtons) || 0;
-      var canOpen = x.status !== 'failed' && x.status !== 'sending';
-      var buttonCount = '<span class="sl-button-count">' + buttonsFound + (expected ? ' / ' + expected : '') +
+      var canOpen = x.status === 'verified';
+      var buttonCount = x.status==='deleted'?'—':'<span class="sl-button-count">' + buttonsFound + (expected ? ' / ' + expected : '') +
         (x.trackingMismatch ? '<small>ศูนย์ติดตามยังไม่ตรงกับ Cloud · ไม่ต้องส่งซ้ำ</small>' : '') + '</span>';
       return '<tr class="' + (x.status === 'failed' ? 'sl-failed' : '') + '">' +
         '<td><div class="sl-campaign">' + esc(x.campaign) + '</div></td>' +
@@ -239,7 +243,7 @@
     }).join('');
   }
   window.slSetFilter = function (filter) {
-    if (filter !== 'all' && filter !== 'verified' && filter !== 'failed') return;
+    if (!['all','verified','failed','deleted','needs_check'].includes(filter)) return;
     activeFilter = filter;
     document.querySelectorAll('#sl-page .sl-filters button[data-filter]').forEach(function (button) {
       button.setAttribute('aria-pressed', button.getAttribute('data-filter') === filter ? 'true' : 'false');
@@ -255,33 +259,24 @@
   function render() {
     var body = document.getElementById('sl-rows'), metrics = document.getElementById('sl-metrics'), overview = document.getElementById('sl-overview');
     if (!body || !metrics || !overview) return;
-    var checked = items.filter(function (item) { return item.status === 'verified' || item.status === 'failed'; });
-    var summary = PC_SubmissionLog.summarize(checked);
-    var partial = items.filter(function (item) { return item.cloudPartial; }).length;
-    var unreadable = items.length - checked.length - partial;
-    var issues = items.filter(function (item) { return item.status !== 'verified' && item.status !== 'failed'; });
-    var scope = document.getElementById('sl-scope');
-    var actor = PC_SubmissionLog.canViewAll() && scope && scope.value === 'all' ? 'ทุกผู้ส่ง' : (PC_SubmissionLog.user() || 'ไม่ระบุชื่อ');
-    overview.className = 'sl-overview ' + (unreadable || partial ? 'pending' : summary.submissions === 0 ? 'empty' : summary.failed === summary.submissions ? 'error' : summary.failed ? 'pending' : '');
-    overview.innerHTML = '<strong>' + (summary.submissions === 0 ? (partial ? 'พบข้อมูล Cloud ที่ต้องตรวจเพิ่มเติม' : unreadable ? 'ยังโหลดผลการบันทึกไม่ได้' : 'ยังไม่พบรายการส่งในวันที่เลือก') :
-      summary.failed === summary.submissions ? 'บันทึกไม่สำเร็จ ' + summary.failed + ' รายการ · ยังไม่มีแคมเปญที่บันทึกสำเร็จ' :
-      'บันทึกสำเร็จ ' + summary.verified + ' รายการ') +
-      '</strong><span>ผู้ทำรายการ: ' + esc(actor) + ' · บันทึกไม่สำเร็จ ' + summary.failed + '</span>' +
-      (partial ? '<span>Cloud มีข้อมูลบางส่วน ' + partial + ' รายการ แต่ปุ่มไม่ครบ · แจ้ง IT ก่อนส่งซ้ำ</span>' : '') +
-      (unreadable ? '<span>อีก ' + unreadable + ' รายการยังโหลดผลไม่ได้ กรุณากด “ตรวจอีกครั้ง”</span>' : '') +
-      (summary.submissions ? '<progress class="sl-progress" value="' + summary.verified + '" max="' + summary.submissions + '" aria-label="บันทึกสำเร็จ ' + summary.verified + ' จาก ' + summary.submissions + ' รายการที่ตรวจผลได้"></progress>' : '') +
-      (issues.length ? '<details class="sl-issues"><summary>ดูแคมเปญที่ต้องตรวจ (' + issues.length + ')</summary><ul>' +
-        issues.map(function (item) { return '<li>' + esc(item.campaign || 'ไม่ระบุแคมเปญ') + ' — ' + esc(item.error || 'กรุณากดตรวจอีกครั้ง') + '</li>'; }).join('') + '</ul></details>' : '');
-    metrics.innerHTML = '<span class="sl-good"><strong>' + summary.campaigns + '</strong> แคมเปญที่บันทึกสำเร็จ (ชื่อไม่ซ้ำ)</span>' +
-      '<span><strong>' + summary.submissions + '</strong> รายการที่ตรวจผลได้</span>' +
-      '<span class="sl-good"><strong>' + summary.verified + '</strong> บันทึกสำเร็จ</span>' +
-      '<span class="sl-bad"><strong>' + summary.failed + '</strong> บันทึกไม่สำเร็จ</span>';
-    var tools = document.getElementById('sl-list-tools');
-    if (tools) tools.hidden = !checked.length;
-    [['all', summary.submissions], ['verified', summary.verified], ['failed', summary.failed]].forEach(function (entry) {
-      var count = document.getElementById('sl-count-' + entry[0]);
-      if (count) count.textContent = entry[1];
-    });
+    var summary = PC_SubmissionLog.summarize(items);
+    var pending=items.filter(function(x){return !['verified','failed','deleted'].includes(x.status);}).length;
+    var deleted=items.filter(function(x){return x.status==='deleted';}).length;
+    overview.className='sl-overview '+(pending?'pending':summary.failed?'error':summary.verified?'':'empty');
+    var parts=[];
+    if(summary.verified)parts.push('บันทึกสำเร็จ '+summary.verified+' รายการ');
+    if(deleted)parts.push('งานถูกลบ '+deleted+' รายการ');
+    if(pending)parts.push('ยังตรวจสอบไม่ได้ '+pending+' รายการ');
+    if(summary.failed)parts.push('บันทึกไม่สำเร็จ '+summary.failed+' รายการ');
+    overview.innerHTML='<strong>'+ (parts.join(' · ')||'ไม่พบรายการในวันที่เลือก')+'</strong>'+
+      (pending?'<span>ดูสาเหตุในแต่ละรายการ แล้วกด “ตรวจอีกครั้ง” ไม่ต้องส่งข้อมูลซ้ำ</span>':'');
+    metrics.innerHTML='<span><strong>'+items.length+'</strong> รายการ</span>'+
+      '<span class="sl-good"><strong>'+summary.campaigns+'</strong> แคมเปญที่บันทึกสำเร็จ (ชื่อไม่ซ้ำ)</span>'+
+      (deleted?'<span><strong>'+deleted+'</strong> งานถูกลบ</span>':'')+
+      (pending?'<span><strong>'+pending+'</strong> ยังตรวจสอบไม่ได้</span>':'')+
+      (summary.failed?'<span class="sl-bad"><strong>'+summary.failed+'</strong> บันทึกไม่สำเร็จ</span>':'');
+    var tools=document.getElementById('sl-list-tools');if(tools)tools.hidden=!items.length;
+    [['all',items.length],['verified',summary.verified],['deleted',deleted],['needs_check',pending],['failed',summary.failed]].forEach(function(entry){var count=document.getElementById('sl-count-'+entry[0]);if(count)count.textContent=entry[1];});
     renderRows();
   }
   window.slOpenTracking = function (index) {
@@ -302,7 +297,7 @@
       body.innerHTML = '<tr><td colspan="7" class="sl-empty">' + (activities.length ? 'ไม่พบรายการประเภทนี้ในวันที่เลือก' : 'ยังไม่พบการเพิ่ม / ลด / ขยาย / ยกเลิกในวันที่เลือก') + '</td></tr>';
       return;
     }
-    var names = { ADDED:'เพิ่ม', REDUCED:'ลดเวลา', EXTENDED:'ขยายเวลา', CANCELLED:'ยกเลิก', EDITED:'แก้ไขข้อมูล' };
+    var names = { ADDED:'เพิ่ม', REDUCED:'ลดเวลา', EXTENDED:'ขยายเวลา', CANCELLED:'ยกเลิก', DELETED:'ลบงาน', EDITED:'แก้ไขข้อมูล' };
     body.innerHTML = visible.map(function (entry) {
       var x = entry.item, kind = String(x.kind || ''), label = kind.split('/').map(function (part) { return names[part] || part; }).join(' / ');
       var buttons = Array.isArray(x.buttons) ? x.buttons : [], products = Array.isArray(x.items) ? x.items : [];
@@ -315,7 +310,7 @@
         '<td data-label="รายละเอียด"><div class="sl-activity-detail">' + esc(detail.join(' · ')) + '</div></td>' +
         '<td data-label="เวลา">' + esc(time(x.at)) + '</td><td data-label="ผู้ทำรายการ">' + esc(x.user || '—') + '</td>' +
         '<td data-label="ผลบันทึก"><span class="sl-activity-status"><i class="fas fa-circle-check" aria-hidden="true"></i> พบใน Cloud</span></td>' +
-        '<td><button type="button" class="btn btn-outline-success btn-sm" onclick="window.slOpenActivity(' + entry.index + ')">เปิดศูนย์ติดตาม</button></td></tr>';
+        '<td>'+ (kind==='DELETED'?'—':'<button type="button" class="btn btn-outline-success btn-sm" onclick="window.slOpenActivity(' + entry.index + ')">เปิดศูนย์ติดตาม</button>')+'</td></tr>';
     }).join('');
   };
   window.slOpenActivity = function (index) {
@@ -355,9 +350,9 @@
           if (result.status === 'fulfilled') { items = result.value; render(); }
           else {
             items = [];
-            if (overview) { overview.className = 'sl-overview error'; overview.innerHTML = '<strong>โหลดผลการบันทึกจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
-            if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
-            if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(result.reason && result.reason.message || result.reason) + '</td></tr>';
+            if (overview) { overview.className = 'sl-overview pending'; overview.innerHTML = '<strong>ยังตรวจสอบสถานะจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
+            if (metrics) metrics.innerHTML = '<span>ยังสรุปสถานะไม่ได้ กรุณาตรวจอีกครั้ง</span>';
+            if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ยังตรวจสอบข้อมูลไม่ได้: ' + esc(result.reason && result.reason.message || result.reason) + '</td></tr>';
           }
           if(window.PC_CoProEmailUI?.mountHistory)window.PC_CoProEmailUI.mountHistory(document.getElementById('sl-mail-history'),items,{date:document.getElementById('sl-mail-date').value});
         }),
@@ -375,9 +370,9 @@
     } catch (e) {
       if (n !== generation) return;
       items = [];
-      if (overview) { overview.className = 'sl-overview error'; overview.innerHTML = '<strong>โหลดผลการบันทึกจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
-      if (metrics) metrics.innerHTML = '<span>ไม่สามารถสรุปจำนวนแคมเปญได้</span>';
-      if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ตรวจข้อมูลไม่ได้: ' + esc(e && e.message || e) + ' · กรุณากดตรวจอีกครั้ง</td></tr>';
+      if (overview) { overview.className = 'sl-overview pending'; overview.innerHTML = '<strong>ยังตรวจสอบสถานะจาก Cloud ไม่ได้</strong><span>กรุณากด “ตรวจอีกครั้ง”</span>'; }
+      if (metrics) metrics.innerHTML = '<span>ยังสรุปสถานะไม่ได้ กรุณาตรวจอีกครั้ง</span>';
+      if (body) body.innerHTML = '<tr><td colspan="7" class="sl-empty text-danger">ยังตรวจสอบข้อมูลไม่ได้: ' + esc(e && e.message || e) + ' · กรุณากดตรวจอีกครั้ง</td></tr>';
     } finally { if (n === generation && button && document.getElementById('sl-refresh')) button.disabled = false; }
   };
   window.initSubmissionLog = function () {

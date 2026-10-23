@@ -185,7 +185,7 @@ test('Cloud-confirmed submission is successful even when Tracking has no matchin
   assert.equal(absent.status, 'needs_check', 'without a success message, a missing row is not labelled as an unexpected loss');
 });
 
-test('failed status is reserved for a submission that was shown as successful before disappearing from Cloud', async () => {
+test('a missing previously saved submission is unresolved, never a failed save', async () => {
   const { log, setTracking, setRemote } = setup();
   const payload = [{ campaign: 'Confirmed deal', shortName: 'Deal 1' }];
   const plan = log.prepare('Item Set', payload);
@@ -197,8 +197,8 @@ test('failed status is reserved for a submission that was shown as successful be
   assert.ok(log.readAttempts()[0].successShownAt);
   setRemote({ 'Confirmed deal': [] });
   const item = (await log.list(log.today()))[0];
-  assert.equal(item.status, 'failed');
-  assert.match(item.error, /เคยยืนยันว่าบันทึกสำเร็จ/);
+  assert.equal(item.status, 'needs_check');
+  assert.match(item.error, /เคยบันทึกสำเร็จ/);
 });
 
 test('a send reported as failed is shown as saved if its write actually reached Cloud', async () => {
@@ -362,4 +362,13 @@ test('history verifies many campaigns against one fresh Cloud snapshot without p
  const entries=await f.log.list('');assert.equal(snapshots,1);assert.equal(entries.length,60);assert.ok(entries.every(e=>e.status==='verified'));
  f.context.PC_CLOUD.readSubmissionSnapshot=async()=>{throw Error('Cloud unavailable');};
  await assert.rejects(()=>f.log.list(''),/Cloud unavailable/);
+});
+
+test('Cloud deletion evidence is shown separately and survives another device without local attempts',async()=>{
+ const f=setup();const row={campaign:'Deleted',submissionId:'SUB-D',submissionExpectedButtons:1,shortName:'Button',submittedBy:'Bow',txnDate:new Date().toISOString()};
+ const snapshot=()=>[];snapshot.deletedRows=[row];snapshot.deletionFor=e=>e.id==='SUB-D'?{at:'2026-10-23T01:00:00Z',user:'IT person'}:null;
+ f.context.PC_CLOUD.readSubmissionSnapshot=async()=>snapshot;
+ const entries=await f.log.list('');assert.equal(entries.length,1);assert.equal(entries[0].status,'deleted');assert.equal(entries[0].deletedBy,'IT person');assert.equal(f.log.summarize(entries).failed,0);assert.equal(f.log.summarize(entries).deleted,1);
+ f.setTracking([row]);snapshot.deletionFor=()=>null;f.context.PC_CLOUD.readSubmissionSnapshot=async()=>Object.assign(()=>[row],{deletedRows:[row],deletionFor:()=>({at:'old'})});
+ assert.equal((await f.log.list(''))[0].status,'verified','restored matching receipt is active and saved');
 });

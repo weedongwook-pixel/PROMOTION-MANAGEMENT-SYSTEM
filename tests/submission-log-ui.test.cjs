@@ -7,8 +7,8 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '../pages/SubmissionLog.html'), 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 assert.match(html, /<th>จำนวนปุ่มโปรฯ<\/th>/);
-assert.match(html, /ระบบตรวจเทียบจำนวนปุ่มโปรฯ กับศูนย์ติดตามงานอีกชั้น/);
-assert.match(html, /“บันทึกไม่สำเร็จ” จะแสดงเฉพาะงานที่เคยยืนยันสำเร็จ แต่ตรวจ Cloud ล่าสุดไม่พบรายการ/);
+assert.match(html, /“งานถูกลบ” คือมีประวัติการลบ/);
+assert.doesNotMatch(html, /“บันทึกไม่สำเร็จ” จะแสดงเฉพาะงานที่เคยยืนยันสำเร็จ/);
 assert.doesNotMatch(html, /ประวัติการส่งไม่สำเร็จแสดงเฉพาะเครื่องที่ส่ง|หากชื่อซ้ำกัน/);
 
 test('submission history shows only Cloud-confirmed success and failure statuses', async () => {
@@ -62,7 +62,7 @@ test('submission history shows only Cloud-confirmed success and failure statuses
   assert.equal(element('sl-history-controls').hidden,false);
   assert.match(element('sl-overview').innerHTML, /บันทึกสำเร็จ 1 รายการ/);
   assert.match(element('sl-overview').innerHTML, /บันทึกไม่สำเร็จ 1/);
-  assert.match(element('sl-overview').innerHTML, /<progress[^>]*value="1" max="2"/);
+  assert.doesNotMatch(element('sl-overview').innerHTML, /ยังไม่มีแคมเปญที่บันทึกสำเร็จ/);
   assert.match(element('sl-metrics').innerHTML, /<strong>1<\/strong> แคมเปญที่บันทึกสำเร็จ/);
   assert.match(element('sl-rows').innerHTML, /Goodie[\s\S]*บันทึกสำเร็จ[\s\S]*ศูนย์ติดตามยังไม่ตรงกับ Cloud · ไม่ต้องส่งซ้ำ/, 'Tracking can lag behind a successful Cloud save');
   rows[0].foundButtons = 2;
@@ -89,32 +89,39 @@ test('submission history shows only Cloud-confirmed success and failure statuses
 
   element('sl-search').value = 'Churro';
   context.window.slApplyFilters();
-  assert.equal(element('sl-result-count').textContent, 'แสดง 1 จาก 2 รายการที่ตรวจผลได้');
+  assert.equal(element('sl-result-count').textContent, 'แสดง 1 จาก 2 รายการ');
   assert.match(element('sl-rows').innerHTML, /Churro/);
   assert.doesNotMatch(element('sl-rows').innerHTML, /Goodie/);
 
   context.window.slSetFilter('verified');
-  assert.equal(element('sl-result-count').textContent, 'แสดง 0 จาก 2 รายการที่ตรวจผลได้');
+  assert.equal(element('sl-result-count').textContent, 'แสดง 0 จาก 2 รายการ');
   assert.match(element('sl-rows').innerHTML, /ไม่พบรายการที่ตรงกับคำค้นหาหรือตัวกรอง/);
 
   element('sl-search').value = '';
   context.window.slSetFilter('failed');
-  assert.equal(element('sl-result-count').textContent, 'แสดง 1 จาก 2 รายการที่ตรวจผลได้');
+  assert.equal(element('sl-result-count').textContent, 'แสดง 1 จาก 2 รายการ');
   assert.match(element('sl-rows').innerHTML, /บันทึกไม่สำเร็จ/);
   assert.doesNotMatch(element('sl-rows').innerHTML, /ยังตรวจ Cloud ไม่ได้/);
 
   context.window.slClearFilters();
   assert.equal(element('sl-search').value, '');
-  assert.equal(element('sl-result-count').textContent, 'แสดง 2 จาก 2 รายการที่ตรวจผลได้');
+  assert.equal(element('sl-result-count').textContent, 'แสดง 2 จาก 2 รายการ');
 
   log.list = async () => [rows[0],
     { campaign: 'Partial', status: 'needs_check', cloudPartial: true, error: 'พบข้อมูลบางส่วนใน Cloud แต่ปุ่มยังไม่ครบ กรุณาแจ้ง IT ก่อนส่งซ้ำ', at: '2026-10-02T08:00:00Z', user: 'Bow' },
     { campaign: 'Unknown', status: 'needs_check', at: '2026-10-02T07:00:00Z', user: 'Bow' }];
   await context.window.slRefresh();
   assert.match(element('sl-overview').innerHTML, /บันทึกสำเร็จ 1 รายการ/);
-  assert.match(element('sl-overview').innerHTML, /อีก 1 รายการยังโหลดผลไม่ได้/);
-  assert.match(element('sl-overview').innerHTML, /Cloud มีข้อมูลบางส่วน 1 รายการ/);
-  assert.match(element('sl-overview').innerHTML, /Partial — พบข้อมูลบางส่วนใน Cloud/);
+  assert.match(element('sl-overview').innerHTML, /ยังตรวจสอบไม่ได้ 2 รายการ/);
+  assert.match(element('sl-rows').innerHTML, /Partial/);
+  assert.match(element('sl-rows').innerHTML, /พบข้อมูลบางส่วนใน Cloud/);
   assert.match(element('sl-rows').innerHTML, /Goodie/);
-  assert.doesNotMatch(element('sl-rows').innerHTML, /Unknown|Partial|บันทึกไม่สำเร็จ/, 'an unresolved Cloud result must not be mislabelled or hide confirmed work');
+  assert.doesNotMatch(element('sl-rows').innerHTML, /บันทึกไม่สำเร็จ/, 'an unresolved result must not be mislabelled');
+  assert.match(element('sl-rows').innerHTML,/Unknown/);
+  log.list=async()=>[{campaign:'Deleted job',status:'deleted',error:'งานถูกลบ โดย IT',at:'2026-10-02T08:00:00Z'}];
+  await context.window.slRefresh();
+  assert.match(element('sl-overview').innerHTML,/งานถูกลบ 1 รายการ/);
+  assert.doesNotMatch(element('sl-overview').innerHTML,/บันทึกไม่สำเร็จ/);
+  assert.match(element('sl-rows').innerHTML,/งานถูกลบ โดย IT/);
+  assert.doesNotMatch(element('sl-rows').innerHTML,/เปิดศูนย์ติดตาม/);
 });
