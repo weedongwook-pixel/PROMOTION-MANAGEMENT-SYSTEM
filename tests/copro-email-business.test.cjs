@@ -303,13 +303,13 @@ test('IT completion emails the same approved loop once with reserved-versus-fina
   const rows=DB.db.prepare('SELECT snapshot_json FROM email_outbox ORDER BY created_at').all();assert.equal(rows.length,2);
   const first=JSON.parse(rows[0].snapshot_json),last=JSON.parse(rows[1].snapshot_json);
   assert.equal(last.threadId,first.threadId);assert.equal(last.rfcMessageId,first.rfcMessageId);assert.deepEqual(last.recipients,first.recipients);
-  const mail=a.renderCoProEmail(last);assert.match(mail.text,changed?/ผลตรวจสอบโค้ด: Code Promotion มีการเปลี่ยนแปลงแก้ไข จาก IC001 เป็น IC999 · กรุณาใช้รหัส IC999/:/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC001/);
-  assert.match(mail.text,/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC002/);
+  const mail=a.renderCoProEmail(last);if(changed)assert.match(mail.text,/ผลตรวจสอบโค้ด: Code Promotion มีการเปลี่ยนแปลงแก้ไข จาก IC001 เป็น IC999 · กรุณาใช้รหัส IC999/);else assert.doesNotMatch(mail.text,/ผลตรวจสอบโค้ด:/);
+  assert.doesNotMatch(mail.text,/ใช้รหัสเดิม/);assert.match(mail.text,/Code Promotion: IC002/);
   const mime=Buffer.from(a.buildReply(last).raw,'base64url').toString();assert.match(mime,/In-Reply-To: <m1@example.com>/);assert.match(mime,/To: test@example.net/);
   Object.assign(env,{EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:'true'});
   DB.db.prepare("INSERT INTO email_connections VALUES(1,'it@rocks-foods.com','connected','cipher','scopes','now','now',1)").run();
   a.gmailAccess=async()=> 'mock';a.gmailMessage=async()=>({messageId:'m1',threadId:first.threadId,headers:{'message-id':first.rfcMessageId,subject:first.subject,references:''}});
-  let sent=0;const provider={fetch:async(url,options)=>{assert.match(url,/messages\/send$/);sent++;const payload=JSON.parse(options.body);assert.equal(payload.threadId,first.threadId);const content=Buffer.from(payload.raw,'base64url').toString();assert.match(content,/To: test@example.net/);if(sent===2)assert.match(content,/ผลตรวจสอบโค้ด:/);return Response.json({id:'mock-message-'+sent});}};
+  let sent=0;const provider={fetch:async(url,options)=>{assert.match(url,/messages\/send$/);sent++;const payload=JSON.parse(options.body);assert.equal(payload.threadId,first.threadId);const content=Buffer.from(payload.raw,'base64url').toString();assert.match(content,/To: test@example.net/);if(sent===2&&changed)assert.match(content,/ผลตรวจสอบโค้ด:/);return Response.json({id:'mock-message-'+sent});}};
   await a.dispatchEmail(env,provider);await a.dispatchEmail(env,provider);assert.equal(sent,2,'one announcement and one final update, without duplicates');
   assert.equal(DB.db.prepare("SELECT count(*) n FROM email_outbox WHERE status='accepted' AND provider_id IS NOT NULL").get().n,2);
 
