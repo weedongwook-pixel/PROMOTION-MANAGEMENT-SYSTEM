@@ -42,7 +42,7 @@
     @media(max-width:600px){.pc-mail-popup .swal2-title{font-size:20px!important;padding:18px!important}.pc-mail-popup .swal2-html-container{padding:16px!important;max-height:63vh}.pc-mail-popup .swal2-actions{padding:12px!important}.pc-mail-popup .swal2-actions button{flex:1;padding:10px}.pc-mail-popup .d-flex input{min-width:0}.pc-mail-popup pre{padding:12px}}
   </style>`;
   function mailDetailsHtml(text){
-    const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
+    const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
     return String(text||'').split('\n').map(line=>{const match=line.match(label);return match?'<strong>'+esc(match[0])+'</strong>'+esc(line.slice(match[0].length)):esc(line);}).join('\n');
   }
   const addresses=value=>String(value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
