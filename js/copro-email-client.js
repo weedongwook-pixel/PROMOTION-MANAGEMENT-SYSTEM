@@ -78,7 +78,13 @@
           if(!ordinary.some(r=>r.emailIntake&&r.emailPending===false))return ordinary;
           await api.enable();
         }
-        const campaigns=await list(),protectedRows=campaigns.flatMap(c=>c.records);
+        const campaigns=await list(),protectedRows=campaigns.flatMap(c=>c.records).map(record=>{
+          const shared=ordinary.find(r=>r.campaign===record.campaign&&r.emailButtonId&&r.emailButtonId===record.emailButtonId);
+          if(!shared)return record;
+          const accounting={accountingId:shared.id};
+          for(const key of ['brand','billingEntity','paymentType','soNo','quota','priceIncVat','priceExcVat','paymentCondition','remark','createdAt','createdBy','updatedAt','updatedBy'])if(shared[key]!==undefined)accounting[key]=shared[key];
+          return {...record,...accounting};
+        });
         return ordinary.filter(r=>!r.emailIntake||!protectedRows.some(p=>p.emailButtonId&&p.emailButtonId===r.emailButtonId)).concat(protectedRows);
       }catch(error){api.lastListError=String(error.message||error);return ordinary;}
     };

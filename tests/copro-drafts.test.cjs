@@ -41,3 +41,9 @@ test('pending list includes saved CoPromo intake without an explicit draft, scop
  await f.api.save('Test',{brand:'Unfinished edit'},null);list=await f.api.list();assert.equal(list.length,1);assert.equal(list[0].record.brand,'Unfinished edit');
  await f.api.recordCoPromo('Test',{},'queued');assert.equal((await f.api.list()).length,0,'already queued mail must not remain actionable');
 });
+test('accounting edits keep source fields current, stamp editor and never queue mail',async()=>{
+ const f=fixture();await f.api.recordCoPromo('Test');const prior=JSON.parse(f.store.get('pc_co_promotions').value)[0];
+ f.setRows([{campaign:'Test',shortName:'Current name',detail:'Current detail',codePromotion:'BD099',emailButtonId:'button-1',submissionBatchId:'batch-1'}]);f.setUser('Editor B');
+ await f.api.saveBusiness('Test',{id:prior.id,emailButtonId:'button-1',brand:'Partner',detail:'tampered',codePromotion:'BAD'});
+ const row=JSON.parse(f.store.get('pc_co_promotions').value)[0];assert.equal(row.brand,'Partner');assert.equal(row.detail,'Current detail');assert.equal(row.codePromotion,'BD099');assert.equal(row.cmposName,'Current name');assert.equal(row.updatedBy,'Editor B');assert.ok(Date.parse(row.updatedAt));assert.equal(row.emailPending,true);assert.equal(row.mailStatus,'not_queued');assert.equal(row.createdBy,'MKT A');
+});

@@ -37,6 +37,22 @@
     await cloud().saveCoPromoRecords(JSON.stringify(items),store?.updatedAt??null);
     return items.filter(r=>r.emailIntake&&r.campaign===campaign&&r.submissionId===submissionId);
   }
+  async function saveBusiness(campaign,record){
+    const rows=await current(campaign),store=await cloud().readCloudKey('pc_co_promotions');
+    const items=store?JSON.parse(store.value):[];let index=items.findIndex(r=>r.id===(record.accountingId||record.id)&&r.campaign===campaign);
+    if(index<0&&record.id)throw Error('ไม่พบรายการ CoPromo กรุณาเปิดงานใหม่');
+    const old=index<0?{id:'CO'+crypto.randomUUID().replace(/-/g,''),campaign,emailButtonId:record.emailButtonId||'',buttonName:record.buttonName||record.cmposName,type:'Co-Promotion',status:'PENDING_INTERFACE',interfaceSetup:0,createdAt:new Date().toISOString(),createdBy:owner()}:items[index],matches=rows.filter(r=>old.emailButtonId?r.emailButtonId===old.emailButtonId:r.shortName===(old.buttonName||old.cmposName));
+    if(!matches.length)throw Error('ไม่พบปุ่มโปรโมชั่นต้นทาง กรุณาตรวจงานต้นฉบับ');
+    if(index<0)index=items.length;
+    const row=matches[0],patch={};
+    for(const key of ['brand','billingEntity','paymentType','soNo','quota','priceIncVat','paymentCondition','remark'])patch[key]=String(record[key]??old[key]??'');
+    items[index]={...old,...patch,codePromotion:row.codePromotion||'',codeItemSet:row.codeItemSet||row.itemPromotion||'',
+      cmposName:row.shortName,buttonName:row.shortName,detail:row.detail||'',promoType:row.typePromotion||row.promoType||'',
+      start:row.start||'',end:row.end||'',periodText:(row.start||'')+' → '+(row.end||''),
+      priceExcVat:Math.round((Number(patch.priceIncVat)||0)/1.07*100)/100,updatedAt:new Date().toISOString(),updatedBy:owner()};
+    await cloud().saveCoPromoRecords(JSON.stringify(items),store?.updatedAt??null);
+    return {status:'success',id:old.id};
+  }
   async function save(campaign,record,existing){
     const rows=await current(campaign),submissionId=batch(rows),state=await read();
     const id=JSON.stringify([campaign,submissionId]);const prior=state.data.items[id];
@@ -106,5 +122,5 @@
       }
     }catch(e){root.textContent=e.message;}
   }
-  window.PC_CoPromoDrafts={save,remove,list,resume,chooseSend,mount,current,recordCoPromo};
+  window.PC_CoPromoDrafts={save,remove,list,resume,chooseSend,mount,current,recordCoPromo,saveBusiness};
 })(window);

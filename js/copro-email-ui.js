@@ -29,6 +29,16 @@
     .pc-mail-popup pre{background:#f6f9f7;border:1px solid #e0e8e2;padding:18px;border-radius:10px;font-size:14px!important;line-height:1.8;max-width:100%;margin-bottom:0}
     .pc-mail-popup pre strong{color:#173d27;font-weight:700}
     .pc-mail-steps{font-size:12px;color:#526258;margin:0 0 18px;letter-spacing:.02em}
+    .pc-mail-compose{width:1120px!important;max-height:calc(100dvh - 32px);display:flex!important;flex-direction:column}
+    .pc-mail-compose .swal2-title{flex:none}
+    .pc-mail-compose .swal2-html-container{max-height:none;min-height:0;flex:1;overflow:auto}
+    .pc-mail-compose .swal2-actions{flex:none}
+    .pc-mail-compose #coproApproved{display:none}
+    .pc-compose-grid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1fr);gap:32px;align-items:start}
+    .pc-compose-message{border-left:1px solid #dce4df;padding-left:28px}
+    .pc-compose-message h3{font-size:16px;margin:0 0 12px;font-weight:700;color:#145c32}
+    .pc-mail-compose .pc-compose-intro{margin:0 0 20px;color:#526258;font-size:14px}
+    @media(max-width:760px){.pc-compose-grid{grid-template-columns:1fr;gap:24px}.pc-compose-message{padding-left:0;border-left:0;border-top:1px solid #dce4df;padding-top:20px}.pc-mail-compose{max-height:calc(100dvh - 16px)}}
     @media(max-width:600px){.pc-mail-popup .swal2-title{font-size:20px!important;padding:18px!important}.pc-mail-popup .swal2-html-container{padding:16px!important;max-height:63vh}.pc-mail-popup .swal2-actions{padding:12px!important}.pc-mail-popup .swal2-actions button{flex:1;padding:10px}.pc-mail-popup .d-flex input{min-width:0}.pc-mail-popup pre{padding:12px}}
   </style>`;
   function mailDetailsHtml(text){
@@ -47,7 +57,8 @@
   const client=()=>window.PC_CoProEmail;
   function error(error){return Swal.fire({icon:'error',title:word('ยังดำเนินการอีเมลไม่ได้','Email not completed'),text:String(error?.message||error)});}
   function recipientAddControls(id,label){
-    return '<p class="small">เพิ่มหลายผู้รับ: พิมพ์ในช่อง '+label+' ด้านบน โดยคั่นด้วยจุลภาค (,) หรือขึ้นบรรทัดใหม่ เช่น <span style="overflow-wrap:anywhere">name1@example.com, name2@example.com</span></p><div class="d-flex gap-2 my-2"><input type="email" id="'+id+'Add" class="form-control" aria-label="อีเมลที่จะเพิ่มใน '+label+'" placeholder="อีเมลผู้รับเพิ่มเติม"><button type="button" id="'+id+'Button" class="btn btn-outline-success" style="white-space:nowrap">เพิ่ม '+label+' ในลูปนี้</button></div><p class="small">เพิ่มทีละคน: กรอกในช่อง “อีเมลผู้รับเพิ่มเติม” แล้วกด “เพิ่ม '+label+' ในลูปนี้” ระบบจะใช้รายชื่อผู้รับนี้เมื่อยืนยันส่งเมลในลูปเดิม</p>';
+    return '<div class="d-flex gap-2 my-2"><input type="email" id="'+id+'Add" class="form-control" aria-label="อีเมลที่จะเพิ่มใน '+label+'" placeholder="อีเมลผู้รับเพิ่มเติม"><button type="button" id="'+id+'Button" class="btn btn-outline-success" style="white-space:nowrap">เพิ่ม '+label+'</button></div><p class="small">เพิ่มผู้รับในช่อง '+label+' ได้หลายคน คั่นด้วย , เช่น name1@example.com, name2@example.com</p>';
+
   }
   function bindRecipientAdd(id){
     const input=document.getElementById(id+'Add'),button=document.getElementById(id+'Button'),target=document.getElementById(id);
@@ -189,7 +200,7 @@
       const recordsFor=c=>options.notificationOnly?[]:c.buttons.map(b=>{
         const identity=JSON.parse(b.source_identity_json);
         const matches=r=>r.emailButtonId? r.emailButtonId===b.button_id : (r.cmposName||r.buttonName)===identity.shortName&&(!r.codePromotion||r.codePromotion===identity.codePromotion);
-        const saved=matches(record)?record:(c.records||[]).find(matches)||savedRecords.find(r=>r.campaign===record.campaign&&matches(r))||{};
+        const saved=matches(record)?record:savedRecords.find(r=>r.campaign===record.campaign&&matches(r))||(c.records||[]).find(matches)||{};
         const result={buttonId:b.button_id,cmposName:identity.shortName,buttonName:identity.shortName};
         for(const [key] of fields)result[key]=String(saved[key]??'').trim();
         return result;
@@ -209,13 +220,13 @@
       while(true){
       let searchRequested=false;
       const choose=await Swal.fire({
-        title:word(newMessage?'เตรียมส่งเมลใหม่':'เตรียมตอบกลับลูปอีเมล','Prepare promotion email'),customClass:{popup:'pc-mail-popup'},
-        html:mailDialogStyle+'<div style="text-align:left"><p class="pc-mail-steps">1 เลือกลูปและผู้รับ → 2 ตรวจรายละเอียด → 3 ยืนยันส่ง</p><p class="small">'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
+        title:word(newMessage?'เตรียมส่งเมลใหม่':'เตรียมตอบกลับลูปอีเมล','Prepare promotion email'),customClass:{popup:'pc-mail-popup pc-mail-compose'},
+        html:mailDialogStyle+'<div style="text-align:left"><p class="pc-compose-intro">ระบุผู้รับและข้อความ แล้วตรวจตัวอย่างก่อนยืนยันส่ง</p><div class="pc-compose-grid"><div><p class="small">'+esc(word('รายละเอียดที่จะส่งเมลจากหน้าแจ้งโปรโมชั่น พร้อมไฟล์แนบต้นฉบับ','Email details from the promotion submission and original attachments.'))+'</p>'+
           '<label for="coproCampaign">'+esc(word('แคมเปญ / เดือน','Campaign / month'))+'</label><select id="coproCampaign" class="form-select mb-3">'+campaigns.map(c=>'<option value="'+esc(c.id)+'">'+esc(record.campaign+' / '+c.month)+'</option>').join('')+'</select>'+
-          '<label for="coproLoop">'+esc(word(newMessage?'หัวข้อเมลใหม่':'ลูปอีเมลที่จะตอบกลับ',newMessage?'New email subject':'Email conversation to reply to'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select><button type="button" id="coproSearchLoop" class="btn btn-outline-success mb-3">ค้นหาลูปเมลจากหัวข้อเดิม</button><p class="small">เลือกลูปที่ตรงกับโปรฯ นี้ หากยังไม่มีในรายการ ให้กด “ค้นหาลูปเมลจากหัวข้อเดิม” แล้วคัดลอกหัวข้ออีเมลเดิมมาค้นหา ตรวจ To/CC ให้ถูกต้องก่อนส่ง</p>'+
+          '<label for="coproLoop">'+esc(word(newMessage?'หัวข้อเมลใหม่':'ลูปอีเมลที่จะตอบกลับ',newMessage?'New email subject':'Email conversation to reply to'))+'</label><select id="coproLoop" class="form-select mb-3">'+policies.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.subject)+'</option>').join('')+'</select><button type="button" id="coproSearchLoop" class="btn btn-outline-success mb-3">ค้นหาลูปเมลจากหัวข้อเดิม</button><p class="small">เลือกลูปเดิม หรือค้นหาด้วยหัวข้ออีเมล แล้วตรวจรายชื่อ To / CC</p>'+
           '<p id="coproApproved" class="small"></p><label for="coproTestTo">To — '+esc(word('ผู้รับ','Recipients'))+'</label><textarea id="coproTestTo" class="form-control mb-3" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestTo','To')+''+
-          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestCc','CC')+'<label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea>'+'<h3 class="h6 mt-3">รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div>',
-        showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('กลับไปแก้ข้อมูล','Back to form'),confirmButtonColor:'#1b5e20',width:760,
+          '<label for="coproTestCc">CC — '+esc(word('เว้นว่างได้','Optional'))+'</label><textarea id="coproTestCc" class="form-control" rows="2" autocomplete="off"></textarea>'+recipientAddControls('coproTestCc','CC')+'<label for="coproAdditionalMessage" class="mt-3">ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)</label><textarea id="coproAdditionalMessage" class="form-control" rows="3" maxlength="4000"></textarea></div><div class="pc-compose-message">'+'<h3>รายละเอียดที่จะส่งเมล</h3><pre id="coproMailDetails" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-weight:400"></pre></div></div></div>',
+        showCancelButton:true,confirmButtonText:word('ตรวจตัวอย่างเมล','Preview email'),cancelButtonText:word('พัก / ปิด','Close'),allowOutsideClick:false,confirmButtonColor:'#1b5e20',width:1120,
         didOpen(){
           if(newMessage){document.querySelectorAll('.pc-mail-popup .small').forEach(el=>{if(el.textContent.includes('ลูปเดิม'))el.textContent=el.textContent.replaceAll('ในลูปเดิม','ตามรายชื่อที่ระบุ');});const search=document.getElementById('coproSearchLoop');search.hidden=true;if(search.nextElementSibling)search.nextElementSibling.hidden=true;document.getElementById('coproLoop').disabled=true;}
           bindRecipientAdd('coproTestTo');bindRecipientAdd('coproTestCc');
@@ -234,7 +245,6 @@
           const campaign=campaigns.find(c=>c.id===document.getElementById('coproCampaign').value),policy=policies.find(p=>p.id===document.getElementById('coproLoop').value),to=addresses(document.getElementById('coproTestTo').value),cc=addresses(document.getElementById('coproTestCc').value);
           if(!to.length){Swal.showValidationMessage(word('กรุณาระบุผู้รับ To','Enter at least one To recipient'));return false;}
           const records=recordsFor(campaign);
-          if(records.some(r=>!r.brand)){Swal.showValidationMessage('ข้อมูลพาร์ทเนอร์ยังไม่ครบ กรุณากลับไปบันทึกข้อมูล CoPromo ของทุกปุ่มก่อน');return false;}
           let selectedPolicy=policy;
           if(policy.newMessage||JSON.stringify({to,cc})!==JSON.stringify(policy.recipients)){
             try{

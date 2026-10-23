@@ -101,7 +101,7 @@
     if(input.notificationOnly!==undefined&&typeof input.notificationOnly!=='boolean')throw Error('email_invalid_record');
     if(!Array.isArray(input.records)||(!input.notificationOnly&&input.records.length!==buttons.length)||!buttons.length)throw Error('email_incomplete_records');
     const seen=new Set(),records=(input.notificationOnly===true?[]:input.records).map(r=>{
-      if(seen.has(r.buttonId)||!buttons.some(b=>b.button_id===r.buttonId)||typeof r.brand!=='string'||!r.brand.trim()||String(r.detail||'').length>8000)throw Error('email_invalid_record');
+      if(seen.has(r.buttonId)||!buttons.some(b=>b.button_id===r.buttonId)||typeof r.brand!=='string'||r.brand.length>8000||String(r.detail||'').length>8000)throw Error('email_invalid_record');
       const saved={buttonId:r.buttonId,brand:r.brand.trim(),detail:String(r.detail||'')};
       // Keep business/accounting data, without exposing it through the public mail template.
       for(const key of ['billingEntity','paymentType','soNo','quota','priceIncVat','paymentCondition','remark','periodText','cmposName','buttonName','promoType']){

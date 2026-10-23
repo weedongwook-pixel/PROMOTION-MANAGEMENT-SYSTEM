@@ -291,7 +291,7 @@
           ? '<button class="rowbtn undo" title="คืนสถานะเป็น Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',0)"><i class="fas fa-rotate-left"></i></button>'
           : '<button class="rowbtn ban" title="ยกเลิก — ทำเครื่องหมายว่าไม่ใช่ Co-Promotion" onclick="cpToggleCopro(\'' + r.id + '\',1)"><i class="fas fa-ban"></i></button>') : '') +
         (canDelete() ? '<button class="rowbtn del" title="ลบ" onclick="cpDel(\'' + r.id + '\')"><i class="fas fa-trash"></i></button>' : '');
-      if(r.emailIntake)acts=canEdit(r)?'<button class="btn btn-sm btn-outline-success" onclick="cpEdit(\''+r.id+'\')">'+(r.emailPending?'ทำต่อ / ส่งเมล':'ตรวจงาน')+'</button>':'';
+      if(r.emailIntake)acts=canEdit(r)?'<button class="btn btn-sm btn-outline-success" onclick="cpEdit(\''+r.id+'\')">'+'แก้ไขข้อมูล CoPromo'+'</button>':'';
       return '<tr>' +
         '<td>' + (i + 1) + '</td>' +
         '<td>' + types + '</td>' +
@@ -309,7 +309,7 @@
         '<td class="desc">' + esc(r.paymentCondition || '-') + '</td>' +
         '<td class="desc">' + esc(r.remark || '-') + '</td>' +
         '<td>' + st + '</td>' +
-        '<td class="muted" style="white-space:nowrap;font-size:.72rem">' + ((r.updatedAt || r.createdAt) ? '<i class="fas fa-pen"></i> ' + esc(String(r.updatedAt || r.createdAt || '').slice(0, 10)) + ((r.updatedBy || r.createdBy) ? '<br>' + esc(r.updatedBy || r.createdBy) : '') : '-') + '</td>' +
+        '<td class="muted" style="white-space:nowrap;font-size:.72rem">' + ((r.updatedAt || r.createdAt) ? '<i class="fas fa-pen"></i> ' + esc(new Date(r.updatedAt || r.createdAt).toLocaleString('th-TH')) + ((r.updatedBy || r.createdBy) ? '<br>' + esc(r.updatedBy || r.createdBy) : '') : '-') + '</td>' +
         '<td style="white-space:nowrap">' + (acts || '<span class="muted">—</span>') + '</td>' +
         '</tr>';
     }).join('');
@@ -334,17 +334,7 @@
   window.cpEdit = function (id) {
     var r = ROWS.find(function (x) { return x.id === id; });
     if (!r || !window.PC_CoPromo) return;
-    if(r.emailIntake){
-      if(!r.emailPending){Swal.fire({icon:'info',title:'อีเมลเข้าคิวแล้ว',text:'เปิดตั้งค่าอีเมลเพื่อตรวจสถานะการส่ง ไม่ต้องส่งโปรฯ ซ้ำ'});return;}
-      window.PC_CoPromoDrafts.list().then(function(items){
-        var saved=items.find(d=>d.campaign===r.campaign&&d.submissionId===r.submissionId);
-        if(saved)return window.PC_CoPromoDrafts.chooseSend(saved);
-        var record=Object.assign({},r);delete record.id;
-        return window.PC_CoPromo.openForm(r.campaign,record,{requireEmail:true,selection:record});
-      }).then(cpLoad).catch(e=>Swal.fire({icon:'error',title:'เปิดงานต่อไม่ได้',text:e.message}));
-      return;
-    }
-    window.PC_CoPromo.openForm(r.campaign, r).then(function () { cpLoad(); });
+    window.PC_CoPromo.openForm(r.campaign, r).then(function () { cpLoad(); }).catch(e=>Swal.fire({icon:'error',title:'เปิดข้อมูล CoPromo ไม่สำเร็จ',text:e.message}));
   };
   window.cpToggleCopro = function (id, val) {
     var r = ROWS.find(function (x) { return x.id === id; }); if (!r) return;

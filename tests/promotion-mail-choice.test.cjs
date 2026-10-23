@@ -5,3 +5,7 @@ test('Item Set without E-Voucher asks CoPromo, then ordinary send/no-send withou
   const result=await c.PC_CoPromo.promptAfterSubmit(['Item Coupon campaign'],{source:'itemset',hasEVoucher:false});assert.equal(dialogs,2);assert.equal(mail,send?1:0);assert.equal(decisions,send?0:1);assert.equal(result.coPromo,false);
  }
 });
+test('CoPromo Yes saves intake then opens mail directly without a partner form',async()=>{
+ const calls=[];const c={Swal:{fire:async()=>({isConfirmed:true})},PC_CoPromoDrafts:{recordCoPromo:async(name,record,status)=>calls.push(['intake',name,status])},PC_CoProEmailUI:{save:async(record,options)=>{calls.push(['mail',record.campaign,options.notificationOnly]);return {mailStatus:'queued'};}}};c.window=c;vm.runInNewContext(fs.readFileSync('js/co-promo.js','utf8'),c);
+ const result=await c.PC_CoPromo.promptAfterSubmit(['New partner']);assert.equal(result.completed,true);assert.deepEqual(calls,[['intake','New partner',undefined],['mail','New partner',undefined],['intake','New partner','queued']]);
+});

@@ -54,3 +54,10 @@ test('new tab must verify email context before closing a mailed CoPromo task',as
  vm.runInNewContext(fs.readFileSync('js/copro-email-client.js','utf8'),c);
  await assert.rejects(w.PC_API.saveSettlementBatch('2026-10',[{campaign:'CoPromo'}]),/expired/);assert.deepEqual(calls,[]);
 });
+test('mailed CoPromo retains current shared accounting edits without replacing protected Interface identity',async()=>{
+ const shared={id:'intake',campaign:'Test',emailIntake:true,emailPending:false,emailButtonId:'button',brand:'New partner',updatedBy:'Editor',updatedAt:'2026-10-23T00:00:00Z',interfaceSetup:0};
+ const w={PC_EmailAuth:{acquireToken:async()=> 'verified'},PC_CLOUD:{readCloudKey:async()=>({value:JSON.stringify([shared])})},PC_API:{getCoPromotions:async()=>[]}};
+ const c={window:w,sessionStorage:{getItem:()=> 'on'},AbortSignal,fetch:async url=>Response.json(url==='/email/capabilities'?{coproEnabled:true}:{items:[{records:[{id:'protected',campaign:'Test',emailButtonId:'button',emailCampaignId:'campaign',emailVersion:2,interfaceSetup:1,brand:'Old partner'}]}]})};
+ vm.runInNewContext(fs.readFileSync('js/copro-email-client.js','utf8'),c);
+ const rows=await w.PC_API.getCoPromotions();assert.equal(rows.length,1);assert.equal(rows[0].brand,'New partner');assert.equal(rows[0].id,'protected');assert.equal(rows[0].accountingId,'intake');assert.equal(rows[0].interfaceSetup,1);assert.equal(rows[0].updatedBy,'Editor');
+});

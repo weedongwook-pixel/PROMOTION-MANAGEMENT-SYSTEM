@@ -256,3 +256,10 @@ test('new mail subject comes from the owned campaign and MIME has no reply routi
  assert.equal(message.threadId,undefined);const mime=Buffer.from(message.raw,'base64url').toString();assert.doesNotMatch(mime,/In-Reply-To:|References:/);
  await assert.rejects(a.publishThread(actor,{newMessage:true,mode:'production',campaignId:'other',recipients:policy.recipients},env),/email_campaign_denied/);DB.db.close();
 });
+test('CoPromo mail can be sent before accounting partner fields are filled',async()=>{
+ const {a,DB,env,draft}=await fixture();draft.records.forEach(r=>r.brand='');
+ draft.previewHash=(await a.previewCoPromo(actor,draft,env)).previewHash;
+ await a.commitCoPromo(actor,draft,env);
+ assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_copro_records').get().n,2);
+ assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,1);DB.db.close();
+});

@@ -52,19 +52,30 @@
   function openFormsSequential(list) {
     if (!list.length) return Promise.resolve(true);
     var c = list.shift();
-    return openForm(c, null, { requireEmail: true }).then(async function (saved) {
-      if (saved === true) return openFormsSequential(list);
-      if (saved && saved.draftSaved && window.PC_CoPromoDrafts) {
-        for (const pending of list) await window.PC_CoPromoDrafts.save(pending, {}, null);
-      }
-      return saved;
+    return prepareMail(c).then(function (saved) {
+      return saved === true ? openFormsSequential(list) : saved;
     });
+  }
+  async function prepareMail(campaign, options) {
+    options = options || {};
+    if (!window.PC_CoProEmailUI) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาเปิดเว็บใหม่');
+    const result = await window.PC_CoProEmailUI.save({campaign}, {mode:'production'});
+    if (!result) return {draftSaved:true}; // Intake remains in My Pending.
+    if (!['queued','accepted'].includes(result.mailStatus)) throw Error('ยังไม่ได้รับการยืนยันคำขอส่งเมล กรุณาตรวจสถานะก่อนทำซ้ำ');
+    try {
+      await window.PC_CoPromoDrafts.recordCoPromo(campaign, {}, 'queued');
+      if (options.draft) await window.PC_CoPromoDrafts.remove(options.draft);
+    } catch(e) {
+      await Swal.fire({icon:'warning',title:'บันทึกคำขอส่งเมลแล้ว',text:'ไม่ต้องส่งซ้ำ แต่สถานะงานค้างยังอัปเดตไม่สำเร็จ: '+e.message});
+    }
+    return true;
   }
 
   async function openForm(campaign, existing, options) {
     options = options || {};
+    if (options.requireEmail) return prepareMail(campaign, options);
     var ctx;
-    if (options.requireEmail && window.PC_CLOUD && window.PC_CLOUD.readCampaignRows) {
+    if (window.PC_CLOUD && window.PC_CLOUD.readCampaignRows) {
       const rows = options.cloudRows || await window.PC_CLOUD.readCampaignRows(campaign);
       if (!rows.length) throw Error('ไม่พบโปรฯ ต้นฉบับบน Cloud กรุณาตรวจประวัติ');
       const seen = new Set(), buttons = [];
@@ -76,6 +87,11 @@
       }
       ctx = {campaign, start:rows[0].start, end:rows[0].end, typePromotion:rows[0].typePromotion||rows[0].promoType, buttons};
     } else ctx = await run("getCoPromoContext", campaign);
+    if(existing){
+      const matches=(ctx.buttons||[]).filter(b=>existing.emailButtonId ? b.emailButtonId===existing.emailButtonId : b.buttonName===(existing.buttonName||existing.cmposName));
+      if(matches.length!==1)throw Error('ไม่พบปุ่มโปรโมชั่นต้นทางที่ตรงกัน กรุณาตรวจงานต้นฉบับ');
+      const b=matches[0];existing={...existing,codePromotion:b.codePromotion||'',codeItemSet:b.codeItemSet||'',cmposName:b.buttonName,buttonName:b.buttonName,detail:b.detail||'',promoType:b.typePromotion||ctx.typePromotion,periodText:periodText(ctx)};
+    }
     return showFormPage(ctx || {campaign,buttons:[]}, existing || {}, options);
   }
 
@@ -83,7 +99,7 @@
   function showFormPage(ctx, ex, options) {
     ex = ex || {};
     var requireEmail = !!options.requireEmail;
-    var saveLabel = requireEmail ? 'เลือกลูปและตรวจเมล' : 'บันทึก & แจ้ง ACC';
+    var saveLabel = requireEmail ? 'เลือกลูปและตรวจเมล' : 'บันทึกข้อมูล CoPromo';
     var editing = !!ex.id;
     var btns = ctx.buttons || [];
     var resumeIndex = 0;
@@ -137,7 +153,7 @@
       '#pcCoproPage label{display:block;font-size:.78rem;font-weight:700;color:#48505a;margin:14px 0 4px}' +
       '#pcCoproPage input,#pcCoproPage select,#pcCoproPage textarea{width:100%;border:1.5px solid #d3d8de;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.92rem;background:#fff;color:#222}' +
       '#pcCoproPage input:focus,#pcCoproPage select:focus,#pcCoproPage textarea:focus{outline:none;border-color:#2e934a}' +
-      '#pcCoproPage input[readonly]{background:#f4f6f8;color:#5a626b}' +
+      '#pcCoproPage input[readonly],#pcCoproPage textarea[readonly]{background:#f4f6f8;color:#5a626b}' +
       '#pcCoproPage textarea{resize:vertical;min-height:60px}' +
       '#pcCoproPage .cpf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
       '#pcCoproPage .cpf-chip{display:inline-flex;align-items:center;gap:7px;background:#f1f4f7;border-radius:22px;padding:8px 16px;font-size:.86rem;font-weight:600;margin:0 8px 0 0;cursor:pointer}' +
@@ -160,17 +176,18 @@
       '<div><h2><i class="fas fa-handshake"></i> ' + (editing ? "แก้ไข " : "") + "Co-Promotion</h2>" +
       '<div class="sub">' + esc(ctx.campaign) + " · แจ้งทีมบัญชี (ACC) เพื่อตั้งค่า ERP</div></div></div>" +
       '<div class="cpf-scroll"><div class="cpf-card">' +
-      '<div class="cpf-sec">โค้ด & ประเภท</div>' +
+      '<p class="cpf-note">แก้ไขล่าสุด: ' + esc(ex.updatedAt ? new Date(ex.updatedAt).toLocaleString('th-TH') : '—') + ' · โดย ' + esc(ex.updatedBy || ex.createdBy || '—') + '</p>' +
+      '<div class="cpf-sec">ข้อมูลโปรโมชั่น (อ่านอย่างเดียว)</div>' +
       codeBlock +
       '<label>Type Promotion (ผูกจากระบบ · แก้ไม่ได้)</label><input id="cpTypePromo" readonly value="' + esc(ex.promoType || ctx.typePromotion || "") + '">' +
       '<div class="cpf-note"><i class="fas fa-circle-info"></i> รายการนี้เป็น <b>Co-Promotion</b> — เรียกเก็บเงินจากพาร์ทเนอร์ที่มาร่วมโปร (บริษัทข้างนอก)</div>' +
       '<div class="cpf-sec">ข้อมูลพาร์ทเนอร์ (MKT กรอก)</div>' +
-      '<label>CMPOS Name (ชื่อปุ่ม)</label><input id="cpName" value="' + esc(ex.cmposName || "") + '">' +
+      '<label>CMPOS Name (ชื่อปุ่ม)</label><input id="cpName" readonly value="' + esc(ex.cmposName || "") + '">' +
       '<div class="cpf-grid">' +
       '<div><label>Brand / พาร์ทเนอร์</label><input id="cpBrand" value="' + esc(ex.brand || "") + '" placeholder="เช่น Samsung, KTC"></div>' +
       '<div><label>เรียกเก็บในนาม (บริษัท)</label><input id="cpBill" value="' + esc(ex.billingEntity || "") + '" placeholder="ชื่อนิติบุคคล"></div>' +
       "</div>" +
-      '<label>MKT Description (รายละเอียดโปรโมชั่น)</label><textarea id="cpDesc">' + esc(ex.detail || "") + "</textarea>" +
+      '<label>MKT Description (รายละเอียดโปรโมชั่น)</label><textarea id="cpDesc" readonly>' + esc(ex.detail || "") + "</textarea>" +
       '<label>Campaign Period (ช่วงเวลา)</label><input id="cpPeriod" readonly value="' + esc(per) + '">' +
       '<div class="cpf-note"><i class="fas fa-circle-info"></i> วันที่ดึงจากโปรฯ อัตโนมัติ — ต้องการเปลี่ยน ให้ไป "ขยาย/ยกเลิก" ที่หน้าศูนย์ติดตามงาน แล้วระบบจะอัปเดตที่นี่ให้เอง</div>' +
       '<div class="cpf-sec">การเรียกเก็บ / ERP</div>' +
@@ -254,7 +271,7 @@
         if (!g("cpBrand")) { errEl.textContent = "กรอก Brand / พาร์ทเนอร์"; errEl.style.display = "block"; return; }
         errEl.style.display = "none";
         var rec = {
-          emailButtonId:selectedButtonId, id: ex.id || undefined, campaign: ctx.campaign, type: ex.type || "Co-Promotion",
+          emailButtonId:selectedButtonId, id: ex.id || undefined, accountingId:ex.accountingId, campaign: ctx.campaign, type: ex.type || "Co-Promotion",
           codePromotion: editing ? ex.codePromotion : cP.value, codeItemSet: editing ? ex.codeItemSet : cI.value,
           cmposName: g("cpName"), buttonName: g("cpName"), brand: g("cpBrand"), billingEntity: g("cpBill"),
           detail: g("cpDesc"), periodText: g("cpPeriod"), start: ctx.start || ex.start || "", end: ctx.end || ex.end || "",
@@ -263,7 +280,7 @@
           promoType: g("cpTypePromo") || ctx.typePromotion || ex.promoType || "", createdBy: ex.createdBy || userName(), createdRole: ex.createdRole || role(), updatedBy: userName(),
         };
         var btn = document.getElementById("cpfSave"); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-        var useEmail=requireEmail || (window.PC_CoProEmail&&window.PC_CoProEmail.active());
+        var useEmail=false;
         var operation=Promise.resolve().then(async function () {
           if (requireEmail) {
             await window.PC_CoPromoDrafts.recordCoPromo(ctx.campaign,rec);
@@ -272,7 +289,7 @@
             if (!caps.coproEnabled || !caps.sendingEnabled) throw Error('ยังไม่ได้เปิดบริการส่งอีเมลหรือเชื่อมบัญชีผู้ส่ง กรุณาติดต่อผู้ดูแล');
             if (!window.PC_CoProEmail.active()) await window.PC_CoProEmail.enable();
           }
-          return useEmail ? window.PC_CoProEmailUI.save(rec, requireEmail ? {mode:'production'} : {}) : run("saveCoPromotion", rec);
+          return window.PC_CoPromoDrafts.saveBusiness(ctx.campaign, rec);
         });
         operation.then(async function (result) {
           if(!result){btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> ' + saveLabel;return;}
@@ -289,7 +306,7 @@
           dirty=false;
           window.removeEventListener('beforeunload', beforeLeave);
           host.remove();
-          if (window.Swal) await Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:useEmail?'บันทึกแล้ว · อีเมลรายละเอียดอยู่ในคิวส่ง':'บันทึกแล้ว · รอ IT ยืนยัน Interface ERP', timer: 2600, showConfirmButton: false });
+          if (window.Swal) await Swal.fire({ icon: "success", title: (editing ? "อัปเดต" : "บันทึก") + " Co-Promotion แล้ว", text:'บันทึกข้อมูลพาร์ทเนอร์และการเรียกเก็บบน Cloud แล้ว', timer: 2600, showConfirmButton: false });
           resolve(true);
         }).catch(function (e) {
           btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> ' + saveLabel;
