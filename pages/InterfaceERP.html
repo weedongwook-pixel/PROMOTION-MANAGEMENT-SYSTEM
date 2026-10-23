@@ -131,7 +131,7 @@
       if (!res.isConfirmed) return;
       run2('confirmErpInterface', id, uname()).then(function (result) {
         if(!result||result.status!=='success')throw new Error(result&&result.message||'ระบบยังไม่ยืนยันการบันทึก Interface');
-        var notice=result.mailStatus==='accepted'?'Gmail รับอีเมลแล้ว':result.mailStatus==='queued'?'บันทึกแล้ว · อีเมลยืนยันอยู่ในคิวส่ง':result.mailStatus==='waiting_for_both'?'บันทึกแล้ว · รอ IT ขึ้นปุ่มครบก่อนส่งอีเมล':'บันทึก Interface แล้ว · ยังไม่ยืนยันการส่งอีเมล';
+        var notice=result.mailStatus==='accepted'?'ส่งอีเมลสำเร็จ':result.mailStatus==='queued'?'บันทึกแล้ว · อีเมลยืนยันอยู่ในคิวส่ง':result.mailStatus==='waiting_for_both'?'บันทึกแล้ว · รอขึ้นปุ่มและ Interface ให้ครบทุกปุ่มก่อนส่งอีเมล':'บันทึก Interface แล้ว · ยังไม่ยืนยันการส่งอีเมล';
         Swal.fire({ icon: 'success', title: 'ยืนยัน Interface แล้ว', text:notice, timer: 3000, showConfirmButton: false });
         ieLoad();
       }).catch(function(error){

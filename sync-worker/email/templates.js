@@ -27,7 +27,7 @@
       if(snapshot.milestone==='submitted'&&!snapshot.notificationOnly)lines.push('หมายเหตุ: รหัสนี้จองจากระบบ สามารถนำไปใช้งานต่อได้ ฝ่าย IT จะแจ้งยืนยันรหัสล่าสุดและผลตรวจสอบการเปลี่ยนแปลงทางอีเมลอีกครั้ง เมื่อบันทึกขึ้นปุ่มและทำ Interface ครบ');
       if(snapshot.milestone==='it_interface_complete'){
         const review=b.codeReview;
-        lines.push('ผลตรวจสอบโค้ด: '+(review?.status==='changed'?'เปลี่ยนจาก '+review.previous+' เป็น '+review.current:review?.status==='unchanged'?'ใช้รหัสเดิม '+review.current:'ยืนยันรหัสล่าสุด '+String(b.codePromotion||'-')+' · ไม่มีข้อมูลเพียงพอสำหรับเปรียบเทียบกับเมลครั้งแรก'));
+        lines.push('ผลตรวจสอบโค้ด: '+(review?.status==='changed'?'Code Promotion มีการเปลี่ยนแปลงแก้ไข จาก '+review.previous+' เป็น '+review.current+' · กรุณาใช้รหัส '+review.current:review?.status==='unchanged'?'ใช้รหัสเดิม '+review.current:'ยืนยันรหัสล่าสุด '+String(b.codePromotion||'-')+' · ไม่มีข้อมูลเพียงพอสำหรับเปรียบเทียบกับเมลครั้งแรก'));
       }
       lines.push('ชื่อปุ่ม: '+String(b.name||'-'));
       lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));

@@ -303,7 +303,7 @@ test('IT completion emails the same approved loop once with reserved-versus-fina
   const rows=DB.db.prepare('SELECT snapshot_json FROM email_outbox ORDER BY created_at').all();assert.equal(rows.length,2);
   const first=JSON.parse(rows[0].snapshot_json),last=JSON.parse(rows[1].snapshot_json);
   assert.equal(last.threadId,first.threadId);assert.equal(last.rfcMessageId,first.rfcMessageId);assert.deepEqual(last.recipients,first.recipients);
-  const mail=a.renderCoProEmail(last);assert.match(mail.text,changed?/ผลตรวจสอบโค้ด: เปลี่ยนจาก IC001 เป็น IC999/:/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC001/);
+  const mail=a.renderCoProEmail(last);assert.match(mail.text,changed?/ผลตรวจสอบโค้ด: Code Promotion มีการเปลี่ยนแปลงแก้ไข จาก IC001 เป็น IC999 · กรุณาใช้รหัส IC999/:/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC001/);
   assert.match(mail.text,/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC002/);
   const mime=Buffer.from(a.buildReply(last).raw,'base64url').toString();assert.match(mime,/In-Reply-To: <m1@example.com>/);assert.match(mime,/To: test@example.net/);
   Object.assign(env,{EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:'true'});
