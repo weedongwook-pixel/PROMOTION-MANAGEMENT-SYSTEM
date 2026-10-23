@@ -241,3 +241,18 @@ test('shared history requires provider confirmation and excludes ordinary promot
  DB.db.prepare("UPDATE email_outbox SET provider_id='gmail-message-id'").run();
  result=await a.sharedMailHistory(env);assert.equal(result.items.find(i=>i.campaign==='UOB test'&&i.kind==='submitted').status,'accepted');DB.db.close();
 });
+
+test('ordinary promotion email queues without creating accounting CoPromo records',async()=>{
+ const {a,DB,env,draft}=await fixture();draft.notificationOnly=true;draft.records=[];
+ const preview=await a.previewCoPromo(actor,draft,env);assert.match(preview.text,/แจ้งรายละเอียดโปรโมชั่น/);draft.previewHash=preview.previewHash;
+ await a.commitCoPromo(actor,draft,env);assert.equal(DB.db.prepare('SELECT count(*) n FROM email_copro_records').get().n,0);
+ assert.equal(DB.db.prepare('SELECT count(*) n FROM email_outbox').get().n,1);DB.db.close();
+});
+test('new mail subject comes from the owned campaign and MIME has no reply routing',async()=>{
+ const {a,DB,env,c}=await fixture();grant(DB,actor,'manage');env.EMAIL_AUTH_MODE='gmail_owner';a.isGmailOwner=()=>true;
+ const policy=await a.publishThread(actor,{newMessage:true,mode:'production',campaignId:c.id,subject:'Injected subject',recipients:{to:['person@example.com'],cc:[]}},env);
+ assert.equal(policy.subject,'แจ้งรายละเอียด UOB test');assert.equal(policy.newMessage,true);
+ const message=a.buildReply({newMessage:true,subject:policy.subject,recipients:policy.recipients,milestone:'submitted',details:{campaign:'UOB test'}});
+ assert.equal(message.threadId,undefined);const mime=Buffer.from(message.raw,'base64url').toString();assert.doesNotMatch(mime,/In-Reply-To:|References:/);
+ await assert.rejects(a.publishThread(actor,{newMessage:true,mode:'production',campaignId:'other',recipients:policy.recipients},env),/email_campaign_denied/);DB.db.close();
+});

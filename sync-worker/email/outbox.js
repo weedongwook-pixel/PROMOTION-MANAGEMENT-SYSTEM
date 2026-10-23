@@ -33,6 +33,7 @@
         if(snapshot.attachments!==undefined){const attachments=await api.readEmailAttachments(source.block.m[c.month],env,snapshot.attachments);snapshot.attachments=attachments.files;}
         const mode=api.emailThreadMode(t);
         if((snapshot.deliveryMode||'test')!==mode||(mode==='production'?env.EMAIL_SEND_ENABLED:env.EMAIL_TEST_SEND_ENABLED)!=='true')throw Error();
+        if(Boolean(snapshot.newMessage)!==t.message_id.startsWith('new:'))throw Error();
         if(snapshot.threadId!==t.thread_id||snapshot.rfcMessageId!==t.rfc_message_id||snapshot.subject!==t.subject||JSON.stringify(snapshot.references)!==t.references_json||JSON.stringify(api.emailRecipients(snapshot.recipients))!==b.recipients_json||JSON.stringify({to:JSON.parse(t.to_json),cc:JSON.parse(t.cc_json)})!==b.recipients_json)throw Error();
         if(snapshot.milestone==='it_interface_complete'){
           const pending=await statement(env,'SELECT COUNT(*) n FROM email_campaign_buttons b LEFT JOIN email_copro_records r ON b.campaign_id=r.campaign_id AND b.button_id=r.button_id WHERE b.campaign_id=? AND b.cancelled=0 AND (b.it_done=0 OR COALESCE(r.interface_done,0)=0)',c.id).first();
@@ -53,8 +54,10 @@
         if(!current||current.generation!==connection.generation)throw Error();
       }catch(_){await update('held','connection_unavailable');counts.held++;continue;}
       try{
+        if(!thread.message_id.startsWith('new:')){
         const original=await api.gmailMessage(thread.message_id,token,deps);
         if(original.messageId!==thread.message_id||original.threadId!==thread.thread_id||original.headers['message-id']!==thread.rfc_message_id||original.headers.subject!==thread.subject||String(original.headers.references||'').trim().split(/\s+/).filter(Boolean).join(' ')!==JSON.parse(thread.references_json).join(' '))throw Error();
+        }else if(!snapshot.newMessage||thread.thread_id||thread.rfc_message_id)throw Error();
         // Refresh and Gmail reads may take seconds. Honour changes made during either wait.
         await validate();
       }catch(_){await update('held','approval_or_target_changed');counts.held++;continue;}

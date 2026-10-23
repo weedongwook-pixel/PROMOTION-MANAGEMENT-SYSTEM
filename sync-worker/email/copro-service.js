@@ -98,8 +98,9 @@
     const recipients=api.emailRecipients(input.recipients),approved={to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)};
     if(JSON.stringify(recipients)!==JSON.stringify(approved))throw Error('email_unapproved_recipients');
     const buttons=(await statement(env,'SELECT * FROM email_campaign_buttons WHERE campaign_id=? AND cancelled=0',c.id).all()).results;
-    if(!Array.isArray(input.records)||input.records.length!==buttons.length||!buttons.length)throw Error('email_incomplete_records');
-    const seen=new Set(),records=input.records.map(r=>{
+    if(input.notificationOnly!==undefined&&typeof input.notificationOnly!=='boolean')throw Error('email_invalid_record');
+    if(!Array.isArray(input.records)||(!input.notificationOnly&&input.records.length!==buttons.length)||!buttons.length)throw Error('email_incomplete_records');
+    const seen=new Set(),records=(input.notificationOnly===true?[]:input.records).map(r=>{
       if(seen.has(r.buttonId)||!buttons.some(b=>b.button_id===r.buttonId)||typeof r.brand!=='string'||!r.brand.trim()||String(r.detail||'').length>8000)throw Error('email_invalid_record');
       const saved={buttonId:r.buttonId,brand:r.brand.trim(),detail:String(r.detail||'')};
       // Keep business/accounting data, without exposing it through the public mail template.
@@ -110,11 +111,11 @@
     }).sort((a,b)=>a.buttonId.localeCompare(b.buttonId));
     const attachmentData=await api.readEmailAttachments(current.block.m[c.month],env);
     const message=additionalMessage(input);
-    const contentHash=await api.hash(JSON.stringify({...(message?{additionalMessage:message}:{}),source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
+    const contentHash=await api.hash(JSON.stringify({...(input.notificationOnly===true?{notificationOnly:true}:{}),...(message?{additionalMessage:message}:{}),source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
     return {c,thread,recipients,records,contentHash,message,attachmentData,sourceVersion:current.row.updated_at,current};
   }
-  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({milestone:'submitted',details,attachments:d.attachmentData.manifest,additionalMessage:d.message}).text,recipients:d.recipients,subject:d.thread.subject};};
-  function snapshot(c,t,recipients,milestone,rows,records,attachments,message){return {...(message?{additionalMessage:message}:{}),attachments,deliveryMode:api.emailThreadMode(t),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
+  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({milestone:'submitted',notificationOnly:input.notificationOnly===true,details,attachments:d.attachmentData.manifest,additionalMessage:d.message}).text,recipients:d.recipients,subject:d.thread.subject};};
+  function snapshot(c,t,recipients,milestone,rows,records,attachments,message){return {...(message?{additionalMessage:message}:{}),attachments,deliveryMode:api.emailThreadMode(t),newMessage:t.message_id.startsWith('new:'),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }
@@ -158,11 +159,12 @@
   // Read-only projection for the shared promotion history. No mailbox contents,
   // recipients, policies, credentials, or send capabilities are exposed.
   api.sharedMailHistory=async function(env){
-    const rows=(await env.DB.prepare("SELECT c.campaign_key,c.month,o.event_key,o.status,CASE WHEN o.provider_id IS NOT NULL AND o.provider_id<>'' THEN 1 ELSE 0 END AS confirmed,o.sanitized_error,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id ORDER BY o.created_at DESC").all()).results;
+    const rows=(await env.DB.prepare("SELECT c.campaign_key,c.month,o.event_key,o.status,CASE WHEN o.provider_id IS NOT NULL AND o.provider_id<>'' THEN 1 ELSE 0 END AS confirmed,o.sanitized_error,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id WHERE o.id IS NOT NULL ORDER BY o.created_at DESC").all()).results;
     const items=rows.map(r=>({campaign:decodeURIComponent(r.campaign_key.slice(10)),month:r.month,eventKey:r.event_key||'',kind:r.event_key?.includes(':revision:')?'promotion_edited':r.event_key?.endsWith(':it_interface_complete')?'it_interface_complete':'submitted',status:r.status==='accepted'&&!r.confirmed?'needs_verification':r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null}));
     const stages=(await env.DB.prepare("SELECT c.campaign_key,c.month,COUNT(b.button_id) AS total,SUM(CASE WHEN r.interface_done=1 THEN 1 ELSE 0 END) AS done FROM email_campaigns c LEFT JOIN email_campaign_buttons b ON b.campaign_id=c.id AND b.cancelled=0 LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id GROUP BY c.id").all()).results;
     for(const r of stages){
       const campaign=decodeURIComponent(r.campaign_key.slice(10)),interfaceStatus=r.total>0&&r.done===r.total?'interface_done':'waiting';
+      if(!items.some(i=>i.campaign===campaign&&i.month===r.month))continue;
       const existing=items.filter(i=>i.campaign===campaign&&i.month===r.month&&i.kind==='it_interface_complete');
       if(existing.length)existing.forEach(i=>i.interfaceStatus=interfaceStatus);
       else items.push({campaign,month:r.month,kind:'it_interface_complete',status:interfaceStatus,interfaceStatus,at:null});
@@ -199,7 +201,7 @@
       statements.push(statement(env,'UPDATE email_campaign_buttons SET source_identity_json=?,it_done=?,it_by=?,it_at=? WHERE campaign_id=? AND button_id=?',identity,done?1:0,done?'cloud-before-binding':null,done?Date.now():null,c.id,buttonId),...guard(env));
     }
     for(const r of records)statements.push(statement(env,'INSERT INTO email_copro_records(id,campaign_id,button_id,record_json) VALUES (?,?,?,?)',crypto.randomUUID(),c.id,r.buttonId,JSON.stringify(r)));
-    statements.push(queued(env,c,1,'submitted',snapshot(c,thread,recipients,'submitted',JSON.parse(c.source_json),records,d.attachmentData.manifest,d.message)),audit(env,c.id,actor,'submitted'));
+    statements.push(queued(env,c,1,'submitted',{...snapshot(c,thread,recipients,'submitted',JSON.parse(c.source_json),records,d.attachmentData.manifest,d.message),notificationOnly:input.notificationOnly===true}),audit(env,c.id,actor,'submitted'));
     await env.DB.batch(statements);return {saved:true,mailStatus:'queued',campaignId:c.id,version:c.version+1};
   };
   function fileGuard(env,version){return [statement(env,"INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM promo_store WHERE k='pc_promo_files' AND updated_at=?) THEN 1 ELSE 0 END",version),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];}

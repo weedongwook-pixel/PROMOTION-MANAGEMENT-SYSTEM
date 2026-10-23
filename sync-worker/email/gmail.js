@@ -33,15 +33,15 @@
     return {messageId:m.id,threadId:m.threadId,headers};
   };
   api.buildReply=function(snapshot){
-    const recipients=api.emailRecipients(snapshot.recipients),subject=api.emailHeader(snapshot.subject),original=api.emailHeader(snapshot.rfcMessageId);
+    const recipients=api.emailRecipients(snapshot.recipients),subject=api.emailHeader(snapshot.subject),original=snapshot.newMessage?'':api.emailHeader(snapshot.rfcMessageId);
     const reference=x=>{api.emailHeader(x);if(!/^<[^\s<>]+@[^\s<>]+>$/.test(x))throw Error('email_invalid_reference');return x;};
-    reference(original);
+    if(!snapshot.newMessage)reference(original);
     const refs=[...new Set([...(snapshot.references||[]).map(reference),original])];
     if(refs.join(' ').length>900)throw Error('email_invalid_reference');
     const utf8=value=>{const bytes=new TextEncoder().encode(value);let binary='';for(let offset=0;offset<bytes.length;offset+=8192)binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192));return btoa(binary);};
     const content=api.renderCoProEmail(snapshot),boundary='pc_'+crypto.randomUUID().replace(/-/g,'');
     const headers=['From: Potato Promotion Mail <it@rocks-foods.com>','To: '+recipients.to.join(', '),...(recipients.cc.length?['Cc: '+recipients.cc.join(', ')]:[]),
-      'Subject: =?UTF-8?B?'+utf8(subject)+'?=','In-Reply-To: '+original,'References: '+refs.join(' '),'MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"'];
+      'Subject: =?UTF-8?B?'+utf8(subject)+'?=',...(snapshot.newMessage?[]:['In-Reply-To: '+original,'References: '+refs.join(' ')]),'MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"'];
     const part=(type,body)=>'--'+boundary+'\r\nContent-Type: '+type+'; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+body+'\r\n';
     let mime=headers.join('\r\n')+'\r\n\r\n'+part('text/plain',content.text)+part('text/html',content.html)+'--'+boundary+'--\r\n';
     if(snapshot.attachments?.length){
@@ -58,7 +58,7 @@
       }
       mime+='--'+mixed+'--\r\n';
     }
-    return {raw:utf8(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),threadId:api.emailHeader(snapshot.threadId)};
+    return {raw:utf8(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),...(snapshot.newMessage?{}:{threadId:api.emailHeader(snapshot.threadId)})};
   };
   api.sendReply=async function(token,snapshot,deps={}){
     const payload=api.buildReply(snapshot);

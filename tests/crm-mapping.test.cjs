@@ -15,3 +15,9 @@ test('IT mapping list pairs each coupon name with its code without repeating ite
  const html=api.mappingListHTML([{...base,shortName:'Coupon <A>',crmMappingCode:'VD-A'},{...base,shortName:'Coupon <A>',crmMappingCode:'VD-A'},{...base,shortName:'Coupon B',crmMappingCode:'VD-B'}]);
  assert.equal((html.match(/class="crm-mapping-it/g)||[]).length,2);assert.match(html,/Coupon &lt;A&gt;[\s\S]*?VD-A/);assert.match(html,/Coupon B[\s\S]*?VD-B/);
 });
+test('per-button mapping exposes only code while setup instructions remain shared',()=>{
+ const {api,host}=setup();host.getAttribute=()=> 'proposal';api._set('crm');api._mappingRequired('yes');api._mappingDetail('Shared instructions');
+ const html=api.couponHTML('button-one');assert.match(html,/btn-crm-code/);assert.doesNotMatch(html,/textarea|btn-crm-detail/);assert.equal((host.innerHTML.match(/id="crmMappingDetail"/g)||[]).length,1);
+ const block={querySelector:selector=>selector==='.btn-promo-type'?{value:'Item Coupon'}:selector==='.btn-crm-code'?{value:'CRM-ONE'}:null};
+ assert.equal(api.couponValue(block).crmMappingCode,'CRM-ONE');assert.equal(api.couponValue(block).crmMappingDetail,'Shared instructions');
+});

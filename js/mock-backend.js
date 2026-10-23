@@ -4680,7 +4680,7 @@
     ['pc_co_promotions','pc_member_coupons','pc_member_cards','pc_bill_discount_confirmed','pc_code_requests'].forEach(key => {
       try {
         let value = JSON.parse(localStorage.getItem(key) || 'null');
-        if (key === 'pc_code_requests' && Array.isArray(value)) value = value.filter(r => String(r && r.campaign || '').trim() !== campaign);
+        if (['pc_code_requests','pc_co_promotions'].includes(key) && Array.isArray(value)) value = value.filter(r => String(r && r.campaign || '').trim() !== campaign);
         scanShared(value);
       } catch (_) { candidates.forEach(c => used.add(c)); }
     });

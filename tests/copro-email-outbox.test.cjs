@@ -77,3 +77,14 @@ test('revision delivery validates edited source and original loop and sends once
   await a.dispatchEmail(env);await a.dispatchEmail(env);assert.equal(sends,change?0:1);DB.db.close();
  }
 });
+test('new-message delivery skips old-thread lookup but retains revocation checks and no reply headers',async()=>{
+ for(const revoked of [false,true]){
+  const {a,DB,env}=await fixture('production');env.EMAIL_SEND_ENABLED='true';let sends=0;
+  DB.db.exec("DELETE FROM email_outbox WHERE id='second';UPDATE email_threads SET thread_id='',message_id='new:t',rfc_message_id='';DELETE FROM email_copro_records;");
+  const snap=JSON.parse(DB.db.prepare("SELECT snapshot_json FROM email_outbox WHERE id='first'").get().snapshot_json);Object.assign(snap,{newMessage:true,notificationOnly:true,threadId:'',rfcMessageId:''});DB.db.prepare("UPDATE email_outbox SET snapshot_json=? WHERE id='first'").run(JSON.stringify(snap));
+  a.gmailMessage=async()=>{throw Error('No old message should be queried');};
+  a.gmailAccess=async()=>{if(revoked)DB.db.exec('UPDATE email_threads SET enabled=0');return 'mock';};
+  a.sendReply=async(token,snapshot)=>{sends++;const payload=a.buildReply(snapshot);assert.equal(payload.threadId,undefined);assert.doesNotMatch(Buffer.from(payload.raw,'base64url').toString(),/In-Reply-To:|References:/);return {outcome:'accepted',providerId:'new-message'};};
+  await a.dispatchEmail(env);assert.equal(sends,revoked?0:1);assert.equal(DB.db.prepare("SELECT status FROM email_outbox WHERE id='first'").get().status,revoked?'held':'accepted');DB.db.close();
+ }
+});

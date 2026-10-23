@@ -8,6 +8,7 @@ test('mail selection shows provider preview and reuses separate saved button rec
  if(path==='copro'){sends++;assert.equal(options.body.additionalMessage,'Updated message');return {mailStatus:'queued'};}
  assert.equal(path,'copro/preview');body=options.body;return {text:'ชื่อแคมเปญ: Test\nรายละเอียดโปรฯ: Original\nไฟล์แนบ: original.xlsx',subject:'Loop',recipients:body.recipients};
  }},Swal:{close(){},fire:async config=>{
+ if(config.showDenyButton)return {isConfirmed:true};
  calls++;
  if(calls===1){assert.match(config.html,/coproSearchLoop/);config.didOpen();nodes.coproTestCcAdd.value='extra@example.com';nodes.coproTestCcButton.click();assert.equal(nodes.coproTestCc.value,'extra@example.com');nodes.coproTestCcButton.click();assert.equal(nodes.coproTestCc.value,'extra@example.com');nodes.coproAdditionalMessage.value='Keep while searching';nodes.coproSearchLoop.click();return {isConfirmed:false};}
  if(calls===2){assert.equal(config.title,'ค้นหาลูปเมลของโปรฯ');return {isConfirmed:true,value:{id:'p2',version:1,subject:'Another conversation',recipients:{to:['new@example.com'],cc:[]}}};}

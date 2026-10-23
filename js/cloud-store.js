@@ -782,6 +782,14 @@
       // Persist the acknowledged version per key; a later key in this batch
       // can still fail, so a retry must not resend a previously saved key as stale.
       _cloudMtime[k] = Number(ack.updated_at); _cloudCache[k] = body[k];
+      var removedNames=(ack.deletedKeys||[]).map(function(key){return decodeURIComponent(key.slice(10));});
+      (ack.linkedUpdates||[]).forEach(function(row){
+        if(row.k!=='pc_co_promotions'&&!row.k.startsWith('pc_copro_drafts::'))return;
+        var local=JSON.parse(localStorage.getItem(row.k)||row.v),filtered;
+        if(row.k==='pc_co_promotions')filtered=local.filter(function(r){return removedNames.indexOf(r.campaign)===-1;});
+        else filtered=Object.assign({},local,{items:Object.fromEntries(Object.entries(local.items||{}).filter(function(pair){return removedNames.indexOf(pair[1].campaign)===-1;}))});
+        _set(row.k,JSON.stringify(filtered));_cloudMtime[row.k]=Number(row.updated_at);_cloudCache[row.k]=row.v;
+      });
       (ack.deletedKeys||[]).forEach(function(deleted){delete _snap[deleted];delete _cloudMtime[deleted];delete _cloudCache[deleted];});
     }
   }
@@ -902,14 +910,14 @@
       if (keys[k] == null) return;
       n++;
       var cur = localStorage.getItem(k);
-      if (k === 'pc_code_requests') {
+      if (k === 'pc_code_requests' || k === 'pc_co_promotions') {
         // A campaign tombstone also invalidates its older attachment registrations.
         // Filter after merging so stale tabs cannot resurrect deleted mapping codes.
         var mergedRequests = mergeList(cur || '[]', keys[k]);
         var liveRequests = JSON.parse(mergedRequests.str).filter(function (request) {
           var deletedAt = Number(_tombs[String(request && request.campaign || '').trim()]) || 0;
           var createdAt = Number(request && request.createdAt) || Date.parse(request && request.createdAt) || 0;
-          return !deletedAt || !createdAt || createdAt > deletedAt;
+          return !deletedAt || (k==='pc_code_requests'&&!createdAt) || createdAt > deletedAt;
         });
         var requestsRaw = JSON.stringify(liveRequests);
         if (requestsRaw !== cur) { _set(k, requestsRaw); changed = true; }

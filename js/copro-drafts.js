@@ -66,7 +66,8 @@
       const record={...row};delete record.id;
       items.set(key(row),{id:key(row),source:'intake',campaign:row.campaign,submissionId:row.submissionId,record,updatedAt:row.updatedAt||row.createdAt||'',owner:state.user});
     }
-    return [...items.values()].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    const tombRow=await cloud().readCloudKey('promo::deleted'),tombs=tombRow?JSON.parse(tombRow.value):{};
+    return [...items.values()].filter(item=>!Number(tombs[item.campaign])||Date.parse(item.updatedAt)>Number(tombs[item.campaign])).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
   }
   async function loadPendingSource(item){
     let timer;

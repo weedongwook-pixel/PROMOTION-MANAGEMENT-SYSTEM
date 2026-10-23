@@ -19,7 +19,7 @@
   api.renderCoProEmail=function(snapshot){
     if(!['submitted','it_interface_complete','promotion_edited'].includes(snapshot.milestone))throw Error('email_invalid_milestone');
     const d=snapshot.details||{};
-    const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?'แจ้งรายละเอียดขึ้นปุ่ม Co-Promotion':'แจ้งสถานะขึ้นปุ่ม และ Interface เรียบร้อย',
+    const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?(snapshot.notificationOnly?'แจ้งรายละเอียดโปรโมชั่น':'แจ้งรายละเอียดขึ้นปุ่ม Co-Promotion'):'แจ้งสถานะขึ้นปุ่ม และ Interface เรียบร้อย',
       'ชื่อแคมเปญ: '+String(d.campaign||'-'), 'วันที่เริ่ม - วันที่สิ้นสุด: '+String(d.start||'-')+' - '+String(d.end||'-')];
     for(const b of d.buttons||[]){
       lines.push('Type Promotion: '+String(b.promoType||'-'));

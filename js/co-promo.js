@@ -23,12 +23,12 @@
   function userName() { try { return localStorage.getItem("pc_userName") || localStorage.getItem("pc_role") || ""; } catch (e) { return ""; } }
   function periodText(ctx) { var s = ctx.start || "", e = ctx.end || ""; return (!s && !e) ? "" : (s + " → " + e); }
 
-  /* หลัง submit — ถามว่าเป็น co-promo ไหม (Item Set: เฉพาะ cate e-Voucher เท่านั้น) */
+  /* หลัง Cloud บันทึกสำเร็จ ทุกประเภทเลือก CoPromo และการส่งเมลได้ */
   function promptAfterSubmit(campaigns, opts) {
     opts = opts || {};
     campaigns = (campaigns || []).filter(Boolean);
     if (!campaigns.length || !window.Swal) return Promise.resolve();
-    if (opts.source === "itemset" && !opts.hasEVoucher) return Promise.resolve();
+
     return Swal.fire({
       icon: "question", title: "เป็น Co-Promotion หรือไม่?",
       html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6">โปรที่ร่วมกับพาร์ทเนอร์ (เช่น Samsung, KTC, Grab, Central ฯลฯ)<br>เลือกลูปอีเมลเดิมและตรวจรายละเอียดโปรฯ ก่อนยืนยันส่ง<br><b style="color:#1a1d20">' + esc(campaigns.join(", ")) + "</b></div>",
@@ -36,8 +36,11 @@
       cancelButtonText: "ไม่ใช่", confirmButtonColor: "#2e934a", cancelButtonColor: "#9aa0a6", reverseButtons: true,
     }).then(async function (res) {
       if (!res.isConfirmed) {
-        if(res.dismiss===Swal.DismissReason.cancel&&window.PC_CLOUD?.saveMailDecision)for(const campaign of campaigns)await window.PC_CLOUD.saveMailDecision(campaign,'submitted','','not_sent');
-        return res.dismiss === Swal.DismissReason.cancel ? { coPromo: false } : undefined;
+        if(res.dismiss!==Swal.DismissReason.cancel)return;
+        const send=await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแจ้งโปรโมชั่นหรือไม่?',text:campaigns.join(', '),showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
+        if(send.isConfirmed){for(const campaign of campaigns){const result=await window.PC_CoProEmailUI.save({campaign},{notificationOnly:true});if(!result)return {coPromo:false,completed:false};}return {coPromo:false,completed:true};}
+        if(window.PC_CLOUD?.saveMailDecision)for(const campaign of campaigns)await window.PC_CLOUD.saveMailDecision(campaign,'submitted','','not_sent');
+        return {coPromo:false};
       }
       if(!window.PC_CoPromoDrafts?.recordCoPromo)throw Error('ระบบบันทึก CoPromo ยังไม่พร้อม กรุณาเปิดเว็บใหม่');
       for(const campaign of campaigns)await window.PC_CoPromoDrafts.recordCoPromo(campaign);

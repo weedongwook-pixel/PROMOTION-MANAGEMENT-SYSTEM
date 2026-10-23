@@ -68,12 +68,28 @@ async function guardedPut(db, key, body, env) {
       statements.push(db.prepare('INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN changes()=1 THEN 1 ELSE 0 END)'));
       statements.push(db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
     }
+    const removedNames=new Set(Object.keys(versions).map(k=>decodeURIComponent(k.slice(10))));
+    const linked=(await db.prepare("SELECT k,v,updated_at FROM promo_store WHERE k='pc_co_promotions' OR k LIKE 'pc_copro_drafts::%'").all()).results||[];
+    for(const row of linked){
+      const value=JSON.parse(row.v);let next;
+      if(row.k==='pc_co_promotions')next=value.filter(r=>!removedNames.has(r.campaign));
+      else next={...value,items:Object.fromEntries(Object.entries(value.items||{}).filter(([,r])=>!removedNames.has(r.campaign)))};
+      if(JSON.stringify(next)===row.v)continue;
+      statements.push(db.prepare('UPDATE promo_store SET v=?,updated_at=MAX(updated_at+1,?) WHERE k=? AND updated_at=?').bind(JSON.stringify(next),now,row.k,row.updated_at));
+      statements.push(db.prepare('INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN changes()=1 THEN 1 ELSE 0 END)'),db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
+    }
+    if(await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='email_campaigns'").first())for(const campaignKey of Object.keys(versions)){
+      statements.push(db.prepare("UPDATE email_outbox SET status='cancelled',updated_at=? WHERE campaign_id IN (SELECT id FROM email_campaigns WHERE campaign_key=?) AND status IN ('queued','retry','held')").bind(now,campaignKey));
+      statements.push(db.prepare("DELETE FROM email_copro_records WHERE campaign_id IN (SELECT id FROM email_campaigns WHERE campaign_key=?)").bind(campaignKey));
+      statements.push(db.prepare("UPDATE email_campaigns SET status='cancelled' WHERE campaign_key=?").bind(campaignKey));
+    }
     statements.push(expected===null?db.prepare('INSERT INTO promo_store(k,v,updated_at) VALUES(?1,?2,?3)').bind(key,body.value,now):db.prepare('UPDATE promo_store SET v=?2,updated_at=MAX(updated_at+1,?3) WHERE k=?1 AND updated_at=?4').bind(key,body.value,now,expected));
     statements.push(db.prepare('INSERT INTO promo_commit_guard(id) VALUES(CASE WHEN changes()=1 THEN 1 ELSE 0 END)'));
     statements.push(db.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
     try{await db.batch(statements);}catch(e){if(/constraint|CHECK|UNIQUE/i.test(String(e.message||e)))return json({ok:false,error:'version_conflict',key},env,409);throw e;}
     const saved=await db.prepare('SELECT v,updated_at FROM promo_store WHERE k=?1').bind(key).first();
-    return json({ok:true,key,updated_at:saved.updated_at,deletedKeys:Object.keys(versions)},env);
+    const linkedUpdates=[];for(const row of linked){const current=await db.prepare('SELECT k,v,updated_at FROM promo_store WHERE k=?').bind(row.k).first();if(current)linkedUpdates.push(current);}
+    return json({ok:true,key,updated_at:saved.updated_at,deletedKeys:Object.keys(versions),linkedUpdates},env);
   }
   const now = Date.now();
   const result = expected === null
