@@ -14,6 +14,7 @@ import './email/copro-service.js';
 import './email/outbox.js';
 import './email/copro-router.js';
 import './email/owner-session.js';
+import './email/staff.js';
 import './email/router.js';
 import '../js/promotion-edit-model.js';
 import '../js/form-code-allocation.js';

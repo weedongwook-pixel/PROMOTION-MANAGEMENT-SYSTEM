@@ -581,7 +581,7 @@
       try { var _u = document.getElementById('user'), _p = document.getElementById('pass'); if (_u) _u.value = ''; if (_p) _p.value = ''; var _e = document.getElementById('errMsg'); if (_e) _e.textContent = ''; if (_u) setTimeout(function(){ _u.value=''; try{ _u.focus(); }catch(e){} }, 60); } catch (e) {}
     }
 
-    function doLogin() {
+    async function doLogin() {
       const u = document.getElementById('user').value;
       const p = document.getElementById('pass').value;
       const btn = document.getElementById('loginBtn');
@@ -589,6 +589,14 @@
       if (!u || !p) { errMsg.innerText = "⚠ กรุณาระบุชื่อผู้ใช้งานและรหัสผ่าน"; return; }
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AUTHENTICATING...';
+      let staffCleared=false;
+      try {
+        const caps=await window.PC_CoProEmail.capabilities();
+        if(caps.staffEnabled){await window.PC_EmailAuth.staffRequest('logout',{});staffCleared=true;const session=await window.PC_EmailAuth.staffRequest('login',{username:u,password:p});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
+      } catch(e) {
+        // Legacy website access remains available; it never grants mail privileges.
+        if(!staffCleared || e.code!=='email_staff_signin_required'){errMsg.textContent=e.message||'ตรวจสอบการเข้าสู่ระบบไม่ได้ กรุณาลองใหม่';btn.disabled=false;btn.innerHTML='ENTER SYSTEM';return;}
+      }
       google.script.run.withSuccessHandler(res => {
         if (res.status === "success") {
           localStorage.setItem('pc_session', 'active');
@@ -631,6 +639,14 @@
       return {app, identity, email:localStorage.getItem('pc_userEmail') || ''};
     };
 
+    window.PC_StaffMicrosoftLogin = async function () {
+      const app=getMsalApp();if(_msalReady)await _msalReady;
+      await window.PC_EmailAuth.staffRequest('logout',{});
+      const challenge=await window.PC_EmailAuth.staffRequest('microsoft/challenge',{});
+      const result=await app.loginPopup({scopes:['openid','profile'],nonce:challenge.nonce,prompt:'select_account'});
+      return window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});
+    };
+
     async function loginWithMicrosoft() {
       const errMsg = document.getElementById('errMsg');
       const btn = document.getElementById('msLoginBtn');
@@ -644,7 +660,14 @@
       try {
         const app = getMsalApp();
         if (_msalReady) await _msalReady;
-        const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account' });
+        const caps=await window.PC_CoProEmail.capabilities();
+        if(caps.staffEnabled)await window.PC_EmailAuth.staffRequest('logout',{});
+        const challenge=caps.staffEnabled?await window.PC_EmailAuth.staffRequest('microsoft/challenge',{}):null;
+        const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account',...(challenge?{nonce:challenge.nonce}:{}) });
+        if(challenge){
+          try{const session=await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
+          catch(error){if(error.code!=='email_staff_pending')throw error;await Swal.fire({icon:'info',title:'รออนุมัติสิทธิ์ส่งเมล',text:error.message+' · ยังใช้งานส่วนอื่นของเว็บได้ตามสิทธิ์เดิม'});}
+        }
         const acct = result.account || {};
         const claims = acct.idTokenClaims || {};
         const email = String(acct.username || claims.preferred_username || claims.email || '').trim().toLowerCase();

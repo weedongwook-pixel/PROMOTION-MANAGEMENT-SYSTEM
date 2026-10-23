@@ -88,3 +88,10 @@ test('new-message delivery skips old-thread lookup but retains revocation checks
   await a.dispatchEmail(env);assert.equal(sends,revoked?0:1);assert.equal(DB.db.prepare("SELECT status FROM email_outbox WHERE id='first'").get().status,revoked?'held':'accepted');DB.db.close();
  }
 });
+test('revoked employee who requested queued mail cannot dispatch through shared sender',async()=>{
+ const {a,DB,env}=await fixture();let sends=0,checks=0;
+ for(const row of DB.db.prepare('SELECT id,snapshot_json FROM email_outbox').all())DB.db.prepare('UPDATE email_outbox SET snapshot_json=? WHERE id=?').run(JSON.stringify({...JSON.parse(row.snapshot_json),requestedBy:{staffId:'employee',staffVersion:1}}),row.id);
+ a.requireStaffPermission=async()=>{checks++;if(checks>1)throw Error('revoked');};
+ a.sendReply=async()=>{sends++;return {outcome:'accepted',providerId:'unexpected'};};
+ await a.dispatchEmail(env);assert.equal(sends,0);assert.equal(DB.db.prepare("SELECT status FROM email_outbox WHERE id='first'").get().status,'held');DB.db.close();
+});

@@ -2,7 +2,7 @@
   'use strict';const api=root.PC_Email;
   const TEST_SUBJECT='Test send to email copro UOB';
   api.emailThreadMode=r=>r.delivery_mode||r.mode;
-  api.emailActorKey=actor=>actor.tenantId+':'+actor.objectId;
+  api.emailActorKey=actor=>actor.staffId?'staff:'+actor.staffId:actor.tenantId+':'+actor.objectId;
   api.threadAudience=function(record,actor){return JSON.parse(record.audience_json).some(x=>x.tenantId===actor.tenantId&&x.objectId===actor.objectId);};
   function summary(r){return {newMessage:r.message_id.startsWith('new:'),id:r.id,version:r.version,subject:r.subject,recipients:{to:JSON.parse(r.to_json),cc:JSON.parse(r.cc_json)},mode:api.emailThreadMode(r)};}
   api.searchThreads=async function(actor,query,env,deps={},pageToken='',mode='test'){

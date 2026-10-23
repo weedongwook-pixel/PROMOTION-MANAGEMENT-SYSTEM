@@ -20,9 +20,16 @@
     if (origin && origin !== c.origin) return json({error:'email_origin_denied'},403);
     if (origin === c.origin) headers['Access-Control-Allow-Origin'] = c.origin;
     if (request.method === 'OPTIONS') return new Response(null,{status:204,headers:{...headers,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Authorization, Content-Type, X-PC-Email-CSRF','Access-Control-Allow-Credentials':'true'}});
-    if (path === '/email/capabilities' && request.method === 'GET') return json({enabled:readiness.ready,sendingEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true'&&env.EMAIL_SEND_ENABLED==='true',coproEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true',testSendingEnabled:readiness.ready&&env.EMAIL_TEST_SEND_ENABLED==='true',scope:c.authMode==='gmail_owner'?null:(c.scope||null),authMode:c.authMode});
+    if (path === '/email/capabilities' && request.method === 'GET') return json({enabled:readiness.ready,sendingEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true'&&env.EMAIL_SEND_ENABLED==='true',coproEnabled:readiness.ready&&env.EMAIL_COPRO_ENABLED==='true',testSendingEnabled:readiness.ready&&env.EMAIL_TEST_SEND_ENABLED==='true',scope:c.authMode==='gmail_owner'?null:(c.scope||null),authMode:c.authMode,staffEnabled:env.EMAIL_STAFF_ENABLED==='true'});
+    if(api.routeStaff){const staff=await api.routeStaff(request,env);if(staff)return staff;}
     if(api.routeGmailOwner&&path==='/email/auth/logout'&&request.method==='POST')return api.routeGmailOwner(request,env);
     if (!readiness.ready) return json({state:'configuration_incomplete',sender:null,missing:readiness.missing,sendingEnabled:false},503);
+    if(env.EMAIL_STAFF_ENABLED==='true'&&path==='/email/auth/session'&&request.method==='GET'){
+      try{const a=await api.verifyStaffSession(request,env);return json({identity:{tenantId:a.tenantId,objectId:a.objectId},staff:a.staff,csrf:a.csrf,expiresAt:a.expiresAt,sender:c.sender});}catch(_){return json({error:'email_staff_signin_required'},401);}
+    }
+    if(env.EMAIL_STAFF_ENABLED==='true'&&api.hasStaffCookie?.(request)&&path==='/email/status'&&request.method==='GET'){
+      try{const a=await api.verifyStaffSession(request,env),row=await env.DB.prepare('SELECT sender,status FROM email_connections WHERE id=1').first();return json({state:row?.status||'not_connected',sender:row?.sender||null,missing:[],sendingEnabled:row?.status==='connected'&&a.staff.canSend&&env.EMAIL_SEND_ENABLED==='true',staff:true});}catch(_){return json({error:'email_staff_signin_required'},401);}
+    }
     if(c.authMode==='gmail_owner'){const result=await api.routeGmailOwner(request,env);if(result)return result;}
     if(api.routeCoProEmail){const result=await api.routeCoProEmail(request,env);if(result)return result;}
     try {

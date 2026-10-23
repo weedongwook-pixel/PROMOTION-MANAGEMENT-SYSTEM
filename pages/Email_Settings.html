@@ -2,8 +2,8 @@
      verified server status is authoritative. No message sending controls. -->
 <section class="pc-workspace pc-email-settings" id="pc-email-settings" aria-labelledby="email-title">
   <h1 id="email-title" data-th="ตั้งค่าอีเมล" data-en="Email Settings">ตั้งค่าอีเมล</h1>
-  <p data-th="เชื่อมบัญชี Gmail สำหรับระบบแจ้งโปรโมชั่น" data-en="Connect Gmail for promotion notifications">เชื่อมบัญชี Gmail สำหรับระบบแจ้งโปรโมชั่น</p>
-  <p class="pc-email-notice" data-th="เชื่อม Gmail ผู้ส่งก่อน เลือกลูปและยืนยันผู้รับในขั้นตอน Co-Promo เพื่อส่งเมล" data-en="Connect the sender, then choose a conversation and confirm recipients in Co-Promo before sending.">เชื่อม Gmail ผู้ส่งก่อน เลือกลูปและยืนยันผู้รับในขั้นตอน Co-Promo เพื่อส่งเมล</p>
+  <p data-th="บัญชีส่งเมลกลางสำหรับระบบแจ้งโปรโมชั่น" data-en="Central sender for promotion notifications">บัญชีส่งเมลกลางสำหรับระบบแจ้งโปรโมชั่น</p>
+  <p class="pc-email-notice" data-th="ผู้ดูแลเชื่อมบัญชีผู้ส่งและอนุมัติพนักงานครั้งแรก จากนั้นพนักงานใช้บัญชีเว็บส่งเมลได้จากทุกเครื่อง" data-en="The owner connects the sender and approves staff once. Staff then send using their own website login from any device.">ผู้ดูแลเชื่อมบัญชีผู้ส่งและอนุมัติพนักงานครั้งแรก จากนั้นพนักงานใช้บัญชีเว็บส่งเมลได้จากทุกเครื่อง</p>
   <h2 data-th="บัญชีผู้ส่ง" data-en="Sender account">บัญชีผู้ส่ง</h2>
   <p class="pc-email-address">it@rocks-foods.com</p>
   <p data-email-status role="status" aria-live="polite">กำลังตรวจสอบ / Checking…</p>
@@ -16,6 +16,7 @@
   </div>
   <p class="pc-email-help" data-th="เจ้าของบัญชีลงชื่อเข้าใช้ Google และยินยอมเชื่อม Gmail การยกเลิกที่นี่ลบข้อมูลเชื่อมต่อในระบบ แต่ต้องถอนสิทธิ์ Google แยกต่างหาก" data-en="The mailbox owner signs in to Google and authorizes Gmail. Disconnect removes local credentials; Google access must be revoked separately.">เจ้าของบัญชีลงชื่อเข้าใช้ Google และยินยอมเชื่อม Gmail การยกเลิกที่นี่ลบข้อมูลเชื่อมต่อในระบบ แต่ต้องถอนสิทธิ์ Google แยกต่างหาก</p>
   <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer" data-th="จัดการสิทธิ์บัญชี Google" data-en="Manage Google account access">จัดการสิทธิ์บัญชี Google</a>
+  <div class="mt-4 pt-3 border-top" data-email-staff-settings></div>
   <div class="mt-4 pt-3 border-top" data-copro-settings></div>
 </section>
 <style>
@@ -33,3 +34,5 @@
 </style>
 <script src="js/email-auth.js"></script>
 <script src="js/email-settings.js"></script>
+
+<script src="js/email-staff-settings.js"></script>

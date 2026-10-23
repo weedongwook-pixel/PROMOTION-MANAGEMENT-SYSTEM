@@ -4,6 +4,7 @@ compatibility_date = "2026-07-02"
 
 [vars]
 EMAIL_AUTH_MODE = "gmail_owner"
+EMAIL_STAFF_ENABLED = "true"
 EMAIL_CONNECTION_ENABLED = "true"
 EMAIL_COPRO_ENABLED = "true"
 EMAIL_TEST_SEND_ENABLED = "false"

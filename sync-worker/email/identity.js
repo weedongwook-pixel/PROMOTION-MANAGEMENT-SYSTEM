@@ -9,6 +9,7 @@
   }
   api.verifyEmailActor = async function (request, env, deps = {}) {
     const config = api.readEmailConfig(env);
+    if(env.EMAIL_STAFF_ENABLED==='true')return api.verifyStaffSession(request,env);
     if(config.authMode==='gmail_owner'){const actor=await api.verifyOwnerSession(request,env);return {tenantId:actor.tenantId,objectId:actor.objectId};}
     if (!/^[a-f0-9-]{36}$/i.test(config.tenantId) || !/^[a-f0-9-]{36}$/i.test(config.audience) || config.scope !== 'api://' + config.audience + '/access_as_user' || !env.DB) reject();
     try {
@@ -44,13 +45,15 @@
     } catch (_) { reject(); }
   };
   api.verifyEmailAdmin = async function(request, env, deps = {}) {
-    const actor=await api.verifyEmailActor(request,env,deps);
+    const actor=env.EMAIL_STAFF_ENABLED==='true'&&env.EMAIL_AUTH_MODE==='gmail_owner'?await api.verifyOwnerSession(request,env):await api.verifyEmailActor(request,env,deps);
+    if(actor.staffId)reject();
     const grant=await env.DB.prepare('SELECT enabled FROM email_admin_grants WHERE tenant_id=? AND object_id=? AND enabled=1').bind(actor.tenantId,actor.objectId).first();
     if(!grant || grant.enabled!==1)reject();
     return actor;
   };
   api.requireEmailPermission = async function(actor, permission, env) {
     if(!actor || !['manage','submit','it'].includes(permission))reject();
+    if(actor.staffId)await api.requireStaffPermission(actor,permission,env);
     if(env.EMAIL_AUTH_MODE==='gmail_owner'&&!api.isGmailOwner(actor))reject();
     if(permission==='manage') {
       const admin=await env.DB.prepare('SELECT enabled FROM email_admin_grants WHERE tenant_id=? AND object_id=? AND enabled=1').bind(actor.tenantId,actor.objectId).first();

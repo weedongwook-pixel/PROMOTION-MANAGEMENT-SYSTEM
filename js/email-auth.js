@@ -2,6 +2,8 @@
   'use strict';
   window.PC_EmailAuth = {
     async logout(){
+      const staff=await fetch('/email/staff/logout',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
+      if(!staff.ok&&staff.status!==404)throw Error('ยังออกจากระบบพนักงานไม่ได้ กรุณาลองอีกครั้ง');
       const response=await fetch('/email/auth/logout',{method:'POST',credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
       if(!response.ok)throw Error('ยังออกจากสิทธิ์อีเมลไม่ได้ กรุณาลองอีกครั้ง');
       if(window.PC_CoProEmail)window.PC_CoProEmail.disable();
@@ -9,14 +11,33 @@
     async ownerSession({interactive=false}={}){
       const response=await fetch('/email/auth/session',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000)});
       if(!response.ok){
-        if(interactive&&response.status===401)return this.connectHere();
-        throw Error('สิทธิ์ผู้ส่งหมดอายุ กรุณายืนยันบัญชีผู้ส่งอีกครั้ง');
+        if(interactive&&response.status===401){
+          const caps=await (await fetch('/email/capabilities',{cache:'no-store',signal:AbortSignal.timeout(10000)})).json();
+          return caps.staffEnabled?this.signInStaff():this.connectHere();
+        }
+        throw Error('กรุณาเข้าสู่ระบบด้วยบัญชีพนักงานที่ได้รับสิทธิ์ส่งเมล');
       }
       const session=await response.json();
       if(!session.csrf||!session.identity)throw Error('email_signin_required');
       return session;
     },
-    async connectHere(){
+    async staffRequest(path,body){
+      const r=await fetch('/email/staff/'+path,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
+      const data=await r.json();if(!r.ok){const messages={email_staff_pending:'ยืนยัน Microsoft แล้ว รอผู้ดูแลอนุมัติสิทธิ์ส่งเมลครั้งแรก',email_staff_signin_required:'บัญชีหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้รับสิทธิ์ส่งเมล',email_staff_try_later:'ลองเข้าสู่ระบบหลายครั้ง กรุณารอ 10 นาทีแล้วลองใหม่'};const e=Error(messages[data.error]||'ยังยืนยันบัญชีพนักงานไม่ได้ กรุณาลองใหม่');e.code=data.error;throw e;}return data;
+    },
+    rememberStaff(session){
+      if(!session.staff)return;
+      localStorage.setItem('pc_session','active');localStorage.setItem('pc_role',session.staff.role);localStorage.setItem('pc_userName',session.staff.name);
+      const name=document.getElementById('who-name'),role=document.getElementById('who-role');if(name)name.textContent=session.staff.name;if(role)role.textContent=session.staff.role;
+    },
+    async signInStaff(){
+      const result=await Swal.fire({title:'เข้าสู่ระบบเพื่อส่งเมล',html:'<p>ใช้บัญชีพนักงานของคุณ ไม่ต้องลงชื่อเข้าบัญชีเมลกลาง</p><label for="mailStaffUsername">ชื่อผู้ใช้</label><input id="mailStaffUsername" class="swal2-input" autocomplete="username"><label for="mailStaffPassword">รหัสผ่าน</label><input id="mailStaffPassword" type="password" class="swal2-input" autocomplete="current-password">',showCancelButton:true,showDenyButton:true,confirmButtonText:'เข้าสู่ระบบ',denyButtonText:'ใช้ Microsoft',cancelButtonText:'กลับ',showLoaderOnConfirm:true,allowOutsideClick:()=>!Swal.isLoading(),preConfirm:async()=>{
+        try{return await this.staffRequest('login',{username:document.getElementById('mailStaffUsername').value,password:document.getElementById('mailStaffPassword').value});}catch(e){Swal.showValidationMessage(e.message);return false;}
+      }});
+      let session;if(result.isConfirmed)session=result.value;else if(result.isDenied&&window.PC_StaffMicrosoftLogin)session=await window.PC_StaffMicrosoftLogin();else throw Error('ยังไม่ได้เข้าสู่ระบบพนักงาน');
+      this.rememberStaff(session);return session;
+    },
+    async connectHere({ownerOnly=false}={}){
       const result=await Swal.fire({icon:'info',title:'ยืนยันบัญชีผู้ส่งอีเมล',text:'ยืนยันบัญชีในหน้าต่างที่เปิดขึ้น แล้วระบบจะกลับมาทำรายการนี้ต่อ',confirmButtonText:'ยืนยันบัญชีและทำต่อ',showCancelButton:true,cancelButtonText:'กลับ',showLoaderOnConfirm:true,allowOutsideClick:()=>!Swal.isLoading(),
         preConfirm:async()=>{
           const popup=window.open('about:blank','pc-gmail-consent','popup,width=600,height=760');
@@ -31,7 +52,7 @@
               const timer=setTimeout(()=>{clean();reject(Error('หมดเวลายืนยันบัญชี กรุณาลองใหม่'));},180000);
               window.addEventListener('message',receive);popup.location.href=url.href;
             });
-            return await window.PC_EmailAuth.ownerSession();
+            return ownerOnly?await window.PC_EmailAuth.staffRequest('owner-session'):await window.PC_EmailAuth.ownerSession();
           }catch(e){Swal.showValidationMessage(e.message);return false;}finally{popup.close();}
         }});
       if(!result.isConfirmed)throw Error('ยังไม่ได้ยืนยันบัญชีผู้ส่ง');return result.value;

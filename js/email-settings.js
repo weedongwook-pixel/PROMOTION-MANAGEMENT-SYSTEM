@@ -34,7 +34,8 @@
     async function call(path,{method='GET',interactive=false,publicRequest=false}={}) {
       let headers={};
       const ownerPublic=caps?.authMode==='gmail_owner'&&['status','gmail/connect'].includes(path);
-      if (!publicRequest&&!ownerPublic) headers=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({interactive,scope:caps.scope})};
+      if(caps?.staffEnabled&&path==='gmail/disconnect'){const owner=await window.PC_EmailAuth.staffRequest('owner-session');headers={'X-PC-Email-CSRF':owner.csrf};}
+      else if (!publicRequest&&!ownerPublic) headers=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({interactive,scope:caps.scope})};
       const response=await fetch('/email/'+path,{method,headers,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000)});
       const data=await response.json();
       if(!response.ok){if(data.state==='configuration_incomplete')return data;throw new Error(response.status===403?'email_denied':'email_error');}

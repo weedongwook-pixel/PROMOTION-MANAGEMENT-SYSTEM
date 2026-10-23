@@ -28,10 +28,19 @@ test('permission lookup failure restores the Microsoft login button',async()=>{
   const button={disabled:false,innerHTML:'Microsoft'};
   const error={innerText:''};
   const runner={withSuccessHandler(){return this;},withFailureHandler(fn){this.fail=fn;return this;},checkLoginByEmail(){if(this.fail)this.fail(new Error('offline'));}};
-  const context={document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup:async()=>({account:{username:'test@example.com'}})}),_msalReady:null,google:{script:{run:runner}}};
+  const context={window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled:false})}},document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup:async()=>({account:{username:'test@example.com'}})}),_msalReady:null,google:{script:{run:runner}}};
   vm.createContext(context);vm.runInContext(source,context);
   await context.loginWithMicrosoft();
   assert.equal(button.disabled,false);
   assert.equal(button.innerHTML,'Microsoft');
   assert.match(error.innerText,/ตรวจสิทธิ์/);
+});
+test('password login never falls back with a previous mail session when server logout fails',async()=>{
+ const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
+ const source=shell.slice(shell.indexOf('async function doLogin()'),shell.indexOf('/* ---- Microsoft Entra'));
+ for(const failAt of ['capabilities','logout']){
+  let legacy=0;const nodes={user:{value:'legacy'},pass:{value:'legacy-pass'},loginBtn:{},errMsg:{}};
+  const context={document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{if(failAt==='capabilities')throw Error('offline');return {staffEnabled:true};}},PC_EmailAuth:{staffRequest:async()=>{throw Error('logout failed');}}},google:{script:{run:{withSuccessHandler(){legacy++;return this;},checkLogin(){}}}}};
+  vm.createContext(context);vm.runInContext(source,context);await context.doLogin();assert.equal(legacy,0);assert.equal(nodes.loginBtn.disabled,false);
+ }
 });

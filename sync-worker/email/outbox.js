@@ -17,6 +17,7 @@
         if(!c)throw Error();
         await api.requireEmailPermission({tenantId:c.owner_tenant,objectId:c.owner_oid},'submit',env);
         snapshot=JSON.parse(event.snapshot_json);
+        if(snapshot.requestedBy){if(!api.requireStaffPermission||!snapshot.requestedBy.staffId)throw Error();await api.requireStaffPermission(snapshot.requestedBy,snapshot.milestone==='it_interface_complete'?'it':'submit',env);}
         let source;
         if(snapshot.milestone==='promotion_edited'){
           if(!snapshot.revision||event.event_key!==c.id+':'+c.month+':revision:'+snapshot.revision.editId)throw Error();

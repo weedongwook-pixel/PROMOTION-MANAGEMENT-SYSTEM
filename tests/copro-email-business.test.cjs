@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {load,database,actor,grant}=require('./helpers/copro-context.cjs');
 async function fixture(options={}){
-  const a=load(['templates','gmail','registry','copro-model','copro-service']),DB=database(),env={DB};
+  const a=load(['staff','templates','gmail','registry','copro-model','copro-service']),DB=database(),env={DB};
   DB.db.exec('CREATE TABLE promo_store(k TEXT PRIMARY KEY,v TEXT,updated_at INTEGER); CREATE TABLE promo_commit_guard(id INTEGER PRIMARY KEY CHECK(id=1));');
   grant(DB,actor,'submit');grant(DB,actor,'it');
   const row={campaign:'UOB test',shortName:'Button A',submissionBatchId:'batch-1234',promoType:'Item Coupon',start:'2026-10-19',end:'2026-11-01',itemCode:'101001',qty:1,gross:55,netPrice:45,codePromotion:'IC001'};
@@ -262,4 +262,27 @@ test('CoPromo mail can be sent before accounting partner fields are filled',asyn
  await a.commitCoPromo(actor,draft,env);
  assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_copro_records').get().n,2);
  assert.equal(DB.db.prepare('SELECT COUNT(*) n FROM email_outbox').get().n,1);DB.db.close();
+});
+
+test('central sender records verified staff identity and blocks revocation during commit',async()=>{
+  const fs=require('node:fs');
+  for(const revoke of [false,true]){
+    const {a,DB,env,c,draft}=await fixture();
+    DB.db.exec(fs.readFileSync('sync-worker/migrations/006_gmail_owner_sessions.sql','utf8'));
+    DB.db.exec(fs.readFileSync('sync-worker/migrations/007_email_staff.sql','utf8'));
+    env.EMAIL_STAFF_ENABLED='true';env.EMAIL_ENCRYPTION_KEY=Buffer.alloc(32,1).toString('base64');
+    const u=await a.saveStaffAccount({username:'reviewer',name:'Verified employee',password:'private password 12345',canSend:true},env);
+    const employee={...actor,staffId:u.id,staffVersion:1,staffName:u.name};
+    draft.previewHash=(await a.previewCoPromo(employee,draft,env)).previewHash;
+    if(revoke){const batch=DB.batch.bind(DB);DB.batch=async statements=>{DB.db.prepare('UPDATE email_staff SET enabled=0 WHERE id=?').run(u.id);return batch(statements);};
+      await assert.rejects(a.commitCoPromo(employee,draft,env));assert.equal(DB.db.prepare('SELECT count(*) n FROM email_outbox').get().n,0);
+    }else{
+      await a.commitCoPromo(employee,draft,env);
+      const snapshot=JSON.parse(DB.db.prepare('SELECT snapshot_json FROM email_outbox').get().snapshot_json);
+      assert.equal(snapshot.requestedBy.staffId,u.id);
+      const audit=DB.db.prepare("SELECT * FROM email_audit WHERE campaign_id=? AND event='submitted'").get(c.id);
+      assert.equal(audit.actor,'staff:'+u.id);assert.equal(JSON.parse(audit.details_json).staffName,'Verified employee');
+    }
+    DB.db.close();
+  }
 });
