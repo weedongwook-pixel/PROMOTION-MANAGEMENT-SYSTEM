@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {load,database,actor,grant}=require('./helpers/copro-context.cjs');
 async function fixture(options={}){
-  const a=load(['staff','templates','gmail','registry','copro-model','copro-service']),DB=database(),env={DB};
+  const a=load(['staff','templates','gmail','registry','copro-model','copro-service','outbox']),DB=database(),env={DB};
   DB.db.exec('CREATE TABLE promo_store(k TEXT PRIMARY KEY,v TEXT,updated_at INTEGER); CREATE TABLE promo_commit_guard(id INTEGER PRIMARY KEY CHECK(id=1));');
   grant(DB,actor,'submit');grant(DB,actor,'it');
   const row={campaign:'UOB test',shortName:'Button A',submissionBatchId:'batch-1234',promoType:'Item Coupon',start:'2026-10-19',end:'2026-11-01',itemCode:'101001',qty:1,gross:55,netPrice:45,codePromotion:'IC001'};
@@ -285,4 +285,45 @@ test('central sender records verified staff identity and blocks revocation durin
     }
     DB.db.close();
   }
+});
+test('IT completion emails the same approved loop once with reserved-versus-final code review',async()=>{
+ for(const changed of [false,true])for(const interfaceFirst of [false,true]){
+  const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+  if(changed)DB.db.prepare('INSERT INTO promo_store VALUES(?,?,1)').run('pc_code_counter_v1',JSON.stringify({reservations:{'coupon::IC999':{type:'coupon',code:'IC999',status:'RESERVED',where:'UOB test'}}}));
+  const interfaceAll=async()=>{for(const b of buttons)await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);};
+  if(interfaceFirst)await interfaceAll();
+  for(let i=0;i<buttons.length;i++){
+   const b=buttons[i],code=changed&&i===0?'IC999':JSON.parse(b.source_identity_json).codePromotion;
+   const sourceRow=JSON.parse(DB.db.prepare('SELECT v FROM promo_store WHERE k=?').get(c.key).v).m['2026-10'].find(r=>r.emailButtonId===b.button_id);
+   await a.commitIT(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1,codePromotion:code,...(changed&&i===0?{updates:[{emailRowId:sourceRow.emailRowId,shortName:'Renamed by IT'}]}:{})},env);
+   if(i===0)assert.equal(DB.db.prepare("SELECT count(*) n FROM email_outbox WHERE event_key LIKE '%it_interface_complete'").get().n,0);
+  }
+  if(!interfaceFirst){assert.equal(DB.db.prepare('SELECT count(*) n FROM email_outbox').get().n,1);await interfaceAll();}
+  await a.commitInterface(actor,{campaignId:c.id,buttonId:buttons[0].button_id,expectedVersion:1},env);
+  const rows=DB.db.prepare('SELECT snapshot_json FROM email_outbox ORDER BY created_at').all();assert.equal(rows.length,2);
+  const first=JSON.parse(rows[0].snapshot_json),last=JSON.parse(rows[1].snapshot_json);
+  assert.equal(last.threadId,first.threadId);assert.equal(last.rfcMessageId,first.rfcMessageId);assert.deepEqual(last.recipients,first.recipients);
+  const mail=a.renderCoProEmail(last);assert.match(mail.text,changed?/ผลตรวจสอบโค้ด: เปลี่ยนจาก IC001 เป็น IC999/:/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC001/);
+  assert.match(mail.text,/ผลตรวจสอบโค้ด: ใช้รหัสเดิม IC002/);
+  const mime=Buffer.from(a.buildReply(last).raw,'base64url').toString();assert.match(mime,/In-Reply-To: <m1@example.com>/);assert.match(mime,/To: test@example.net/);
+  Object.assign(env,{EMAIL_CONNECTION_ENABLED:'true',EMAIL_COPRO_ENABLED:'true',EMAIL_TEST_SEND_ENABLED:'true'});
+  DB.db.prepare("INSERT INTO email_connections VALUES(1,'it@rocks-foods.com','connected','cipher','scopes','now','now',1)").run();
+  a.gmailAccess=async()=> 'mock';a.gmailMessage=async()=>({messageId:'m1',threadId:first.threadId,headers:{'message-id':first.rfcMessageId,subject:first.subject,references:''}});
+  let sent=0;const provider={fetch:async(url,options)=>{assert.match(url,/messages\/send$/);sent++;const payload=JSON.parse(options.body);assert.equal(payload.threadId,first.threadId);const content=Buffer.from(payload.raw,'base64url').toString();assert.match(content,/To: test@example.net/);if(sent===2)assert.match(content,/ผลตรวจสอบโค้ด:/);return Response.json({id:'mock-message-'+sent});}};
+  await a.dispatchEmail(env,provider);await a.dispatchEmail(env,provider);assert.equal(sent,2,'one announcement and one final update, without duplicates');
+  assert.equal(DB.db.prepare("SELECT count(*) n FROM email_outbox WHERE status='accepted' AND provider_id IS NOT NULL").get().n,2);
+
+  DB.db.close();
+ }
+});
+
+test('legacy final code comparison is explicit when original button identity is ambiguous',async()=>{
+ const {a,DB,env,c,buttons,draft}=await fixture();await a.commitCoPromo(actor,draft,env);
+ const queued=DB.db.prepare('SELECT id,snapshot_json FROM email_outbox').get(),snap=JSON.parse(queued.snapshot_json);
+ snap.details.buttons.forEach(b=>delete b.buttonId);snap.details.buttons.push({...snap.details.buttons[0]});
+ DB.db.prepare('UPDATE email_outbox SET snapshot_json=? WHERE id=?').run(JSON.stringify(snap),queued.id);
+ for(const b of buttons){await a.commitIT(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1,codePromotion:JSON.parse(b.source_identity_json).codePromotion},env);await a.commitInterface(actor,{campaignId:c.id,buttonId:b.button_id,expectedVersion:1},env);}
+ const last=JSON.parse(DB.db.prepare("SELECT snapshot_json FROM email_outbox WHERE event_key LIKE '%it_interface_complete'").get().snapshot_json);
+ assert.equal(last.details.buttons[0].codeReview.status,'unavailable');assert.equal(last.details.buttons[1].codeReview.status,'unchanged');
+ assert.match(a.renderCoProEmail(last).text,/ไม่มีข้อมูลเพียงพอสำหรับเปรียบเทียบกับเมลครั้งแรก/);DB.db.close();
 });

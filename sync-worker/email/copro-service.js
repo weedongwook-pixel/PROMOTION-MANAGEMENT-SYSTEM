@@ -235,7 +235,20 @@
     const attachmentData=approvedFiles===undefined?{manifest:undefined,version:null}:await api.readEmailAttachments(s.block.m[c.month],env,approvedFiles);
     if(attachmentData.version!==null)statements.push(...fileGuard(env,attachmentData.version));
     const predicate='EXISTS(SELECT 1 FROM email_campaign_buttons WHERE campaign_id=? AND cancelled=0) AND NOT EXISTS(SELECT 1 FROM email_campaign_buttons b LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id WHERE b.campaign_id=? AND b.cancelled=0 AND (b.it_done=0 OR COALESCE(r.interface_done,0)=0))';
-    statements.push(queued(env,c,binding.version,'it_interface_complete',snapshot(c,thread,JSON.parse(binding.recipients_json),'it_interface_complete',JSON.parse(c.source_json),records,attachmentData.manifest,undefined,actor),predicate,[c.id,c.id]),audit(env,c.id,actor,kind));
+    const completion=snapshot(c,thread,JSON.parse(binding.recipients_json),'it_interface_complete',JSON.parse(c.source_json),records,attachmentData.manifest,undefined,actor);
+    const originalButtons=announcement?JSON.parse(announcement.snapshot_json).details?.buttons||[]:[];
+    for(const button of completion.details.buttons){
+      let previous=button.buttonId?originalButtons.filter(b=>b.buttonId===button.buttonId):[];
+      // Older announcements have no stable ID. Only an unambiguous unchanged name
+      // can establish a comparison; never guess by position or the mutable code.
+      if(!previous.length&&completion.details.buttons.filter(b=>b.name===button.name).length===1)
+        previous=originalButtons.filter(b=>!b.buttonId&&b.name===button.name);
+      const original=previous.length===1?previous[0]:null;
+      const old=original?String(original.codePromotion??(original.code||'').split(' / ')[0]).trim():'';
+      const current=String(button.codePromotion||'').trim();
+      button.codeReview={status:old&&current?(old===current?'unchanged':'changed'):'unavailable',previous:old,current};
+    }
+    statements.push(queued(env,c,binding.version,'it_interface_complete',completion,predicate,[c.id,c.id]),audit(env,c.id,actor,kind));
     await env.DB.batch(statements);return {saved:true,mailStatus:await mailState(c,env),campaignId:c.id};
   }
   async function mailState(c,env){const event=await statement(env,'SELECT status FROM email_outbox WHERE event_key=?',c.id+':'+c.month+':it_interface_complete').first();return event?.status||'waiting_for_both';}
