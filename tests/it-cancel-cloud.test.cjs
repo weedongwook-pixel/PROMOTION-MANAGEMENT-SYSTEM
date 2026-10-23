@@ -8,6 +8,9 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
  const worker=(await import('data:text/javascript;base64,'+Buffer.from(require('./helpers/sync-worker-source.cjs')()).toString('base64'))).default;
  for(const race of [false,true]){
   const db=new DB(),campaign='Test UOB',key='promo::c::'+encodeURIComponent(campaign);
+  db.db.exec(fs.readFileSync('sync-worker/migrations/004_copro_email.sql','utf8'));
+  db.db.prepare("INSERT INTO email_campaigns VALUES('mail-c',?,'2026-11','batch','t','o','hash','[]',1,'active')").run(key);
+  db.db.exec("INSERT INTO email_campaign_buttons(campaign_id,button_id,source_identity_json) VALUES('mail-c','b','{}');INSERT INTO email_copro_records(id,campaign_id,button_id,record_json) VALUES('r','mail-c','b','{}');INSERT INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES('mail','event','mail-c',1,'{}','queued',1,1);");
   const meta={_npdSeeded:true,_flvSeeded:true,_itemSetDemoVer:1,_showcaseVer:1,_recipeCustomVer:1,_billDiscVer:4,_vcCouponVer:2,_proJulyVer:2};
   const row={campaign,shortName:'UOB 30',promoType:'Bill Discount',codePromotion:'BD9001',itStatus:'PENDING',opStatus:'WAITING'};
   const block={m:{'2026-11':[row],'2026-12':[{...row}],'2027-01':[{...row}]},w:[],_ts:10};
@@ -23,6 +26,9 @@ test('actual Cloud adapter deletes all months atomically and never tombstones a 
   if(race){block.m['2027-01'][0].itStatus='COMPLETE';db.db.prepare('UPDATE promo_store SET v=?,updated_at=2 WHERE k=?').run(JSON.stringify(block),key);}
   if(race)await assert.rejects(()=>c.PC_CLOUD.syncNow());else await c.PC_CLOUD.syncNow();
   assert.equal(db.db.prepare('SELECT count(*) n FROM promo_store WHERE k=?').get(key).n,race?1:0);
+  assert.equal(db.db.prepare("SELECT status FROM email_campaigns WHERE id='mail-c'").get().status,race?'active':'cancelled');
+  assert.equal(db.db.prepare("SELECT status FROM email_outbox WHERE id='mail'").get().status,race?'queued':'cancelled');
+  assert.equal(db.db.prepare('SELECT count(*) n FROM email_copro_records').get().n,race?1:0);
   const shared=JSON.parse(db.db.prepare("SELECT v FROM promo_store WHERE k='pc_co_promotions'").get().v);assert.equal(shared.some(r=>r.campaign===campaign),race);assert.ok(shared.some(r=>r.campaign==='Other'));
   const drafts=JSON.parse(db.db.prepare("SELECT v FROM promo_store WHERE k='pc_copro_drafts::MKT'").get().v);assert.equal(Boolean(drafts.items.linked),race);assert.ok(drafts.items.other);
   const tomb=db.db.prepare("SELECT v FROM promo_store WHERE k='promo::deleted'").get();assert.equal(Number(JSON.parse(tomb.v)[campaign])>10,!race);
