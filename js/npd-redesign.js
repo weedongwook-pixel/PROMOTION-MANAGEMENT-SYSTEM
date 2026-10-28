@@ -135,6 +135,7 @@
   }
 
   var state = {
+    workflow: {step:0, powderChoice:'', subsetChoice:''}, workPowders: [],
     tab: 'new',
     category: '', cateCode: '',   // central — ใช้กับทุกปุ่มสินค้า
     products: [],
@@ -214,7 +215,7 @@
       var delCell = '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delW(\'' + sub.id + '\',\'' + w.id + '\')"></i></td>';
       return '<tr' + (nf ? ' style="background:#fbfbe8"' : '') + '>' + seqCell + cmposCell + engCell + thCell + rest + priceCell + delCell + '</tr>';
     }).join('');
-    return '<div class="border border-dark rounded" style="overflow:visible">' +
+    return '<div class="border border-dark rounded" style="overflow-x:auto" tabindex="0" role="region" aria-label="รายการผงใน SUBSET">' +
       '<table class="table table-sm align-middle m-0 powder-tbl">' +
       '<thead><tr><th style="width:58px">ลำดับ</th><th>CMPOS <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>Name (EN) <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>Name (TH) <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="11" class="text-center text-muted py-2">ยังไม่มีผงใน Subset นี้</td></tr>') + '</tbody></table></div>' +
@@ -223,6 +224,7 @@
       '</div>';
   }
   function subsetFields(sub) {
+    if(sub.existing)return '<p class="mb-0"><b>'+esc(sub.ssCode+' · '+sub.name)+'</b><br>เพิ่มผงเข้า SUBSET เดิม · แสดงเฉพาะผงที่เพิ่มในงานนี้ รายการเดิมยังคงอยู่</p>';
     return '<div class="row g-2 align-items-end">' +
       '<div class="col-md-2"><label class="hint fw-bold text-uppercase">SS Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง" value="' + esc(sub.ssCode) + '" placeholder="— IT —"></div>' +
       '<div class="col-md-4"><label class="hint fw-bold text-uppercase req">Subset Name</label><input class="form-control form-control-sm border-dark" value="' + esc(sub.name) + '" placeholder="Flavored Chicken Joint 1" oninput="RD.setS(\'' + sub.id + '\',\'name\',this.value)" onchange="RD.checkSubName(\'' + sub.id + '\')"></div>' +
@@ -271,7 +273,7 @@
         '<td><div class="d-flex flex-wrap gap-1">' + chCell(r, i) + '</div></td>' +
         '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delR(\'' + p.id + '\',' + i + ')"></i></td></tr>';
     }).join('');
-    return '<div class="border border-dark rounded" style="overflow:visible" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
+    return '<div class="border border-dark rounded" style="overflow-x:auto" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
       '<thead><tr><th style="width:40px">No</th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>' +
       '<button class="btn btn-sm btn-dark fw-bold mt-2" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>';
@@ -280,7 +282,7 @@
     var rows = (p.formulas || []).map(function (f, i) {
       var s = resolveFormulaSub(f.subId);
       var max = (s && s.count) ? s.count : 0;
-      var inForm = state.subsets.filter(function (x) { return x.registered || x.id === f.subId; }).map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
+      var inForm = state.subsets.map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
       var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
       var opts = '<option value="">— เลือก Subset —</option>' +
         (inForm ? '<optgroup label="ชุดใหม่ในฟอร์มนี้">' + inForm + '</optgroup>' : '') +
@@ -296,7 +298,7 @@
         '<span class="small">ผง <span class="hint">' + (max ? '(จาก ' + max + ' ผงในชุด)' : '') + '</span></span>' +
         '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i>' +
         '</div>';
-    }).join('') || '<div class="hint mb-2">ยังไม่มีสูตรผง — เพิ่มเพื่อกำหนดว่าเลือกได้กี่ผงจาก Subset ใด</div>';
+    }).join('') || '<div class="hint mb-2">สินค้านี้ไม่ใช้ SUBSET หากต้องใช้ผง ให้กดเพิ่มสูตรผงและเลือก SUBSET</div>';
     return '<hr class="my-3"><div class="d-flex align-items-center mb-2 flex-wrap"><span class="fw-bold text-uppercase" style="font-size:.82rem"><i class="fas fa-flask me-2 text-success"></i>สูตรผง (Powder Formula)</span>' +
       '<span class="hint ms-2">เลือกได้กี่ผง · จาก Subset ใด</span></div>' +
       '<div class="p-2 rounded" style="background:#eef7f1;border:1px solid #bfe3cd">' + rows +
@@ -324,6 +326,9 @@
     }
     return fields + split;
   }
+  function productCategoryField(p) {
+    return '<div class="mb-3"><label class="form-label small fw-bold" for="cat_'+p.id+'">Category ของสินค้านี้</label><select id="cat_'+p.id+'" class="form-select" onchange="RD.setProductCategory(\''+p.id+'\',this.value)"><option value="">เลือกหมวดสินค้า</option>'+CAT_LIST.filter(function(c){return npdCatShown(c.name);}).map(function(c){return '<option value="'+esc(c.code)+'"'+(c.code===p.cateCode?' selected':'')+'>'+esc(c.code+' · '+c.name)+'</option>';}).join('')+'</select></div>';
+  }
   function productCard(p, idx) {
     var sm = p.saleModes || [];
     var allOn = sm.length && npdChannels().every(function (c) { return sm.indexOf(c) !== -1; });
@@ -341,6 +346,7 @@
       '<span class="fw-bold"><i class="fas fa-box-open me-2"></i>ปุ่มสินค้า #' + (idx + 1) + '</span>' +
       '<i class="fas fa-trash-alt text-danger" style="cursor:pointer" onclick="RD.delProduct(\'' + p.id + '\')"></i></div>' +
       '<div class="p-3">' +
+        productCategoryField(p) +
         '<div class="row g-3 mb-3">' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="— IT —"></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/20</div></div>' +
@@ -359,7 +365,7 @@
     document.getElementById('productList').innerHTML = state.products.map(productCard).join('');
     refreshUnitDatalist();
   }
-  function renderAll() { renderSubsets(); renderProducts(); refreshUnitDatalist(); }
+  function renderAll() { renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
 
   /* ===================== FLAVOR TAB (per-powder target subset) ===================== */
   function flavorPowderRow(w, i) {
@@ -439,8 +445,9 @@
   function npdReturnItem(code) { try { if (window.PC_COUNTER && PC_COUNTER.returnCode && String(code || '').trim()) PC_COUNTER.returnCode(String(code).trim(), 'item', { from: 'NPD (RD เปลี่ยนหมวด/ลบปุ่ม)' }); } catch (x) {} }
   /* sync item code ของทุกปุ่มให้ตรงกับ cateCode ปัจจุบัน */
   function npdSyncItemCodes() {
-    var cc = String(state.cateCode || '').trim();
     (state.products || []).forEach(function (p) {
+      if (!p.cateCode && state.cateCode) { p.cateCode=state.cateCode; p.category=state.category; }
+      var cc = String(p.cateCode || '').trim();
       if (p._codeCat === cc && p.code) return;              // ตรงหมวดแล้ว ข้าม
       if (p.code) { npdReturnItem(p.code); p.code = ''; }     // หมวดเปลี่ยน/ล้าง → คืนเลขเก่า
       if (cc) { p.code = npdReserveItem(cc); p._codeCat = cc; } else { p._codeCat = ''; }
@@ -566,7 +573,7 @@
   RD.posCount = function (el, limit) { limit = limit || 20; var c = el.parentElement.querySelector('.char-count'); if (c) { var n = el.value.length, over = n > limit; c.textContent = n + '/' + limit + (over ? ' • เกิน ' + limit + ' ตัว' : ''); c.className = 'char-count text-end ' + (over ? 'text-danger fw-bold' : 'text-muted'); } };
   RD.setR = function (pid, i, k, v) { var p = P(pid); if (p && p.recipes[i]) { p.recipes[i][k] = v; if (k === 'unit') refreshUnitDatalist(); if (k === 'code') { var row = document.querySelectorAll('[data-prod="' + pid + '"] .rm-row')[i]; if (!String(v || '').trim()) { p.recipes[i].desc = ''; p.recipes[i].unit = ''; if (row) { var d0 = row.querySelector('.rm-desc'); if (d0) d0.value = ''; var u0 = row.querySelector('.rm-unit'); if (u0) u0.value = ''; } } else { var rm = rmFind(v); if (rm) { p.recipes[i].desc = rm.desc; if (rm.unit) p.recipes[i].unit = rm.unit; if (row) { var d = row.querySelector('.rm-desc'); if (d) d.value = rm.desc; var u = row.querySelector('.rm-unit'); if (u && rm.unit) u.value = rm.unit; } } } } } };
   RD.rmPickR = function (pid, i, code) { var p = P(pid); if (!p || !p.recipes[i]) return; p.recipes[i].code = code; if (!String(code || '').trim()) { p.recipes[i].desc = ''; p.recipes[i].unit = ''; renderProducts(); return; } var rm = rmFind(code); if (rm) { p.recipes[i].desc = rm.desc; if (rm.unit) p.recipes[i].unit = rm.unit; } renderProducts(); };
-  RD.addProduct = function () { var p = mkProduct({ recipes: [mkRecipe()] }); if (String(state.cateCode || '').trim()) { p.code = npdReserveItem(state.cateCode); p._codeCat = state.cateCode; } state.products.push(p); renderProducts(); };
+  RD.addProduct = function () { var p = mkProduct({ recipes: [mkRecipe()], category:state.category, cateCode:state.cateCode }); if (String(state.cateCode || '').trim()) { p.code = npdReserveItem(state.cateCode); p._codeCat = state.cateCode; } state.products.push(p); renderProducts(); };
   RD.delProduct = function (pid) { var p0 = P(pid); if (p0 && p0.code) npdReturnItem(p0.code); state.products = state.products.filter(function (p) { return p.id !== pid; }); renderProducts(); };
   RD.addR = function (pid) { var p = P(pid); if (p) { p.recipes.push(mkRecipe({ channels: (p.saleModes || []).slice() })); renderProducts(); } };
   RD.delR = function (pid, i) { var p = P(pid); if (p) { p.recipes.splice(i, 1); if (!p.recipes.length) p.recipes.push(mkRecipe()); renderProducts(); } };
@@ -655,7 +662,7 @@
     if (dup2) { Swal.fire('ตัวย่อซ้ำ', 'มี Subset ที่ใช้ตัวย่อ (Name 2) "' + n2 + '" อยู่แล้ว (ในฟอร์มหรือฐานข้อมูล) — กรุณาใช้ตัวย่ออื่น', 'error'); return; }
     s.registered = true; renderAll();
   };
-  RD.delS = function (sid) { var s0 = Ssub(sid); if (s0) { if (s0.ssCode) npdReturnSS(s0.ssCode); (s0.powders || []).forEach(function (w) { npdReturnCMPOS(w.cmpos); }); } state.subsets = state.subsets.filter(function (s) { return s.id !== sid; }); state.products.forEach(function (p) { p.formulas = (p.formulas || []).filter(function (f) { return f.subId !== sid; }); }); renderAll(); };
+  RD.delS = function (sid) { var s0 = Ssub(sid); if (s0) { if (s0.ssCode && !s0.existing) npdReturnSS(s0.ssCode); (s0.powders || []).forEach(function (w) { npdReturnCMPOS(w.cmpos); }); } state.subsets = state.subsets.filter(function (s) { return s.id !== sid; }); state.products.forEach(function (p) { p.formulas = (p.formulas || []).filter(function (f) { return f.subId !== sid; }); }); renderAll(); };
   RD.addW = function (sid) {
     var s = Ssub(sid); if (!s) return;
     var w = mkPowder({ unit: 'g' }); w.cmpos = npdReserveCMPOS();
@@ -697,7 +704,7 @@
     var depCode = state.dept || deptOf(state.cateCode);
     var subsets = state.subsets.filter(function (s) { return String(s.name || '').trim(); }).map(function (s) {
       return {
-        ssCode: s.ssCode || '', name: String(s.name).trim(), name2: String(s.name2 || '').trim(), cat: s.cat || '', registered: !!s.registered,
+        existing: !!s.existing, ssCode: s.ssCode || '', name: String(s.name).trim(), name2: String(s.name2 || '').trim(), cat: s.cat || '', registered: !!s.registered,
         powders: (s.powders || []).map(function (w) {
           /* `price` เป็นชื่อเดิมที่ฝั่ง IT ใช้ ส่วน `addon` เก็บไว้ด้วยเพื่อให้
              การสร้าง Product Master ผงไม่ทำราคา Add-on หาย */
@@ -711,12 +718,13 @@
         name: String(p.name || '').trim(), th: String(p.th || '').trim(), code: p.code || '',
         /* เก็บ master attributes ไว้ที่ item ด้วย เพื่อให้ขั้น IT COMPLETE
            สร้าง Product Master ได้โดยไม่ต้องเดาจากเลขรหัสสินค้า */
-        category: state.category || '', cateCode: state.cateCode || '',
-        department: deptName(depCode), depCode: depCode,
-        sellStores: storeStr, storeConds: storeConds.slice(),
+        category: p.category || state.category || '', cateCode: p.cateCode || state.cateCode || '',
+        department: deptName(deptOf(p.cateCode || state.cateCode)), depCode: deptOf(p.cateCode || state.cateCode),
+        sellStores: p.storeOverride ? p.storeOverride.store : storeStr, storeConds: p.storeOverride ? p.storeOverride.conditions : storeConds.slice(),
         saleModes: (p.saleModes || []).slice(), priceTakeaway: p.priceTakeaway || '', priceDelivery: p.priceDelivery || '',
         prices: Object.assign({}, p.prices || {}),
-        recipes: (p.recipes || []).map(function (r) { return { code: r.code || '', desc: r.desc || '', qty: r.qty || '', unit: r.unit || '', channels: (r.channels || []).slice() }; }),
+        // A new row carries a default unit only; it is not a recipe until code, description or quantity is entered.
+        recipes: (p.recipes || []).filter(function (r) { return ['code', 'desc', 'qty'].some(function (k) { return String(r[k] == null ? '' : r[k]).trim(); }); }).map(function (r) { return { code: r.code || '', desc: r.desc || '', qty: r.qty || '', unit: r.unit || '', channels: (r.channels || []).slice() }; }),
         formulas: (p.formulas || []).map(function (f) { var s = resolveFormulaSub(f.subId); var mn = parseInt(f.chooseMin != null ? f.chooseMin : f.choose, 10) || 1; var mx = parseInt(f.chooseMax != null ? f.chooseMax : f.choose, 10) || mn; if (mx < mn) mx = mn; return { ss: s ? (s.ssCode || s.name || '') : '', ssName: s ? (s.name || '') : '', chooseMin: mn, chooseMax: mx, choose: mx }; })
       };
     });
@@ -730,7 +738,7 @@
   }
 
   RD.resetNew = function () {
-    state.importSource = null;
+    state.importSource = null; state.workflow={step:0,powderChoice:'',subsetChoice:'',datesChosen:false}; state.workPowders=[];
     state.subsets = []; state.products = [mkProduct({ recipes: [mkRecipe()] })];
     state.storeConds = []; state.storeMode = 'ALL'; state.category = ''; state.cateCode = '';
     var pj = document.getElementById('npProject'); if (pj) pj.value = '';
@@ -749,6 +757,8 @@
       var g = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
       p.push('P:' + g('npProject'));
       p.push('C:' + (state.category || ''));
+      p.push('work:'+JSON.stringify(state.workPowders||[]));
+      p.push('details:'+JSON.stringify({products:state.products,subsets:state.subsets,storeMode:state.storeMode,storeConds:state.storeConds}));
       (state.products || []).forEach(function (x) {
         var v = String(x.name || '').trim() + '|' + String(x.th || '').trim() + '|' + String(x.code || '').trim();
         if (v !== '||') p.push('p:' + v);
@@ -769,10 +779,18 @@
   /* ล็อกเลขถาวรเหมือนหน้า IT: เลขที่จองจะไม่คืนตอนออกจากหน้า ถ้าบันทึกร่าง/ส่งงานแล้ว
      คืนเข้า pool (recycle) เฉพาะตอน "ทิ้งร่าง/ลบรายการ" — ไม่เผาเลขทิ้ง */
   var npdKeepCodes = false;
+  function npdReturnNewCodes(d,before) {
+    var protectedCodes=new Set();
+    (before.subsets||[]).forEach(function(s){protectedCodes.add(s.ssCode);(s.powders||[]).forEach(function(p){protectedCodes.add(p.cmpos);});});
+    (before.products||[]).forEach(function(p){protectedCodes.add(p.code);});
+    var delta=JSON.parse(JSON.stringify(d));
+    (delta.subsets||[]).forEach(function(s){if(protectedCodes.has(s.ssCode))s.ssCode='';s.powders=(s.powders||[]).filter(function(p){return !protectedCodes.has(p.cmpos);});});
+    delta.products=(delta.products||[]).filter(function(p){return !protectedCodes.has(p.code);});npdReturnSnapshotCodes(delta);
+  }
   function npdReturnSnapshotCodes(d) {
     try {
       ((d && d.subsets) || []).forEach(function (s) {
-        if (s.ssCode) npdReturnSS(s.ssCode);
+        if (s.ssCode && !s.existing) npdReturnSS(s.ssCode);
         (s.powders || []).forEach(function (w) { if (w.cmpos) npdReturnCMPOS(w.cmpos); });
       });
       ((d && d.products) || []).forEach(function (p) { if (p.code) npdReturnItem(p.code); });
@@ -792,6 +810,7 @@
     return {
       project: getVal('npProject'), start: getVal('npStart'), end: getVal('npEnd'), rd: getVal('npRd'),
       category: state.category || '', cateCode: state.cateCode || '', dept: state.dept || '',
+      workflow: state.workflow, workPowders: state.workPowders,
       importSource: state.importSource || null,
       storeMode: state.storeMode || 'ALL', storeConds: state.storeConds || [],
       subsets: state.subsets || [], products: state.products || [], savedAt: Date.now()
@@ -811,7 +830,8 @@
     try {
       state.category = d.category || ''; state.cateCode = d.cateCode || ''; state.dept = d.dept || '';
       state.importSource = d.importSource || null;
-      if (keepReservations) npdKeepCodes = true;
+      state.workflow = d.workflow || {step:0,powderChoice:'',subsetChoice:''}; state.workPowders=d.workPowders || [];
+      if (keepReservations) { npdKeepCodes = true; if (d.start) state.workflow.datesChosen = true; }
       state.storeMode = d.storeMode || 'ALL'; state.storeConds = d.storeConds || [];
       state.subsets = d.subsets || [];
       state.products = (d.products && d.products.length) ? d.products : [mkProduct({ recipes: [mkRecipe()] })];
@@ -828,7 +848,7 @@
     try {
       if (!npdKeepCodes) {   // ไม่ได้บันทึกร่าง/ส่งงาน → คืนเลข seed/ที่ยังไม่ใช้ เข้า pool (recycle)
         (state.subsets || []).forEach(function (s) {
-          if (s.ssCode) npdReturnSS(s.ssCode);
+          if (s.ssCode && !s.existing) npdReturnSS(s.ssCode);
           (s.powders || []).forEach(function (w) { if (w.cmpos) npdReturnCMPOS(w.cmpos); });
         });
         (state.products || []).forEach(function (p) { if (p.code) npdReturnItem(p.code); });
@@ -854,6 +874,7 @@
 
   RD.submit = function (which) {
     if (which === 'new') {
+      if(window.PC_NpdWorkflow){var workflowIssues=RD.workflowIssues();if(workflowIssues.length){PC_NpdWorkflow.go(workflowIssues[0].step);return warnFill(workflowIssues[0].message);}}
       if (state.importSource && (!state.importSource.storesReviewed || (state.storeMode !== 'ALL' && !condBranchCount(state.storeConds)))) return warnFill('กรุณาเลือกสาขาและยืนยันว่าได้ตรวจเงื่อนไขสาขาจาก Excel แล้วก่อนส่ง');
       var project = getVal('npProject'), start = getVal('npStart'), end = getVal('npEnd');
       if (!project) return warnFill('กรุณาระบุชื่อชุดสินค้า / Project');
@@ -877,7 +898,7 @@
         var s = state.subsets[si];
         var sname = String(s.name || '').trim();
         if (!sname) return warnFill('Subset #' + (si + 1) + ': กรุณากรอกชื่อ Subset');
-        if (!String(s.name2 || '').trim()) return warnFill('Subset "' + sname + '": กรุณากรอก Subset Name 2 (ตัวย่อผงบน POS)');
+        if (!s.existing && !String(s.name2 || '').trim()) return warnFill('Subset "' + sname + '": กรุณากรอก Subset Name 2 (ตัวย่อผงบน POS)');
         var pws = s.powders || [];
         var _pn = {};
         for (var wi = 0; wi < pws.length; wi++) {
@@ -897,7 +918,7 @@
         for (var _ri = 0; _ri < (_pd.recipes || []).length; _ri++) {
           var _rr = _pd.recipes[_ri];
           var _rv = ['code', 'desc', 'qty', 'unit'].map(function (k) { return String(_rr[k] == null ? '' : _rr[k]).trim(); });
-          if (_rv.some(function (v) { return !!v; }) && !_rv.every(function (v) { return !!v; })) {
+          if (_rv.slice(0, 3).some(function (v) { return !!v; }) && !_rv.every(function (v) { return !!v; })) {
             return warnFill('ปุ่มสินค้า "' + (_pd.name || '#' + (_pi + 1)) + '": Recipe RM แถว ' + (_ri + 1) + ' ต้องกรอก Code RM, Description, Qty และ Unit ให้ครบ หรือเคลียร์ทั้งแถว');
           }
         }
@@ -1020,11 +1041,18 @@
     }).withFailureHandler(function () { cb && cb(); }).getMasterDataExtended();
   }
 
+  var initializedProjectNode=null;
   function init() {
+    var projectNode=document.getElementById('npProject');
+    if(projectNode && initializedProjectNode===projectNode){if(window.PC_NpdWorkflow)PC_NpdWorkflow.init();return;}
+    initializedProjectNode=projectNode;
     /* dirty-check: มีข้อมูลกรอกค้างจริงไหม (Project / ชื่อปุ่ม / ชื่อ Subset / ผง) */
     var t = new Date(), iso = function (d) { return d.toISOString().slice(0, 10); };
     var nm = new Date(t.getFullYear(), t.getMonth() + 1, 1), nme = new Date(t.getFullYear(), t.getMonth() + 2, 0);
     ['npStart', 'npEnd'].forEach(function (id, i) { var el = document.getElementById(id); if (el) el.value = iso(i ? nme : nm); });
+    if (!window.__npdDateWatch) { window.__npdDateWatch = true; document.addEventListener('change', function (e) { var id = e.target && e.target.id; if (id === 'npStart' || id === 'npEnd') state.workflow.datesChosen = true; }); }
+    // Prefilled next-month dates are only a suggestion until the user edits them or a draft/import sets them.
+    state.workflow.datesChosen = false;
     state.flavor.start = iso(nm); state.flavor.end = iso(nme);
     var user = loginUser();
     state.flavor.rd = user;
@@ -1048,6 +1076,7 @@
     renderStores();
     renderAll();
     /* baseline หลังเรนเดอร์เสร็จ (รวม seed) → ใช้เทียบว่ามีข้อมูล "กรอกใหม่" ไหม */
+    if(window.PC_NpdWorkflow) PC_NpdWorkflow.init();
     window.__npdBaseline = npdSig();
     /* leave-guard: เตือนเฉพาะเมื่อกรอกข้อมูลค้างจริง + ให้เลือกบันทึกร่าง */
     window.__leaveGuard = { page: 'NPD', check: npdHasData, onDraft: RD.saveDraft };
@@ -1057,7 +1086,7 @@
       var draftRaw = localStorage.getItem(NPD_DRAFT_KEY);
       if (draftRaw && window.Swal) {
         var d = JSON.parse(draftRaw);
-        var hasContent = d && (String(d.project || '').trim()
+        var hasContent = d && ((d.workPowders || []).length || String(d.project || '').trim()
           || (d.products || []).some(function (p) { return String(p.name || '').trim(); })
           || (d.subsets || []).some(function (s) { return String(s.name || '').trim(); }));
         if (hasContent) {
@@ -1093,8 +1122,10 @@
     var o = options || {}, current = RD.getExcelImportOptions();
     if (!o.category || !current.categories.some(function (c) { return c.code === o.category.code && c.name === o.category.name; })) throw Error('กรุณาเลือกหมวดที่เปิดใช้งานในระบบ');
     Object.keys(o.channelMap || {}).forEach(function (ch) { var mapped = o.channelMap[ch]; if (mapped !== '__skip__' && current.channels.indexOf(mapped) < 0) throw Error('ช่องทาง ' + mapped + ' ไม่ได้เปิดใช้งานในฟอร์ม NPD'); });
+    if (o.append && plan.products.some(function(p){return state.products.some(function(x){return String(x.sourceName || x.name).toLowerCase()===String(p.sourceName || p.name).toLowerCase();});})) throw Error('มีสินค้าจากชีตนี้ในงานแล้ว กรุณาแก้รายการเดิมแทนการนำเข้าซ้ำ');
+    if (o.append && state.workflow.datesChosen!==false && getVal('npStart') && (getVal('npStart')!==plan.start || getVal('npEnd')!==plan.end)) throw Error('ช่วงวันที่ของชีตต่างจากงานนี้ กรุณาแยกเป็นอีกงาน');
     var before = npdSnapshot(), draft = PC_NpdExcel.createDraft(plan, {
-      category: o.category, channelMap: o.channelMap, subsetMaster: current.subsetMaster,
+      category: o.category, channelMap: o.channelMap, subsetMaster: current.subsetMaster, existingSubsets:o.append?state.subsets:[],
       reserve: function (type, cat) { return type === 'ss' ? npdReserveSS() : (cat === '103' ? npdReserveCMPOS() : npdReserveItem(cat)); },
       release: function (type, code) { if (type === 'ss') npdReturnSS(code); else npdReturnItem(code); }
     });
@@ -1102,36 +1133,165 @@
     draft.importSource.file = String(o.fileName || '');
     try {
       state.category = draft.category; state.cateCode = draft.cateCode; state.dept = draft.dept;
-      state.products = draft.products; state.subsets = draft.subsets;
-      state.storeMode = draft.storeMode; state.storeConds = draft.storeConds; state.importSource = draft.importSource;
+      if(o.append) {
+        var importedGroup=uid('import'); draft.products.forEach(function(p){p.importGroup=importedGroup; p.importRules=plan.storeRules; p.storesReviewed=false;});
+        state.products=state.products.filter(function(p){return p.name || p.th || p.cateCode || p.priceTakeaway || p.priceDelivery || (p.saleModes||[]).length || (p.formulas||[]).length || Object.keys(p.prices||{}).length || p.recipes.some(function(r){return r.code || r.desc || r.qty;});}).concat(draft.products);
+        state.subsets=state.subsets.filter(function(s){return !draft.subsets.some(function(d){return d.id===s.id;});}).concat(draft.subsets);
+      } else { state.products = draft.products; state.subsets = draft.subsets; }
+      if(!o.append){state.storeMode = draft.storeMode; state.storeConds = draft.storeConds; state.importSource = draft.importSource;}
+      if(o.append && before.project){draft.project=before.project;}
       ['npProject','npStart','npEnd','npCateCode'].forEach(function (id, i) { var el = document.getElementById(id); if (el) el.value = [draft.project,draft.start,draft.end,draft.cateCode][i]; });
       renderDeptList(); renderCatList(); renderStores(); renderAll();
     } catch (e) {
-      npdReturnSnapshotCodes(draft); npdRestoreSnapshot(before); throw e;
+      npdReturnNewCodes(draft,before); npdRestoreSnapshot(before); throw e;
     }
+    state.workflow.datesChosen = true;
     // Only return reservations belonging to the form that was replaced. Never
     // return the new draft's codes or codes already confirmed downstream.
-    npdReturnSnapshotCodes(before);
-    npdKeepCodes = false;
+    if(!o.append) npdReturnSnapshotCodes(before);
+    if(o.append && npdKeepCodes) localStorage.setItem(NPD_DRAFT_KEY,JSON.stringify(npdSnapshot()));
+    if(!o.append) npdKeepCodes = false;
     return { products: draft.products.length, subsets: draft.subsets.length };
   };
   RD.importExcelSubsetPlan = function (plan, options) {
     if (!window.PC_NpdExcel || !window.PC_COUNTER) throw Error('ตัวอ่าน Excel หรือระบบเลขกลางยังไม่พร้อม กรุณาเปิดหน้า NPD อีกครั้ง');
     var o = options || {}, before = state.subsets.slice();
     var draft = PC_NpdExcel.createSubsetDraft(plan, {
-      subsetMaster: subsetMaster(), existingSubsets: before,
+      subsetMaster: subsetMaster(), existingSubsets: before, mergeExisting:!!o.mergeExisting,
       reserve: function (type) { return type === 'ss' ? npdReserveSS() : npdReserveCMPOS(); },
       release: function (type,code) { if (type === 'ss') npdReturnSS(code); else npdReturnCMPOS(code); }
     });
     draft.subsets.forEach(function (s) { s.importSource = {file:String(o.fileName || ''),sheet:plan.sheet}; });
     try {
-      state.subsets = before.concat(draft.subsets);
+      state.subsets = before.filter(function(s){return !draft.subsets.some(function(d){return d.id===s.id;});}).concat(draft.subsets);
       renderAll();
       // A previously saved draft owns its reservations. Keep it consistent
       // when appending groups, without changing the user's saved baseline.
       if (npdKeepCodes) localStorage.setItem(NPD_DRAFT_KEY,JSON.stringify(npdSnapshot()));
-    } catch (e) { state.subsets = before; npdReturnSnapshotCodes(draft); renderAll(); throw e; }
+    } catch (e) { state.subsets = before; npdReturnNewCodes(draft,{subsets:before}); renderAll(); throw e; }
     return { subsets: draft.subsets.length, powders: draft.subsets.reduce(function (n,s) { return n + s.powders.length; },0) };
+  };
+  RD.workflowSnapshot = function () { return JSON.parse(JSON.stringify(npdSnapshot())); };
+  RD.workflowPayload = buildNewPayload;
+  RD.setWorkflowStep = function (n) { state.workflow.step=Math.max(0,Math.min(4,Number(n)||0)); };
+  RD.setWorkflowChoice = function (k,v) { state.workflow[k]=v; };
+  RD.setProductCategory = function (id,code) {
+    var p=P(id), c=CAT_LIST.find(function(x){return x.code===code;}); if(!p)return;
+    p.cateCode=c?c.code:'';p.category=c?c.name:'';
+    if(p.code && p._codeCat!==p.cateCode){npdReturnItem(p.code);p.code='';}
+    if(p.cateCode && !p.code){p.code=npdReserveItem(p.cateCode);p._codeCat=p.cateCode;}
+    renderProducts();
+  };
+  RD.addWorkPowder = function (data) {
+    var name=String(data.eng||'').trim(),code=String(data.code||'').trim();
+    if(!name || !code || !String(data.desc||'').trim()) throw Error('กรอกชื่อผง รหัส RM และรายละเอียดให้ครบก่อนเพิ่ม');
+    var old=state.workPowders.find(function(p){return p.eng.toLowerCase()===name.toLowerCase() && p.code===code;});
+    if(old)return old.id;
+    var p={id:uid('lib'),eng:name,code:code,desc:String(data.desc||''),unit:data.unit||'g'};state.workPowders.push(p);state.workflow.powderChoice='new';return p.id;
+  };
+  RD.removeWorkPowder = function(id){state.workPowders=state.workPowders.filter(function(p){return p.id!==id;});};
+  RD.workflowCategories = function(){return CAT_LIST.slice();};
+  RD.workflowSubsets = subsetMaster;
+  RD.attachWorkPowder = function (libId,target,recipe) {
+    var lib=state.workPowders.find(function(p){return p.id===libId;}); if(!lib)throw Error('ไม่พบผงที่เลือก');
+    var sub=Ssub(target), created=false;
+    if(!sub && /^db:/.test(target)) {
+      var master=subsetMaster().find(function(x){return x.ssCode===target.slice(3) && String(x.status||'Active').toLowerCase()!=='inactive';});
+      if(!master)throw Error('ไม่พบ SUBSET ที่เปิดใช้งาน');
+      sub=state.subsets.find(function(x){return x.ssCode===master.ssCode;});
+      if(!sub){sub=mkSubset({ssCode:master.ssCode,name:master.name,name2:master.short,registered:true,powders:[]});sub.existing=true;created=true;}
+    }
+    if(!sub)throw Error('เลือก SUBSET ปลายทางก่อน');
+    var data=Object.assign({},lib,recipe||{}), name=String(data.eng||lib.eng).trim();
+    var suffix=String(sub.name2||'').trim();
+    if(suffix && !(recipe && recipe.eng) && !name.toLowerCase().endsWith(' '+suffix.toLowerCase()))name+=' '+suffix;
+    // Named recipes (imports) match exactly, so "Mala ENF 1" and "Mala ENF 2" stay distinct. A library powder
+    // attached by hand has no size suffix, so it also matches an imported "Cheese ENF 1" for the same flavor.
+    var own=function(n){n=String(n||'').trim().toLowerCase();return suffix && n.endsWith(' '+suffix.toLowerCase())?n.slice(0,-suffix.length-1):n;};
+    var flavor=function(n){return own(n).replace(/\s+(?:enf|ff|ck|cs|cng|bff|wvf|csf|ltm)\s*\d*$/,'').trim();};
+    var manual=!(recipe && recipe.eng);
+    var old=sub.powders.find(function(p){return !p.noFlavor && (own(p.eng)===own(name) || (manual && flavor(p.eng)===own(name)));});
+    if(old){
+      if(String(old.code)!==String(data.code) || Number(old.qty)!==Number(data.qty))throw Error('มีผงชื่อนี้ใน SUBSET แล้ว แต่สูตรต่างกัน กรุณาแก้รายการเดิม');
+      return old.id;
+    }
+    var seq=Number(data.seq);
+    if(!Number.isInteger(seq) || seq<1){if(sub.existing)throw Error('ระบุลำดับผงบน POS สำหรับ SUBSET เดิม');seq=Math.max(0,...sub.powders.filter(function(w){return !w.noFlavor;}).map(function(w){return Number(w.seq)||0;}))+1;}
+    var p=mkPowder(Object.assign({},data,{eng:name,th:data.th||name,seq:seq}));
+    p.cmpos=npdReserveCMPOS();if(!p.cmpos)throw Error('จองรหัสผงไม่สำเร็จ');p.libraryId=lib.id;
+    if(created)state.subsets.push(sub);
+    var nf=sub.powders.findIndex(function(w){return w.noFlavor;});if(nf<0)sub.powders.push(p);else sub.powders.splice(nf,0,p);
+    state.workflow.subsetChoice='use';renderAll();return p.id;
+  };
+  RD.importWorkFlavors = function(plan) {
+    if(!plan || plan.errors.length)throw Error('กรุณาแก้ข้อมูลในไฟล์ก่อนนำเข้า');
+    var before=JSON.parse(JSON.stringify(npdSnapshot())), allocated=[], count=0;
+    try {
+      plan.subsets.forEach(function(g){
+        var sub=state.subsets.find(function(s){return g.ssCode?s.ssCode===g.ssCode:String(s.name).trim().toLowerCase()===String(g.name).trim().toLowerCase();});
+        var master=subsetMaster().find(function(s){return g.ssCode?s.ssCode===g.ssCode:String(s.name).trim().toLowerCase()===String(g.name).trim().toLowerCase();});
+        if(!sub && g.ssCode && !master)throw Error('ไม่พบ SUBSET '+g.ssCode+' ในระบบ');
+        if(!sub && !master){
+          sub=mkSubset({name:g.name,powders:[]});sub.ssCode=npdReserveSS();if(!sub.ssCode)throw Error('จอง SS ไม่สำเร็จ');allocated.push({type:'ss',code:sub.ssCode});state.subsets.push(sub);
+        }
+        g.powders.forEach(function(w){
+          if(w.cmpos)throw Error('ไฟล์ผงมี CMPOS แล้ว กรุณาเลือกข้อมูลเดิมในระบบ ไม่สร้างรหัสซ้ำ');
+          if(w.noFlavor){if(!sub)throw Error('ตรวจ No flavor ใน SUBSET เดิมก่อนเพิ่ม');if(!sub.powders.some(function(p){return p.noFlavor;})){var nf=mkPowder(w);nf.cmpos=npdReserveCMPOS();if(!nf.cmpos)throw Error('จองรหัสไม่สำเร็จ');allocated.push({type:'item',code:nf.cmpos});sub.powders.push(nf);}return;}
+          var base=w.eng.replace(/\s+(?:ENF|FF|CK|CS|CNG|BFF|WVF|CSF|LTM)\s*\d*$/i,'').trim();
+          var lib=RD.addWorkPowder({eng:base,code:w.code,desc:w.desc,unit:w.unit});
+          var target=sub?sub.id:'db:'+master.ssCode;
+          var oldCodes=state.subsets.flatMap(function(s){return s.powders.map(function(p){return p.cmpos;});});
+          var id=RD.attachWorkPowder(lib,target,w);
+          state.subsets.forEach(function(s){s.powders.forEach(function(p){if(p.id===id && oldCodes.indexOf(p.cmpos)<0){allocated.push({type:'item',code:p.cmpos});count++;}});});
+        });
+      });
+      // Complete mandatory flavors only on new subsets named in this file; other subsets keep the user's edits.
+      state.subsets.filter(function(s){return !s.existing && plan.subsets.some(function(g){return g.ssCode?s.ssCode===g.ssCode:String(s.name).trim().toLowerCase()===String(g.name).trim().toLowerCase();});}).forEach(function(s){
+        PC_NpdExcel.completeStandardFlavors(s);
+        s.powders.forEach(function(w){if(!w.id){w.id=uid('w');w.cmpos=npdReserveCMPOS();if(!w.cmpos)throw Error('จองรหัสมาตรฐานไม่สำเร็จ');allocated.push({type:'item',code:w.cmpos});}});
+      });
+      renderAll();return count;
+    }catch(e){allocated.forEach(function(a){if(a.type==='ss')npdReturnSS(a.code);else npdReturnCMPOS(a.code);});npdRestoreSnapshot(before);throw e;}
+  };
+  RD.reviewProductStores = function(group) {
+    if(state.storeMode!=='ALL' && !condBranchCount(state.storeConds))throw Error('เงื่อนไขสาขาที่เลือกไม่ตรงกับสาขาใดเลย กรุณาเลือกสาขาใหม่ก่อนยืนยัน');
+    state.products.forEach(function(p){if(p.importGroup===group){p.storesReviewed=true;p.storeOverride={store:buildNewPayload().store,conditions:JSON.parse(JSON.stringify(state.storeConds))};}});
+  };
+  RD.workflowIssues = function() {
+    var issues=[],add=function(step,message){issues.push({step:step,message:message});};
+    if(!getVal('npProject'))add(0,'กรอกชื่อโครงการ');
+    if(!getVal('npStart') || !getVal('npEnd') || getVal('npStart')>getVal('npEnd'))add(0,'ตรวจวันที่เริ่มและวันที่สิ้นสุด');
+    state.workPowders.forEach(function(w){if(!w.code || !w.desc)add(1,'ผง '+w.eng+': กรอกรหัส RM และรายละเอียด');});
+    state.subsets.forEach(function(s){
+      if(!s.name || (!s.existing && !s.name2))add(2,'SUBSET '+(s.name||'ใหม่')+': กรอกชื่อและตัวย่อ');
+      var seen={};
+      s.powders.forEach(function(w){
+        if(!w.noFlavor && (!w.code || !w.desc || !(Number(w.qty)>0) || !w.unit))add(2,(s.name||'SUBSET')+' / '+w.eng+': ตรวจ RM ปริมาณและหน่วย');
+        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(2,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร');});
+        var k=String(w.eng||'').replace(/\s+/g,'').toLowerCase();if(k && !w.noFlavor){if(seen[k])add(2,(s.name||'SUBSET')+': ชื่อผง '+w.eng+' ซ้ำในชุด');seen[k]=1;}
+      });
+    });
+    // Same duplicate rules as RD.submit, so the review step never shows ready for a form submit rejects.
+    var subNames={},subAbbr={};
+    state.subsets.forEach(function(s){
+      var n=String(s.name||'').replace(/\s+/g,''),a=String(s.name2||'').replace(/\s+/g,'').toUpperCase();
+      if(n){if(subNames[n])add(2,'ชื่อ SUBSET '+s.name+' ซ้ำ');subNames[n]=1;}
+      if(a){if(subAbbr[a])add(2,'ตัวย่อ SUBSET '+s.name2+' ซ้ำ');subAbbr[a]=1;}
+    });
+    if(!state.products.length)add(3,'เพิ่มสินค้าอย่างน้อย 1 รายการ');
+    var reviewedGroups={};
+    state.products.forEach(function(p,i){
+      var name=p.name||'สินค้า #'+(i+1);
+      if(!p.name)add(3,name+': กรอกชื่อสินค้า');
+      if(!p.cateCode)add(3,name+': เลือก Category');
+      [['EN',p.name],['TH',p.th]].forEach(function(n){var len=String(n[1]||'').length;if(len>20)add(3,name+': ชื่อ '+n[0]+' บน POS ยาว '+len+'/20 ตัวอักษร');});
+      if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
+      if(p.importGroup && !p.storesReviewed && !reviewedGroups[p.importGroup]){add(3,'กลุ่ม '+(p.category||name)+': ตรวจและยืนยันสาขาที่นำเข้า');reviewedGroups[p.importGroup]=true;}
+      (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
+      (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});
+      (p.recipes||[]).forEach(function(r,ri){var v=['code','desc','qty','unit'].map(function(k){return String(r[k]==null?'':r[k]).trim();});if(v.slice(0,3).some(Boolean) && !v.every(Boolean))add(3,name+': Recipe RM แถว '+(ri+1)+' กรอกให้ครบหรือล้างทั้งแถว');});
+    });
+    return issues;
   };
   window.RD = RD;
   window.initNPD = init;

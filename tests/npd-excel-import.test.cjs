@@ -56,7 +56,7 @@ test('TA and Delivery merge while RM channels and separate new Subset identities
   assert.deepEqual(plan.products[0].recipes[1].channels, ['Grab']);
   assert.equal(plan.products.some(p => p.recipes.some(r => /^SS/i.test(r.code))), false);
   assert.equal(plan.subsets.length, 2);
-  assert.equal(plan.subsets[0].powders.length, 1, 'Mala repeated in another sheet must not be imported twice');
+  assert.equal(plan.subsets[0].powders.filter(p => p.eng === 'Mala ENF 1').length, 1, 'Mala repeated in another sheet must not be imported twice');
   assert.equal(plan.subsets[0].powders[0].code, '3278');
   assert.notEqual(plan.products[0].formulas[0].ssName, plan.products[1].formulas[0].ssName);
   assert.ok(plan.storeRules.some(r => r.values.some(v => v.label === 'Food Truck' && v.selected === false)));
@@ -229,4 +229,39 @@ test('standalone SS import rejects populated rows with missing or invalid NO ins
     const wb=sample();wb.Sheets.ss.C4={t:typeof no==='number'?'n':'s',v:no};
     assert.ok(importer.parseSubsets(wb,'ss',XLSX).errors.some(e=>e.code==='POWDER_SEQUENCE'),JSON.stringify(no));
   }
+});
+
+test('both import paths add only missing mandatory flavors, leaving quantities for review',()=>{
+  for(const parse of [importer.parse,importer.parseSubsets]){
+    const p=parse(sample(),parse===importer.parse?'Tem1':'ss',XLSX);
+    assert.deepEqual(p.errors,[]);
+    for(const s of p.subsets){
+      assert.equal(s.powders.length,3);
+      const truffle=s.powders.find(w=>w.eng==='Truffle 2');
+      assert.equal(truffle.code,'3024');assert.equal(truffle.qty,'');
+      const nf=s.powders.at(-1);assert.equal(nf.eng,'No flavor');assert.equal(nf.seq,99);assert.equal(nf.noFlavor,true);
+    }
+    assert.ok(p.warnings.some(w=>w.code==='STANDARD_FLAVORS'));
+  }
+});
+
+test('existing suffixed standard rows retain their recipes and No flavor needs no RM',()=>{
+  const wb=sample();
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets.ss,{header:1});
+  rows.splice(3,0,['','',6,'','Truffle 2 FF1','3024','Truffle',2.1,'g','custom spoon'],['','',99,'','No flavor FF1','','','','','']);
+  wb.Sheets.ss=XLSX.utils.aoa_to_sheet(rows);
+  for(const parse of [importer.parse,importer.parseSubsets]){
+    const p=parse(wb,parse===importer.parse?'Tem1':'ss',XLSX);
+    assert.deepEqual(p.errors,[]);
+    const s=p.subsets[0];assert.equal(s.powders.length,3);
+    const truffle=s.powders.find(w=>w.eng==='Truffle 2 FF1');
+    assert.equal(truffle.qty,'2.1');assert.equal(truffle.spoon,'custom spoon');
+    assert.equal(s.powders.at(-1).noFlavor,true);
+  }
+});
+
+test('Truffle surcharge is distinct from mandatory Truffle 2',()=>{
+  const wb=sample();wb.Sheets.ss.E3.v='Truffle +THB10 FF1';
+  const p=importer.parseSubsets(wb,'ss',XLSX);
+  assert.equal(p.subsets[0].powders.filter(w=>w.eng.startsWith('Truffle')).length,2);
 });

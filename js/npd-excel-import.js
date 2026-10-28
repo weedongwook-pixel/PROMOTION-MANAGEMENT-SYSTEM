@@ -48,6 +48,22 @@
     });
     if (pairs.length && !plan.storeRules.some(function (r) { return r.type === type && JSON.stringify(r.values) === JSON.stringify(pairs); })) plan.storeRules.push({ type: type, values: pairs });
   }
+  function isNoFlavor(name) { return /^no\s+flavor(?:\s|$)/i.test(text(name)); }
+  function completeStandardFlavors(s, plan) {
+    var added = [];
+    if (!s.powders.some(function (p) { return /^truffle\s+2(?:\s|$)/i.test(text(p.eng)); })) {
+      s.powders.push({ _autoStandard:true, seq: 6, cmpos: '', eng: 'Truffle 2', th: 'Truffle 2', code: '3024', desc: 'ผงปรุงรส Truffle', qty: '', unit: 'g', spoon: '', addon: '' });
+      added.push('Truffle 2');
+    }
+    if (!s.powders.some(function (p) { return isNoFlavor(p.eng); })) {
+      s.powders.push({ seq: 99, cmpos: '', eng: 'No flavor', th: 'No flavor', code: '', desc: '', qty: '', unit: '', spoon: '', addon: '', noFlavor: true });
+      added.push('No flavor');
+    }
+    s.powders.forEach(function (p) { if (isNoFlavor(p.eng)) { p.noFlavor = true; p.seq = 99; } });
+    // Keep source order; the no-powder choice always appears last.
+    s.powders = s.powders.filter(function (p) { return !p.noFlavor; }).concat(s.powders.filter(function (p) { return p.noFlavor; }));
+    if (plan && added.length) issue(plan, 'warnings', 'STANDARD_FLAVORS', s.name + ': เติม ' + added.join(' และ ') + ' อัตโนมัติ — กรอกตัวย่อและตรวจปริมาณ / ขนาดช้อนก่อนส่ง');
+  }
   function subsetCatalog(wb, X, plan) {
     var groups = new Map();
     wb.SheetNames.forEach(function (name) {
@@ -67,6 +83,7 @@
         if (code && group.ssCode && group.ssCode !== code) group.conflicts.push(name + ':' + (row + 1));
         if (code) group.ssCode = code;
         var powder = { seq: Number(r[2]), cmpos: text(r[3]), eng: text(r[4]), th: '', code: text(r[5]), desc: text(r[6]), qty: text(r[7]), unit: unit(r[8]), spoon: text(r[9]), addon: '' };
+        if (isNoFlavor(powder.eng)) { powder.noFlavor = true; powder.seq = 99; }
         var surcharge = powder.eng.match(/\+\s*(?:THB|฿)\s*(\d+(?:\.\d+)?)/i);
         if (surcharge) powder.addon = Number(surcharge[1]);
         var previous = group.powders.find(function (p) { return key(p.eng) === key(powder.eng); });
@@ -160,13 +177,36 @@
     });
     plan.subsets.forEach(function (s) {
       s.powders.forEach(function (p) {
-        if (!p.code || !p.desc || !text(p.qty) || !Number.isFinite(Number(p.qty)) || Number(p.qty) <= 0 || !p.unit) issue(plan, 'errors', 'POWDER', s.name + ': สูตรผง ' + p.eng + ' ไม่ครบ');
+        if (!p.noFlavor && (!p.code || !p.desc || !text(p.qty) || !Number.isFinite(Number(p.qty)) || Number(p.qty) <= 0 || !p.unit)) issue(plan, 'errors', 'POWDER', s.name + ': สูตรผง ' + p.eng + ' ไม่ครบ');
         if (p.eng.length > 20) issue(plan, 'warnings', 'NAME_LENGTH', s.name + ': ชื่อผง ' + p.eng + ' เกิน 20 อักษร');
       });
     });
+    plan.subsets.forEach(function (s) { completeStandardFlavors(s, plan); });
     if (plan.subsets.length) issue(plan, 'warnings', 'SUBSET_NAMES', 'กรอกตัวย่อ Subset Name 2 และตรวจชื่อผง TH ในฟอร์มก่อนส่ง');
     if (plan.storeRules.length) issue(plan, 'warnings', 'STORES', 'ตรวจและเลือกสาขาในฟอร์มตามเงื่อนไข Excel ก่อนส่ง ระบบจะไม่เลือกทุกสาขาให้โดยอัตโนมัติ');
     return plan;
+  }
+  function buildDraftSubsets(plan, reserve, prefix, existing) {
+    return plan.subsets.map(function (s, i) {
+        var old = existing.find(function (x) { return key(x.name) === key(s.name); });
+        var sub = old ? JSON.parse(JSON.stringify(old)) : { id: prefix + '_s' + i, ssCode: reserve('ss'), name: s.name, name2: '', cat: '', registered: false, powders: [] };
+        var source = Object.assign({}, s, {powders:s.powders.map(function (p) { return Object.assign({},p); })});
+        completeStandardFlavors(source);
+        function powderKey(p) {
+          if (isNoFlavor(p.eng)) return 'no flavor';
+          if (/^truffle\s+2(?:\s|$)/i.test(text(p.eng))) return 'truffle 2';
+          var n=key(p.eng), suffix=key(sub.name2);
+          return suffix && n.endsWith(' '+suffix) ? n.slice(0,-suffix.length-1) : n;
+        }
+        source.powders.forEach(function (p,j) {
+          var prior=sub.powders.find(function (x) { return powderKey(x)===powderKey(p); });
+          if (prior) {
+            if(prior._autoStandard && p.qty){var keepId=prior.id,keepCode=prior.cmpos;Object.assign(prior,p,{id:keepId,cmpos:keepCode,_autoStandard:false});}
+            if (!p.noFlavor && p.qty && prior.qty && (text(prior.code)!==text(p.code) || Number(prior.qty)!==Number(p.qty) || unit(prior.unit)!==unit(p.unit))) throw Error('สูตรผง '+p.eng+' ใน Subset '+s.name+' ต่างจากข้อมูลที่กรอกไว้ กรุณาตรวจสูตรก่อนนำเข้า');
+          } else sub.powders.push(Object.assign({},p,{id:prefix+'_w'+i+'_'+j,cmpos:reserve('item','103')}));
+        });
+        return sub;
+      });
   }
   function createDraft(plan, options) {
     var o = options || {}, category = o.category || {}, map = o.channelMap || {}, master = o.subsetMaster || [];
@@ -192,6 +232,7 @@
       if (master.some(function (m) { return key(m.name || m.nameEN) === key(s.name); })) throw Error('ชื่อ Subset ' + s.name + ' มีในระบบแล้ว กรุณาระบุ SS จริงใน Excel แทน SSxxxx');
       if (s.powders.some(function (p) { return p.cmpos; })) throw Error('Subset ใหม่มีรหัส CMPOS ในไฟล์แล้ว กรุณาล้างรหัสเพื่อให้ระบบแจกเลขและไม่เขียนทับข้อมูลเดิม');
     });
+    var existing = o.existingSubsets || [];
     var allocated = [], prefix = 'excel_' + Date.now() + '_' + Math.random().toString(36).slice(2,8), bySubset = new Map();
     function reserve(type, cat) {
       var code = o.reserve(type, cat);
@@ -200,11 +241,8 @@
     }
     function mapped(channels) { return channels.map(function (c) { return map[c]; }).filter(function (c) { return c && c !== '__skip__'; }); }
     try {
-      var subsets = plan.subsets.map(function (s, i) {
-        var sub = { id: prefix + '_s' + i, ssCode: reserve('ss'), name: s.name, name2: '', cat: '', registered: false,
-          powders: s.powders.map(function (p, j) { return Object.assign({}, p, { id: prefix + '_w' + i + '_' + j, cmpos: reserve('item', '103') }); }) };
-        bySubset.set(key(s.name), sub); return sub;
-      });
+      var subsets = buildDraftSubsets(plan,reserve,prefix,existing);
+      subsets.forEach(function(sub){bySubset.set(key(sub.name),sub);});
       var products = plan.products.map(function (p, i) {
         var prices = {};
         Object.keys(p.prices).forEach(function (ch) { if (map[ch] !== '__skip__') prices[map[ch]] = String(p.prices[ch]); });
@@ -241,7 +279,7 @@
       if (!populated && !text(r[2])) return;
       if (!text(r[2]) || !Number.isInteger(Number(r[2])) || Number(r[2]) < 1) { issue(plan,'errors','POWDER_SEQUENCE','ลำดับ NO ของผงไม่ครบหรือไม่ใช่จำนวนเต็มบวกที่แถว ' + (i + 1)); return; }
       if (text(r[1])) groupName = text(r[1]);
-      if (!groupName || !text(r[4]) || !text(r[5]) || !text(r[6]) || !text(r[7]) || !Number.isFinite(Number(r[7])) || Number(r[7]) <= 0 || !text(r[8])) issue(plan,'errors','POWDER','ข้อมูลกลุ่ม / ชื่อผง / สูตร RM ไม่ครบที่แถว ' + (i + 1));
+      if (!groupName || !text(r[4]) || (!isNoFlavor(r[4]) && (!text(r[5]) || !text(r[6]) || !text(r[7]) || !Number.isFinite(Number(r[7])) || Number(r[7]) <= 0 || !text(r[8])))) issue(plan,'errors','POWDER','ข้อมูลกลุ่ม / ชื่อผง / สูตร RM ไม่ครบที่แถว ' + (i + 1));
     });
     subsetCatalog(selected,X,plan).forEach(function (s) {
       plan.subsets.push(s);
@@ -250,12 +288,13 @@
       if (s.powders.some(function (p) { return !!p.cmpos; })) issue(plan,'errors','EXISTING_CMPOS',s.name + ': มีรหัส CMPOS แล้ว กรุณาตรวจว่าต้องการสร้างกลุ่มใหม่จริงก่อนล้างรหัสในไฟล์');
       s.powders.forEach(function (p) { if (p.eng.length > 20) issue(plan,'warnings','NAME_LENGTH','ชื่อผง ' + p.eng + ' เกิน 20 อักษร ต้องแก้ก่อนส่ง'); });
     });
+    plan.subsets.forEach(function (s) { completeStandardFlavors(s, plan); });
     if (!plan.subsets.length) issue(plan,'errors','EMPTY_SUBSET','ไม่พบรายการผงในชีต');
     issue(plan,'warnings','SUBSET_NAMES','หลังเติมฟอร์ม กรุณาตรวจชื่อผง TH และกรอก Subset Name 2 ก่อนบันทึกกลุ่ม');
     return plan;
   }
   function createSubsetDraft(plan, options) {
-    var o = options || {}, master = (o.subsetMaster || []).concat(o.existingSubsets || []);
+    var o = options || {}, master = (o.subsetMaster || []).concat(o.mergeExisting ? [] : (o.existingSubsets || []));
     if (!plan || plan.errors.length || !plan.subsets.length) throw Error('ข้อมูล Subset ยังมีข้อผิดพลาด กรุณาตรวจตัวอย่างก่อน');
     plan.subsets.forEach(function (s) {
       if (master.some(function (m) { return key(m.name || m.nameEN) === key(s.name); })) throw Error('ชื่อ Subset ' + s.name + ' มีในฟอร์มหรือระบบแล้ว ไม่เพิ่มซ้ำ');
@@ -264,12 +303,21 @@
     var allocated = [], prefix = 'ss_excel_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
     function reserve(type, cat) { var code = o.reserve(type,cat); if (!code) throw Error('จองรหัสไม่สำเร็จ กรุณาลองใหม่'); allocated.push({type:type,code:code}); return code; }
     try {
-      return { subsets: plan.subsets.map(function (s,i) {
-        return { id: prefix + '_s' + i, ssCode: reserve('ss'), name: s.name, name2: '', cat: '', registered: false,
-          powders: s.powders.map(function (p,j) { return Object.assign({},p,{id:prefix + '_w' + i + '_' + j,cmpos:reserve('item','103')}); }) };
-      }) };
+      return { subsets: buildDraftSubsets(plan,reserve,prefix,o.existingSubsets || []) };
     } catch (e) { allocated.reverse().forEach(function (a) { try { o.release(a.type,a.code); } catch (_) {} }); throw e; }
   }
-  return { listSheets: listSheets, parse: parse, createDraft: createDraft,
+  function parseFlavorSheet(wb,sheet,X) {
+    var plan={sheet:sheet,products:[],subsets:[],errors:[],warnings:[]};
+    if(listSubsetSheets(wb,X).indexOf(sheet)<0){issue(plan,'errors','NOT_SUBSET','ไม่พบตารางผงในชีตนี้');return plan;}
+    var selected={SheetNames:[sheet],Sheets:{}};selected.Sheets[sheet]=wb.Sheets[sheet];
+    subsetCatalog(selected,X,plan).forEach(function(s){
+      if(s.conflicts.length)issue(plan,'errors','POWDER_CONFLICT','สูตรซ้ำไม่ตรงกัน: '+s.name);
+      s.powders.forEach(function(p){if(!p.noFlavor && (!p.code || !p.desc || !p.unit || !(Number(p.qty)>0)))issue(plan,'errors','POWDER','สูตรไม่ครบ: '+p.eng);});
+      plan.subsets.push(s);
+    });
+    if(!plan.subsets.length)issue(plan,'errors','EMPTY_SUBSET','ไม่พบรายการผง');
+    return plan;
+  }
+  return { completeStandardFlavors:completeStandardFlavors, parseFlavorSheet:parseFlavorSheet, listSheets: listSheets, parse: parse, createDraft: createDraft,
     listSubsetSheets: listSubsetSheets, parseSubsets: parseSubsets, createSubsetDraft: createSubsetDraft };
 });

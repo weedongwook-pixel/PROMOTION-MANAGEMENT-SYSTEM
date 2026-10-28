@@ -28,3 +28,5 @@ private-backups/
 .DS_Store
 *.log
 /.superpowers/**
+# Internal plans and handoff notes are repository documentation, not public site pages.
+docs/

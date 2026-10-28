@@ -86,3 +86,152 @@ test('adding subsets to a reopened saved draft updates that draft and retains it
   reopened.c.disposeNPD();
   assert.equal(reopened.c.PC_COUNTER.entryOf(snapshot.subsets[1].ssCode).status,'RESERVED');
 });
+
+test('imported mandatory flavors receive and replace the Subset abbreviation without duplication',()=>{
+  const {c,saved}=form(),p=plan();p.products=[];
+  c.RD.importExcelSubsetPlan(p);c.RD.saveDraft();
+  const first=JSON.parse(saved.get('pc_npd_draft')).subsets[0];
+  const ids=first.powders.map(w=>w.cmpos);
+  assert.equal(new Set(ids).size,3);
+  for(const abbr of ['FF1','FF1','FF2']){
+    c.RD.setS(first.id,'name2',abbr);c.RD.applyN2(first.id);c.RD.saveDraft();
+    const s=JSON.parse(saved.get('pc_npd_draft')).subsets[0];
+    assert.equal(s.powders.length,3);
+    assert.ok(s.powders.some(w=>w.eng==='Truffle 2 '+abbr && w.th==='Truffle 2 '+abbr));
+    assert.ok(s.powders.some(w=>w.eng==='No flavor '+abbr && w.noFlavor));
+    assert.deepEqual(s.powders.map(w=>w.cmpos),ids);
+  }
+});
+
+test('guided append preserves manual work, shared subset codes and mixed categories',()=>{
+  const {c,saved}=form();
+  const opts={category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},project:'Shared project'};
+  c.RD.importExcelPlan(plan(),opts);c.RD.saveDraft();
+  const before=JSON.parse(saved.get('pc_npd_draft'));
+  const next=plan();next.products[0].sourceName='Other product';next.products[0].name='Other product';
+  c.RD.importExcelPlan(next,{...opts,append:true});c.RD.saveDraft();
+  const after=JSON.parse(saved.get('pc_npd_draft'));
+  assert.equal(after.products.length,2);assert.equal(after.subsets.length,1);
+  assert.deepEqual(after.subsets[0].powders.map(w=>w.cmpos),before.subsets[0].powders.map(w=>w.cmpos));
+  assert.equal(after.products[1].formulas[0].subId,after.subsets[0].id);
+  const cat=c.RD.getExcelImportOptions().categories.find(x=>x.code!=='110');
+  c.RD.setProductCategory(after.products[1].id,cat.code);
+  const payload=c.RD.workflowPayload();
+  assert.equal(payload.items[0].cateCode,'110');assert.equal(payload.items[1].cateCode,cat.code);
+  assert.equal(payload.items[0].code,before.products[0].code);
+});
+
+test('workflow step and powder library persist in the same draft',()=>{
+  const {c,saved}=form();
+  c.RD.addWorkPowder({eng:'Mala',code:'3278',desc:'Mala powder',unit:'g'});
+  c.RD.setWorkflowStep(2);c.RD.saveDraft();
+  const d=JSON.parse(saved.get('pc_npd_draft'));
+  assert.equal(d.workflow.step,2);assert.equal(d.workPowders[0].code,'3278');
+});
+
+test('flavor import reuses matching pending subset recipes and rolls back conflicts',()=>{
+  const {c}=form();const g={sheet:'mala flavor',errors:[],subsets:[{name:'New Enoki',ssCode:'',powders:[{eng:'Mala ENF 1',code:'3278',desc:'Mala',qty:'6.48',unit:'g',spoon:'2 spoons'}]}]};
+  assert.equal(c.RD.importWorkFlavors(g),1);const first=c.RD.workflowSnapshot();
+  assert.equal(c.RD.importWorkFlavors(g),0);
+  assert.equal(c.RD.workflowSnapshot().subsets[0].powders[0].cmpos,first.subsets[0].powders[0].cmpos);
+  const bad=JSON.parse(JSON.stringify(g));bad.subsets[0].powders[0].qty='9.72';
+  assert.throws(()=>c.RD.importWorkFlavors(bad),/สูตรต่างกัน/);
+  assert.equal(c.RD.workflowSnapshot().subsets[0].powders[0].qty,'6.48');
+});
+
+test('per-import store confirmation remains separate for mixed-category product groups',()=>{
+  const {c}=form(),o={category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true};
+  c.RD.importExcelPlan(plan(),o);const a=c.RD.workflowSnapshot().products[0];
+  c.RD.reviewProductStores(a.importGroup);
+  const b=plan();b.products[0].name='Next';b.products[0].sourceName='Next';c.RD.importExcelPlan(b,o);
+  const d=c.RD.workflowSnapshot();assert.equal(d.products[0].storesReviewed,true);assert.equal(d.products[1].storesReviewed,false);
+});
+
+test('NPD may add new powder codes to a verified existing subset without creating a second subset',()=>{
+  const {c}=form();c.PC_SUBSET_MASTER=[{ssCode:'SS0998',name:'Existing flavor group',short:'EF',status:'Active'}];
+  const original={project:'old',items:[],subsets:[{ssCode:'SS0998',name:'Existing flavor group',powders:[{eng:'Cheese EF',cmpos:'1038001'}]}]};
+  assert.equal(c.PC_API.submitNPD(original,'old-group-test').status,'success');
+  const addition={project:'new',items:[],subsets:[{existing:true,ssCode:'SS0998',name:'Existing flavor group',powders:[{eng:'Mala EF',cmpos:'1038002'}]}]};
+  assert.equal(c.PC_API.submitNPD(addition,'new-group-test').status,'success');
+  addition.subsets[0].ssCode='SS9999';
+  assert.notEqual(c.PC_API.submitNPD(addition,'bad-group-test').status,'success');
+});
+
+test('append retains partially entered products with only channel or price data',()=>{
+  const {c}=form();const first=c.RD.workflowSnapshot().products[0];c.RD.setP(first.id,'priceTakeaway','25');
+  c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true});
+  assert.ok(c.RD.workflowSnapshot().products.some(p=>p.id===first.id && p.priceTakeaway==='25'));
+});
+
+test('flavor-only import completes mandatory choices and keeps supplied POS sequence',()=>{
+  const {c}=form();c.PC_SUBSET_MASTER=[{ssCode:'SS0998',name:'Old',short:'OLD'}];
+  c.RD.importWorkFlavors({errors:[],subsets:[{ssCode:'SS0998',name:'Old',powders:[{eng:'Mala OLD',seq:12,code:'3278',desc:'Mala',qty:'2',unit:'g'}]},{ssCode:'',name:'New',powders:[{eng:'Mala ENF 1',seq:9,code:'3278',desc:'Mala',qty:'2',unit:'g'},{eng:'No flavor',noFlavor:true,seq:99}]}]});
+  const d=c.RD.workflowSnapshot();assert.equal(d.subsets[0].powders[0].seq,12);
+  assert.ok(d.subsets[1].powders.some(w=>w.eng==='Truffle 2'));
+  assert.equal(d.subsets[1].powders.filter(w=>w.noFlavor).length,1);
+  assert.equal(d.workPowders.some(w=>w.eng==='No flavor'),false);
+});
+
+test('subset recipe import fills generated standard placeholders while preserving their codes',()=>{
+  const {c}=form();c.RD.importWorkFlavors({errors:[],subsets:[{name:'New subset',powders:[{eng:'Mala',code:'3278',desc:'Mala',qty:'2',unit:'g'}]}]});
+  const before=c.RD.workflowSnapshot().subsets[0], truffle=before.powders.find(w=>w.eng==='Truffle 2');
+  c.RD.importExcelSubsetPlan({errors:[],subsets:[{name:'New subset',powders:[{eng:'Truffle 2 FF1',code:'3024',desc:'Truffle',qty:'2.16',unit:'g',spoon:'1 spoon'}]}]},{mergeExisting:true});
+  const after=c.RD.workflowSnapshot().subsets[0].powders.find(w=>w.cmpos===truffle.cmpos);
+  assert.equal(after.qty,'2.16');assert.equal(after.spoon,'1 spoon');
+});
+
+test('failed append render releases only newly allocated codes, never restored shared codes',()=>{
+  const {c,el}=form(),o={category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'}};
+  c.RD.importExcelPlan(plan(),o);const before=c.RD.workflowSnapshot();
+  const next=plan();next.products[0].sourceName='Different';next.products[0].name='Different';
+  Object.defineProperty(el('productList'),'innerHTML',{set(){throw Error('render failure');},get(){return '';},configurable:true});
+  assert.throws(()=>c.RD.importExcelPlan(next,{...o,append:true}),/render failure/);
+  for(const s of before.subsets){assert.equal(c.PC_COUNTER.entryOf(s.ssCode).status,'RESERVED');for(const w of s.powders)assert.equal(c.PC_COUNTER.entryOf(w.cmpos).status,'RESERVED');}
+});
+
+test('appending after manual entry adopts sheet dates while only the suggested dates are set',()=>{
+  const {c,el}=form();const first=c.RD.workflowSnapshot().products[0];c.RD.setP(first.id,'name','Manual item');
+  const o={category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true};
+  c.RD.importExcelPlan(plan(),o);
+  assert.equal(el('npStart').value,'2026-11-16');assert.equal(c.RD.workflowSnapshot().products[0].name,'Manual item');
+  const other=plan();other.start='2026-12-01';other.products[0].name=other.products[0].sourceName='Other dates';
+  assert.throws(()=>c.RD.importExcelPlan(other,o),/ช่วงวันที่/);
+});
+
+test('attaching a library powder matches an imported flavor despite its size suffix',()=>{
+  const {c}=form();
+  c.RD.importWorkFlavors({sheet:'mala flavor',errors:[],subsets:[{name:'New Enoki',ssCode:'',powders:[{eng:'Cheese ENF 1',code:'3097',desc:'Cheese',qty:'1.91',unit:'g'}]}]});
+  const sub=c.RD.workflowSnapshot().subsets[0],count=sub.powders.length,cheese=sub.powders.find(w=>w.eng==='Cheese ENF 1');
+  const lib=c.RD.addWorkPowder({eng:'Cheese',code:'3010',desc:'Other cheese'});
+  assert.throws(()=>c.RD.attachWorkPowder(lib,sub.id,{qty:'5'}),/สูตรต่างกัน/);
+  const same=c.RD.addWorkPowder({eng:'Cheese',code:'3097',desc:'Cheese'});
+  assert.equal(c.RD.attachWorkPowder(same,sub.id,{qty:'1.91'}),cheese.id);
+  assert.equal(c.RD.workflowSnapshot().subsets[0].powders.length,count);
+});
+
+test('review issues match submit rules for recipe rows, powder name length and duplicate abbreviations',()=>{
+  const {c}=form();const p=c.RD.workflowSnapshot().products[0];
+  const msgs=()=>c.RD.workflowIssues().map(x=>x.message).join('\n');
+  assert.doesNotMatch(msgs(),/Recipe RM/,'a new row holding only the default unit is not a recipe');
+  assert.equal(c.RD.workflowPayload().items[0].recipes.length,0);
+  c.RD.setR(p.id,0,'code','3277');assert.match(msgs(),/Recipe RM แถว 1/);
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group A',ssCode:'',powders:[{eng:'Truffle +THB10  ENF 1',code:'3024',desc:'Truffle',qty:'1',unit:'g'}]},{name:'Group B',ssCode:'',powders:[{eng:'Mala',code:'3278',desc:'Mala',qty:'1',unit:'g'}]}]});
+  const subs=c.RD.workflowSnapshot().subsets;subs.forEach(s=>c.RD.setS(s.id,'name2','AB'));
+  assert.match(msgs(),/ยาว 21\/20/);assert.match(msgs(),/ตัวย่อ SUBSET AB ซ้ำ/);
+});
+
+test('review fixes: distinct sizes stay separate, untouched subsets keep edits, and chosen dates are guarded',()=>{
+  let {c}=form();
+  const g={sheet:'f',errors:[],subsets:[{name:'Sizes',ssCode:'',powders:[{eng:'Mala ENF 1',code:'3278',desc:'Mala',qty:'6.48',unit:'g'},{eng:'Mala ENF 2',code:'3278',desc:'Mala',qty:'9.72',unit:'g'},{eng:'Cheese',code:'3097',desc:'Cheese',qty:'1',unit:'g'},{eng:'Cheese CS',code:'3097',desc:'Cheese',qty:'1',unit:'g'}]}]};
+  c.RD.importWorkFlavors(g);
+  const names=c.RD.workflowSnapshot().subsets[0].powders.map(w=>w.eng);
+  for(const n of ['Mala ENF 1','Mala ENF 2','Cheese','Cheese CS'])assert.ok(names.includes(n),n);
+  // A hand-made subset whose standard rows were removed is not refilled by an unrelated import.
+  c.RD.addS();const own=c.RD.workflowSnapshot().subsets.at(-1);
+  own.powders.forEach(w=>c.RD.delW(own.id,w.id));
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Other',ssCode:'',powders:[{eng:'BBQ',code:'3128',desc:'BBQ',qty:'1',unit:'g'}]}]});
+  assert.equal(c.RD.workflowSnapshot().subsets.find(s=>s.id===own.id).powders.length,0);
+  // Dates the user chose block a sheet with other dates even before any product is named.
+  ({c}=form());c.RD.setWorkflowChoice('datesChosen',true);
+  assert.throws(()=>c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true}),/ช่วงวันที่/);
+});

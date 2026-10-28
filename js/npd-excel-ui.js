@@ -94,7 +94,7 @@
     applying = true; node('npExcelApply').disabled = true; node('npExcelFile').disabled = true; node('npExcelSheet').disabled = true;
     try {
       var result = await Swal.fire({ title: 'เติมข้อมูลลงฟอร์ม NPD?', icon: 'question',
-        text: (options.hasData ? 'ข้อมูลในฟอร์มและฉบับร่างเดิมจะถูกแทนที่ ' : '') + 'ระบบจะจองรหัสสินค้า / SS / CMPOS ผ่านเลขกลาง แต่ยังไม่ส่งงานให้ IT',
+        text: 'เพิ่มข้อมูลต่อจากรายการที่กรอกไว้ ไม่แทนที่รายการเดิม ' + 'ระบบจะจองรหัสสินค้า / SS / CMPOS ผ่านเลขกลาง แต่ยังไม่ส่งงานให้ IT',
         showCancelButton: true, confirmButtonText: 'เติมข้อมูลและจองรหัส', cancelButtonText: 'กลับไปตรวจ', confirmButtonColor: '#237840' });
       if (!result.isConfirmed || mine !== ticket || node('npExcelFile') !== fileInput) return;
       if (window.PC_CLOUD && PC_CLOUD.enabled && PC_CLOUD.enabled()) {
@@ -104,12 +104,12 @@
       }
       if (PC_COUNTER.reloadFromStorage) PC_COUNTER.reloadFromStorage();
       if (node('npExcelFile') !== fileInput) return;
-      var summary = RD.importExcelPlan(selectedPlan, { category: category, channelMap: map, project: project, fileName: fileName });
-      RD.clearDraft();
+      var summary = RD.importExcelPlan(selectedPlan, { category: category, channelMap: map, project: project, fileName: fileName, append:!!window.PC_NpdWorkflow });
+      if(!window.PC_NpdWorkflow) RD.clearDraft();
       node('npExcelPreview').hidden = true;
       status('เติมฟอร์มแล้ว: ' + summary.products + ' สินค้า / ' + summary.subsets + ' Subset ใหม่ — ยังไม่ได้ส่งงาน');
       await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ตรวจฟอร์ม', confirmButtonColor: '#237840' });
-      if (node('npProject')) node('npProject').focus();
+      if(window.PC_NpdWorkflow) PC_NpdWorkflow.go(2); else if (node('npProject')) node('npProject').focus();
     } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); }
     finally { applying = false; if (node('npExcelApply')) node('npExcelApply').disabled = false; if (node('npExcelFile')) node('npExcelFile').disabled = false; if (node('npExcelSheet')) node('npExcelSheet').disabled = !workbook; }
   }
@@ -167,7 +167,7 @@
       }
       if (PC_COUNTER.reloadFromStorage) PC_COUNTER.reloadFromStorage();
       if (node('npSubsetExcelFile') !== fileInput) return;
-      var summary = RD.importExcelSubsetPlan(selectedPlan,{fileName:ssFileName});
+      var summary = RD.importExcelSubsetPlan(selectedPlan,{fileName:ssFileName,mergeExisting:!!window.PC_NpdWorkflow});
       node('npSubsetExcelPreview').hidden = true;
       ssStatus('เพิ่มในฟอร์มแล้ว ' + summary.subsets + ' กลุ่ม / ' + summary.powders + ' ผง — ยังไม่ได้ส่งงาน');
       await Swal.fire({icon:'success',title:'เพิ่ม Subset ในฟอร์มแล้ว',text:'ตรวจชื่อผง TH และกรอก Subset Name 2 จากนั้นบันทึกกลุ่มเพื่อเลือกผูกกับสินค้า',confirmButtonText:'ตรวจ Subset',confirmButtonColor:'#237840'});

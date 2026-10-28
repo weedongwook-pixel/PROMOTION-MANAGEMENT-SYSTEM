@@ -5100,8 +5100,11 @@
     if (dupIn) return dupError("ชื่อ Subset ซ้ำในฟอร์ม: \"" + dupIn + "\"");
     const _long = nameTooLong(submittedPayload);   /* FX-P87 */
     if (_long) return dupError(_long);
+    const existingTargets = (submittedPayload.subsets || []).filter(s => s.existing);
+    const subsetCatalog = window.PC_SubsetCatalog ? window.PC_SubsetCatalog.list() : (window.PC_SUBSET_MASTER || []);
+    if (existingTargets.some(s => !subsetCatalog.some(m => String(m.ssCode) === String(s.ssCode) && String(m.name || '').trim().toLowerCase() === String(s.name || '').trim().toLowerCase() && String(m.status || 'Active').toLowerCase() !== 'inactive'))) return dupError('ไม่พบ SUBSET เดิมที่เปิดใช้งาน กรุณาตรวจรหัสและชื่อปลายทาง');
     const existNames = (store.npd || []).reduce((a, n) => a.concat((n.subsets || []).map(s => String(s.name || "").trim().toLowerCase())), []);
-    const clash = (submittedPayload.subsets || []).map(s => String(s.name || "").trim().toLowerCase()).find(nm => nm && existNames.indexOf(nm) !== -1);
+    const clash = (submittedPayload.subsets || []).filter(s => !s.existing).map(s => String(s.name || "").trim().toLowerCase()).find(nm => nm && existNames.indexOf(nm) !== -1);
     if (clash) return dupError("ชื่อ Subset \"" + clash + "\" มีอยู่ในระบบแล้ว");
     /* FX-P73 — รหัสสินค้าห้ามชนงาน NPD อื่น — เดิมซ้ำได้เงียบ แล้วตอน IT ขึ้นปุ่มจะเขียนทับสินค้าเดิมหายไปทั้งแถว */
     const codeOwner = {};
