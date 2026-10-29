@@ -595,7 +595,7 @@
         if(caps.staffEnabled){await window.PC_EmailAuth.staffRequest('logout',{});staffCleared=true;const session=await window.PC_EmailAuth.staffRequest('login',{username:u,password:p});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
       } catch(e) {
         // Legacy website access remains available; it never grants mail privileges.
-        if(!staffCleared || e.code!=='email_staff_signin_required'){errMsg.textContent=e.message||'ตรวจสอบการเข้าสู่ระบบไม่ได้ กรุณาลองใหม่';btn.disabled=false;btn.innerHTML='ENTER SYSTEM';return;}
+        if(!staffCleared || e.code!=='email_staff_signin_required'){errMsg.textContent=pcLoginErrorText(e,'ตรวจสอบการเข้าสู่ระบบไม่ได้ กรุณาลองใหม่');btn.disabled=false;btn.innerHTML='ENTER SYSTEM';return;}
       }
       google.script.run.withSuccessHandler(res => {
         if (res.status === "success") {
@@ -609,6 +609,19 @@
           btn.innerHTML = 'ENTER SYSTEM';
         }
       }).checkLogin(u, p);
+    }
+
+    /* Login errors: network problems get one plain Thai message instead of raw
+     * browser/MSAL text such as "Failed to fetch". Server messages pass through. */
+    const PC_LOGIN_NET_MSG = '⚠ เชื่อมต่ออินเทอร์เน็ตไม่ได้ กรุณาตรวจสอบเน็ตแล้วลองใหม่อีกครั้ง';
+    function pcLoginErrorText(e, fallback) {
+      const code = String((e && (e.errorCode || e.code || e.name)) || '');
+      const msg = String((e && (e.errorMessage || e.message)) || '');
+      if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
+          /^(TimeoutError|AbortError|no_network_connectivity|endpoints_resolution_error|network_error|post_request_failed|get_request_failed)$/.test(code) ||
+          /failed to fetch|load failed|networkerror|network request failed|timed? ?out|aborted/i.test(msg)) return PC_LOGIN_NET_MSG;
+      if (code === 'SyntaxError') return '⚠ ระบบตรวจสิทธิ์ไม่ตอบสนอง กรุณาลองใหม่ในอีกสักครู่';
+      return msg || fallback;
     }
 
     /* ---- Microsoft Entra (MSAL) SSO ------------------------------------------
@@ -666,7 +679,12 @@
         const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account',...(challenge?{nonce:challenge.nonce}:{}) });
         if(challenge){
           try{const session=await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
-          catch(error){if(error.code!=='email_staff_pending')throw error;await Swal.fire({icon:'info',title:'รออนุมัติสิทธิ์ส่งเมล',text:error.message+' · ยังใช้งานส่วนอื่นของเว็บได้ตามสิทธิ์เดิม'});}
+          catch(error){
+            // Not (yet) a mail staff account: continue with the website user list below,
+            // exactly like password login. This grants web access only, never mail rights.
+            if(error.code!=='email_staff_pending' && error.code!=='email_staff_signin_required')throw error;
+            if(error.code==='email_staff_pending')await Swal.fire({icon:'info',title:'รออนุมัติสิทธิ์ส่งเมล',text:error.message+' · ยังใช้งานส่วนอื่นของเว็บได้ตามสิทธิ์เดิม'});
+          }
         }
         const acct = result.account || {};
         const claims = acct.idTokenClaims || {};
@@ -693,15 +711,43 @@
         }).checkLoginByEmail(email);
       } catch (e) {
         const code = (e && e.errorCode) || '';
-        if (code === 'user_cancelled' || code === 'popup_window_error' || /cancel/i.test((e && e.errorMessage) || '')) {
+        if (code === 'popup_window_error' || code === 'empty_window_error') {
+          errMsg.innerText = '⚠ เบราว์เซอร์บล็อกหน้าต่าง Microsoft — กดอนุญาต Pop-up ของเว็บนี้ (ไอคอนที่ช่อง URL) แล้วกด Login Outlook อีกครั้ง';
           btn.disabled = false; btn.innerHTML = orig; return;
         }
-        errMsg.innerText = '❌ เข้าสู่ระบบ Microsoft ไม่สำเร็จ: ' + ((e && (e.errorMessage || e.message)) || e);
+        if (code === 'user_cancelled' || /cancel/i.test((e && e.errorMessage) || '')) {
+          btn.disabled = false; btn.innerHTML = orig; return;
+        }
+        if (code === 'interaction_in_progress') {
+          errMsg.innerText = '⚠ มีหน้าต่าง Microsoft เปิดค้างอยู่ ปิดหน้าต่างนั้นแล้วลองใหม่อีกครั้ง';
+          btn.disabled = false; btn.innerHTML = orig; return;
+        }
+        const text = pcLoginErrorText(e, String(e));
+        errMsg.innerText = text === PC_LOGIN_NET_MSG ? text : '❌ เข้าสู่ระบบ Microsoft ไม่สำเร็จ: ' + text;
         btn.disabled = false; btn.innerHTML = orig;
       }
     }
 
     /* 2. App init */
+    /* Connection banner: the browser reports lost/restored internet; saving retries on its own. */
+    (function () {
+      let bar = null;
+      function show(offline) {
+        if (!bar) {
+          bar = document.createElement('div'); bar.id = 'pcNetBanner'; bar.setAttribute('role', 'status'); bar.setAttribute('aria-live', 'polite');
+          bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100000;padding:8px 16px;text-align:center;font-weight:700;font-size:14px;color:#fff;font-family:Kanit,Tahoma,sans-serif';
+          document.body.appendChild(bar);
+        }
+        clearTimeout(show.timer);
+        bar.style.display = 'block';
+        bar.style.background = offline ? '#c0392b' : '#1d7a4d';
+        bar.textContent = offline ? 'ขาดการเชื่อมต่ออินเทอร์เน็ต — ข้อมูลที่บันทึกจะยังไม่ขึ้น Cloud ระบบจะลองใหม่เองเมื่อกลับมาออนไลน์' : 'กลับมาเชื่อมต่ออินเทอร์เน็ตแล้ว';
+        if (!offline) show.timer = setTimeout(function () { bar.style.display = 'none'; }, 4000);
+      }
+      window.addEventListener('offline', function () { show(true); });
+      window.addEventListener('online', function () { show(false); });
+      if (navigator.onLine === false) document.addEventListener('DOMContentLoaded', function () { show(true); });
+    })();
     function initApp(pageToLoad) {
       if (localStorage.getItem('pc_session') !== 'active') { showLoginScreen(); return; }
       const loginSec = document.getElementById('login-section');

@@ -9,6 +9,43 @@ function entry(popup, hash) {
   for(const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) vm.runInNewContext(match[1],context);
   return nodes;
 }
+function loginHelpers(shell){return shell.slice(shell.indexOf('const PC_LOGIN_NET_MSG'),shell.indexOf('/* ---- Microsoft Entra'));}
+function microsoft({loginPopup,staffRequest,staffEnabled=true,onLine=true}){
+  const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
+  const source=loginHelpers(shell)+shell.slice(shell.indexOf('async function loginWithMicrosoft()'),shell.indexOf('/* 2. App init */'));
+  const button={disabled:false,innerHTML:'Microsoft'},error={innerText:''},calls={legacy:[],after:0,swal:0};
+  const runner={withSuccessHandler(fn){this.ok=fn;return this;},withFailureHandler(){return this;},checkLoginByEmail(email){calls.legacy.push(email);}};
+  const context={navigator:{onLine},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled})},PC_EmailAuth:{staffRequest,rememberStaff(){}}},Swal:{fire:async()=>{calls.swal++;}},afterLogin(){calls.after++;},
+    document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup}),_msalReady:null,google:{script:{run:runner}}};
+  vm.createContext(context);vm.runInContext(source,context);
+  return {run:()=>context.loginWithMicrosoft(),button,error,calls};
+}
+const staff=code=>async path=>{if(path==='microsoft/challenge')return {nonce:'n'};if(path==='microsoft'){const e=Error('server');e.code=code;throw e;}return {};};
+test('Outlook login falls back to the website user list when the account is not mail staff',async()=>{
+  const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'User@Rocksgroup.com'}}),staffRequest:staff('email_staff_signin_required')});
+  await m.run();
+  assert.deepEqual(m.calls.legacy,['user@rocksgroup.com']);assert.equal(m.calls.swal,0);assert.equal(m.error.innerText,'');
+});
+test('Outlook login still stops on other staff errors',async()=>{
+  const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'u@rocksgroup.com'}}),staffRequest:staff('email_staff_try_later')});
+  await m.run();
+  assert.deepEqual(m.calls.legacy,[]);assert.match(m.error.innerText,/ไม่สำเร็จ/);assert.equal(m.button.disabled,false);
+});
+test('blocked popup and lost internet show plain Thai guidance',async()=>{
+  const blocked=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('popup'),{errorCode:'popup_window_error'});}});
+  await blocked.run();assert.match(blocked.error.innerText,/Pop-up/);assert.equal(blocked.button.disabled,false);
+  const offline=microsoft({staffEnabled:false,loginPopup:async()=>{throw new TypeError('Failed to fetch');}});
+  await offline.run();assert.match(offline.error.innerText,/เชื่อมต่ออินเทอร์เน็ตไม่ได้/);
+  const cancelled=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('x'),{errorCode:'user_cancelled'});}});
+  await cancelled.run();assert.equal(cancelled.error.innerText,'');
+});
+test('password login reports a network failure in Thai',async()=>{
+  const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
+  const nodes={user:{value:'u'},pass:{value:'p'},loginBtn:{},errMsg:{}};
+  const context={navigator:{onLine:true},document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{throw new TypeError('Failed to fetch');}}}};
+  vm.createContext(context);vm.runInContext(shell.slice(shell.indexOf('async function doLogin()'),shell.indexOf('/* ---- Microsoft Entra')),context);
+  await context.doLogin();assert.match(nodes.errMsg.textContent,/เชื่อมต่ออินเทอร์เน็ตไม่ได้/);
+});
 test('OAuth popup preserves response without booting another application',()=>{
   const nodes=entry(true,'#code=test&state=test');
   assert.equal(nodes.app.src,undefined);
@@ -24,7 +61,7 @@ test('OAuth error also avoids app boot while ordinary popup can open app',()=>{
 });
 test('permission lookup failure restores the Microsoft login button',async()=>{
   const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
-  const source=shell.slice(shell.indexOf('async function loginWithMicrosoft()'),shell.indexOf('/* 2. App init */'));
+  const source=loginHelpers(shell)+shell.slice(shell.indexOf('async function loginWithMicrosoft()'),shell.indexOf('/* 2. App init */'));
   const button={disabled:false,innerHTML:'Microsoft'};
   const error={innerText:''};
   const runner={withSuccessHandler(){return this;},withFailureHandler(fn){this.fail=fn;return this;},checkLoginByEmail(){if(this.fail)this.fail(new Error('offline'));}};
