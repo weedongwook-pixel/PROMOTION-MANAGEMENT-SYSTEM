@@ -15,7 +15,8 @@ function microsoft({loginPopup,staffRequest,staffEnabled=true,onLine=true}){
   const source=loginHelpers(shell)+shell.slice(shell.indexOf('let _msPrep = null;'),shell.indexOf('/* 2. App init */'));
   const button={disabled:false,innerHTML:'Microsoft'},error={innerText:''},calls={legacy:[],after:0,swal:0};
   const runner={withSuccessHandler(fn){this.ok=fn;return this;},withFailureHandler(){return this;},checkLoginByEmail(email){calls.legacy.push(email);if(this.ok)this.ok({status:'fail'});}};
-  const context={setTimeout,clearTimeout,navigator:{onLine},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled})},PC_EmailAuth:{staffRequest,rememberStaff(){}}},Swal:{fire:async()=>{calls.swal++;}},afterLogin(){calls.after++;},
+  const store=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v))};};
+  const context={localStorage:store(),sessionStorage:store(),setTimeout,clearTimeout,navigator:{onLine},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled})},PC_EmailAuth:{staffRequest,rememberStaff(){}}},Swal:{fire:async()=>{calls.swal++;}},afterLogin(){calls.after++;},
     document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup}),_msalReady:null,google:{script:{run:runner}}};
   vm.createContext(context);vm.runInContext(source,context);
   return {run:()=>context.loginWithMicrosoft(),prepare:()=>context.pcPrepareMicrosoftLogin(),context,button,error,calls};
@@ -71,6 +72,15 @@ test('a website user lookup that never answers releases the Outlook button',asyn
   vm.createContext(context);vm.runInContext(source,context);
   await context.loginWithMicrosoft();
   assert.equal(button.disabled,false);assert.match(error.innerText,/taking too long/);
+});
+test('a pending mail approval never blocks Outlook sign-in; the notice follows the login',async()=>{
+  const order=[];
+  const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'wanvisa.c@rocksgroup.com'}}),staffRequest:staff('email_staff_pending')});
+  m.context.Swal={fire:()=>{order.push('notice');return new Promise(()=>{});}};
+  m.context.afterLogin=()=>order.push('login');
+  m.context.google.script.run.checkLoginByEmail=function(email){order.push('lookup');this.ok({status:'success',role:'Admin',name:'Wanvisa',email});};
+  await m.run();
+  assert.deepEqual(order,['lookup','login','notice']);
 });
 test('OAuth popup preserves response without booting another application',()=>{
   const nodes=entry(true,'#code=test&state=test');
