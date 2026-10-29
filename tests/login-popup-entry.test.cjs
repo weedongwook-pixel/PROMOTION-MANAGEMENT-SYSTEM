@@ -73,14 +73,14 @@ test('a website user lookup that never answers releases the Outlook button',asyn
   await context.loginWithMicrosoft();
   assert.equal(button.disabled,false);assert.match(error.innerText,/taking too long/);
 });
-test('a pending mail approval never blocks Outlook sign-in; the notice follows the login',async()=>{
+test('a pending mail approval signs in silently',async()=>{
   const order=[];
   const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'wanvisa.c@rocksgroup.com'}}),staffRequest:staff('email_staff_pending')});
   m.context.Swal={fire:()=>{order.push('notice');return new Promise(()=>{});}};
   m.context.afterLogin=()=>order.push('login');
   m.context.google.script.run.checkLoginByEmail=function(email){order.push('lookup');this.ok({status:'success',role:'Admin',name:'Wanvisa',email});};
   await m.run();
-  assert.deepEqual(order,['lookup','login','notice']);
+  assert.deepEqual(order,['lookup','login']);
 });
 test('OAuth popup preserves response without booting another application',()=>{
   const nodes=entry(true,'#code=test&state=test');
