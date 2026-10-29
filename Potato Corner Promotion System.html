@@ -578,6 +578,7 @@
       if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = 'none';
       document.body.classList.remove('logged-in');
       // ล้างช่องกรอกทุกครั้งที่เข้าหน้า login — ไม่จำค่าที่กรอกก่อน
+      try { var _ms = document.getElementById('msLoginBtn'); if (_ms && !_ms.dataset.warm) { _ms.dataset.warm = '1'; _ms.addEventListener('pointerenter', pcWarmMicrosoftLogin); _ms.addEventListener('focus', pcWarmMicrosoftLogin); _ms.addEventListener('touchstart', pcWarmMicrosoftLogin, { passive: true }); } window.addEventListener('load', pcWarmMicrosoftLogin, { once: true }); setTimeout(pcWarmMicrosoftLogin, 0); } catch (e) {}
       try { var _u = document.getElementById('user'), _p = document.getElementById('pass'); if (_u) _u.value = ''; if (_p) _p.value = ''; var _e = document.getElementById('errMsg'); if (_e) _e.textContent = ''; if (_u) setTimeout(function(){ _u.value=''; try{ _u.focus(); }catch(e){} }, 60); } catch (e) {}
     }
 
@@ -638,7 +639,9 @@
       if (_msalApp) return _msalApp;
       _msalApp = new msal.PublicClientApplication({
         auth: { clientId: PC_MS.clientId, authority: PC_MS.authority, redirectUri: PC_MS.redirectUri },
-        cache: { cacheLocation: 'sessionStorage' }
+        cache: { cacheLocation: 'sessionStorage' },
+        // Allow time for MFA approval on a phone before MSAL gives up on the popup.
+        system: { windowHashTimeout: 180000 }
       });
       _msalReady = _msalApp.initialize ? _msalApp.initialize() : Promise.resolve();
       return _msalApp;
@@ -660,6 +663,27 @@
       return window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});
     };
 
+    /* Everything that needs the network is prepared before the click, so the Microsoft popup
+     * opens straight from the click. Browsers block or stall popups opened after several waits.
+     * A challenge is single-use and expires on the server after 10 minutes. */
+    let _msPrep = null;
+    function pcPrepareMicrosoftLogin() {
+      if (_msPrep && Date.now() - _msPrep.at < 8 * 60 * 1000) return _msPrep.promise;
+      const prep = { at: Date.now(), value: null };
+      prep.promise = (async () => {
+        if (typeof msal === 'undefined' || !msal.PublicClientApplication) throw Object.assign(Error('msal'), { code: 'msal_loading' });
+        const app = getMsalApp();
+        if (_msalReady) await _msalReady;
+        const caps = await window.PC_CoProEmail.capabilities();
+        const challenge = caps.staffEnabled ? await window.PC_EmailAuth.staffRequest('microsoft/challenge', {}) : null;
+        return (prep.value = { app, caps, challenge });
+      })();
+      prep.promise.catch(() => { if (_msPrep === prep) _msPrep = null; });
+      _msPrep = prep;
+      return prep.promise;
+    }
+    function pcWarmMicrosoftLogin() { try { pcPrepareMicrosoftLogin().catch(() => {}); } catch (_) {} }
+
     async function loginWithMicrosoft() {
       const errMsg = document.getElementById('errMsg');
       const btn = document.getElementById('msLoginBtn');
@@ -668,15 +692,19 @@
         errMsg.innerText = '⚠ กำลังโหลดตัวช่วย Microsoft... ลองใหม่อีกครั้ง'; return;
       }
       const orig = btn.innerHTML;
+      const stage = text => { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + text; };
+      const reset = () => { btn.disabled = false; btn.innerHTML = orig; pcWarmMicrosoftLogin(); };
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ Microsoft...';
+      let prepared = _msPrep && _msPrep.value && Date.now() - _msPrep.at < 8 * 60 * 1000 ? _msPrep.value : null;
+      const preparedBeforeClick = !!prepared;
       try {
-        const app = getMsalApp();
-        if (_msalReady) await _msalReady;
-        const caps=await window.PC_CoProEmail.capabilities();
-        if(caps.staffEnabled)await window.PC_EmailAuth.staffRequest('logout',{});
-        const challenge=caps.staffEnabled?await window.PC_EmailAuth.staffRequest('microsoft/challenge',{}):null;
+        if (!prepared) { stage('กำลังเตรียมการเข้าสู่ระบบ...'); prepared = await pcPrepareMicrosoftLogin(); }
+        const { app, caps, challenge } = prepared;
+        _msPrep = null;
+        stage('รอยืนยันในหน้าต่าง Microsoft...');
         const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account',...(challenge?{nonce:challenge.nonce}:{}) });
+        stage('กำลังตรวจสิทธิ์...');
+        if(caps.staffEnabled)await window.PC_EmailAuth.staffRequest('logout',{});
         if(challenge){
           try{const session=await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
           catch(error){
@@ -689,7 +717,7 @@
         const acct = result.account || {};
         const claims = acct.idTokenClaims || {};
         const email = String(acct.username || claims.preferred_username || claims.email || '').trim().toLowerCase();
-        if (!email) { errMsg.innerText = '❌ ไม่พบอีเมลจากบัญชี Microsoft'; btn.disabled = false; btn.innerHTML = orig; return; }
+        if (!email) { errMsg.innerText = '❌ ไม่พบอีเมลจากบัญชี Microsoft'; reset(); return; }
         google.script.run.withSuccessHandler(res => {
           if (res && res.status === 'success') {
             localStorage.setItem('pc_session', 'active');
@@ -702,29 +730,33 @@
             afterLogin();
           } else {
             errMsg.innerText = '❌ ' + ((res && res.message) || 'อีเมลนี้ยังไม่ได้รับสิทธิ์');
-            btn.disabled = false; btn.innerHTML = orig;
+            reset();
           }
         }).withFailureHandler(() => {
           errMsg.innerText = '❌ ตรวจสิทธิ์ผู้ใช้ไม่สำเร็จ กรุณาลองเข้าสู่ระบบอีกครั้ง';
-          btn.disabled = false;
-          btn.innerHTML = orig;
+          reset();
         }).checkLoginByEmail(email);
       } catch (e) {
         const code = (e && e.errorCode) || '';
         if (code === 'popup_window_error' || code === 'empty_window_error') {
-          errMsg.innerText = '⚠ เบราว์เซอร์บล็อกหน้าต่าง Microsoft — กดอนุญาต Pop-up ของเว็บนี้ (ไอคอนที่ช่อง URL) แล้วกด Login Outlook อีกครั้ง';
-          btn.disabled = false; btn.innerHTML = orig; return;
+          // A popup opened after preparing may be refused; the next click opens it immediately.
+          errMsg.innerText = preparedBeforeClick
+            ? '⚠ เบราว์เซอร์บล็อกหน้าต่าง Microsoft — กดอนุญาต Pop-up ของเว็บนี้ (ไอคอนที่ช่อง URL) แล้วกด Login Outlook อีกครั้ง'
+            : '⚠ เตรียมการเข้าสู่ระบบเรียบร้อยแล้ว กรุณากด Login Outlook อีกครั้ง';
+          reset(); return;
         }
-        if (code === 'user_cancelled' || /cancel/i.test((e && e.errorMessage) || '')) {
-          btn.disabled = false; btn.innerHTML = orig; return;
-        }
+        if (code === 'user_cancelled' || /cancel/i.test((e && e.errorMessage) || '')) { reset(); return; }
         if (code === 'interaction_in_progress') {
           errMsg.innerText = '⚠ มีหน้าต่าง Microsoft เปิดค้างอยู่ ปิดหน้าต่างนั้นแล้วลองใหม่อีกครั้ง';
-          btn.disabled = false; btn.innerHTML = orig; return;
+          reset(); return;
+        }
+        if (code === 'monitor_popup_timeout' || code === 'monitor_window_timeout') {
+          errMsg.innerText = '⚠ หมดเวลารอการยืนยันในหน้าต่าง Microsoft กรุณากด Login Outlook แล้วลองใหม่อีกครั้ง';
+          reset(); return;
         }
         const text = pcLoginErrorText(e, String(e));
         errMsg.innerText = text === PC_LOGIN_NET_MSG ? text : '❌ เข้าสู่ระบบ Microsoft ไม่สำเร็จ: ' + text;
-        btn.disabled = false; btn.innerHTML = orig;
+        reset();
       }
     }
 
