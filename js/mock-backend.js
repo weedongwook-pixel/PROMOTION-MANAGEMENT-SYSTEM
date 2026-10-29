@@ -5750,7 +5750,9 @@
                 // prevent the user from opening the page.
                 const independentRead = cloudRead || emailPersisted || prop === 'getCoPromotions' || prop === 'getPageContent' ||
                   prop === 'getMonthlySubmitSummary' || prop === 'getMemoCampaigns' ||
-                  prop === 'getMasterDataExtended' || prop === 'getExistingCampaignNames';
+                  prop === 'getMasterDataExtended' || prop === 'getExistingCampaignNames' ||
+                  // Login checks only read the user list; they must not wait for unrelated pending sync.
+                  prop === 'checkLogin' || prop === 'checkLoginByEmail';
                 // A Cloud-first form has already received its D1 receipt. A
                 // later browser-cache quota error must not turn that committed
                 // write into a false failure or encourage a duplicate send.

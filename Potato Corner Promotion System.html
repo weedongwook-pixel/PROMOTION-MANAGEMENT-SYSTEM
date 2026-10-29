@@ -587,7 +587,7 @@
       const p = document.getElementById('pass').value;
       const btn = document.getElementById('loginBtn');
       const errMsg = document.getElementById('errMsg');
-      if (!u || !p) { errMsg.innerText = "⚠ กรุณาระบุชื่อผู้ใช้งานและรหัสผ่าน"; return; }
+      if (!u || !p) { errMsg.innerText = "⚠ Please enter your username and password."; return; }
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AUTHENTICATING...';
       let staffCleared=false;
@@ -596,33 +596,54 @@
         if(caps.staffEnabled){await window.PC_EmailAuth.staffRequest('logout',{});staffCleared=true;const session=await window.PC_EmailAuth.staffRequest('login',{username:u,password:p});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
       } catch(e) {
         // Legacy website access remains available; it never grants mail privileges.
-        if(!staffCleared || e.code!=='email_staff_signin_required'){errMsg.textContent=pcLoginErrorText(e,'ตรวจสอบการเข้าสู่ระบบไม่ได้ กรุณาลองใหม่');btn.disabled=false;btn.innerHTML='ENTER SYSTEM';return;}
+        if(!staffCleared || e.code!=='email_staff_signin_required'){errMsg.textContent=pcLoginErrorText(e,'⚠ Sign-in could not be verified. Please try again.');btn.disabled=false;btn.innerHTML='ENTER SYSTEM';return;}
       }
-      google.script.run.withSuccessHandler(res => {
-        if (res.status === "success") {
+      try {
+        const res = await pcLoginLookup('checkLogin', u, p);
+        if (res && res.status === "success") {
           localStorage.setItem('pc_session', 'active');
           localStorage.setItem('pc_role', res.role);
           localStorage.setItem('pc_userName', res.name);
           afterLogin();
-        } else {
-          errMsg.innerText = "❌ " + res.message;
-          btn.disabled = false;
-          btn.innerHTML = 'ENTER SYSTEM';
+          return;
         }
-      }).checkLogin(u, p);
+        errMsg.innerText = "❌ Incorrect username or password.";
+      } catch (e) {
+        errMsg.innerText = pcLoginErrorText(e, '⚠ Sign-in could not be verified. Please try again.');
+      }
+      btn.disabled = false;
+      btn.innerHTML = 'ENTER SYSTEM';
+    }
+
+    /* The website user list is checked locally. Never leave the login button spinning:
+     * give up after 20 seconds and let the user try again. */
+    function pcLoginLookup(method, ...args) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(Object.assign(Error('timeout'), { code: 'login_lookup_timeout' })), 20000);
+        google.script.run
+          .withSuccessHandler(res => { clearTimeout(timer); resolve(res); })
+          .withFailureHandler(err => { clearTimeout(timer); reject(err || Error('lookup failed')); })[method](...args);
+      });
     }
 
     /* Login errors: network problems get one plain Thai message instead of raw
      * browser/MSAL text such as "Failed to fetch". Server messages pass through. */
-    const PC_LOGIN_NET_MSG = '⚠ เชื่อมต่ออินเทอร์เน็ตไม่ได้ กรุณาตรวจสอบเน็ตแล้วลองใหม่อีกครั้ง';
+    const PC_LOGIN_NET_MSG = '⚠ No internet connection. Please check your network and try again.';
+    // The login screen is English; server codes are mapped here instead of showing Thai app messages.
+    const PC_LOGIN_CODE_MSG = {
+      email_staff_signin_required: '❌ Incorrect username or password, or this account has no access yet.',
+      email_staff_try_later: '⚠ Too many attempts. Please wait 10 minutes and try again.',
+      login_lookup_timeout: '⚠ Checking your access is taking too long. Please try again.'
+    };
     function pcLoginErrorText(e, fallback) {
       const code = String((e && (e.errorCode || e.code || e.name)) || '');
       const msg = String((e && (e.errorMessage || e.message)) || '');
       if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
           /^(TimeoutError|AbortError|no_network_connectivity|endpoints_resolution_error|network_error|post_request_failed|get_request_failed)$/.test(code) ||
           /failed to fetch|load failed|networkerror|network request failed|timed? ?out|aborted/i.test(msg)) return PC_LOGIN_NET_MSG;
-      if (code === 'SyntaxError') return '⚠ ระบบตรวจสิทธิ์ไม่ตอบสนอง กรุณาลองใหม่ในอีกสักครู่';
-      return msg || fallback;
+      if (code === 'SyntaxError') return '⚠ The sign-in service is not responding. Please try again shortly.';
+      if (PC_LOGIN_CODE_MSG[code]) return PC_LOGIN_CODE_MSG[code];
+      return fallback;
     }
 
     /* ---- Microsoft Entra (MSAL) SSO ------------------------------------------
@@ -689,7 +710,7 @@
       const btn = document.getElementById('msLoginBtn');
       errMsg.innerText = '';
       if (typeof msal === 'undefined' || !msal.PublicClientApplication) {
-        errMsg.innerText = '⚠ กำลังโหลดตัวช่วย Microsoft... ลองใหม่อีกครั้ง'; return;
+        errMsg.innerText = '⚠ Microsoft sign-in is still loading. Please try again.'; return;
       }
       const orig = btn.innerHTML;
       const stage = text => { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + text; };
@@ -698,12 +719,12 @@
       let prepared = _msPrep && _msPrep.value && Date.now() - _msPrep.at < 8 * 60 * 1000 ? _msPrep.value : null;
       const preparedBeforeClick = !!prepared;
       try {
-        if (!prepared) { stage('กำลังเตรียมการเข้าสู่ระบบ...'); prepared = await pcPrepareMicrosoftLogin(); }
+        if (!prepared) { stage('Preparing sign-in...'); prepared = await pcPrepareMicrosoftLogin(); }
         const { app, caps, challenge } = prepared;
         _msPrep = null;
-        stage('รอยืนยันในหน้าต่าง Microsoft...');
+        stage('Waiting for Microsoft window...');
         const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account',...(challenge?{nonce:challenge.nonce}:{}) });
-        stage('กำลังตรวจสิทธิ์...');
+        stage('Checking access...');
         if(caps.staffEnabled)await window.PC_EmailAuth.staffRequest('logout',{});
         if(challenge){
           try{const session=await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
@@ -711,14 +732,17 @@
             // Not (yet) a mail staff account: continue with the website user list below,
             // exactly like password login. This grants web access only, never mail rights.
             if(error.code!=='email_staff_pending' && error.code!=='email_staff_signin_required')throw error;
-            if(error.code==='email_staff_pending')await Swal.fire({icon:'info',title:'รออนุมัติสิทธิ์ส่งเมล',text:error.message+' · ยังใช้งานส่วนอื่นของเว็บได้ตามสิทธิ์เดิม'});
+            if(error.code==='email_staff_pending')await Swal.fire({icon:'info',title:'Email access pending approval',text:'Your Microsoft account is verified. An administrator must approve email sending; you can use the rest of the website with your existing access.'});
           }
         }
         const acct = result.account || {};
         const claims = acct.idTokenClaims || {};
         const email = String(acct.username || claims.preferred_username || claims.email || '').trim().toLowerCase();
-        if (!email) { errMsg.innerText = '❌ ไม่พบอีเมลจากบัญชี Microsoft'; reset(); return; }
-        google.script.run.withSuccessHandler(res => {
+        if (!email) { errMsg.innerText = '❌ The Microsoft account did not provide an email address.'; reset(); return; }
+        let res;
+        try { res = await pcLoginLookup('checkLoginByEmail', email); }
+        catch (lookupError) { errMsg.innerText = lookupError && lookupError.code === 'login_lookup_timeout' ? PC_LOGIN_CODE_MSG.login_lookup_timeout : '❌ Could not check your access. Please sign in again.'; reset(); return; }
+        {
           if (res && res.status === 'success') {
             localStorage.setItem('pc_session', 'active');
             localStorage.setItem('pc_role', res.role);
@@ -729,33 +753,29 @@
             try { sessionStorage.setItem('pc_email_staff_identity',JSON.stringify({tenantId:claims.tid,objectId:claims.oid})); } catch (_) {}
             afterLogin();
           } else {
-            errMsg.innerText = '❌ ' + ((res && res.message) || 'อีเมลนี้ยังไม่ได้รับสิทธิ์');
+            errMsg.innerText = '❌ ' + email + ' has no access yet. Please ask your administrator to add this email.';
             reset();
           }
-        }).withFailureHandler(() => {
-          errMsg.innerText = '❌ ตรวจสิทธิ์ผู้ใช้ไม่สำเร็จ กรุณาลองเข้าสู่ระบบอีกครั้ง';
-          reset();
-        }).checkLoginByEmail(email);
+        }
       } catch (e) {
         const code = (e && e.errorCode) || '';
         if (code === 'popup_window_error' || code === 'empty_window_error') {
           // A popup opened after preparing may be refused; the next click opens it immediately.
           errMsg.innerText = preparedBeforeClick
-            ? '⚠ เบราว์เซอร์บล็อกหน้าต่าง Microsoft — กดอนุญาต Pop-up ของเว็บนี้ (ไอคอนที่ช่อง URL) แล้วกด Login Outlook อีกครั้ง'
-            : '⚠ เตรียมการเข้าสู่ระบบเรียบร้อยแล้ว กรุณากด Login Outlook อีกครั้ง';
+            ? '⚠ Your browser blocked the Microsoft window. Allow pop-ups for this site (icon in the address bar), then click Login Outlook again.'
+            : '⚠ Sign-in is ready. Please click Login Outlook again.';
           reset(); return;
         }
         if (code === 'user_cancelled' || /cancel/i.test((e && e.errorMessage) || '')) { reset(); return; }
         if (code === 'interaction_in_progress') {
-          errMsg.innerText = '⚠ มีหน้าต่าง Microsoft เปิดค้างอยู่ ปิดหน้าต่างนั้นแล้วลองใหม่อีกครั้ง';
+          errMsg.innerText = '⚠ A Microsoft sign-in window is already open. Close it and try again.';
           reset(); return;
         }
         if (code === 'monitor_popup_timeout' || code === 'monitor_window_timeout') {
-          errMsg.innerText = '⚠ หมดเวลารอการยืนยันในหน้าต่าง Microsoft กรุณากด Login Outlook แล้วลองใหม่อีกครั้ง';
+          errMsg.innerText = '⚠ The Microsoft window timed out. Please click Login Outlook and try again.';
           reset(); return;
         }
-        const text = pcLoginErrorText(e, String(e));
-        errMsg.innerText = text === PC_LOGIN_NET_MSG ? text : '❌ เข้าสู่ระบบ Microsoft ไม่สำเร็จ: ' + text;
+        errMsg.innerText = pcLoginErrorText(e, '❌ Microsoft sign-in failed. Please try again.');
         reset();
       }
     }
@@ -773,7 +793,7 @@
         clearTimeout(show.timer);
         bar.style.display = 'block';
         bar.style.background = offline ? '#c0392b' : '#1d7a4d';
-        bar.textContent = offline ? 'ขาดการเชื่อมต่ออินเทอร์เน็ต — ข้อมูลที่บันทึกจะยังไม่ขึ้น Cloud ระบบจะลองใหม่เองเมื่อกลับมาออนไลน์' : 'กลับมาเชื่อมต่ออินเทอร์เน็ตแล้ว';
+        bar.textContent = offline ? 'No internet connection — saved changes will sync to the Cloud automatically when you are back online.' : 'Back online.';
         if (!offline) show.timer = setTimeout(function () { bar.style.display = 'none'; }, 4000);
       }
       window.addEventListener('offline', function () { show(true); });

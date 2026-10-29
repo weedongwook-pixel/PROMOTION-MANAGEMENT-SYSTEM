@@ -9,13 +9,13 @@ function entry(popup, hash) {
   for(const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) vm.runInNewContext(match[1],context);
   return nodes;
 }
-function loginHelpers(shell){return shell.slice(shell.indexOf('const PC_LOGIN_NET_MSG'),shell.indexOf('/* ---- Microsoft Entra'));}
+function loginHelpers(shell){return shell.slice(shell.indexOf('function pcLoginLookup'),shell.indexOf('/* ---- Microsoft Entra'));}
 function microsoft({loginPopup,staffRequest,staffEnabled=true,onLine=true}){
   const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
   const source=loginHelpers(shell)+shell.slice(shell.indexOf('let _msPrep = null;'),shell.indexOf('/* 2. App init */'));
   const button={disabled:false,innerHTML:'Microsoft'},error={innerText:''},calls={legacy:[],after:0,swal:0};
-  const runner={withSuccessHandler(fn){this.ok=fn;return this;},withFailureHandler(){return this;},checkLoginByEmail(email){calls.legacy.push(email);}};
-  const context={navigator:{onLine},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled})},PC_EmailAuth:{staffRequest,rememberStaff(){}}},Swal:{fire:async()=>{calls.swal++;}},afterLogin(){calls.after++;},
+  const runner={withSuccessHandler(fn){this.ok=fn;return this;},withFailureHandler(){return this;},checkLoginByEmail(email){calls.legacy.push(email);if(this.ok)this.ok({status:'fail'});}};
+  const context={setTimeout,clearTimeout,navigator:{onLine},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled})},PC_EmailAuth:{staffRequest,rememberStaff(){}}},Swal:{fire:async()=>{calls.swal++;}},afterLogin(){calls.after++;},
     document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup}),_msalReady:null,google:{script:{run:runner}}};
   vm.createContext(context);vm.runInContext(source,context);
   return {run:()=>context.loginWithMicrosoft(),prepare:()=>context.pcPrepareMicrosoftLogin(),context,button,error,calls};
@@ -24,27 +24,27 @@ const staff=code=>async path=>{if(path==='microsoft/challenge')return {nonce:'n'
 test('Outlook login falls back to the website user list when the account is not mail staff',async()=>{
   const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'User@Rocksgroup.com'}}),staffRequest:staff('email_staff_signin_required')});
   await m.run();
-  assert.deepEqual(m.calls.legacy,['user@rocksgroup.com']);assert.equal(m.calls.swal,0);assert.equal(m.error.innerText,'');
+  assert.deepEqual(m.calls.legacy,['user@rocksgroup.com']);assert.equal(m.calls.swal,0);assert.match(m.error.innerText,/user@rocksgroup.com has no access yet/);
 });
 test('Outlook login still stops on other staff errors',async()=>{
   const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'u@rocksgroup.com'}}),staffRequest:staff('email_staff_try_later')});
   await m.run();
-  assert.deepEqual(m.calls.legacy,[]);assert.match(m.error.innerText,/ไม่สำเร็จ/);assert.equal(m.button.disabled,false);
+  assert.deepEqual(m.calls.legacy,[]);assert.match(m.error.innerText,/Too many attempts/);assert.equal(m.button.disabled,false);
 });
 test('blocked popup and lost internet show plain Thai guidance',async()=>{
   const blocked=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('popup'),{errorCode:'popup_window_error'});}});
-  await blocked.prepare();await blocked.run();assert.match(blocked.error.innerText,/Pop-up/);assert.equal(blocked.button.disabled,false);
+  await blocked.prepare();await blocked.run();assert.match(blocked.error.innerText,/Allow pop-ups/);assert.equal(blocked.button.disabled,false);
   const offline=microsoft({staffEnabled:false,loginPopup:async()=>{throw new TypeError('Failed to fetch');}});
-  await offline.run();assert.match(offline.error.innerText,/เชื่อมต่ออินเทอร์เน็ตไม่ได้/);
+  await offline.run();assert.match(offline.error.innerText,/No internet connection/);
   const cancelled=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('x'),{errorCode:'user_cancelled'});}});
   await cancelled.run();assert.equal(cancelled.error.innerText,'');
 });
 test('password login reports a network failure in Thai',async()=>{
   const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
   const nodes={user:{value:'u'},pass:{value:'p'},loginBtn:{},errMsg:{}};
-  const context={navigator:{onLine:true},document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{throw new TypeError('Failed to fetch');}}}};
+  const context={setTimeout,clearTimeout,navigator:{onLine:true},document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{throw new TypeError('Failed to fetch');}}}};
   vm.createContext(context);vm.runInContext(shell.slice(shell.indexOf('async function doLogin()'),shell.indexOf('/* ---- Microsoft Entra')),context);
-  await context.doLogin();assert.match(nodes.errMsg.textContent,/เชื่อมต่ออินเทอร์เน็ตไม่ได้/);
+  await context.doLogin();assert.match(nodes.errMsg.textContent,/No internet connection/);
 });
 test('a prepared Outlook login opens the popup without waiting on the network, then signs out the old mail session',async()=>{
   const order=[];
@@ -58,8 +58,19 @@ test('a prepared Outlook login opens the popup without waiting on the network, t
 });
 test('a popup refused after preparing asks for one more click',async()=>{
   const m=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('popup'),{errorCode:'popup_window_error'});}});
-  await m.run();assert.match(m.error.innerText,/กด Login Outlook อีกครั้ง/);assert.doesNotMatch(m.error.innerText,/บล็อก/);
-  await m.prepare();await m.run();assert.match(m.error.innerText,/Pop-up/);
+  await m.run();assert.match(m.error.innerText,/click Login Outlook again/);assert.doesNotMatch(m.error.innerText,/blocked/);
+  await m.prepare();await m.run();assert.match(m.error.innerText,/Allow pop-ups/);
+});
+test('a website user lookup that never answers releases the Outlook button',async()=>{
+  const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
+  const source=loginHelpers(shell)+shell.slice(shell.indexOf('let _msPrep = null;'),shell.indexOf('/* 2. App init */'));
+  const button={disabled:false,innerHTML:'Microsoft'},error={innerText:''};
+  const runner={withSuccessHandler(){return this;},withFailureHandler(){return this;},checkLoginByEmail(){}};
+  const fast=(fn)=>setTimeout(fn,1);
+  const context={setTimeout:fast,clearTimeout,navigator:{onLine:true},window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled:false})}},document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup:async()=>({account:{username:'u@rocksgroup.com'}})}),_msalReady:null,google:{script:{run:runner}}};
+  vm.createContext(context);vm.runInContext(source,context);
+  await context.loginWithMicrosoft();
+  assert.equal(button.disabled,false);assert.match(error.innerText,/taking too long/);
 });
 test('OAuth popup preserves response without booting another application',()=>{
   const nodes=entry(true,'#code=test&state=test');
@@ -80,19 +91,19 @@ test('permission lookup failure restores the Microsoft login button',async()=>{
   const button={disabled:false,innerHTML:'Microsoft'};
   const error={innerText:''};
   const runner={withSuccessHandler(){return this;},withFailureHandler(fn){this.fail=fn;return this;},checkLoginByEmail(){if(this.fail)this.fail(new Error('offline'));}};
-  const context={window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled:false})}},document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup:async()=>({account:{username:'test@example.com'}})}),_msalReady:null,google:{script:{run:runner}}};
+  const context={setTimeout,clearTimeout,window:{PC_CoProEmail:{capabilities:async()=>({staffEnabled:false})}},document:{getElementById:id=>id==='errMsg'?error:button},msal:{PublicClientApplication(){}},getMsalApp:()=>({loginPopup:async()=>({account:{username:'test@example.com'}})}),_msalReady:null,google:{script:{run:runner}}};
   vm.createContext(context);vm.runInContext(source,context);
   await context.loginWithMicrosoft();
   assert.equal(button.disabled,false);
   assert.equal(button.innerHTML,'Microsoft');
-  assert.match(error.innerText,/ตรวจสิทธิ์/);
+  assert.match(error.innerText,/Could not check your access/);
 });
 test('password login never falls back with a previous mail session when server logout fails',async()=>{
  const shell=fs.readFileSync('Potato Corner Promotion System.html','utf8');
  const source=shell.slice(shell.indexOf('async function doLogin()'),shell.indexOf('/* ---- Microsoft Entra'));
  for(const failAt of ['capabilities','logout']){
   let legacy=0;const nodes={user:{value:'legacy'},pass:{value:'legacy-pass'},loginBtn:{},errMsg:{}};
-  const context={document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{if(failAt==='capabilities')throw Error('offline');return {staffEnabled:true};}},PC_EmailAuth:{staffRequest:async()=>{throw Error('logout failed');}}},google:{script:{run:{withSuccessHandler(){legacy++;return this;},checkLogin(){}}}}};
+  const context={setTimeout,clearTimeout,document:{getElementById:id=>nodes[id]},window:{PC_CoProEmail:{capabilities:async()=>{if(failAt==='capabilities')throw Error('offline');return {staffEnabled:true};}},PC_EmailAuth:{staffRequest:async()=>{throw Error('logout failed');}}},google:{script:{run:{withSuccessHandler(){legacy++;return this;},checkLogin(){}}}}};
   vm.createContext(context);vm.runInContext(source,context);await context.doLogin();assert.equal(legacy,0);assert.equal(nodes.loginBtn.disabled,false);
  }
 });
