@@ -284,36 +284,31 @@
         '<td><div class="d-flex flex-wrap gap-1">' + chCell(r, i) + '</div></td>' +
         '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delR(\'' + p.id + '\',' + i + ')"></i></td></tr>';
     }).join('');
-    return '<div class="border border-dark rounded" style="overflow-x:auto" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
-      '<thead><tr><th style="width:40px">No</th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table></div>' +
-      '<button class="btn btn-sm btn-dark fw-bold mt-2" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>';
-  }
-  function formulaSection(p) {
-    var rows = (p.formulas || []).map(function (f, i) {
-      var s = resolveFormulaSub(f.subId);
-      var max = (s && s.count) ? s.count : 0;
-      var inForm = state.subsets.map(function (x) { var label = (x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset'); return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('');
+    // SUBSET rows sit in the same table, as "SS code · subset name · qty สูตร" rows in the Approval Form.
+    var subRows = (p.formulas || []).map(function (f, i) {
+      var s = resolveFormulaSub(f.subId), max = (s && s.count) ? s.count : 0;
+      var mn = f.chooseMin != null ? f.chooseMin : (f.choose || 1), mx = f.chooseMax != null ? f.chooseMax : (f.choose || 1);
+      var inForm = state.subsets.map(function (x) { return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc((x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset')) + '</option>'; }).join('');
       var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
-      var opts = '<option value="">— เลือก Subset —</option>' +
-        (inForm ? '<optgroup label="ชุดใหม่ในฟอร์มนี้">' + inForm + '</optgroup>' : '') +
-        (dbOpts ? '<optgroup label="Subset ในระบบ (ฐานข้อมูล)">' + dbOpts + '</optgroup>' : '');
-      return '<div class="d-flex gap-2 align-items-center mb-2 flex-wrap">' +
-        '<span class="badge bg-dark">#' + (i + 1) + '</span>' +
-        '<span class="ss-badge" title="SS Code (IT กรอก)">' + esc(s ? (s.ssCode || '— IT —') : '—') + '</span>' +
-        '<select class="form-select form-select-sm border-dark" style="max-width:280px" onchange="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'subId\',this.value)">' + opts + '</select>' +
-        '<span class="small">Min</span>' +
-        '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-dark text-center fw-bold" style="width:60px" title="ขั้นต่ำ (min)" value="' + esc(f.chooseMin != null ? f.chooseMin : (f.choose || 1)) + '" oninput="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'chooseMin\',this.value)">' +
-        '<span class="small">Max</span>' +
-        '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-dark text-center fw-bold" style="width:60px" title="ขั้นสูง (max)" value="' + esc(f.chooseMax != null ? f.chooseMax : (f.choose || 1)) + '" oninput="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'chooseMax\',this.value)">' +
-        '<span class="small">ผง <span class="hint">' + (max ? '(จาก ' + max + ' ผงในชุด)' : '') + '</span></span>' +
-        '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i>' +
-        '</div>';
-    }).join('') || '<div class="hint mb-2">สินค้านี้ไม่ใช้ SUBSET หากต้องใช้ผง ให้กดเพิ่มสูตรผงและเลือก SUBSET</div>';
-    return '<hr class="my-3"><div class="d-flex align-items-center mb-2 flex-wrap"><span class="fw-bold text-uppercase" style="font-size:.82rem"><i class="fas fa-flask me-2 text-success"></i>สูตรผง (Powder Formula)</span>' +
-      '<span class="hint ms-2">เลือกได้กี่ผง · จาก Subset ใด</span></div>' +
-      '<div class="p-2 rounded" style="background:#eef7f1;border:1px solid #bfe3cd">' + rows +
-      '<button class="btn btn-sm btn-success fw-bold mt-1" onclick="RD.addFormula(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>เพิ่มสูตรผง</button></div>';
+      var opts = '<option value="">— เลือก SUBSET —</option>' + (inForm ? '<optgroup label="SUBSET ที่สร้างในงานนี้">' + inForm + '</optgroup>' : '') + (dbOpts ? '<optgroup label="SUBSET ในระบบ">' + dbOpts + '</optgroup>' : '');
+      var num = function (k, v, title) { return '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-secondary text-center" style="width:64px" title="' + title + '" value="' + esc(v) + '" oninput="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'' + k + '\',this.value)">'; };
+      // One quantity as in the sheet; a min/max pair only when they already differ.
+      var qty = String(mn) === String(mx) ? '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-secondary text-center" style="width:64px" title="จำนวนผงที่เลือกได้" value="' + esc(mx) + '" oninput="RD.setFormulaQty(\'' + p.id + '\',\'' + f.id + '\',this.value)">'
+        : '<div class="d-flex gap-1">' + num('chooseMin', mn, 'ขั้นต่ำ (min)') + num('chooseMax', mx, 'ขั้นสูง (max)') + '</div>';
+      return '<tr class="ss-row" style="background:#eef7f1">' +
+        '<td class="text-center fw-bold">' + (p.recipes.length + i + 1) + '</td>' +
+        '<td><span class="ss-badge mono">' + esc(s ? (s.ssCode || '— IT —') : 'SS') + '</span></td>' +
+        '<td><select class="form-select form-select-sm border-secondary" style="min-width:150px" aria-label="SUBSET" onchange="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'subId\',this.value)">' + opts + '</select></td>' +
+        '<td>' + qty + '</td><td class="text-center">สูตร</td>' +
+        '<td class="hint">' + (max ? 'เลือกได้จาก ' + max + ' ผงในชุด' : 'ทุกช่องทางของสินค้า') + '</td>' +
+        '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i></td></tr>';
+    }).join('');
+    return '<div class="border border-dark rounded" style="overflow-x:auto" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
+      '<thead><tr><th style="width:40px">NO</th><th>Item Code</th><th>Description</th><th>Quantity</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
+      '<tbody>' + rows + subRows + '</tbody></table></div>' +
+      '<div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-sm btn-dark fw-bold" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>' +
+      '<button class="btn btn-sm btn-success fw-bold" onclick="RD.addFormula(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>SUBSET (สูตรผง)</button>' +
+      '<span class="hint align-self-center">' + (state.subsets.length ? 'SUBSET ที่สร้างในขั้น 3 แสดงเป็นตัวเลือกแรก' : 'สินค้าไม่ใช้ผง ไม่ต้องเพิ่ม SUBSET') + '</span></div>';
   }
   function priceBlock(p) {
     var sm = p.saleModes || []; p.prices = p.prices || {};
@@ -338,7 +333,7 @@
     return fields + split;
   }
   function productCategoryField(p) {
-    return '<div class="mb-3"><label class="form-label small fw-bold req" for="cat_'+p.id+'">Category ของสินค้านี้</label><select id="cat_'+p.id+'" class="form-select" onchange="RD.setProductCategory(\''+p.id+'\',this.value)"><option value="">เลือกหมวดสินค้า</option>'+CAT_LIST.filter(function(c){return npdCatShown(c.name);}).map(function(c){return '<option value="'+esc(c.code)+'"'+(c.code===p.cateCode?' selected':'')+'>'+esc(c.code+' · '+c.name)+'</option>';}).join('')+'</select>'+(p.cateCode?'':'<div class="form-text text-danger">เลือก Category ก่อน — ระบบจะออก Item Code ตามหมวดที่เลือก (ยังไม่มีหมวดให้กด “เพิ่มหมวด” ด้านบน)</div>')+'</div>';
+    return '<div><label class="small fw-bold text-uppercase mb-1 req" for="cat_'+p.id+'">Product Category</label><select id="cat_'+p.id+'" class="form-select border-dark" onchange="RD.setProductCategory(\''+p.id+'\',this.value)"><option value="">เลือกหมวดสินค้า</option>'+CAT_LIST.filter(function(c){return npdCatShown(c.name);}).map(function(c){return '<option value="'+esc(c.code)+'"'+(c.code===p.cateCode?' selected':'')+'>'+esc(c.code+' · '+c.name)+'</option>';}).join('')+'</select>'+(p.cateCode?'':'<div class="form-text text-danger">เลือก Category ก่อน — ระบบจะออก Item Code ตามหมวดที่เลือก (ยังไม่มีหมวดให้กด “เพิ่มหมวด” ด้านบน)</div>')+'</div>';
   }
   function productCard(p, idx) {
     var sm = p.saleModes || [];
@@ -357,19 +352,18 @@
       '<span class="fw-bold"><i class="fas fa-box-open me-2"></i>ปุ่มสินค้า #' + (idx + 1) + '</span>' +
       '<i class="fas fa-trash-alt text-danger" style="cursor:pointer" onclick="RD.delProduct(\'' + p.id + '\')"></i></div>' +
       '<div class="p-3">' +
-        productCategoryField(p) +
         '<div class="row g-3 mb-3">' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="' + (p.cateCode ? '— IT —' : 'เลือก Category ก่อน') + '"></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/20</div></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Name (TH) <span class="it-tag" style="background:#198754;color:#fff">ปุ่ม POS</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.th) + '" oninput="RD.setP(\'' + p.id + '\',\'th\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.th || '').length + '/20</div></div>' +
+        '<div class="col-md-3">' + productCategoryField(p) + '</div>' +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode (ช่องทางขาย)</div>' +
         '<div class="d-flex flex-wrap gap-2 mb-3">' + allPills + salePills + '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price (฿) — ต่อช่องทางที่ติ๊ก</div>' +
         priceBlock(p) +
-        '<div class="fw-bold small text-uppercase mb-1 mt-3"><i class="fas fa-list-ol me-1 text-success"></i>Raw Material — ผูกกับช่องทางขาย</div>' +
+        '<div class="fw-bold small text-uppercase mb-1 mt-3"><i class="fas fa-list-ol me-1 text-success"></i>Recipe Details — วัตถุดิบและ SUBSET</div>' +
         rmTable(p) +
-        formulaSection(p) +
       '</div></div>';
   }
   function renderProducts() {
@@ -691,7 +685,9 @@
   RD.delW = function (sid, wid) { var s = Ssub(sid); if (s) { var w0 = s.powders.find(function (w) { return w.id === wid; }); if (w0) npdReturnCMPOS(w0.cmpos); s.powders = s.powders.filter(function (w) { return w.id !== wid; }); renderAll(); } };
 
   /* formula handlers (per product) */
-  RD.addFormula = function (pid) { var p = P(pid); if (p) { var reg = state.subsets.filter(function (x) { return x.registered; }); p.formulas.push({ id: uid('f'), subId: reg[0] ? reg[0].id : '', chooseMin: 1, chooseMax: 1 }); renderProducts(); } };
+  // A new SUBSET row defaults to a subset created in this job that the product does not use yet.
+  RD.addFormula = function (pid) { var p = P(pid); if (p) { var used = (p.formulas || []).map(function (f) { return f.subId; }), free = state.subsets.filter(function (x) { return used.indexOf(x.id) < 0; }); p.formulas.push({ id: uid('f'), subId: free[0] ? free[0].id : '', chooseMin: 1, chooseMax: 1 }); renderProducts(); } };
+  RD.setFormulaQty = function (pid, fid, v) { var p = P(pid), f = p && p.formulas.find(function (x) { return x.id === fid; }); if (f) { f.chooseMin = v; f.chooseMax = v; } };
   RD.delFormula = function (pid, fid) { var p = P(pid); if (p) { p.formulas = p.formulas.filter(function (f) { return f.id !== fid; }); renderProducts(); } };
   RD.setFormula = function (pid, fid, k, v) { var p = P(pid); if (p) { var f = p.formulas.find(function (x) { return x.id === fid; }); if (f) { f[k] = v; if (k === 'subId') renderProducts(); } } };
 

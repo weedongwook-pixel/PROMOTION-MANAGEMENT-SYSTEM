@@ -1,7 +1,7 @@
 /* One guided workspace; RD remains the owner of form data and reservations. */
 (function(window){
   'use strict';
-  var titles=['ข้อมูลงาน','ผงรสชาติ','SUBSET','สินค้า','ตรวจและส่ง'], root=null, workbook=null, flavorPlan=null, readTicket=0;
+  var titles=['เลือกวิธีการทำงาน','เพิ่มผงรสชาติใหม่','SUBSET','เพิ่มสินค้า','ตรวจและส่ง'], root=null, workbook=null, flavorPlan=null, readTicket=0;
   var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
   var el=function(id){return document.getElementById(id);};
   function value(id){return el(id)?el(id).value.trim():'';}
@@ -25,7 +25,7 @@
         '<li><b>ขั้น 1</b> ชื่อชุดสินค้า วันที่ และสาขา</li>'+
         '<li><b>ขั้น 2</b> มีผงรสชาติใหม่ ให้เพิ่มก่อน — ไม่มีกด “ไม่มีผงใหม่ ข้ามขั้นนี้”</li>'+
         '<li><b>ขั้น 3</b> สร้าง SUBSET หรือเพิ่มผงเข้า SUBSET เดิม (สินค้าไม่มีผง ข้ามได้)</li>'+
-        '<li><b>ขั้น 4</b> เลือก Category ก่อน (ยังไม่มีให้กด “เพิ่มหมวด”) แล้วค่อยเพิ่มสินค้า ช่องทางขาย และราคา</li>'+
+        '<li><b>ขั้น 4</b> เพิ่มสินค้า เลือก Category (ยังไม่มีให้กด “เพิ่มหมวด”) ช่องทางขาย ราคา และ Recipe — สินค้าที่ใช้ผงเลือก SUBSET ที่สร้างในขั้น 3</li>'+
         '<li><b>ขั้น 5</b> ตรวจและกด “ยืนยันส่งให้ IT”</li></ol></div></div>'+
       '<p class="small mb-0 mt-2">ทุกขั้นเปิดกลับมาตรวจและแก้ไขได้ ยกเว้นรหัสที่ระบบจองให้ (Item Code, SS Code, CMPOS) · กด “บันทึกร่าง” ได้ทุกขั้น ระบบจองรหัสไว้ให้ แต่ยังไม่ส่งงานให้ IT จนกว่าจะกดยืนยันในขั้น 5</p>';
     guide.addEventListener('toggle',function(){try{localStorage.setItem('pc_npd_guide_closed',guide.open?'0':'1');}catch(_){}});
@@ -33,7 +33,7 @@
     var intro=document.createElement('div');intro.id='npWorkflowIntro';intro.className='np-workflow-intro';root.insertBefore(intro,nav.nextSibling);
     // Step 1 starts with an explicit choice so only the relevant inputs are shown.
     var entry=document.createElement('section');entry.id='npEntryChoice';entry.dataset.npdStep='0';entry.className='bg-white border rounded-3 p-3 mb-3';
-    entry.innerHTML='<h4 class="h6 fw-bold">เลือกวิธีการทำงาน</h4><p class="small mb-3">เลือกวิธีที่ใช้ ระบบจะแสดงเฉพาะส่วนที่ต้องกรอก เปลี่ยนวิธีภายหลังได้ ข้อมูลที่กรอกไว้ไม่หาย</p><p class="small mb-3"><b>ลำดับงาน:</b> ข้อมูลงาน → ผงรสชาติใหม่ (ถ้ามี) → SUBSET → สินค้า → ตรวจและส่ง</p><div class="np-entry-options">'+
+    entry.innerHTML='<h4 class="h6 fw-bold">เลือกวิธีการทำงาน</h4><p class="small mb-3">เลือกวิธีที่ใช้ ระบบจะแสดงเฉพาะส่วนที่ต้องกรอก เปลี่ยนวิธีภายหลังได้ ข้อมูลที่กรอกไว้ไม่หาย</p><p class="small mb-3"><b>ลำดับงาน:</b> เลือกวิธีการทำงาน → เพิ่มผงรสชาติใหม่ (ไม่มีกดข้าม) → SUBSET → เพิ่มสินค้า (เลือก SUBSET ที่สร้างไว้) → ตรวจและส่ง</p><div class="np-entry-options">'+
       '<button type="button" class="np-entry" data-entry="excel" onclick="PC_NpdWorkflow.entry(\'excel\')"><b>นำเข้าไฟล์ Excel</b><small>มีไฟล์ Approval Form — ระบบเติมสินค้า ราคา และ SUBSET ให้</small></button>'+
       '<button type="button" class="np-entry" data-entry="manual" onclick="PC_NpdWorkflow.entry(\'manual\')"><b>กรอกเอง</b><small>ไม่มีไฟล์ — กรอกข้อมูลงานและสินค้าทีละรายการ</small></button></div>';
     root.insertBefore(entry,root.querySelector('.np-excel'));
@@ -85,7 +85,7 @@
       var status=i===0&&!mode?'เลือกวิธีการทำงาน':i===4?(issues.length?'รอตรวจ '+issues.length+' จุด':'พร้อมส่ง'):pending?'ต้องเติมข้อมูล':(i===1&&!d.workPowders.length?'ไม่บังคับ / ข้ามได้':i===2&&!d.subsets.length?'ใช้ของเดิม / ข้ามได้':'พร้อมแล้ว');
       button.classList.toggle('active',i===step);if(i===step)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');button.querySelector('small').textContent=status;
     });
-    var help=['กรอกชื่อชุดสินค้า วันที่ และสาขา หรือนำเข้า Excel (Approval Form) เพื่อเติมข้อมูลให้อัตโนมัติ — นำเข้าเพิ่มภายหลังได้โดยไม่ล้างรายการเดิม','มีผงรสชาติใหม่ ให้เพิ่มก่อน แล้วไปผูกเข้า SUBSET ในขั้นถัดไป · ไม่มีผงใหม่ กด “ไม่มีผงใหม่ ข้ามขั้นนี้”','สร้าง SUBSET ใหม่หรือเพิ่มผงเข้า SUBSET เดิม แล้วกรอกตัวย่อ (Subset Name 2) · สินค้าที่ไม่มีผง เช่น เครื่องดื่ม / ซอส ข้ามขั้นนี้ได้','เลือก Category ก่อน (ยังไม่มีให้กด “เพิ่มหมวด”) แล้วค่อยกรอกสินค้า ช่องทางขาย ราคา และเลือก SUBSET เฉพาะสินค้าที่ใช้ผง','ตรวจข้อมูลทั้งหมด จุดที่ยังไม่ครบกดที่ข้อความเพื่อกลับไปแก้ได้ เมื่อครบแล้วกด “ยืนยันส่งให้ IT”'];
+    var help=['กรอกชื่อชุดสินค้า วันที่ และสาขา หรือนำเข้า Excel (Approval Form) เพื่อเติมข้อมูลให้อัตโนมัติ — นำเข้าเพิ่มภายหลังได้โดยไม่ล้างรายการเดิม','มีผงรสชาติใหม่ ให้เพิ่มก่อน แล้วไปผูกเข้า SUBSET ในขั้นถัดไป · ไม่มีผงใหม่ กด “ไม่มีผงใหม่ ข้ามขั้นนี้”','สร้าง SUBSET ใหม่หรือเพิ่มผงเข้า SUBSET เดิม แล้วกรอกตัวย่อ (Subset Name 2) · สินค้าที่ไม่มีผง เช่น เครื่องดื่ม / ซอส ข้ามขั้นนี้ได้','แต่ละสินค้าแสดงแบบเดียวกับไฟล์ Excel: ชื่อ / Code / Category ด้านบน ช่องทางขายและราคา แล้วตาราง Recipe Details — สินค้าที่ใช้ผงกด “SUBSET (สูตรผง)” เพื่อเลือก SUBSET ที่สร้างในขั้น 3','ตรวจข้อมูลทั้งหมด จุดที่ยังไม่ครบกดที่ข้อความเพื่อกลับไปแก้ได้ เมื่อครบแล้วกด “ยืนยันส่งให้ IT”'];
     if(step===0)help[0]=!mode?'เลือกวิธีการทำงานด้านล่างก่อน: นำเข้าไฟล์ Excel หรือกรอกเอง':mode==='excel'?'เลือกไฟล์และชีต ตรวจตัวอย่าง แล้วกด “เติมข้อมูลลงฟอร์ม” จากนั้นตรวจชื่อชุดสินค้า วันที่ และสาขาด้านล่าง — นำเข้าหลายชีตได้ ไม่ล้างรายการเดิม':'กรอกชื่อชุดสินค้า วันที่ และสาขา แล้วกด “ถัดไป”';
     el('npWorkflowIntro').innerHTML='<h4 tabindex="-1" class="h5">'+titles[step]+'</h4><p>'+help[step]+'</p>';
     el('npStepBack').disabled=step===0;el('npStepNext').hidden=step===4;el('npStepSubmit').hidden=step!==4;el('npStepSubmit').disabled=!!issues.length;el('npStepLabel').textContent='ขั้น '+(step+1)+' จาก 5';
@@ -107,11 +107,11 @@
     var rows=items.map(function(p){
       var prices=Object.keys(p.prices||{}).map(function(ch){return esc(ch)+' '+esc(p.prices[ch]);}).join('<br>')||'-';
       var recipes=(p.recipes||[]).filter(function(r){return r.code||r.desc;}).map(function(r){return '<div>'+esc(r.code)+' '+esc(r.desc)+' <b>'+esc(r.qty)+' '+esc(r.unit)+'</b>'+((r.channels||[]).length?' <span class="text-secondary">('+esc(r.channels.join(', '))+')</span>':'')+'</div>';}).join('')||'<span class="text-danger">ไม่มี Recipe</span>';
-      var subs=(p.formulas||[]).map(function(f){return esc(subName(f.subId));}).filter(Boolean).join('<br>')||'-';
-      return '<tr><td>'+esc(p.code)+'</td><td>'+esc(p.name)+'<div class="small text-secondary">POS: '+esc(p.th)+'</div></td><td>'+esc(p.cateCode)+' '+esc(p.category)+'</td><td>'+prices+'</td><td>'+recipes+'</td><td>'+subs+'</td></tr>';
+      recipes+=(p.formulas||[]).map(function(f){return '<div class="text-success">'+esc(subName(f.subId))+' <b>'+esc(f.chooseMax)+' สูตร</b></div>';}).join('');
+      return '<tr><td>'+esc(p.code)+'</td><td>'+esc(p.name)+'<div class="small text-secondary">POS: '+esc(p.th)+'</div></td><td>'+esc(p.cateCode)+' '+esc(p.category)+'</td><td>'+prices+'</td><td>'+recipes+'</td></tr>';
     }).join('');
     node.innerHTML='<h4 class="h6 fw-bold">สินค้าที่นำเข้าแล้ว ('+items.length+' รายการ)</h4><p class="small">ตรวจรายการเทียบกับชีต สินค้าแต่ละตัวผูก Recipe และ SUBSET ตามไฟล์แล้ว แก้ไขรายละเอียดได้ในขั้น 4 สินค้า</p>'+
-      '<div class="table-responsive"><table class="table table-sm align-top np-imported"><thead><tr><th>Item Code</th><th>ชื่อสินค้า</th><th>Category</th><th>ราคา</th><th>Recipe</th><th>SUBSET</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="table-responsive"><table class="table table-sm align-top np-imported"><thead><tr><th>Item Code</th><th>ชื่อสินค้า</th><th>Category</th><th>ราคา</th><th>Recipe Details</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       '<button type="button" class="btn btn-success" onclick="PC_NpdWorkflow.go(1)">ถัดไป: ผงรสชาติใหม่</button>';
   }
   function go(n){RD.setWorkflowStep(n);refresh();var active=root.querySelector('.np-step.active');if(active)el('npWorkflowNav').scrollLeft=Math.max(0,active.offsetLeft-el('npWorkflowNav').offsetLeft-20);var heading=el('npWorkflowIntro');if(heading){heading.scrollIntoView({block:'start'});heading.querySelector('h4').focus();}}

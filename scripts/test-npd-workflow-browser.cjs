@@ -104,6 +104,15 @@ async function addPowder(page,name,rm,desc){
     await page.locator('#npStepBack').click();await page.locator('#npStepBack').click();
     assert.equal(await page.locator('#npProject').inputValue(),'Guided manual + import');
 
+    // Step 4 shows each product like the sheet: SUBSET rows sit in the Recipe Details table and pick from subsets made in step 3.
+    await page.locator('.np-step').nth(3).click();
+    d=await snap(page);
+    assert.equal(await page.locator('#productList .ss-row').count(),d.products.reduce((n,p)=>n+p.formulas.length,0));
+    const firstSs=page.locator('.item-card').nth(1).locator('.ss-row input[type=number]').first();
+    await firstSs.fill('2');
+    assert.deepEqual((({chooseMin,chooseMax})=>({chooseMin,chooseMax}))((await snap(page)).products[1].formulas[0]),{chooseMin:'2',chooseMax:'2'});
+    await firstSs.fill('1');
+    await page.locator('.np-step').nth(0).click();
     // Draft resume restores the step, products and every reserved code. 
     for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
     await page.getByRole('button',{name:'บันทึกร่าง'}).click();
