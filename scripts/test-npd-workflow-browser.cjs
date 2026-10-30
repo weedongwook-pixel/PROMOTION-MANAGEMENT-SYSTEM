@@ -10,6 +10,7 @@ const root=path.resolve(__dirname,'..'), shots=process.env.SCREENSHOT_DIR || '/p
 const snap=page=>page.evaluate(()=>RD.workflowSnapshot());
 async function importSheet(page,sheet,category){
   // Picking the file fills every sheet it can; a sheet whose category is unknown waits for a choice.
+  await page.evaluate(()=>PC_NpdWorkflow.entry('excel'));
   await page.locator('.np-step').nth(3).click();
   await page.waitForFunction(s=>document.getElementById('npExcelSheet').value===s&&!document.getElementById('npExcelPreview').hidden,sheet);
   await page.locator('#npExcelCategory').selectOption(category);
@@ -26,6 +27,8 @@ async function attach(page,libId,target,qty){
   return page.locator('#npWorkflowMessage').textContent();
 }
 async function addPowder(page,name,rm,desc){
+  // Adding a powder by hand is a manual-entry task; import mode only shows the file picker and the powder table.
+  await page.evaluate(()=>PC_NpdWorkflow.entry('manual'));
   await page.locator('.np-step').nth(1).click();
   await page.locator('#npWorkName').fill(name);await page.locator('#npWorkRM').fill(rm);await page.locator('#npWorkDesc').fill(desc);
   await page.getByRole('button',{name:'เพิ่มผงไว้ใช้ในงานนี้'}).click();
@@ -74,6 +77,8 @@ async function addPowder(page,name,rm,desc){
     await page.locator('.np-step').nth(0).click();await page.locator('[data-entry="excel"]').click();
     assert.equal(await page.locator('#npExcelFile').isVisible(),false);assert.equal(await page.locator('#npProject').isVisible(),true);
     await page.locator('.np-step').nth(1).click();assert.equal(await page.locator('#npFlavorFile').isVisible(),true);
+    assert.equal(await page.locator('#npWorkName').isVisible(),false,'import mode has no one-by-one powder form');
+    assert.equal(await page.locator('#npAttachSection').isVisible(),false);
     await page.locator('.np-step').nth(2).click();assert.equal(await page.locator('#npSubsetExcelFile').isVisible(),true);
     await page.locator('.np-step').nth(3).click();
     await page.locator('#npExcelFile').setInputFiles(file);
