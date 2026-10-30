@@ -228,7 +228,7 @@
     }).join('');
     return '<div class="border border-dark rounded" style="overflow-x:auto" tabindex="0" role="region" aria-label="รายการผงใน SUBSET">' +
       '<table class="table table-sm align-middle m-0 powder-tbl">' +
-      '<thead><tr><th style="width:58px">ลำดับ</th><th>CMPOS <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>Name (EN) <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>Name (TH) <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>Code RM</th><th>Description</th><th>Qty</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>' +
+      '<thead><tr><th style="width:58px">NO</th><th>CMPOS CODE <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>ENG <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>TH <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>Item Code</th><th>Description</th><th>Quantity</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="11" class="text-center text-muted py-2">ยังไม่มีผงใน Subset นี้</td></tr>') + '</tbody></table></div>' +
       '<div class="d-flex gap-2 mt-2">' +
       '<button class="btn btn-sm btn-dark fw-bold" onclick="RD.addW(\'' + sub.id + '\')"><i class="fas fa-plus me-1"></i>กรอกผงใหม่</button>' +

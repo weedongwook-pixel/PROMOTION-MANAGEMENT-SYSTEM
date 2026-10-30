@@ -29,7 +29,8 @@ async function addPowder(page,name,rm,desc){
   await page.locator('.np-step').nth(1).click();
   await page.locator('#npWorkName').fill(name);await page.locator('#npWorkRM').fill(rm);await page.locator('#npWorkDesc').fill(desc);
   await page.getByRole('button',{name:'เพิ่มผงไว้ใช้ในงานนี้'}).click();
-  await page.locator('#npStepNext').click();
+  // Adding into a SUBSET happens on the same step.
+  assert.equal(await page.locator('#npAttachForm').isVisible(),true);
   return (await snap(page)).workPowders.find(w=>w.eng===name).id;
 }
 (async()=>{
@@ -104,8 +105,10 @@ async function addPowder(page,name,rm,desc){
     const seaweed=await addPowder(page,'Seaweed','3011','ผงสาหร่าย');
     assert.equal(await attach(page,seaweed,target.id,'5'),'');
     d=await snap(page);const sub=d.subsets[0];
-    assert.equal(sub.powders.length,11);assert.equal(sub.powders.filter(w=>/^cheese/i.test(w.eng)).length,1);assert.ok(sub.powders.at(-1).noFlavor);
-    await page.locator('#npStepBack').click();await page.locator('#npStepBack').click();
+    assert.equal(sub.powders.length,11);
+    // The powder step lists every new powder per SUBSET, laid out like the flavor sheet.
+    assert.deepEqual(await page.locator('#npPowderSheet input[aria-label="eng"]').evaluateAll(n=>n.map(i=>i.value)),['Seaweed']);assert.equal(sub.powders.filter(w=>/^cheese/i.test(w.eng)).length,1);assert.ok(sub.powders.at(-1).noFlavor);
+    await page.locator('#npStepBack').click();
     assert.equal(await page.locator('#npProject').inputValue(),'Guided manual + import');
 
     // Step 4 shows each product like the sheet: SUBSET rows sit in the Recipe Details table and pick from subsets made in step 3.
