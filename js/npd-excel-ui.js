@@ -113,8 +113,8 @@
       if(!window.PC_NpdWorkflow) RD.clearDraft();
       node('npExcelPreview').hidden = true;
       status('เติมฟอร์มแล้ว: ' + summary.products + ' สินค้า / ' + summary.subsets + ' Subset ใหม่ — ยังไม่ได้ส่งงาน');
-      await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ตรวจฟอร์ม', confirmButtonColor: '#237840' });
-      if(window.PC_NpdWorkflow) PC_NpdWorkflow.go(2); else if (node('npProject')) node('npProject').focus();
+      await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: window.PC_NpdWorkflow ? 'ตรวจรายการสินค้าและ Recipe ที่นำเข้า แล้วกด “ถัดไป: ตรวจ SUBSET”' : 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ดูรายการสินค้า', confirmButtonColor: '#237840' });
+      if(window.PC_NpdWorkflow){PC_NpdWorkflow.go(0);node('npImportedProducts').scrollIntoView({block:'start'});} else if (node('npProject')) node('npProject').focus();
     } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); }
     finally { applying = false; if (node('npExcelApply')) node('npExcelApply').disabled = false; if (node('npExcelFile')) node('npExcelFile').disabled = false; if (node('npExcelSheet')) node('npExcelSheet').disabled = !workbook; }
   }

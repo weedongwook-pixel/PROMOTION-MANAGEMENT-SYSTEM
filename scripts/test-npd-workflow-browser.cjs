@@ -74,10 +74,17 @@ async function addPowder(page,name,rm,desc){
     await page.waitForFunction(()=>!document.getElementById('npExcelSheet').disabled);
     await importSheet(page,'Tem1','110');
     const enoki=await snap(page);
+    // Step 1 lists the imported products with their recipes before moving on to SUBSET.
+    assert.equal(await snap(page).then(x=>x.workflow.step),0);
+    assert.equal(await page.locator('#npImportedProducts tbody tr').count(),5);
+    assert.match(await page.locator('#npImportedProducts tbody').textContent(),/\d+ (g|G)/);
+    await page.screenshot({path:shots+'/npd-imported-1440.png',fullPage:true});
     assert.deepEqual(enoki.products[0],manual);assert.equal(enoki.project,'Guided manual + import');
     assert.equal(enoki.products.length,6);assert.deepEqual(enoki.subsets.map(s=>s.powders.length),[10,10]);
     await importSheet(page,'mala sauce','115');
     let d=await snap(page);
+    await page.getByRole('button',{name:'ถัดไป: ตรวจ SUBSET'}).click();
+    assert.equal((await snap(page)).workflow.step,2);
     assert.deepEqual(d.products.slice(0,6),enoki.products);assert.deepEqual(d.subsets,enoki.subsets);
     assert.deepEqual([...new Set(d.products.slice(1).map(p=>p.cateCode))],['110','115']);
     assert.notEqual(d.products[1].importGroup,d.products[6].importGroup);
@@ -93,8 +100,8 @@ async function addPowder(page,name,rm,desc){
     await page.locator('#npStepBack').click();await page.locator('#npStepBack').click();
     assert.equal(await page.locator('#npProject').inputValue(),'Guided manual + import');
 
-    // Draft resume restores the step, products and every reserved code.
-    for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
+    // Draft resume restores the step, products and every reserved code. After an import, Next skips the powder step.
+    for(let i=0;i<2;i++)await page.locator('#npStepNext').click();
     await page.getByRole('button',{name:'บันทึกร่าง'}).click();
     const saved=await snap(page);
     await page.reload();await page.locator('.swal2-confirm').click();await page.locator('.swal2-container').waitFor({state:'hidden'});

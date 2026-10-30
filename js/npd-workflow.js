@@ -37,6 +37,9 @@
       '<button type="button" class="np-entry" data-entry="manual" onclick="PC_NpdWorkflow.entry(\'manual\')"><b>กรอกเอง</b><small>ไม่มีไฟล์ — กรอกข้อมูลงานและสินค้าทีละรายการ</small></button></div>';
     root.insertBefore(entry,root.querySelector('.np-excel'));
     root.querySelector('.np-excel').dataset.npdStep='0';
+    // After an import, step 1 lists the products as they appear in the sheet before moving on to SUBSET.
+    var imported=document.createElement('section');imported.id='npImportedProducts';imported.dataset.npdStep='0';imported.className='bg-white border rounded-3 p-3 mb-3';
+    root.querySelector('.np-excel').after(imported);
     el('npProject').closest('.bg-white').dataset.npdStep='0';
     el('npSubsetStep').closest('.bg-white').dataset.npdStep='2';
     el('npCategoryStep').closest('.bg-white').dataset.npdStep='3';
@@ -70,6 +73,7 @@
     var mode=d.workflow.entryMode||(d.products.some(function(p){return p.importGroup;})?'excel':(d.project||d.products.some(function(p){return p.name;})?'manual':''));
     root.querySelectorAll('[data-npd-step]').forEach(function(n){n.hidden=Number(n.dataset.npdStep)!==step;});
     if(step===0){root.querySelector('.np-excel').hidden=mode!=='excel';el('npProject').closest('.bg-white').hidden=!mode;}
+    renderImported(d,mode,step);
     root.querySelectorAll('.np-entry').forEach(function(b){var on=b.dataset.entry===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
     root.querySelectorAll('#npWorkflowGuide [data-guide]').forEach(function(c){c.hidden=!!mode && c.dataset.guide!==mode;});
     if(!el('npWorkflowNav').children.length) el('npWorkflowNav').innerHTML=titles.map(function(t,i){return '<button type="button" class="np-step" onclick="PC_NpdWorkflow.go('+i+')"><span>'+(i+1)+'. '+t+'</span><small></small></button>';}).join('');
@@ -93,6 +97,20 @@
       (issues.length?'<div role="status"><p class="fw-bold">ตรวจให้ครบก่อนส่ง</p><ul>'+issues.map(function(x){return '<li><button class="btn btn-link text-start" onclick="PC_NpdWorkflow.go('+x.step+')">'+esc(x.message)+'</button></li>';}).join('')+'</ul></div>':'<p class="text-success">ข้อมูลพร้อมแล้ว ตรวจรายการด้านล่างและกดยืนยันส่งให้ IT</p>')+
       '<div class="table-responsive"><table class="table"><thead><tr><th>สินค้า</th><th>Category / รหัส</th><th>SUBSET ที่ใช้</th></tr></thead><tbody>'+d.products.map(function(p){return '<tr><td>'+(p.name?esc(p.name):'<span class="text-secondary">(ยังไม่มีชื่อ)</span>')+'</td><td>'+esc(p.category)+'<br>'+esc(p.code)+'</td><td>'+((p.formulas||[]).map(function(f){var s=d.subsets.find(function(x){return x.id===f.subId;})||RD.workflowSubsets().find(function(x){return 'db:'+x.ssCode===f.subId;});return esc(s?s.name:'ยังไม่เลือก')+' ('+esc(f.chooseMin)+'–'+esc(f.chooseMax)+')';}).join('<br>')||'ไม่ใช้ SUBSET')+'</td></tr>';}).join('')+'</tbody></table></div>'+d.subsets.map(function(s){return '<details class="mb-2"><summary>'+esc(s.ssCode+' · '+s.name)+' ('+s.powders.length+' รายการ)</summary><ul>'+s.powders.map(function(w){return '<li>'+esc(w.eng)+' · CMPOS '+esc(w.cmpos)+' · RM '+esc(w.code||'—')+' · '+esc(w.qty||'—')+' '+esc(w.unit)+'</li>';}).join('')+'</ul></details>';}).join('');}
   }
+  function renderImported(d,mode,step){
+    var node=el('npImportedProducts'),items=d.products.filter(function(p){return p.importGroup;});
+    node.hidden=step!==0||mode!=='excel'||!items.length;if(node.hidden)return;
+    var subName=function(id){var s=d.subsets.find(function(x){return x.id===id;});if(s)return s.name+' · '+s.ssCode;var m=/^db:(.+)$/.exec(id||'');if(!m)return '';var db=RD.workflowSubsets().find(function(x){return x.ssCode===m[1];});return (db?db.name+' · ':'')+m[1];};
+    var rows=items.map(function(p){
+      var prices=Object.keys(p.prices||{}).map(function(ch){return esc(ch)+' '+esc(p.prices[ch]);}).join('<br>')||'-';
+      var recipes=(p.recipes||[]).filter(function(r){return r.code||r.desc;}).map(function(r){return '<div>'+esc(r.code)+' '+esc(r.desc)+' <b>'+esc(r.qty)+' '+esc(r.unit)+'</b>'+((r.channels||[]).length?' <span class="text-secondary">('+esc(r.channels.join(', '))+')</span>':'')+'</div>';}).join('')||'<span class="text-danger">ไม่มี Recipe</span>';
+      var subs=(p.formulas||[]).map(function(f){return esc(subName(f.subId));}).filter(Boolean).join('<br>')||'-';
+      return '<tr><td>'+esc(p.code)+'</td><td>'+esc(p.name)+'<div class="small text-secondary">POS: '+esc(p.th)+'</div></td><td>'+esc(p.cateCode)+' '+esc(p.category)+'</td><td>'+prices+'</td><td>'+recipes+'</td><td>'+subs+'</td></tr>';
+    }).join('');
+    node.innerHTML='<h4 class="h6 fw-bold">สินค้าที่นำเข้าแล้ว ('+items.length+' รายการ)</h4><p class="small">ตรวจรายการเทียบกับชีต สินค้าแต่ละตัวผูก Recipe และ SUBSET ตามไฟล์แล้ว แก้ไขรายละเอียดได้ในขั้น 4 สินค้า</p>'+
+      '<div class="table-responsive"><table class="table table-sm align-top np-imported"><thead><tr><th>Item Code</th><th>ชื่อสินค้า</th><th>Category</th><th>ราคา</th><th>Recipe</th><th>SUBSET</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<button type="button" class="btn btn-success" onclick="PC_NpdWorkflow.go(2)">ถัดไป: ตรวจ SUBSET</button>';
+  }
   function go(n){RD.setWorkflowStep(n);refresh();var active=root.querySelector('.np-step.active');if(active)el('npWorkflowNav').scrollLeft=Math.max(0,active.offsetLeft-el('npWorkflowNav').offsetLeft-20);var heading=el('npWorkflowIntro');if(heading){heading.scrollIntoView({block:'start'});heading.querySelector('h4').focus();}}
   async function readFlavors(input){
     var ticket=++readTicket;flavorPlan=null;workbook=null;el('npFlavorPreview').textContent='กำลังอ่านไฟล์…';el('npFlavorSheet').disabled=true;
@@ -113,7 +131,7 @@
     el('npFlavorPreview').innerHTML='<p>'+flavorPlan.subsets.length+' SUBSET ปลายทาง</p><ul>'+rows+'</ul>'+flavorPlan.errors.map(function(e){return '<p class="text-danger">'+esc(e.message)+'</p>';}).join('')+'<button class="btn btn-success" '+(flavorPlan.errors.length||missing?'disabled':'')+' onclick="PC_NpdWorkflow.importFlavors()">เพิ่มผงและเชื่อม SUBSET ในงานนี้</button>';
   }
   function previewFlavors(){if(!workbook)return;flavorPlan=PC_NpdExcel.parseFlavorSheet(workbook,value('npFlavorSheet'),XLSX);flavorReview();}
-  window.PC_NpdWorkflow={init:init,refresh:refresh,go:go,back:function(){go(RD.workflowSnapshot().workflow.step-1);},next:function(){go(RD.workflowSnapshot().workflow.step+1);},
+  window.PC_NpdWorkflow={init:init,refresh:refresh,go:go,back:function(){go(RD.workflowSnapshot().workflow.step-1);},next:function(){var d=RD.workflowSnapshot(),step=d.workflow.step;go(step===0&&d.products.some(function(p){return p.importGroup;})?2:step+1);},
     choice:function(k,v){RD.setWorkflowChoice(k,v);go(k==='powderChoice'?2:3);},
     entry:function(v){RD.setWorkflowChoice('entryMode',v);refresh();var f=v==='excel'?el('npExcelFile'):el('npProject');if(f)f.focus();},
     addPowder:function(){act(function(){RD.addWorkPowder({eng:value('npWorkName'),code:value('npWorkRM'),desc:value('npWorkDesc'),unit:value('npWorkUnit')||'g'});['npWorkName','npWorkRM','npWorkDesc','npWorkUnit'].forEach(function(id){el(id).value='';});});},
