@@ -66,8 +66,8 @@
   <div class="fds-head">
     <div class="bar"></div>
     <div>
-      <h3><i class="fas fa-list-check me-2" style="color:#ffffff"></i>ตั้งค่าการแสดงผลหน้าฟอร์ม · FORM DISPLAY</h3>
-      <small>กำหนดว่า หมวด / Subset ไหน "โผล่เป็นตัวเลือก" ในฟอร์มแจ้งงานไหนบ้าง — กดแก้ไขเพื่อเปิดหน้าตั้งค่า</small>
+      <h3 id="fdsTitle"><i class="fas fa-list-check me-2" style="color:#ffffff"></i>หมวด / Subset ในฟอร์ม · FORM DISPLAY</h3>
+      <small id="fdsSub">กำหนดว่า หมวด / Subset ไหน "โผล่เป็นตัวเลือก" ในฟอร์มแจ้งงานไหนบ้าง — กดแก้ไขเพื่อเปิดหน้าตั้งค่า</small>
     </div>
   </div>
   <div class="fds-tools">
@@ -208,7 +208,7 @@ window.initFormDisplaySettings = function(){
     if(!rows.length){ body.innerHTML='<tr><td colspan="4" style="text-align:center;color:#9aa1aa;padding:30px">ไม่พบรายการ</td></tr>'; }
     else body.innerHTML=rows.map(function(c){ var nk=esc(c.id).replace(/'/g,"\\'"); var en=enabledForms(c.id); var isOpen=en.length>0;
       return '<tr><td class="ccode">'+esc(c.code||'-')+'</td>'+
-        '<td><span class="cname">'+esc(c.name)+'</span>'+(MODE==='mode'&&!c.group?' <button type="button" class="chip" style="cursor:pointer;border:0" title="กดเพื่อเปลี่ยนประเภท — ใช้แยกราคาเดลิเวอรีและปุ่ม ALL DELIVERY ในทุกฟอร์ม" onclick="window.FDS.setType(\''+nk+'\')">'+(c.type==='ta'?'หน้าร้าน':'เดลิเวอรี')+'</button>':'')+(c.n!=null?' <span class="cnt">('+c.n+' สินค้า)</span>':'')+((c.th&&c.th!==c.name)?'<div style="font-size:.76rem;color:#9aa1aa">'+esc(c.th)+'</div>':'')+'</td>'+
+        '<td><span class="cname">'+esc(c.name)+'</span>'+(MODE==='mode'&&!c.group?' <button type="button" class="chip" style="cursor:pointer;border:0" title="กดเพื่อเปลี่ยนประเภท — ใช้แยกราคาเดลิเวอรีและปุ่ม ALL DELIVERY ในทุกฟอร์ม" onclick="window.FDS.setType(\''+nk+'\')">'+(c.type==='ta'?'หน้าร้าน':'เดลิเวอรี')+'</button>':'')+(MODE==='mode'&&c.group?' <span class="chip none" title="ใช้เป็นปุ่มเลือกรวม ไม่ได้เป็นช่องทางขายจริง">ปุ่มรวม — ไม่ใช่ช่องทาง</span>':'')+(c.n!=null?' <span class="cnt">('+c.n+' สินค้า)</span>':'')+((c.th&&c.th!==c.name)?'<div style="font-size:.76rem;color:#9aa1aa">'+esc(c.th)+'</div>':'')+'</td>'+
         '<td>'+chipsHTML(c.id)+'</td>'+
         '<td><div style="display:flex;align-items:center;gap:9px"><span class="sw2'+(isOpen?' on':'')+'" title="เปิด/ปิดรายการนี้ในทุกฟอร์ม" onclick="window.FDS.masterToggle(\''+nk+'\')"></span><span class="swlbl'+(isOpen?' on':'')+'">'+(isOpen?'เปิด':'ปิด')+'</span><button class="ic-btn" onclick="window.FDS.edit(\''+nk+'\')"><i class="fas fa-pen me-1"></i>แก้ไข</button>'+((MODE==='mode'&&c.custom)?'<button class="ic-btn" style="color:#b3261e;border-color:#f3c9c6;background:#fdeaea" title="ลบช่องทาง" onclick="window.FDS.delMode(\''+nk+'\')"><i class="fas fa-trash-can"></i></button>':'')+'</div></td></tr>';
     }).join('');
@@ -235,6 +235,17 @@ window.initFormDisplaySettings = function(){
 
   window.FDS={
     render:render, edRender:edRender,
+    /* Two menu entries share this page: "ช่องทางขาย (Sale Mode)" shows only sale modes;
+       "หมวด / Subset ในฟอร์ม" shows categories and subsets. Each hides the other's tabs. */
+    view:function(v){
+      var modeOnly=v==='mode';
+      ['fdsTabCat','fdsTabSub'].forEach(function(id){ var b=document.getElementById(id); if(b) b.style.display=modeOnly?'none':''; });
+      var tm=document.getElementById('fdsTabMode'); if(tm) tm.style.display=modeOnly?'':'none';
+      var t=document.getElementById('fdsTitle'), sb=document.getElementById('fdsSub');
+      if(t) t.innerHTML=modeOnly?'<i class="fas fa-truck-fast me-2" style="color:#ffffff"></i>ช่องทางขาย · SALE MODE':'<i class="fas fa-list-check me-2" style="color:#ffffff"></i>หมวด / Subset ในฟอร์ม · FORM DISPLAY';
+      if(sb) sb.textContent=modeOnly?'เพิ่ม / เปิด-ปิดช่องทางขาย และเลือกว่าแสดงในฟอร์มไหน — มีผลกับทุกหน้าในระบบ · ตั้งราคาแยกช่องทางที่เมนู "ราคาตามช่องทาง"':'กำหนดว่า หมวด / Subset ไหน "โผล่เป็นตัวเลือก" ในฟอร์มแจ้งงานไหนบ้าง — ช่องทางขายตั้งค่าที่เมนู "ช่องทางขาย (Sale Mode)"';
+      window.FDS.setMode(modeOnly?'mode':(MODE==='mode'?'cat':MODE));
+    },
     setMode:function(m){ MODE=m; document.getElementById('fdsTabCat').classList.toggle('on',m==='cat'); document.getElementById('fdsTabSub').classList.toggle('on',m==='subset'); var tm=document.getElementById('fdsTabMode'); if(tm) tm.classList.toggle('on',m==='mode'); var ab=document.getElementById('fdsAddModeBtn'); if(ab) ab.style.display=(m==='mode')?'':'none'; showList(); render(); },
     resetAll:function(){ var go=function(){ save(keyOf(),{}); render(); }; if(window.Swal){ Swal.fire({title:'รีเซ็ตเปิดทุกฟอร์ม?',text:(MODE==='cat'?'ทุกหมวด':'ทุก subset')+'จะแสดงในทุกฟอร์ม',icon:'question',showCancelButton:true,confirmButtonColor:'#2e934a',confirmButtonText:'รีเซ็ต',cancelButtonText:'ยกเลิก'}).then(function(r){ if(r.isConfirmed) go(); }); } else go(); },
 

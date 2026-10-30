@@ -222,7 +222,7 @@
 
   <!-- BRAND / Store Format master — ย้ายไป Shop Master (master ของ format อยู่ที่สาขา) · format ของสินค้า = derive จาก Distributed_At -->
 
-  <!-- SALE MODE — ย้ายไปหน้า Form Display (ตั้งค่าแสดงในฟอร์ม) แล้ว -->
+  <!-- SALE MODE — อยู่ที่เมนู "ช่องทางขาย (Sale Mode)" (ใช้หน้า Form Display แบบแสดงเฉพาะช่องทางขาย) -->
 
   <!-- PROMO TYPES — ลบออก (dead: ไม่มีฟอร์มไหนอ่าน pc_master_lists.promoTypes — ฟิลเตอร์ Type Promotion สร้างจากข้อมูลแคมเปญจริง) -->
 
@@ -246,7 +246,7 @@
   var STATUSMAP={};
   var IS_ADMIN=(localStorage.getItem('pc_role')||'Admin')==='Admin';
   var MODE_SEED=['Take Away','Delivery','Grab','Lineman','ShopeeFood','Robinhood','foodpanda','Gokoo'];
-  var SECTS=[['items','fa-box','สินค้า','Products'],['depts','fa-sitemap','แผนก','Department'],['cats','fa-layer-group','หมวด','Category'],['SaleModePrice','fa-tags','Sale Mode & Price','Sale Mode & Price'],['FormDisplay','fa-list-check','ตั้งค่าแสดงในฟอร์ม','Form Display'],['SubsetMgr','fa-user-shield','Subset Manager','Subset Manager']];
+  var SECTS=[['items','fa-box','สินค้า','Products'],['depts','fa-sitemap','แผนก','Department'],['cats','fa-layer-group','หมวด','Category'],['SaleModes','fa-truck-fast','ช่องทางขาย (Sale Mode)','Sale Modes'],['SaleModePrice','fa-tags','ราคาตามช่องทาง','Price by Sale Mode'],['FormDisplay','fa-list-check','หมวด / Subset ในฟอร์ม','Form Display'],['SubsetMgr','fa-user-shield','Subset Manager','Subset Manager']];
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c==='"'?'&quot;':c; }); }
   function ls(k,d){ try{ return JSON.parse(localStorage.getItem(k))||d; }catch(e){ return d; } }
   function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
@@ -411,7 +411,9 @@
   }).join(''):'<div class="empty">ยังไม่มีช่องทาง</div>'; }
 
   window.PM={
-    tab:function(s){ curSect=s; renderPills(); document.querySelectorAll('.pm-scope .sect').forEach(function(el){ el.classList.toggle('on', el.dataset.s===s); }); if(s==='subset'){ psubRender(); psubMapRender(); } if(s==='cats'){ window.PM.loadSub('CatBranchSetting','pmSubCBS'); } if(s==='SaleModePrice'){ window.PM.loadSub('SaleModePrice','pmSubSMP'); } if(s==='FormDisplay'){ window.PM.loadSub('FormDisplaySettings','pmSubFDS'); } if(s==='SubsetMgr'){ window.PM.loadSub('SubsetManager','pmSubSubMgr'); } },
+    tab:function(s){ curSect=s; renderPills(); var sect=s==='SaleModes'?'FormDisplay':s; document.querySelectorAll('.pm-scope .sect').forEach(function(el){ el.classList.toggle('on', el.dataset.s===sect); });
+      if(s==='SaleModes'||s==='FormDisplay'){ window.PM.loadSub('FormDisplaySettings','pmSubFDS'); var view=s==='SaleModes'?'mode':'cat', tries=0;
+        (function apply(){ if(curSect!==s) return; if(window.FDS&&window.FDS.view&&document.getElementById('fdsTitle')) window.FDS.view(view); else if(tries++<60) setTimeout(apply,100); })(); } if(s==='subset'){ psubRender(); psubMapRender(); } if(s==='cats'){ window.PM.loadSub('CatBranchSetting','pmSubCBS'); } if(s==='SaleModePrice'){ window.PM.loadSub('SaleModePrice','pmSubSMP'); } if(s==='SubsetMgr'){ window.PM.loadSub('SubsetManager','pmSubSubMgr'); } },
     render:render,
     openEdit:function(code){ var it=ITEMS.find(function(x){return String(x.itemCode)===String(code);}); if(!it) return;
       var fl=flagOf(code); var on=showOpt(it); var statAuto=!statManual(code)&&!!statusWin(code); var stat=prodStatus(it)!==0; var depMap={}, catMap={};
