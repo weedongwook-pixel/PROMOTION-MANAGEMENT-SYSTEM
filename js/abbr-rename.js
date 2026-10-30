@@ -65,6 +65,15 @@
     var ed = ls(SSK, {});
     return list.map(function (s) { var o = ed[s.ssCode]; return o ? Object.assign({}, s, o) : s; });
   }
+  /* ขอบเขต "เฉพาะผงใน SUBSET" — รหัสผงของชุดที่เลือก (null = ทั้งระบบ) */
+  function scopeOf(ssList) {
+    var ss = {}, codes = {}, n = 0;
+    (ssList || []).forEach(function (c) { var k = String(c == null ? '' : c).trim().toUpperCase(); if (k) { ss[k] = 1; n++; } });
+    if (!n) return null;
+    var fl = window.PC_SUBSET_FLAVORS || {};
+    Object.keys(fl).forEach(function (k) { if (ss[k.toUpperCase()]) (fl[k].flavors || []).forEach(function (f) { var c = String(f.code || '').trim(); if (c) codes[c] = 1; }); });
+    return { ss: ss, codes: codes, list: Object.keys(codes) };
+  }
   function api() { try { return window.PC_API || (window.parent && window.parent.PC_API) || null; } catch (e) { return null; } }
 
   /* ---- PREVIEW: กระทบอะไรบ้าง (ไม่แตะข้อมูล) ---- */
@@ -75,7 +84,10 @@
     if (!oldA || !newA) { out.warnings.push('กรอกตัวย่อเดิมและตัวย่อใหม่ให้ครบ'); return out; }
     if (oldA.toUpperCase() === newA.toUpperCase()) { out.warnings.push('ตัวย่อเดิมและใหม่เหมือนกัน'); return out; }
 
+    var scope = scopeOf(opt.onlySubsets);
+    if (scope) out.scope = Object.keys(scope.ss);
     subsets().forEach(function (s) {
+      if (scope && !scope.ss[String(s.ssCode || '').toUpperCase()]) return;
       if (hits(s.short, oldA) || hits(s.name, oldA)) {
         out.subsets.push({ code: s.ssCode, name: s.name, from: s.short || '', to: swap(s.short || '', oldA, newA), fromName: s.name || '', toName: swap(s.name || '', oldA, newA), status: s.status || '' });
       }
@@ -91,6 +103,7 @@
       if (fSt && st.toUpperCase() !== fSt) { out.skipped++; return; }
       if (fTy && ty.toUpperCase() !== fTy) { out.skipped++; return; }
       if (only && !only[String(it.itemCode)]) { out.skipped++; return; }
+      if (scope && !scope.codes[String(it.itemCode)]) { out.skipped++; return; }
       var nEn = swap(en, oldA, newA), nTh = swap(th, oldA, newA);
       out.items.push({ code: it.itemCode, fromEn: en, toEn: nEn, fromTh: th, toTh: nTh, status: st, itemType: ty, category: it.category || '', over40: nEn.length > 40, over20: nTh.length > 20 });
     });
@@ -98,7 +111,7 @@
     var A = api();
     /* ⭐ อ่านจากแถวปุ่มจริงผ่าน abbrScan (getAllCampaignData เป็นระดับแคมเปญ ไม่มี kitchen/ชื่อสินค้า → เคยนับเป็น 0) */
     if (A && A.abbrScan) {
-      var sc = A.abbrScan(oldA, newA, { sizePrefix: SIZE_PREFIX }) || {};
+      var sc = A.abbrScan(oldA, newA, { sizePrefix: SIZE_PREFIX, only: scope ? scope.list : null }) || {};
       out.itemStart = sc.itemStart || {};
       out.itemEnd = sc.itemEnd || {};
       (sc.kitchen || []).forEach(function (x) { if (opt.includeLive === false && x.live) return; out.promoKitchen.push(x); });
@@ -138,6 +151,7 @@
       (A.getNpdProducts() || []).forEach(function (p) {
         var en = String(p.itemNameEN || ''), th = String(p.itemNameTH || '');
         if (!hits(en, oldA) && !hits(th, oldA)) return;
+        if (scope && !scope.codes[String(p.itemCode)]) return;
         out.newProducts.push({ code: p.itemCode, fromEn: en, toEn: swap(en, oldA, newA), fromTh: th, toTh: swap(th, oldA, newA), status: p.status || '', itemType: p.itemType || '' });
       });
     }
@@ -204,7 +218,9 @@
     var A = api();
     var promoChanges = null;
     if (A && A.renameAbbr) {
+      var scope = scopeOf(opt.onlySubsets);
       var res = A.renameAbbr(oldA, newA, { withShortName: !!opt.withShortName, includeLive: opt.includeLive !== false, sizePrefix: SIZE_PREFIX,
+        only: scope ? scope.list : null, onlySubsets: scope ? Object.keys(scope.ss) : null,
         exclude: (opt.exclude || []).slice(), excludeText: (opt.excludeText || []).slice() });
       done.promoKitchen = (res && res.kitchen) || 0;
       done.promoShort = (res && res.shortName) || 0;
@@ -217,7 +233,7 @@
     log.unshift({
       at: new Date().toISOString(), by: (function () { try { return localStorage.getItem('pc_userName') || localStorage.getItem('pc_role') || ''; } catch (e) { return ''; } })(),
       oldA: p.oldA, newA: p.newA, done: done, reason: String(opt.reason || ''),
-      filter: { status: opt.status || '', itemType: opt.itemType || '', only: (opt.only || []).length },
+      filter: { status: opt.status || '', itemType: opt.itemType || '', only: (opt.only || []).length, onlySubsets: (opt.onlySubsets || []).slice() },
       withShortName: !!opt.withShortName, includeLive: opt.includeLive !== false,
       undo: { subsets: p.subsets.map(function (s) { return { code: s.code, short: s.from, name: s.fromName }; }), items: p.items.map(function (x) { return { code: x.code, en: x.fromEn, th: x.fromTh }; }), promo: promoChanges }
     });
@@ -282,6 +298,7 @@
         '</div>' +
         '<label style="display:block;font-size:.76rem;font-weight:700;text-transform:uppercase;color:#5a636b;margin-bottom:12px">เหตุผล (ไม่บังคับ)<input id="abReason" placeholder="เช่น ตัวย่อสับสนกับกุ้งทอด" style="width:100%;margin-top:4px;padding:10px 12px;border:1.6px solid #dde2e7;border-radius:10px;font-family:inherit;font-size:.9rem"></label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:14px">' +
+          '<label style="font-size:.74rem;font-weight:700;text-transform:uppercase;color:#5a636b;flex:1;min-width:200px;max-width:320px">เฉพาะผงใน SUBSET (ไม่บังคับ)<input id="abSubsets" placeholder="เช่น SS0096, SS0097" style="width:100%;margin-top:4px;padding:10px 12px;border:1.6px solid #dde2e7;border-radius:10px;font-family:JetBrains Mono,monospace;font-size:.88rem;text-transform:uppercase"></label>' +
           '<label style="font-size:.74rem;font-weight:700;text-transform:uppercase;color:#5a636b;flex:1;min-width:200px;max-width:320px">ชนิดสินค้าที่จะเปลี่ยน<select id="abType" style="width:100%;margin-top:4px;padding:10px 12px;border:1.6px solid #dde2e7;border-radius:10px;font-family:inherit;font-size:.88rem"><option value="">ทั้งหมด (Item Set + Single Item)</option><option value="Item Set">Item Set เท่านั้น</option><option value="Single Item">Single Item เท่านั้น</option></select></label>' +
         '</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:.86rem">' +
@@ -315,7 +332,8 @@
     var includeLive = !!document.getElementById('abLive').checked;
     var status = (document.getElementById('abStatus') || {}).value || '';
     var itemType = (document.getElementById('abType') || {}).value || '';
-    var opt = { withShortName: withShortName, includeLive: includeLive, status: status, itemType: itemType };
+    var onlySubsets = String((document.getElementById('abSubsets') || {}).value || '').toUpperCase().split(/[\s,]+/).filter(Boolean);
+    var opt = { withShortName: withShortName, includeLive: includeLive, status: status, itemType: itemType, onlySubsets: onlySubsets };
     var p = window.PC_Abbr.preview(oldA, newA, opt);
     var box = document.getElementById('abResult');
     if (!p.total) {
@@ -364,10 +382,11 @@
       return row(x.from, x.to, x.live ? '<span style="background:#fff4e5;color:#8a5a00;border:1px solid #e0a800;border-radius:6px;padding:1px 7px;font-size:.7rem">ขึ้น POS แล้ว</span>' : '');
     }).join(''));
     if (withShortName && p.promoShort.length) html += card('ชื่อปุ่ม (Short Name)', p.promoShort.length, p.promoShort.map(function (x) { return row(x.from, x.to); }).join(''));
+    if (p.scope) html = '<div style="padding:10px 14px;border-radius:10px;background:#eaf6ee;border:1px solid #2e934a;font-size:.84rem;margin-bottom:12px">เปลี่ยนเฉพาะผงใน ' + esc(p.scope.join(', ')) + ' — รายการอื่นที่มีตัวย่อ ' + esc(oldA) + ' ไม่ถูกเปลี่ยน</div>' + html;
     if (p.warnings.length) html = '<div style="padding:12px 14px;border-radius:10px;background:#fff4e5;border:1px solid #e0a800;font-size:.84rem;margin-bottom:12px"><b>ตรวจสอบก่อนยืนยัน</b><br>' + p.warnings.map(esc).join('<br>') + '</div>' + html;
     html += '<button onclick="window.PC_Abbr.doApply()" style="background:#2e934a;color:#fff;border:none;border-radius:10px;padding:13px 26px;font-family:inherit;font-weight:700;cursor:pointer;font-size:.95rem"><i class="fas fa-check me-1"></i> ยืนยันเปลี่ยนทั้งระบบ (' + p.total + ' รายการ)</button>';
     box.innerHTML = html;
-    window.PC_Abbr.__pending = { oldA: oldA, newA: newA, withShortName: withShortName, includeLive: includeLive, status: status, itemType: itemType };
+    window.PC_Abbr.__pending = { oldA: oldA, newA: newA, withShortName: withShortName, includeLive: includeLive, status: status, itemType: itemType, onlySubsets: onlySubsets };
     countIT();
   }
 
@@ -379,7 +398,7 @@
     var picks = [].map.call(document.querySelectorAll('.abPick:checked'), function (c) { return c.value; });
     var total = document.querySelectorAll('.abPick').length;
     var only = (picks.length && picks.length < total) ? picks : null;
-    var res = window.PC_Abbr.apply(q.oldA, q.newA, { withShortName: q.withShortName, includeLive: q.includeLive, status: q.status, itemType: q.itemType, only: only, reason: reason });
+    var res = window.PC_Abbr.apply(q.oldA, q.newA, { withShortName: q.withShortName, includeLive: q.includeLive, status: q.status, itemType: q.itemType, only: only, onlySubsets: q.onlySubsets, reason: reason });
     if (window.Swal) {
       Swal.fire({ icon: res.status === 'success' ? 'success' : 'error', title: res.status === 'success' ? 'เปลี่ยนตัวย่อแล้ว' : 'ไม่สำเร็จ', text: res.message, confirmButtonColor: '#2e934a' })
         .then(function () { if (res.status === 'success') { close(); if (window.PM && window.PM.render) try { window.PM.render(); } catch (e) {} } });

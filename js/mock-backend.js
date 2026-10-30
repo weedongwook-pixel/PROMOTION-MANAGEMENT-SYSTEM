@@ -3797,6 +3797,11 @@
     (opt.excludeText || []).forEach(t => { const k = String(t == null ? "" : t).trim().toLowerCase(); if (k) exT[k] = 1; });
     const exCode = (c) => !!exC[String(c == null ? "" : c).trim()];
     const exTxt = (v) => !!exT[String(v == null ? "" : v).trim().toLowerCase()];
+    /* opt.only = เปลี่ยนเฉพาะรหัสสินค้าเหล่านี้ (เช่น ผงใน SUBSET ที่เลือก) · opt.onlySubsets = ชุดผงของงานเพิ่มผง */
+    const onlyC = opt.only && opt.only.length ? {} : null, onlySS = {};
+    (opt.only || []).forEach(c => { const k = String(c == null ? "" : c).trim(); if (k) onlyC[k] = 1; });
+    (opt.onlySubsets || []).forEach(c => { const k = String(c == null ? "" : c).trim().toUpperCase(); if (k) onlySS[k] = 1; });
+    const inScope = (c) => !onlyC || !!onlyC[String(c == null ? "" : c).trim()];
     let kitchen = 0, shortName = 0, itemNames = 0, products = 0, pending = 0;
     /* บันทึกค่าเก่าทุกจุดที่เปลี่ยน → undo คืนเฉพาะที่ครั้งนี้เปลี่ยน (กันการ swap กลับไปทับชื่อที่เป็นตัวย่อใหม่อยู่ก่อนแล้ว) */
     const changes = { rows: [], products: [], npd: [], flavor: [] };
@@ -3804,7 +3809,7 @@
     const touch = (r, bucket, idx) => {
       const live = String(r.itStatus || "").toUpperCase() === "COMPLETE" && String(r.opStatus || "").toUpperCase() === "CONFIRMED";
       if (!includeLive && live) return;
-      if (exCode(r.itemCode)) return;
+      if (exCode(r.itemCode) || !inScope(r.itemCode)) return;
       const before = {};
       ROW_F.forEach(f => {
         if (f === "shortName" && !opt.withShortName) return;
@@ -3825,7 +3830,7 @@
     (store.working || []).forEach((r, i) => touch(r, "w", i));
     /* สินค้าที่ IT สร้างเข้าข้อมูลหลักแล้ว (store.npdProducts) */
     (store.npdProducts || []).forEach(p => {
-      if (exCode(p.itemCode)) return;
+      if (exCode(p.itemCode) || !inScope(p.itemCode)) return;
       const before = {};
       ["itemNameEN", "itemNameTH"].forEach(f => {
         const v = String(p[f] || "");
@@ -3838,7 +3843,7 @@
     /* งาน NPD / เพิ่มผง ที่ IT ยังไม่ปิด — ชื่อในนั้นจะกลายเป็นสินค้าจริงตอนกด COMPLETE */
     (store.npd || []).forEach(nn => (nn.items || []).forEach((it, ii) => {
       const before = {};
-      if (exCode(it.itemCode)) return;
+      if (exCode(it.itemCode) || !inScope(it.itemCode)) return;
       ["nameEN", "nameTH", "itemNameEN", "itemNameTH", "kitchenName", "shortName"].forEach(f => {
         const v = String(it[f] || "");
         if (!v || swap(v) === v) return;
@@ -3850,6 +3855,7 @@
     (store.flavor || []).forEach(nn => (nn.groups || []).forEach((g, gi) => (g.flavors || []).forEach((f, fi) => {
       const before = {};
       if (exCode(f.itemCode)) return;
+      if (onlyC && !inScope(f.itemCode) && !onlySS[String(g.ssCode || "").trim().toUpperCase()]) return;
       ["nameEN", "eng", "nameTH", "short"].forEach(k2 => {
         const v = String(f[k2] || "");
         if (!v || swap(v) === v) return;
@@ -3858,12 +3864,15 @@
       });
       if (Object.keys(before).length) changes.flavor.push({ id: nn.id, g: gi, f: fi, before: before });
     })));
-    /* จดตัวย่อเก่า→ใหม่ไว้ → อะไรที่สร้างทีหลังจะบันทึกด้วยตัวย่อใหม่เสมอ (abbrFix) */
+    /* จดตัวย่อเก่า→ใหม่ไว้ → อะไรที่สร้างทีหลังจะบันทึกด้วยตัวย่อใหม่เสมอ (abbrFix)
+       เปลี่ยนเฉพาะบางรหัส (opt.only) ไม่จด — ไม่งั้นของอื่นที่ใช้ตัวย่อเดิมจะถูกเปลี่ยนตามทีหลัง */
+    if (!onlyC) {
     store.abbrMap = (store.abbrMap || []).filter(x => !(x && String(x.old).toUpperCase() === o.toUpperCase() && String(x.new).toUpperCase() === n.toUpperCase()));
     /* กระบวนการ undo: ถ้านี่เป็นการเปลี่ยนกลับ (new→old ของรายการเดิม) → ถอดรายการเดิมออกจากแผน */
     const undoOf = store.abbrMap.findIndex(x => x && String(x.old).toUpperCase() === n.toUpperCase() && String(x.new).toUpperCase() === o.toUpperCase());
     if (undoOf >= 0) store.abbrMap.splice(undoOf, 1);
     else store.abbrMap.push({ old: o, new: n, at: NOW() });
+    }
     persist();
     return { status: "success", kitchen, shortName, itemNames, products, pending, changes, message: "เปลี่ยนตัวย่อในตารางโปรแล้ว (ปุ่มครัว " + kitchen + " · ชื่อปุ่ม " + shortName + " · ชื่อสินค้าในแถวโปร " + itemNames + " · สินค้าที่ IT สร้างไว้ " + products + ")" };
   };
@@ -3915,20 +3924,23 @@
     const rx2 = new RegExp("(^|[^A-Za-z0-9])([" + SP + "]?)(" + rxE(o) + ")(?![A-Za-z0-9])", "gi");
     const sw = (t) => String(t == null ? "" : t).replace(rx2, (m, pre, size) => pre + size + n2);
     const seenK = {}, seenS = {};
+    const onlyC = opt.only && opt.only.length ? {} : null;
+    (opt.only || []).forEach(c => { const k = String(c == null ? "" : c).trim(); if (k) onlyC[k] = 1; });
     const scan = (r) => {
+      const inS = !onlyC || !!onlyC[String(r.itemCode || "").trim()];
       const itSt = String(r.itStatus || "").toUpperCase(), opSt = String(r.opStatus || "").toUpperCase();
       const live = itSt === "COMPLETE" && opSt === "CONFIRMED";
       const k = String(r.kitchen || "");
-      if (k && sw(k) !== k && !seenK[k]) { seenK[k] = 1; out.kitchen.push({ from: k, to: sw(k), campaign: r.campaign || "", live, start: r.start || "", end: r.end || "" }); }
+      if (inS && k && sw(k) !== k && !seenK[k]) { seenK[k] = 1; out.kitchen.push({ from: k, to: sw(k), campaign: r.campaign || "", live, start: r.start || "", end: r.end || "" }); }
       const sn = String(r.shortName || "");
-      if (sn && sw(sn) !== sn && !seenS[sn]) { seenS[sn] = 1; out.shortName.push({ from: sn, to: sw(sn), campaign: r.campaign || "", start: r.start || "", end: r.end || "" }); }
+      if (inS && sn && sw(sn) !== sn && !seenS[sn]) { seenS[sn] = 1; out.shortName.push({ from: sn, to: sw(sn), campaign: r.campaign || "", start: r.start || "", end: r.end || "" }); }
       /* วันที่เริ่มของปุ่มที่สินค้าตัวนี้ถูกใช้ครั้งแรกสุด — ใช้เติมคอลัมน์ "วันที่เริ่ม" ให้ข้อมูลหลักสินค้า */
       const _ic = String(r.itemCode || "").trim(), _st = String(r.start || "").trim();
       if (_ic && _st && (!out.itemStart[_ic] || _st < out.itemStart[_ic])) out.itemStart[_ic] = _st;
       const _en2 = String(r.end || "").trim();
       if (_ic && _en2 && (!out.itemEnd[_ic] || _en2 > out.itemEnd[_ic])) out.itemEnd[_ic] = _en2;
       const en = String(r.itemNameEN || ""), th = String(r.itemNameTH || "");
-      if ((en && sw(en) !== en) || (th && sw(th) !== th)) {
+      if (inS && ((en && sw(en) !== en) || (th && sw(th) !== th))) {
         out.rowItems.push({
           code: r.itemCode || "", from: en || th, to: sw(en || th), campaign: r.campaign || "", shortName: r.shortName || "", start: r.start || "", end: r.end || "",
           waiting: !live, stage: itSt !== "COMPLETE" ? "รอ IT ตั้งค่า" : (opSt !== "CONFIRMED" ? "รอ OP ตรวจ" : "ขึ้น POS แล้ว"),
