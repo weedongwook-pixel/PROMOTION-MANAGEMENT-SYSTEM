@@ -10,6 +10,7 @@ const root=path.resolve(__dirname,'..'), shots=process.env.SCREENSHOT_DIR || '/p
 const snap=page=>page.evaluate(()=>RD.workflowSnapshot());
 async function importSheet(page,sheet,category){
   await page.locator('.np-step').nth(0).click();
+  await page.locator('[data-entry="excel"]').click();
   await page.locator('#npExcelSheet').selectOption(sheet);
   await page.locator('#npExcelCategory').selectOption(category);
   const panda=page.locator('[data-excel-channel="FoodPanda"]');if(await panda.count())await panda.selectOption('__skip__');
@@ -59,12 +60,16 @@ async function addPowder(page,name,rm,desc){
     }
     await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>PC_NpdWorkflow.go(0));
 
+    // Step 1 asks how the job starts; nothing else is shown until a choice is made.
+    assert.equal(await page.locator('#npProject').isVisible(),false);assert.equal(await page.locator('#npExcelFile').isVisible(),false);
     // Manual entry first, keeping the suggested dates, then two appended sheets with different categories.
+    await page.locator('[data-entry="manual"]').click();
+    assert.equal(await page.locator('.np-excel').isVisible(),false);
     await page.locator('#npProject').fill('Guided manual + import');
     for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
     await page.locator('#productList input[oninput*="\'name\'"]').first().fill('Manual Item');
     const manual=(await snap(page)).products[0];
-    await page.locator('.np-step').nth(0).click();
+    await page.locator('.np-step').nth(0).click();await page.locator('[data-entry="excel"]').click();
     await page.locator('#npExcelFile').setInputFiles(file);
     await page.waitForFunction(()=>!document.getElementById('npExcelSheet').disabled);
     await importSheet(page,'Tem1','110');

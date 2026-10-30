@@ -15,12 +15,12 @@
     var guideClosed=false;try{guideClosed=localStorage.getItem('pc_npd_guide_closed')==='1';}catch(_){}
     guide.open=!guideClosed;
     guide.innerHTML='<summary>คู่มือการกรอก — ทำอะไรก่อนหลัง</summary><div class="np-guide-cols">'+
-      '<div><b>มีไฟล์ Approval Form (Excel)</b><ol>'+
+      '<div data-guide="excel"><b>มีไฟล์ Approval Form (Excel)</b><ol>'+
         '<li><b>ขั้น 1</b> เลือกไฟล์และชีต ตรวจตัวอย่าง ถ้าหมวดในไฟล์ยังไม่มีให้กด “เพิ่มหมวด” แล้วกด “เติมข้อมูลลงฟอร์ม”</li>'+
         '<li><b>ขั้น 3</b> กรอกตัวย่อ SUBSET (Subset Name 2) และตรวจปริมาณผง</li>'+
         '<li><b>ขั้น 4</b> แก้ชื่อ EN/TH ให้ไม่เกิน 20 ตัวอักษร และยืนยันสาขาของแต่ละกลุ่มที่นำเข้า</li>'+
         '<li><b>ขั้น 5</b> แก้ทุกจุดที่ระบบแจ้ง แล้วกด “ยืนยันส่งให้ IT”</li></ol></div>'+
-      '<div><b>กรอกเอง</b><ol>'+
+      '<div data-guide="manual"><b>กรอกเอง</b><ol>'+
         '<li><b>ขั้น 1</b> ชื่อชุดสินค้า วันที่ และสาขา</li>'+
         '<li><b>ขั้น 2</b> เพิ่มผงรสชาติใหม่ (ไม่มีผงใหม่ ข้ามได้)</li>'+
         '<li><b>ขั้น 3</b> สร้าง SUBSET หรือเพิ่มผงเข้า SUBSET เดิม (สินค้าไม่มีผง ข้ามได้)</li>'+
@@ -30,6 +30,12 @@
     guide.addEventListener('toggle',function(){try{localStorage.setItem('pc_npd_guide_closed',guide.open?'0':'1');}catch(_){}});
     root.insertBefore(guide,nav);
     var intro=document.createElement('div');intro.id='npWorkflowIntro';intro.className='np-workflow-intro';root.insertBefore(intro,nav.nextSibling);
+    // Step 1 starts with an explicit choice so only the relevant inputs are shown.
+    var entry=document.createElement('section');entry.id='npEntryChoice';entry.dataset.npdStep='0';entry.className='bg-white border rounded-3 p-3 mb-3';
+    entry.innerHTML='<h4 class="h6 fw-bold">งานนี้จะเริ่มอย่างไร?</h4><p class="small mb-3">เลือกวิธีที่ใช้ ระบบจะแสดงเฉพาะส่วนที่ต้องกรอก เปลี่ยนวิธีภายหลังได้ ข้อมูลที่กรอกไว้ไม่หาย</p><div class="np-entry-options">'+
+      '<button type="button" class="np-entry" data-entry="excel" onclick="PC_NpdWorkflow.entry(\'excel\')"><b>นำเข้าไฟล์ Excel</b><small>มีไฟล์ Approval Form — ระบบเติมสินค้า ราคา และ SUBSET ให้</small></button>'+
+      '<button type="button" class="np-entry" data-entry="manual" onclick="PC_NpdWorkflow.entry(\'manual\')"><b>กรอกเอง</b><small>ไม่มีไฟล์ — กรอกข้อมูลงานและสินค้าทีละรายการ</small></button></div>';
+    root.insertBefore(entry,root.querySelector('.np-excel'));
     root.querySelector('.np-excel').dataset.npdStep='0';
     el('npProject').closest('.bg-white').dataset.npdStep='0';
     el('npSubsetStep').closest('.bg-white').dataset.npdStep='2';
@@ -61,14 +67,19 @@
   function refresh(){
     if(!root || !el('npWorkflowMessage'))return;
     var d=RD.workflowSnapshot(),step=d.workflow.step,issues=RD.workflowIssues();
+    var mode=d.workflow.entryMode||(d.products.some(function(p){return p.importGroup;})?'excel':(d.project||d.products.some(function(p){return p.name;})?'manual':''));
     root.querySelectorAll('[data-npd-step]').forEach(function(n){n.hidden=Number(n.dataset.npdStep)!==step;});
+    if(step===0){root.querySelector('.np-excel').hidden=mode!=='excel';el('npProject').closest('.bg-white').hidden=!mode;}
+    root.querySelectorAll('.np-entry').forEach(function(b){var on=b.dataset.entry===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+    root.querySelectorAll('#npWorkflowGuide [data-guide]').forEach(function(c){c.hidden=!!mode && c.dataset.guide!==mode;});
     if(!el('npWorkflowNav').children.length) el('npWorkflowNav').innerHTML=titles.map(function(t,i){return '<button type="button" class="np-step" onclick="PC_NpdWorkflow.go('+i+')"><span>'+(i+1)+'. '+t+'</span><small></small></button>';}).join('');
     Array.from(el('npWorkflowNav').children).forEach(function(button,i){
       var pending=issues.filter(function(x){return x.step===i;}).length;
-      var status=i===4?(issues.length?'รอตรวจ '+issues.length+' จุด':'พร้อมส่ง'):pending?'ต้องเติมข้อมูล':(i===1&&!d.workPowders.length?'ไม่มีผงใหม่':i===2&&!d.subsets.length?'ใช้ของเดิม / ข้ามได้':'พร้อมแล้ว');
+      var status=i===0&&!mode?'เลือกวิธีเริ่มงาน':i===4?(issues.length?'รอตรวจ '+issues.length+' จุด':'พร้อมส่ง'):pending?'ต้องเติมข้อมูล':(i===1&&!d.workPowders.length?'ไม่มีผงใหม่':i===2&&!d.subsets.length?'ใช้ของเดิม / ข้ามได้':'พร้อมแล้ว');
       button.classList.toggle('active',i===step);if(i===step)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');button.querySelector('small').textContent=status;
     });
     var help=['กรอกชื่อชุดสินค้า วันที่ และสาขา หรือนำเข้า Excel (Approval Form) เพื่อเติมข้อมูลให้อัตโนมัติ — นำเข้าเพิ่มภายหลังได้โดยไม่ล้างรายการเดิม','ถ้างานนี้มีผงรสชาติใหม่ ให้เพิ่มไว้ที่นี่ก่อน แล้วไปผูกเข้า SUBSET ในขั้นถัดไป · ไม่มีผงใหม่ กด “ไม่มีผงใหม่ ไปขั้น SUBSET”','สร้าง SUBSET ใหม่หรือเพิ่มผงเข้า SUBSET เดิม แล้วกรอกตัวย่อ (Subset Name 2) · สินค้าที่ไม่มีผง เช่น เครื่องดื่ม / ซอส ข้ามขั้นนี้ได้','เลือก Category ก่อน (ยังไม่มีให้กด “เพิ่มหมวด”) แล้วค่อยกรอกสินค้า ช่องทางขาย ราคา และเลือก SUBSET เฉพาะสินค้าที่ใช้ผง','ตรวจข้อมูลทั้งหมด จุดที่ยังไม่ครบกดที่ข้อความเพื่อกลับไปแก้ได้ เมื่อครบแล้วกด “ยืนยันส่งให้ IT”'];
+    if(step===0)help[0]=!mode?'เลือกก่อนว่าจะนำเข้าไฟล์ Excel หรือกรอกเอง':mode==='excel'?'เลือกไฟล์และชีต ตรวจตัวอย่าง แล้วกด “เติมข้อมูลลงฟอร์ม” จากนั้นตรวจชื่อชุดสินค้า วันที่ และสาขาด้านล่าง — นำเข้าหลายชีตได้ ไม่ล้างรายการเดิม':'กรอกชื่อชุดสินค้า วันที่ และสาขา แล้วกด “ถัดไป”';
     el('npWorkflowIntro').innerHTML='<h4 tabindex="-1" class="h5">'+titles[step]+'</h4><p>'+help[step]+'</p>';
     el('npStepBack').disabled=step===0;el('npStepNext').hidden=step===4;el('npStepSubmit').hidden=step!==4;el('npStepSubmit').disabled=!!issues.length;el('npStepLabel').textContent='ขั้น '+(step+1)+' จาก 5';
     el('npWorkLibrary').innerHTML=d.workPowders.length?'<ul>'+d.workPowders.map(function(p){return '<li>'+esc(p.eng)+' · RM '+esc(p.code||'ยังไม่ระบุ')+' <button class="btn btn-sm btn-link text-danger" onclick="PC_NpdWorkflow.removePowder(\''+p.id+'\')">นำออกจากรายการเตรียมผง</button></li>';}).join('')+'</ul>':'<p class="text-secondary">ยังไม่ได้เตรียมผงใหม่</p>';
@@ -104,6 +115,7 @@
   function previewFlavors(){if(!workbook)return;flavorPlan=PC_NpdExcel.parseFlavorSheet(workbook,value('npFlavorSheet'),XLSX);flavorReview();}
   window.PC_NpdWorkflow={init:init,refresh:refresh,go:go,back:function(){go(RD.workflowSnapshot().workflow.step-1);},next:function(){go(RD.workflowSnapshot().workflow.step+1);},
     choice:function(k,v){RD.setWorkflowChoice(k,v);go(k==='powderChoice'?2:3);},
+    entry:function(v){RD.setWorkflowChoice('entryMode',v);refresh();var f=v==='excel'?el('npExcelFile'):el('npProject');if(f)f.focus();},
     addPowder:function(){act(function(){RD.addWorkPowder({eng:value('npWorkName'),code:value('npWorkRM'),desc:value('npWorkDesc'),unit:value('npWorkUnit')||'g'});['npWorkName','npWorkRM','npWorkDesc','npWorkUnit'].forEach(function(id){el(id).value='';});});},
     removePowder:function(id){act(function(){RD.removeWorkPowder(id);});},
     attach:function(){act(function(){if(!(Number(value('npLinkQty'))>0))throw Error('กรอกปริมาณผงมากกว่า 0');RD.attachWorkPowder(value('npLibraryPick'),value('npTargetPick'),{qty:value('npLinkQty'),spoon:value('npLinkSpoon'),seq:value('npLinkSeq')});});},

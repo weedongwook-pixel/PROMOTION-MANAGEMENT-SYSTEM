@@ -201,7 +201,7 @@
         : '<input type="number" min="1" class="form-control form-control-sm text-center fw-bold" style="width:58px" value="' + esc(w.seq || (i + 1)) + '" title="ลำดับแสดงบน POS" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'seq\',this.value)">') + '</td>';
       var cmposCell = '<td><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง (หมวดผง 103)" style="width:88px" value="' + esc(w.cmpos) + '" placeholder="' + (nf ? '—' : '— IT —') + '"></td>';
       var engCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:120px" value="' + esc(w.eng) + '" placeholder="Cheese" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'eng\',this.value)"></td>';
-      var thCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:120px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
+      var thCell = '<td><input data-th-for="' + esc(w.id) + '" class="form-control form-control-sm border-secondary" style="min-width:120px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
       var rest = nf
         ? (naCell + naCell + naCell + naCell + naCell)
         : ('<td><input class="form-control form-control-sm border-secondary mono" list="rmList" style="width:120px" value="' + esc(w.code) + '" placeholder="Code RM" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'code\',this.value)" onchange="RD.rmPick(\'' + sub.id + '\',\'' + w.id + '\',this.value)"></td>' +
@@ -612,7 +612,10 @@
 
   /* subset pool handlers (product-independent) */
   RD.setS = function (sid, k, v) { var s = Ssub(sid); if (s) s[k] = v; if (k === 'name' || k === 'cat') renderProducts(); };
-  RD.setW = function (sid, wid, k, v) { var s = Ssub(sid); if (!s) return; var w = s.powders.find(function (x) { return x.id === wid; }); if (w) { w[k] = v; if (k === 'unit') refreshUnitDatalist(); if (k === 'code' && !String(v || '').trim()) { w.desc = ''; w.unit = ''; } } };
+  RD.setW = function (sid, wid, k, v) { var s = Ssub(sid); if (!s) return; var w = s.powders.find(function (x) { return x.id === wid; }); if (w) {
+      // The POS button name follows the English name until the user edits it separately.
+      if (k === 'eng' && String(w.th || '') === String(w.eng || '')) { w.th = v; var thInput = document.querySelector ? document.querySelector('[data-th-for="' + wid + '"]') : null; if (thInput) thInput.value = v; }
+      w[k] = v; if (k === 'unit') refreshUnitDatalist(); if (k === 'code' && !String(v || '').trim()) { w.desc = ''; w.unit = ''; } } };
   RD.rmPick = function (sid, wid, code) {
     var s = Ssub(sid); if (!s) return; var w = s.powders.find(function (x) { return x.id === wid; }); if (!w) return;
     w.code = code; if (!String(code || '').trim()) { w.desc = ''; w.unit = ''; renderSubsets(); return; } var rm = rmFind(code); if (rm) { w.desc = rm.desc; if (rm.unit) w.unit = rm.unit; } renderSubsets();

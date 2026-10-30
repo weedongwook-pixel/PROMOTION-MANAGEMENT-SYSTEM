@@ -246,3 +246,13 @@ test('a category added in a draft stays selectable after reopening and its code 
   assert.ok(reopened.c.RD.workflowCategories().some(c=>c.code==='116'&&c.name==='Wrap Test'));
   assert.equal(reopened.c.RD.workflowSnapshot().products[0].cateCode,'116');
 });
+
+test('the powder POS name follows the English name until it is edited separately',()=>{
+  const {c}=form();
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group',ssCode:'',powders:[{eng:'Truffle +THB10 ENF 1',th:'Truffle +THB10 ENF 1',code:'3024',desc:'T',qty:'1',unit:'g'}]}]});
+  let s=c.RD.workflowSnapshot().subsets[0],w=s.powders.find(x=>/Truffle \+/.test(x.eng));
+  c.RD.setW(s.id,w.id,'eng','Truffle +10 ENF 1');
+  w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'Truffle +10 ENF 1');
+  c.RD.setW(s.id,w.id,'th','ทรัฟเฟิล');c.RD.setW(s.id,w.id,'eng','Truffle Plus');
+  w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'ทรัฟเฟิล');
+});

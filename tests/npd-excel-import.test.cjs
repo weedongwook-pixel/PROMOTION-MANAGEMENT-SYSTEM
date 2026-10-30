@@ -265,3 +265,9 @@ test('Truffle surcharge is distinct from mandatory Truffle 2',()=>{
   const p=importer.parseSubsets(wb,'ss',XLSX);
   assert.equal(p.subsets[0].powders.filter(w=>w.eng.startsWith('Truffle')).length,2);
 });
+
+test('imported powders get the POS button name from the English name in both import paths',()=>{
+  const wb=sample();
+  for(const p of [importer.parseSubsets(wb,'ss',XLSX),importer.parse(wb,'Tem1',XLSX)])
+    p.subsets.forEach(s=>s.powders.forEach(w=>assert.equal(w.th,w.eng,w.eng)));
+});

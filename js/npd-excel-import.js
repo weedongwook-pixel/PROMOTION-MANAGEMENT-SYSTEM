@@ -82,7 +82,9 @@
         var group = groups.get(groupKey);
         if (code && group.ssCode && group.ssCode !== code) group.conflicts.push(name + ':' + (row + 1));
         if (code) group.ssCode = code;
-        var powder = { seq: Number(r[2]), cmpos: text(r[3]), eng: text(r[4]), th: '', code: text(r[5]), desc: text(r[6]), qty: text(r[7]), unit: unit(r[8]), spoon: text(r[9]), addon: '' };
+        // The file has no Thai column; the POS button name follows the English flavor name,
+        // as for standard flavors and powders added in the form.
+        var powder = { seq: Number(r[2]), cmpos: text(r[3]), eng: text(r[4]), th: text(r[4]), code: text(r[5]), desc: text(r[6]), qty: text(r[7]), unit: unit(r[8]), spoon: text(r[9]), addon: '' };
         if (isNoFlavor(powder.eng)) { powder.noFlavor = true; powder.seq = 99; }
         var surcharge = powder.eng.match(/\+\s*(?:THB|฿)\s*(\d+(?:\.\d+)?)/i);
         if (surcharge) powder.addon = Number(surcharge[1]);
