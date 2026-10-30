@@ -55,6 +55,10 @@
   .np-step.active { border-color:#237840; background:#e8f6ee; box-shadow:inset 0 -3px #237840; }
   .np-workflow-footer { display:flex; flex-wrap:wrap; align-items:center; gap:12px; position:sticky; bottom:0; padding:16px; background:#fff; border-top:1px solid #bdcfc1; z-index:5; }
   .np-workflow-footer span { margin-left:auto; } .np-workflow-intro { margin-bottom:20px; } .np-workflow-intro h4:focus { outline:none; }
+  .np-guide { border:1px solid #bdcfc1; border-radius:8px; background:#fff; padding:12px 16px; margin-bottom:12px; }
+  .np-guide summary { font-weight:700; cursor:pointer; color:#24452d; }
+  .np-guide .np-guide-cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:12px; }
+  .np-guide ol { padding-left:20px; margin:6px 0 0; } .np-guide li { margin-bottom:4px; }
   .npd-scope button:focus-visible,.npd-scope a:focus-visible { outline:3px solid #237840; outline-offset:3px; }
   @media(max-width:600px){.npd-scope.pc-workspace {padding:12px!important;} .np-workflow-footer {padding:12px 0;} .np-workflow-footer span {display:none;} }
 </style>
@@ -120,7 +124,7 @@
     </div>
 
     <div class="bg-white rounded-3 shadow-sm border mb-3">
-      <div id="npSubsetStep" class="sec-head d-flex justify-content-between align-items-center"><span>1. SUBSET สูตรผงสินค้าใหม่ <span style="font-weight:400;font-size:.7rem;color:#9aa3ab;text-transform:none">(ใส่หรือไม่ใส่ก็ได้ — เครื่องดื่ม / topping ที่ไม่มีผง ข้ามได้)</span></span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">SS / CMPOS จองผ่านเลขกลาง · IT ตรวจยืนยัน</span></div>
+      <div id="npSubsetStep" class="sec-head d-flex justify-content-between align-items-center"><span>SUBSET สูตรผงสินค้าใหม่ <span style="font-weight:400;font-size:.7rem;color:#9aa3ab;text-transform:none">(ใส่หรือไม่ใส่ก็ได้ — เครื่องดื่ม / topping ที่ไม่มีผง ข้ามได้)</span></span><span style="font-weight:400;font-size:.7rem;color:#cfcfcf;text-transform:none">SS / CMPOS จองผ่านเลขกลาง · IT ตรวจยืนยัน</span></div>
       <div class="p-3 border-bottom" aria-labelledby="npSubsetExcelTitle">
         <h4 id="npSubsetExcelTitle" class="h6 fw-bold"><i class="fas fa-file-excel text-success me-2" aria-hidden="true"></i>Import Excel เฉพาะ Subset</h4>
         <p class="small mb-3">เลือกชีต <b>ss</b> เพื่อเพิ่มกลุ่มและรายการผงในส่วนนี้ ไม่แทนที่สินค้า / Subset เดิม และยังไม่ส่งงานให้ IT</p><p class="small mb-3">ระบบเติม <b>Truffle 2</b> และ <b>No flavor</b> เฉพาะรายการที่ขาด ไม่เพิ่มซ้ำ เมื่อกรอกตัวย่อ FF1 ชื่อจะเป็น Truffle 2 FF1 และ No flavor FF1 — ตรวจปริมาณและขนาดช้อนของผงที่เติมก่อนส่ง</p>

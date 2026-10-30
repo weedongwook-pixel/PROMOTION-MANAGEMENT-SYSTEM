@@ -327,7 +327,7 @@
     return fields + split;
   }
   function productCategoryField(p) {
-    return '<div class="mb-3"><label class="form-label small fw-bold" for="cat_'+p.id+'">Category ของสินค้านี้</label><select id="cat_'+p.id+'" class="form-select" onchange="RD.setProductCategory(\''+p.id+'\',this.value)"><option value="">เลือกหมวดสินค้า</option>'+CAT_LIST.filter(function(c){return npdCatShown(c.name);}).map(function(c){return '<option value="'+esc(c.code)+'"'+(c.code===p.cateCode?' selected':'')+'>'+esc(c.code+' · '+c.name)+'</option>';}).join('')+'</select></div>';
+    return '<div class="mb-3"><label class="form-label small fw-bold req" for="cat_'+p.id+'">Category ของสินค้านี้</label><select id="cat_'+p.id+'" class="form-select" onchange="RD.setProductCategory(\''+p.id+'\',this.value)"><option value="">เลือกหมวดสินค้า</option>'+CAT_LIST.filter(function(c){return npdCatShown(c.name);}).map(function(c){return '<option value="'+esc(c.code)+'"'+(c.code===p.cateCode?' selected':'')+'>'+esc(c.code+' · '+c.name)+'</option>';}).join('')+'</select>'+(p.cateCode?'':'<div class="form-text text-danger">เลือก Category ก่อน — ระบบจะออก Item Code ตามหมวดที่เลือก (ยังไม่มีหมวดให้กด “เพิ่มหมวด” ด้านบน)</div>')+'</div>';
   }
   function productCard(p, idx) {
     var sm = p.saleModes || [];
@@ -348,7 +348,7 @@
       '<div class="p-3">' +
         productCategoryField(p) +
         '<div class="row g-3 mb-3">' +
-        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="— IT —"></div>' +
+        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="' + (p.cateCode ? '— IT —' : 'เลือก Category ก่อน') + '"></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/20</div></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Name (TH) <span class="it-tag" style="background:#198754;color:#fff">ปุ่ม POS</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.th) + '" oninput="RD.setP(\'' + p.id + '\',\'th\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.th || '').length + '/20</div></div>' +
         '</div>' +
@@ -1275,7 +1275,7 @@
   };
   RD.workflowIssues = function() {
     var issues=[],add=function(step,message){issues.push({step:step,message:message});};
-    if(!getVal('npProject'))add(0,'กรอกชื่อโครงการ');
+    if(!getVal('npProject'))add(0,'กรอกชื่อชุดสินค้า / Project');
     if(!getVal('npStart') || !getVal('npEnd') || getVal('npStart')>getVal('npEnd'))add(0,'ตรวจวันที่เริ่มและวันที่สิ้นสุด');
     state.workPowders.forEach(function(w){if(!w.code || !w.desc)add(1,'ผง '+w.eng+': กรอกรหัส RM และรายละเอียด');});
     state.subsets.forEach(function(s){
