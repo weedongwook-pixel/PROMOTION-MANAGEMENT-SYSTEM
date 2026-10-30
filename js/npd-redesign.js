@@ -1172,7 +1172,10 @@
     if (!o.category || !current.categories.some(function (c) { return c.code === o.category.code && c.name === o.category.name; })) throw Error('กรุณาเลือกหมวดที่เปิดใช้งานในระบบ');
     Object.keys(o.channelMap || {}).forEach(function (ch) { var mapped = o.channelMap[ch]; if (mapped !== '__skip__' && current.channels.indexOf(mapped) < 0) throw Error('ช่องทาง ' + mapped + ' ไม่ได้เปิดใช้งานในฟอร์ม NPD'); });
     if (o.append && plan.products.some(function(p){return state.products.some(function(x){return String(x.sourceName || x.name).toLowerCase()===String(p.sourceName || p.name).toLowerCase();});})) throw Error('มีสินค้าจากชีตนี้ในงานแล้ว กรุณาแก้รายการเดิมแทนการนำเข้าซ้ำ');
-    if (o.append && state.workflow.datesChosen!==false && getVal('npStart') && (getVal('npStart')!==plan.start || getVal('npEnd')!==plan.end)) throw Error('ช่วงวันที่ของชีตต่างจากงานนี้ กรุณาแยกเป็นอีกงาน');
+    // The first product sheet sets the job period (dates typed in step 1 are replaced and reported);
+    // a later sheet with another period belongs to a separate job.
+    var datesBefore = { start: getVal('npStart'), end: getVal('npEnd') };
+    if (o.append && state.products.some(function (p) { return p.importGroup; }) && datesBefore.start && (datesBefore.start!==plan.start || datesBefore.end!==plan.end)) throw Error('ช่วงวันที่ของชีตนี้ ('+plan.start+' ถึง '+plan.end+') ต่างจากชีตที่นำเข้าไว้แล้ว ('+datesBefore.start+' ถึง '+datesBefore.end+') กรุณาแยกเป็นอีกงาน');
     var before = npdSnapshot(), draft = PC_NpdExcel.createDraft(plan, {
       category: o.category, channelMap: o.channelMap, subsetMaster: current.subsetMaster, existingSubsets:o.append?state.subsets:[],
       reserve: function (type, cat) { return type === 'ss' ? npdReserveSS() : (cat === '103' ? npdReserveCMPOS() : npdReserveItem(cat)); },
@@ -1201,7 +1204,8 @@
     if(!o.append) npdReturnSnapshotCodes(before);
     if(o.append && npdKeepCodes) localStorage.setItem(NPD_DRAFT_KEY,JSON.stringify(npdSnapshot()));
     if(!o.append) npdKeepCodes = false;
-    return { products: draft.products.length, subsets: draft.subsets.length };
+    var datesChanged = !!(o.append && datesBefore.start && (datesBefore.start!==plan.start || datesBefore.end!==plan.end));
+    return { products: draft.products.length, subsets: draft.subsets.length, datesChanged: datesChanged ? { from: datesBefore, to: { start: plan.start, end: plan.end } } : null };
   };
   RD.importExcelSubsetPlan = function (plan, options) {
     if (!window.PC_NpdExcel || !window.PC_COUNTER) throw Error('ตัวอ่าน Excel หรือระบบเลขกลางยังไม่พร้อม กรุณาเปิดหน้า NPD อีกครั้ง');

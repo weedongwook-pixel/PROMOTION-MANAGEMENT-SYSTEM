@@ -233,9 +233,13 @@ test('review fixes: distinct sizes stay separate, untouched subsets keep edits, 
   own.powders.forEach(w=>c.RD.delW(own.id,w.id));
   c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Other',ssCode:'',powders:[{eng:'BBQ',code:'3128',desc:'BBQ',qty:'1',unit:'g'}]}]});
   assert.equal(c.RD.workflowSnapshot().subsets.find(s=>s.id===own.id).powders.length,0);
-  // Dates the user chose block a sheet with other dates even before any product is named.
+  // The first product sheet sets the job period and reports the change; a later sheet with another period is refused.
   ({c}=form());c.RD.setWorkflowChoice('datesChosen',true);
-  assert.throws(()=>c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true}),/ช่วงวันที่/);
+  const opts={category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true};
+  const first=c.RD.importExcelPlan(plan(),opts);
+  assert.ok(first.datesChanged);assert.equal(first.datesChanged.to.start,plan().start);
+  const other=plan();other.products.forEach(p=>{p.sourceName+=' B';p.name+=' B';});other.start='2027-02-01';other.end='2027-03-01';
+  assert.throws(()=>c.RD.importExcelPlan(other,opts),/ช่วงวันที่ของชีตนี้/);
 });
 
 test('a category added in a draft stays selectable after reopening and its code is not reissued',async()=>{

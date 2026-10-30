@@ -113,9 +113,10 @@
       if(!window.PC_NpdWorkflow) RD.clearDraft();
       node('npExcelPreview').hidden = true;
       status('เติมฟอร์มแล้ว: ' + summary.products + ' สินค้า / ' + summary.subsets + ' Subset ใหม่ — ยังไม่ได้ส่งงาน');
-      await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: window.PC_NpdWorkflow ? 'ตรวจสินค้า Recipe และ SUBSET ของแต่ละรายการ แก้ชื่อ EN/TH ให้ไม่เกิน 20 ตัวอักษร และยืนยันสาขาของกลุ่มที่นำเข้า' : 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ดูรายการสินค้า', confirmButtonColor: '#237840' });
+      var dates = summary.datesChanged ? ' · ช่วงวันที่ของงานเปลี่ยนเป็นตามชีต: ' + summary.datesChanged.to.start + ' ถึง ' + summary.datesChanged.to.end + ' (เดิม ' + summary.datesChanged.from.start + ' ถึง ' + summary.datesChanged.from.end + ')' : '';
+      await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: window.PC_NpdWorkflow ? 'ตรวจสินค้า Recipe และ SUBSET ของแต่ละรายการ แก้ชื่อ EN/TH ให้ไม่เกิน 20 ตัวอักษร และยืนยันสาขาของกลุ่มที่นำเข้า' + dates : 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ดูรายการสินค้า', confirmButtonColor: '#237840' });
       if(window.PC_NpdWorkflow){PC_NpdWorkflow.go(3);node('productList').scrollIntoView({block:'start'});} else if (node('npProject')) node('npProject').focus();
-    } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); }
+    } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); Swal.fire({ icon: 'error', title: 'เติมข้อมูลลงฟอร์มไม่ได้', text: e.message, confirmButtonColor: '#237840' }); }
     finally { applying = false; if (node('npExcelApply')) node('npExcelApply').disabled = false; if (node('npExcelFile')) node('npExcelFile').disabled = false; if (node('npExcelSheet')) node('npExcelSheet').disabled = !workbook; }
   }
   function renderReview() {
