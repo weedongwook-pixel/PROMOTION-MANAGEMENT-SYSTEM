@@ -119,6 +119,25 @@
     { seq: 8,  eng: 'Salted',         th: 'Salted',         code: '3022', desc: 'เกลือ',                       unit: 'g', spoon: '1 ช้อน pinch' },
     { seq: 99, eng: 'No flavor',      th: 'No flavor',      code: '',     desc: '',                            unit: '',  noFlavor: true }
   ];
+  /* New SUBSETs keep the standard POS order: standard powders 1–8, new powders from 9, No flavor 99. */
+  var STD_KEYS = STD_POWDERS.filter(function (p) { return !p.noFlavor; }).map(function (p) { var k = [p.eng.toLowerCase().replace(/[^a-z0-9]/g, '')]; if (p.addon) k.push('truffle10', 'truffle10thb'); return { seq: p.seq, keys: k }; });
+  function stdSeq(name, sub) {
+    var n = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, ''), own = String(sub.name2 || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (var i = 0; i < STD_KEYS.length; i++) for (var j = 0; j < STD_KEYS[i].keys.length; j++) {
+      var k = STD_KEYS[i].keys[j]; if (n.indexOf(k) !== 0) continue;
+      var rest = n.slice(k.length);
+      if (!rest || rest === own || /^(enf|ff|ck|cs|cng|bff|wvf|csf|ltm)\d*$/.test(rest)) return STD_KEYS[i].seq;
+    }
+    return 0;
+  }
+  function orderStdPowders(sub) {
+    if (!sub || sub.existing) return;
+    var rank = function (w) { return w.noFlavor ? 99 : (stdSeq(w.eng, sub) || 50); };
+    var list = sub.powders.map(function (w, i) { return { w: w, i: i, r: rank(w), seq: Number(w.seq) || 0 }; });
+    list.sort(function (a, b) { return a.r - b.r || (a.r === 50 ? (a.seq - b.seq) || (a.i - b.i) : a.i - b.i); });
+    var next = 9;
+    sub.powders = list.map(function (x) { x.w.seq = x.r === 99 ? 99 : x.r === 50 ? next++ : x.r; return x.w; });
+  }
   function stdPowders(formula) { var lang = npdLang(); return STD_POWDERS.map(function (p) { var w = mkPowder(p); w.cmpos = npdReserveCMPOS(); w.std = true; if (formula === 2 && !w.noFlavor && SPOON_F2[p.eng]) w.spoon = SPOON_F2[p.eng]; if (!w.noFlavor) { w.unit = convUnit(w.unit, lang); w.spoon = convSpoon(w.spoon, lang); } return w; }); }
   /* สูตร 2 — ค่าเริ่มต้น "ขนาดช้อน" ต่างจากสูตร 1 (ชื่อผง/ตัวย่อ/หน่วย เหมือนเดิม) */
   var SPOON_F2 = { 'Cheese': 'ช้อน 5 ml * 1.5 ช้อน', 'BBQ': 'ช้อน 5 ml * 3 ช้อน', 'Sour Cream': 'ช้อน 5 ml * 3 ช้อน', 'Chilli BBQ': 'ช้อน 5 ml * 3 ช้อน', 'Truffle +THB10': 'ช้อน 5 ml * 1.5 ช้อน', 'Truffle 2': 'ช้อน 5 ml * 1.5 ช้อน', 'Sweet Corn': 'ช้อน 5 ml * 3 ช้อน', 'Salted': '1.5 ช้อน pinch' };
@@ -1168,6 +1187,7 @@
         state.products=state.products.filter(function(p){return p.name || p.th || p.cateCode || p.priceTakeaway || p.priceDelivery || (p.saleModes||[]).length || (p.formulas||[]).length || Object.keys(p.prices||{}).length || p.recipes.some(function(r){return r.code || r.desc || r.qty;});}).concat(draft.products);
         state.subsets=state.subsets.filter(function(s){return !draft.subsets.some(function(d){return d.id===s.id;});}).concat(draft.subsets);
       } else { state.products = draft.products; state.subsets = draft.subsets; }
+      draft.subsets.forEach(orderStdPowders);
       if(!o.append){state.storeMode = draft.storeMode; state.storeConds = draft.storeConds; state.importSource = draft.importSource;}
       if(o.append && before.project){draft.project=before.project;}
       ['npProject','npStart','npEnd','npCateCode'].forEach(function (id, i) { var el = document.getElementById(id); if (el) el.value = [draft.project,draft.start,draft.end,draft.cateCode][i]; });
@@ -1194,6 +1214,7 @@
     draft.subsets.forEach(function (s) { s.importSource = {file:String(o.fileName || ''),sheet:plan.sheet}; });
     try {
       state.subsets = before.filter(function(s){return !draft.subsets.some(function(d){return d.id===s.id;});}).concat(draft.subsets);
+      draft.subsets.forEach(orderStdPowders);
       renderAll();
       // A previously saved draft owns its reservations. Keep it consistent
       // when appending groups, without changing the user's saved baseline.
@@ -1251,6 +1272,7 @@
     p.cmpos=npdReserveCMPOS();if(!p.cmpos)throw Error('จองรหัสผงไม่สำเร็จ');p.libraryId=lib.id;
     if(created)state.subsets.push(sub);
     var nf=sub.powders.findIndex(function(w){return w.noFlavor;});if(nf<0)sub.powders.push(p);else sub.powders.splice(nf,0,p);
+    orderStdPowders(sub);
     state.workflow.subsetChoice='use';renderAll();return p.id;
   };
   RD.importWorkFlavors = function(plan) {
@@ -1279,6 +1301,7 @@
       state.subsets.filter(function(s){return !s.existing && plan.subsets.some(function(g){return g.ssCode?s.ssCode===g.ssCode:String(s.name).trim().toLowerCase()===String(g.name).trim().toLowerCase();});}).forEach(function(s){
         PC_NpdExcel.completeStandardFlavors(s);
         s.powders.forEach(function(w){if(!w.id){w.id=uid('w');w.cmpos=npdReserveCMPOS();if(!w.cmpos)throw Error('จองรหัสมาตรฐานไม่สำเร็จ');allocated.push({type:'item',code:w.cmpos});}});
+        orderStdPowders(s);
       });
       renderAll();return count;
     }catch(e){allocated.forEach(function(a){if(a.type==='ss')npdReturnSS(a.code);else npdReturnCMPOS(a.code);});npdRestoreSnapshot(before);throw e;}

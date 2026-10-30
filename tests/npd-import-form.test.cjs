@@ -133,10 +133,12 @@ test('flavor import reuses matching pending subset recipes and rolls back confli
   const {c}=form();const g={sheet:'mala flavor',errors:[],subsets:[{name:'New Enoki',ssCode:'',powders:[{eng:'Mala ENF 1',code:'3278',desc:'Mala',qty:'6.48',unit:'g',spoon:'2 spoons'}]}]};
   assert.equal(c.RD.importWorkFlavors(g),1);const first=c.RD.workflowSnapshot();
   assert.equal(c.RD.importWorkFlavors(g),0);
-  assert.equal(c.RD.workflowSnapshot().subsets[0].powders[0].cmpos,first.subsets[0].powders[0].cmpos);
+  const mala=x=>x.subsets[0].powders.find(w=>w.eng==='Mala ENF 1');
+  assert.equal(mala(c.RD.workflowSnapshot()).cmpos,mala(first).cmpos);
+  assert.deepEqual([...first.subsets[0].powders.map(w=>w.seq+' '+w.eng)],['6 Truffle 2','9 Mala ENF 1','99 No flavor'],'standard order: new powders from 9');
   const bad=JSON.parse(JSON.stringify(g));bad.subsets[0].powders[0].qty='9.72';
   assert.throws(()=>c.RD.importWorkFlavors(bad),/สูตรต่างกัน/);
-  assert.equal(c.RD.workflowSnapshot().subsets[0].powders[0].qty,'6.48');
+  assert.equal(mala(c.RD.workflowSnapshot()).qty,'6.48');
 });
 
 test('per-import store confirmation remains separate for mixed-category product groups',()=>{
