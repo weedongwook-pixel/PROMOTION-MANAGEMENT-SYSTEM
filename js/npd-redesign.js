@@ -835,6 +835,11 @@
       state.storeMode = d.storeMode || 'ALL'; state.storeConds = d.storeConds || [];
       state.subsets = d.subsets || [];
       state.products = (d.products && d.products.length) ? d.products : [mkProduct({ recipes: [mkRecipe()] })];
+      // A category added in this job exists only in the draft until IT creates it. Restore it to the
+      // list so it stays selectable and nextCateCode() does not issue the same code again.
+      [{ name: state.category, code: state.cateCode }].concat(state.products.map(function (p) { return { name: p.category, code: p.cateCode }; })).forEach(function (c) {
+        if (c.name && c.code && !CAT_LIST.some(function (x) { return x.code === c.code || String(x.name).toLowerCase() === String(c.name).toLowerCase(); })) CAT_LIST.push({ code: c.code, name: c.name });
+      });
       var pj = document.getElementById('npProject'); if (pj) pj.value = d.project || '';
       var st = document.getElementById('npStart'); if (st && d.start) st.value = d.start;
       var en = document.getElementById('npEnd'); if (en && d.end) en.value = d.end;

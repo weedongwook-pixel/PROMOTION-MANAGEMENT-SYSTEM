@@ -235,3 +235,14 @@ test('review fixes: distinct sizes stay separate, untouched subsets keep edits, 
   ({c}=form());c.RD.setWorkflowChoice('datesChosen',true);
   assert.throws(()=>c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true}),/ช่วงวันที่/);
 });
+
+test('a category added in a draft stays selectable after reopening and its code is not reissued',async()=>{
+  const first=form();const p=first.c.RD.workflowSnapshot().products[0];
+  first.c.RD.setP(p.id,'name','Wrap A');
+  const draft=JSON.parse(JSON.stringify(first.c.RD.workflowSnapshot()));
+  Object.assign(draft,{category:'Wrap Test',cateCode:'116',dept:'100'});Object.assign(draft.products[0],{category:'Wrap Test',cateCode:'116',code:'116001'});
+  first.saved.set('pc_npd_draft',JSON.stringify(draft));
+  const reopened=form([...first.saved]);await Promise.resolve();
+  assert.ok(reopened.c.RD.workflowCategories().some(c=>c.code==='116'&&c.name==='Wrap Test'));
+  assert.equal(reopened.c.RD.workflowSnapshot().products[0].cateCode,'116');
+});
