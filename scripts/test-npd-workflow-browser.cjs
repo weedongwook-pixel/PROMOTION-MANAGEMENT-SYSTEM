@@ -83,7 +83,11 @@ async function addPowder(page,name,rm,desc){
     assert.equal(enoki.products.length,6);assert.deepEqual(enoki.subsets.map(s=>s.powders.length),[10,10]);
     await importSheet(page,'mala sauce','115');
     let d=await snap(page);
-    await page.getByRole('button',{name:'ถัดไป: ตรวจ SUBSET'}).click();
+    // Steps go one page at a time: after the import, the optional powder step comes next and can be skipped.
+    await page.getByRole('button',{name:'ถัดไป: ผงรสชาติใหม่'}).click();
+    assert.equal((await snap(page)).workflow.step,1);
+    assert.match(await page.locator('#npPowderFromFile').textContent(),/ผงจากไฟล์ที่นำเข้า \d+ รายการ/);
+    await page.getByRole('button',{name:'ไม่มีผงใหม่ ข้ามขั้นนี้'}).click();
     assert.equal((await snap(page)).workflow.step,2);
     assert.deepEqual(d.products.slice(0,6),enoki.products);assert.deepEqual(d.subsets,enoki.subsets);
     assert.deepEqual([...new Set(d.products.slice(1).map(p=>p.cateCode))],['110','115']);
@@ -100,8 +104,8 @@ async function addPowder(page,name,rm,desc){
     await page.locator('#npStepBack').click();await page.locator('#npStepBack').click();
     assert.equal(await page.locator('#npProject').inputValue(),'Guided manual + import');
 
-    // Draft resume restores the step, products and every reserved code. After an import, Next skips the powder step.
-    for(let i=0;i<2;i++)await page.locator('#npStepNext').click();
+    // Draft resume restores the step, products and every reserved code. 
+    for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
     await page.getByRole('button',{name:'บันทึกร่าง'}).click();
     const saved=await snap(page);
     await page.reload();await page.locator('.swal2-confirm').click();await page.locator('.swal2-container').waitFor({state:'hidden'});
