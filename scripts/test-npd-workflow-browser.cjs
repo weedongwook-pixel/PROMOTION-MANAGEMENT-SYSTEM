@@ -145,12 +145,18 @@ async function addPowder(page,name,rm,desc){
     assert.deepEqual(d.products.map(p=>p.code),saved.products.map(p=>p.code));
     assert.deepEqual(d.subsets.map(s=>s.powders.map(w=>w.cmpos)),saved.subsets.map(s=>s.powders.map(w=>w.cmpos)));
 
-    // Review lists what submit would reject, including over-long POS names from the file.
+    // Review lists missing data separately from over-long POS names, which only warn.
     await page.locator('.np-step').nth(4).click();
-    assert.equal(await page.locator('#npStepSubmit').isDisabled(),true);
+    assert.equal(await page.locator('#npStepSubmit').isDisabled(),false);
     const review=await page.locator('#npWorkflowReview').textContent();
+    assert.match(review,/ยังกรอกไม่ครบ/);assert.match(review,/ควรตรวจ/);
     assert.match(review,/ชื่อ TH บน POS ยาว 24\/20/);assert.match(review,/ชื่อผง EN "Truffle \+THB10\s+ENF 1" ยาว 21\/20/);
     await page.screenshot({path:shots+'/npd-review-blocked-1440.png',fullPage:true});
+    // Submitting with missing data lists every gap and goes back to the first one.
+    await page.locator('#npStepSubmit').click();
+    await page.locator('.swal2-title').filter({hasText:/กรอกข้อมูลไม่ครบ \d+ จุด/}).waitFor();
+    await page.locator('.swal2-confirm').click();await page.locator('.swal2-container').waitFor({state:'hidden'});
+    assert.notEqual((await snap(page)).workflow.step,4);
 
     // Resolve the issues as a user would, then submit to the in-page mock backend only.
     await page.evaluate(()=>{const d=RD.workflowSnapshot();
@@ -165,8 +171,9 @@ async function addPowder(page,name,rm,desc){
     assert.deepEqual(await page.evaluate(()=>RD.workflowIssues()),[]);
     await page.setViewportSize({width:390,height:844});
     await page.locator('.np-step').nth(4).click();await page.screenshot({path:shots+'/npd-review-ready-390.png',fullPage:true});
-    assert.equal(await page.locator('#npStepSubmit').isDisabled(),false);
-    await page.locator('#npStepSubmit').click();await page.locator('.swal2-confirm').click();
+    await page.locator('#npStepSubmit').click();
+    assert.match(await page.locator('.swal2-html-container').textContent(),/ตรวจสอบความถูกต้องของข้อมูลอีกครั้งก่อนส่ง/);
+    await page.locator('.swal2-confirm').click();
     await page.getByText('ส่งเรียบร้อย!',{exact:true}).waitFor();
     const submitted=await page.evaluate(()=>PC_API.getNPDList()[0]);
     assert.equal(await page.evaluate(()=>PC_API.getNPDList().length),initial+1);

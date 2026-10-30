@@ -952,7 +952,12 @@
 
   RD.submit = function (which) {
     if (which === 'new') {
-      if(window.PC_NpdWorkflow){var workflowIssues=RD.workflowIssues();if(workflowIssues.length){PC_NpdWorkflow.go(workflowIssues[0].step);return warnFill(workflowIssues[0].message);}}
+      var workflowWarns=[];
+      if(window.PC_NpdWorkflow){
+        var workflowIssues=RD.workflowIssues(),missing=workflowIssues.filter(function(x){return !x.warn;});
+        workflowWarns=workflowIssues.filter(function(x){return x.warn;});
+        if(missing.length){PC_NpdWorkflow.go(missing[0].step);return Swal.fire({icon:'warning',title:'กรอกข้อมูลไม่ครบ '+missing.length+' จุด',html:'<ul class="text-start mb-0">'+missing.map(function(x){return '<li>ขั้น '+(x.step+1)+' · '+esc(x.message)+'</li>';}).join('')+'</ul>',confirmButtonColor:'#000',confirmButtonText:'ไปแก้'});}
+      }
       var project = getVal('npProject'), start = getVal('npStart'), end = getVal('npEnd');
       if (!project) return warnFill('กรุณาระบุชื่อชุดสินค้า / Project');
       if (!start) return warnFill('กรุณาระบุวันที่เริ่ม');
@@ -1005,7 +1010,8 @@
       }
       if (!backendOn()) return summaryNew();
       var payload = buildNewPayload();
-      Swal.fire({ title: 'ยืนยันการส่งให้ IT?', icon: 'question', showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: 'ส่ง', cancelButtonText: 'ยกเลิก' }).then(function (r) {
+      var checkHtml = 'กรุณาตรวจสอบความถูกต้องของข้อมูลอีกครั้งก่อนส่ง' + (workflowWarns.length ? '<div class="text-start mt-2" style="font-size:.85rem"><b>ควรตรวจ</b><ul class="mb-0">' + workflowWarns.map(function (x) { return '<li>' + esc(x.message) + '</li>'; }).join('') + '</ul></div>' : '');
+      Swal.fire({ title: 'ยืนยันการส่งให้ IT?', html: checkHtml, icon: 'question', showCancelButton: true, confirmButtonColor: '#2e934a', confirmButtonText: 'ตรวจแล้ว ส่ง', cancelButtonText: 'กลับไปตรวจ' }).then(function (r) {
         if (!r.isConfirmed) return;
         if (RD._sending) return; RD._sending = true;            // SHOULD: guard double-submit
         var key = RD._submitKey || (RD._submitKey = 'npd-' + Date.now() + '-' + Math.random().toString(36).slice(2));
@@ -1358,7 +1364,8 @@
     state.products.forEach(function(p){if(p.importGroup===group){p.storesReviewed=true;p.storeOverride={store:buildNewPayload().store,conditions:JSON.parse(JSON.stringify(state.storeConds))};}});
   };
   RD.workflowIssues = function() {
-    var issues=[],add=function(step,message){issues.push({step:step,message:message});};
+    // warn: shown before sending but does not block it; everything else is missing data.
+    var issues=[],add=function(step,message,warn){issues.push({step:step,message:message,warn:!!warn});};
     if(!getVal('npProject'))add(0,'กรอกชื่อชุดสินค้า / Project');
     if(!getVal('npStart') || !getVal('npEnd') || getVal('npStart')>getVal('npEnd'))add(0,'ตรวจวันที่เริ่มและวันที่สิ้นสุด');
     state.workPowders.forEach(function(w){if(!w.code || !w.desc)add(1,'ผง '+w.eng+': กรอกรหัส RM และรายละเอียด');});
@@ -1368,7 +1375,7 @@
       var seen={};
       s.powders.forEach(function(w){
         if(!w.noFlavor && (!w.code || !w.desc || !(Number(w.qty)>0) || !w.unit))add(at,(s.name||'SUBSET')+' / '+w.eng+': ตรวจ RM ปริมาณและหน่วย');
-        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(at,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร');});
+        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(at,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร',true);});
         var k=String(w.eng||'').replace(/\s+/g,'').toLowerCase();if(k && !w.noFlavor){if(seen[k])add(at,(s.name||'SUBSET')+': ชื่อผง '+w.eng+' ซ้ำในชุด');seen[k]=1;}
       });
     });
@@ -1384,7 +1391,7 @@
       var name=p.name||'สินค้า #'+(i+1);
       if(!p.name)add(3,name+': กรอกชื่อสินค้า');
       if(!p.cateCode)add(3,name+': เลือก Category');
-      [['EN',p.name],['TH',p.th]].forEach(function(n){var len=String(n[1]||'').length;if(len>20)add(3,name+': ชื่อ '+n[0]+' บน POS ยาว '+len+'/20 ตัวอักษร');});
+      [['EN',p.name],['TH',p.th]].forEach(function(n){var len=String(n[1]||'').length;if(len>20)add(3,name+': ชื่อ '+n[0]+' บน POS ยาว '+len+'/20 ตัวอักษร',true);});
       if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
       (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
       (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});
