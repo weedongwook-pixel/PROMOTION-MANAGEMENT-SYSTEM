@@ -113,14 +113,15 @@ async function addPowder(page,name,rm,desc){
     await page.locator('#npStepBack').click();
     assert.equal(await page.locator('#npProject').inputValue(),'Guided manual + import');
 
-    // Step 4 shows each product like the sheet: SUBSET rows sit in the Recipe Details table and pick from subsets made in step 3.
+    // Step 4: SUBSET links sit in their own section with min / max powders the customer may pick.
     await page.locator('.np-step').nth(3).click();
     d=await snap(page);
-    assert.equal(await page.locator('#productList .ss-row').count(),d.products.reduce((n,p)=>n+p.formulas.length,0));
-    const firstSs=page.locator('.item-card').nth(1).locator('.ss-row input[type=number]').first();
-    await firstSs.fill('2');
-    assert.deepEqual((({chooseMin,chooseMax})=>({chooseMin,chooseMax}))((await snap(page)).products[1].formulas[0]),{chooseMin:'2',chooseMax:'2'});
-    await firstSs.fill('1');
+    assert.equal(await page.locator('#productList .np-formula').count(),d.products.reduce((n,p)=>n+p.formulas.length,0));
+    assert.equal(await page.locator('#productList .recipe-tbl .ss-badge').count(),0,'SUBSET is not a recipe row');
+    const maxPick=page.locator('.item-card').nth(1).locator('.np-formula input[type=number]').nth(1);
+    await maxPick.fill('2');
+    assert.equal((await snap(page)).products[1].formulas[0].chooseMax,'2');
+    await maxPick.fill('1');
     await page.locator('.np-step').nth(0).click();
     // The SUBSET step lists only new SUBSETs; existing ones that got a new powder stay on the powder step.
     await page.evaluate(()=>{const lib=RD.addWorkPowder({eng:'Kelp',code:'3012',desc:'ผงสาหร่ายทะเล'});const db=RD.workflowSubsets().find(s=>String(s.status||'Active').toLowerCase()!=='inactive');RD.attachWorkPowder(lib,'db:'+db.ssCode,{qty:'2',seq:'50'});});

@@ -318,31 +318,31 @@
         '<td><div class="d-flex flex-wrap gap-1">' + chCell(r, i) + '</div></td>' +
         '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delR(\'' + p.id + '\',' + i + ')"></i></td></tr>';
     }).join('');
-    // SUBSET rows sit in the same table, as "SS code · subset name · qty สูตร" rows in the Approval Form.
-    var subRows = (p.formulas || []).map(function (f, i) {
-      var s = resolveFormulaSub(f.subId), max = (s && s.count) ? s.count : 0;
-      var mn = f.chooseMin != null ? f.chooseMin : (f.choose || 1), mx = f.chooseMax != null ? f.chooseMax : (f.choose || 1);
-      var inForm = state.subsets.map(function (x) { return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc((x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset')) + '</option>'; }).join('');
-      var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
-      var opts = '<option value="">— เลือก SUBSET —</option>' + (inForm ? '<optgroup label="SUBSET ที่สร้างในงานนี้">' + inForm + '</optgroup>' : '') + (dbOpts ? '<optgroup label="SUBSET ในระบบ">' + dbOpts + '</optgroup>' : '');
-      var num = function (k, v, title) { return '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-secondary text-center" style="width:64px" title="' + title + '" value="' + esc(v) + '" oninput="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'' + k + '\',this.value)">'; };
-      // One quantity as in the sheet; a min/max pair only when they already differ.
-      var qty = String(mn) === String(mx) ? '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-secondary text-center" style="width:64px" title="จำนวนผงที่เลือกได้" value="' + esc(mx) + '" oninput="RD.setFormulaQty(\'' + p.id + '\',\'' + f.id + '\',this.value)">'
-        : '<div class="d-flex gap-1">' + num('chooseMin', mn, 'ขั้นต่ำ (min)') + num('chooseMax', mx, 'ขั้นสูง (max)') + '</div>';
-      return '<tr class="ss-row" style="background:#eef7f1">' +
-        '<td class="text-center fw-bold">' + (p.recipes.length + i + 1) + '</td>' +
-        '<td><span class="ss-badge mono">' + esc(s ? (s.ssCode || '— IT —') : 'SS') + '</span></td>' +
-        '<td><select class="form-select form-select-sm border-secondary" style="min-width:150px" aria-label="SUBSET" onchange="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'subId\',this.value)">' + opts + '</select></td>' +
-        '<td>' + qty + '</td><td class="text-center">สูตร</td>' +
-        '<td class="hint">' + (max ? 'เลือกได้จาก ' + max + ' ผงในชุด' : 'ทุกช่องทางของสินค้า') + '</td>' +
-        '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i></td></tr>';
-    }).join('');
     return '<div class="border border-dark rounded" style="overflow-x:auto" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
       '<thead><tr><th style="width:40px">NO</th><th>รหัส RM</th><th>Description</th><th>Quantity</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
-      '<tbody>' + rows + subRows + '</tbody></table></div>' +
-      '<div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-sm btn-dark fw-bold" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>' +
-      '<button class="btn btn-sm btn-success fw-bold" onclick="RD.addFormula(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>SUBSET (สูตรผง)</button>' +
-      '<span class="hint align-self-center">' + (state.subsets.length ? 'SUBSET ที่สร้างในขั้น 3 แสดงเป็นตัวเลือกแรก' : 'สินค้าไม่ใช้ผง ไม่ต้องเพิ่ม SUBSET') + '</span></div>';
+      '<tbody>' + rows + '</tbody></table></div>' +
+      '<button class="btn btn-sm btn-dark fw-bold mt-2" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>';
+  }
+  // SUBSET links sit in their own section: each needs how many powders the customer may pick.
+  function formulaSection(p) {
+    var rows = (p.formulas || []).map(function (f, i) {
+      var s = resolveFormulaSub(f.subId), max = (s && s.count) ? s.count : 0;
+      var mn = f.chooseMin != null ? f.chooseMin : (f.choose || 1), mx = f.chooseMax != null ? f.chooseMax : (f.choose || 1);
+      var inForm = state.subsets.filter(function (x) { return !x.existing; }).map(function (x) { return '<option value="' + x.id + '"' + (x.id === f.subId ? ' selected' : '') + '>' + esc((x.ssCode ? x.ssCode + ' · ' : '') + (x.name || 'Subset')) + '</option>'; }).join('');
+      var dbOpts = subsetMaster().filter(function (x) { return ('db:' + x.ssCode) === f.subId || (String(x.status || 'Active').toLowerCase() !== 'inactive' && npdSubsetShown(x.ssCode)); }).map(function (x) { var v = 'db:' + x.ssCode; return '<option value="' + v + '"' + (v === f.subId ? ' selected' : '') + '>' + esc(x.ssCode + ' · ' + (x.name || '')) + '</option>'; }).join('');
+      var opts = '<option value="">— เลือก SUBSET —</option>' + (inForm ? '<optgroup label="SUBSET ที่สร้างในงานนี้">' + inForm + '</optgroup>' : '') + (dbOpts ? '<optgroup label="SUBSET ในระบบ">' + dbOpts + '</optgroup>' : '');
+      var num = function (k, v, label) { return '<label class="small d-flex align-items-center gap-1">' + label + '<input type="number" min="1" max="' + (max || 99) + '" class="form-control form-control-sm border-dark text-center fw-bold" style="width:64px" value="' + esc(v) + '" oninput="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'' + k + '\',this.value)"></label>'; };
+      return '<div class="np-formula d-flex gap-2 align-items-center mb-2 flex-wrap">' +
+        '<span class="badge bg-dark">#' + (i + 1) + '</span><span class="ss-badge mono">' + esc(s ? (s.ssCode || '— IT —') : 'SS') + '</span>' +
+        '<select class="form-select form-select-sm border-dark" style="max-width:320px" aria-label="SUBSET" onchange="RD.setFormula(\'' + p.id + '\',\'' + f.id + '\',\'subId\',this.value)">' + opts + '</select>' +
+        '<span class="small fw-bold">เลือกผงได้</span>' + num('chooseMin', mn, 'ขั้นต่ำ') + num('chooseMax', mx, 'สูงสุด') +
+        '<span class="small">รส' + (max ? ' <span class="hint">(จาก ' + max + ' ผงในชุด)</span>' : '') + '</span>' +
+        '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" role="button" aria-label="ลบ SUBSET" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i></div>';
+    }).join('') || '<div class="hint mb-2">สินค้านี้ไม่ใช้ SUBSET — สินค้าที่ใช้ผงกด “เพิ่ม SUBSET” แล้วระบุจำนวนผงที่เลือกได้</div>';
+    return '<div class="fw-bold small text-uppercase mb-1 mt-3"><i class="fas fa-flask me-1 text-success"></i>SUBSET (สูตรผง) — เลือกผงได้กี่รส</div>' +
+      '<div class="p-2 rounded" style="background:#eef7f1;border:1px solid #bfe3cd">' + rows +
+      '<button class="btn btn-sm btn-success fw-bold mt-1" onclick="RD.addFormula(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>เพิ่ม SUBSET</button>' +
+      (state.subsets.some(function (x) { return !x.existing; }) ? ' <span class="hint">SUBSET ที่สร้างในขั้น 3 แสดงเป็นตัวเลือกแรก</span>' : '') + '</div>';
   }
   function priceBlock(p) {
     var sm = p.saleModes || []; p.prices = p.prices || {};
@@ -396,8 +396,9 @@
         '<div class="d-flex flex-wrap gap-2 mb-3">' + allPills + salePills + '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price (฿) — ต่อช่องทางที่ติ๊ก</div>' +
         priceBlock(p) +
-        '<div class="fw-bold small text-uppercase mb-1 mt-3"><i class="fas fa-list-ol me-1 text-success"></i>Recipe Details — วัตถุดิบและ SUBSET</div>' +
+        '<div class="fw-bold small text-uppercase mb-1 mt-3"><i class="fas fa-list-ol me-1 text-success"></i>Recipe Details — วัตถุดิบ</div>' +
         rmTable(p) +
+        formulaSection(p) +
       '</div></div>';
   }
   function renderProducts() {
@@ -615,7 +616,7 @@
   function recipeToFormula(p, i, code) {
     var ss = String(code).trim().toUpperCase(), job = state.subsets.find(function (s) { return String(s.ssCode).toUpperCase() === ss; });
     var subId = job ? job.id : (subsetMaster().some(function (x) { return String(x.ssCode).toUpperCase() === ss; }) ? 'db:' + ss : '');
-    if (!subId) { p.recipes[i].code = ''; renderProducts(); Swal.fire({ icon: 'warning', title: 'ไม่พบ SUBSET ' + ss, text: 'รหัส SS ใช้ผูกสูตรผง ไม่ใช่วัตถุดิบ — สร้าง SUBSET ในขั้น 3 หรือเลือกจากปุ่ม “SUBSET (สูตรผง)”', confirmButtonColor: '#237840' }); return; }
+    if (!subId) { p.recipes[i].code = ''; renderProducts(); Swal.fire({ icon: 'warning', title: 'ไม่พบ SUBSET ' + ss, text: 'รหัส SS ใช้ผูกสูตรผง ไม่ใช่วัตถุดิบ — สร้าง SUBSET ในขั้น 3 หรือเลือกจากปุ่ม “เพิ่ม SUBSET”', confirmButtonColor: '#237840' }); return; }
     var qty = parseInt(p.recipes[i].qty, 10) || 1;
     p.recipes.splice(i, 1); if (!p.recipes.length) p.recipes.push(mkRecipe({ channels: (p.saleModes || []).slice() }));
     if (!(p.formulas || []).some(function (f) { return f.subId === subId; })) { p.formulas = p.formulas || []; p.formulas.push({ id: uid('f'), subId: subId, chooseMin: qty, chooseMax: qty }); }
@@ -750,7 +751,6 @@
   /* formula handlers (per product) */
   // A new SUBSET row defaults to a subset created in this job that the product does not use yet.
   RD.addFormula = function (pid) { var p = P(pid); if (p) { var used = (p.formulas || []).map(function (f) { return f.subId; }), free = state.subsets.filter(function (x) { return used.indexOf(x.id) < 0; }); p.formulas.push({ id: uid('f'), subId: free[0] ? free[0].id : '', chooseMin: 1, chooseMax: 1 }); renderProducts(); } };
-  RD.setFormulaQty = function (pid, fid, v) { var p = P(pid), f = p && p.formulas.find(function (x) { return x.id === fid; }); if (f) { f.chooseMin = v; f.chooseMax = v; } };
   RD.delFormula = function (pid, fid) { var p = P(pid); if (p) { p.formulas = p.formulas.filter(function (f) { return f.id !== fid; }); renderProducts(); } };
   RD.setFormula = function (pid, fid, k, v) { var p = P(pid); if (p) { var f = p.formulas.find(function (x) { return x.id === fid; }); if (f) { f[k] = v; if (k === 'subId') renderProducts(); } } };
 
@@ -1388,7 +1388,7 @@
       if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
       (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
       (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});
-      (p.recipes||[]).forEach(function(r){if(/^SS\d+$/i.test(String(r.code||'').trim()))add(3,name+': '+r.code+' เป็นรหัส SUBSET — ลบแถววัตถุดิบนี้ แล้วผูกด้วยปุ่ม “SUBSET (สูตรผง)”');});
+      (p.recipes||[]).forEach(function(r){if(/^SS\d+$/i.test(String(r.code||'').trim()))add(3,name+': '+r.code+' เป็นรหัส SUBSET — ลบแถววัตถุดิบนี้ แล้วผูกด้วยปุ่ม “เพิ่ม SUBSET”');});
       (p.recipes||[]).forEach(function(r,ri){var v=['code','desc','qty','unit'].map(function(k){return String(r[k]==null?'':r[k]).trim();});if(v.slice(0,3).some(Boolean) && !v.every(Boolean))add(3,name+': Recipe RM แถว '+(ri+1)+' กรอกให้ครบหรือล้างทั้งแถว');});
     });
     return issues;
