@@ -258,7 +258,7 @@
     }).join('');
     return '<div class="border border-dark rounded" style="overflow-x:auto" tabindex="0" role="region" aria-label="รายการผงใน SUBSET">' +
       '<table class="table table-sm align-middle m-0 powder-tbl">' +
-      '<thead><tr><th style="width:58px">NO</th><th>CMPOS CODE <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>ENG <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>TH <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>Item Code</th><th>Description</th><th>Quantity</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>' +
+      '<thead><tr><th style="width:58px">NO</th><th>CMPOS CODE <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></th><th>ENG <span class="it-tag" style="background:#198754;color:#fff">Bill Kitchen</span></th><th>TH <span class="it-tag" style="background:#198754;color:#fff">Button POS</span></th><th>รหัส RM</th><th>Description</th><th>Quantity</th><th>Unit</th><th>Spoon Size</th><th>Price</th><th style="width:30px"></th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="11" class="text-center text-muted py-2">ยังไม่มีผงใน Subset นี้</td></tr>') + '</tbody></table></div>' +
       '<div class="d-flex gap-2 mt-2">' +
       '<button class="btn btn-sm btn-dark fw-bold" onclick="RD.addW(\'' + sub.id + '\')"><i class="fas fa-plus me-1"></i>กรอกผงใหม่</button>' +
@@ -338,7 +338,7 @@
         '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="RD.delFormula(\'' + p.id + '\',\'' + f.id + '\')"></i></td></tr>';
     }).join('');
     return '<div class="border border-dark rounded" style="overflow-x:auto" data-prod="' + p.id + '"><table class="table table-sm align-middle m-0 recipe-tbl">' +
-      '<thead><tr><th style="width:40px">NO</th><th>Item Code</th><th>Description</th><th>Quantity</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
+      '<thead><tr><th style="width:40px">NO</th><th>รหัส RM</th><th>Description</th><th>Quantity</th><th>Unit</th><th>ผูกกับช่องทาง (Delivery / Take-Away)</th><th style="width:30px"></th></tr></thead>' +
       '<tbody>' + rows + subRows + '</tbody></table></div>' +
       '<div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-sm btn-dark fw-bold" onclick="RD.addR(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>Raw Material</button>' +
       '<button class="btn btn-sm btn-success fw-bold" onclick="RD.addFormula(\'' + p.id + '\')"><i class="fas fa-plus me-1"></i>SUBSET (สูตรผง)</button>' +
@@ -611,7 +611,17 @@
   RD.toggleSplit = function (pid) { var p = P(pid); if (p) { p.splitOpen = !p.splitOpen; renderProducts(); } };
   RD.posCount = function (el, limit) { limit = limit || 20; var c = el.parentElement.querySelector('.char-count'); if (c) { var n = el.value.length, over = n > limit; c.textContent = n + '/' + limit + (over ? ' • เกิน ' + limit + ' ตัว' : ''); c.className = 'char-count text-end ' + (over ? 'text-danger fw-bold' : 'text-muted'); } };
   RD.setR = function (pid, i, k, v) { var p = P(pid); if (p && p.recipes[i]) { p.recipes[i][k] = v; if (k === 'unit') refreshUnitDatalist(); if (k === 'code') { var row = document.querySelectorAll('[data-prod="' + pid + '"] .rm-row')[i]; if (!String(v || '').trim()) { p.recipes[i].desc = ''; p.recipes[i].unit = ''; if (row) { var d0 = row.querySelector('.rm-desc'); if (d0) d0.value = ''; var u0 = row.querySelector('.rm-unit'); if (u0) u0.value = ''; } } else { var rm = rmFind(v); if (rm) { p.recipes[i].desc = rm.desc; if (rm.unit) p.recipes[i].unit = rm.unit; if (row) { var d = row.querySelector('.rm-desc'); if (d) d.value = rm.desc; var u = row.querySelector('.rm-unit'); if (u && rm.unit) u.value = rm.unit; } } } } } };
-  RD.rmPickR = function (pid, i, code) { var p = P(pid); if (!p || !p.recipes[i]) return; p.recipes[i].code = code; if (!String(code || '').trim()) { p.recipes[i].desc = ''; p.recipes[i].unit = ''; renderProducts(); return; } var rm = rmFind(code); if (rm) { p.recipes[i].desc = rm.desc; if (rm.unit) p.recipes[i].unit = rm.unit; } renderProducts(); };
+  // An SS code typed as a recipe item is a SUBSET link (as the "SSxxxx … สูตร" row in the Approval Form), not a raw material.
+  function recipeToFormula(p, i, code) {
+    var ss = String(code).trim().toUpperCase(), job = state.subsets.find(function (s) { return String(s.ssCode).toUpperCase() === ss; });
+    var subId = job ? job.id : (subsetMaster().some(function (x) { return String(x.ssCode).toUpperCase() === ss; }) ? 'db:' + ss : '');
+    if (!subId) { p.recipes[i].code = ''; renderProducts(); Swal.fire({ icon: 'warning', title: 'ไม่พบ SUBSET ' + ss, text: 'รหัส SS ใช้ผูกสูตรผง ไม่ใช่วัตถุดิบ — สร้าง SUBSET ในขั้น 3 หรือเลือกจากปุ่ม “SUBSET (สูตรผง)”', confirmButtonColor: '#237840' }); return; }
+    var qty = parseInt(p.recipes[i].qty, 10) || 1;
+    p.recipes.splice(i, 1); if (!p.recipes.length) p.recipes.push(mkRecipe({ channels: (p.saleModes || []).slice() }));
+    if (!(p.formulas || []).some(function (f) { return f.subId === subId; })) { p.formulas = p.formulas || []; p.formulas.push({ id: uid('f'), subId: subId, chooseMin: qty, chooseMax: qty }); }
+    renderProducts();
+  }
+  RD.rmPickR = function (pid, i, code) { var p = P(pid); if (!p || !p.recipes[i]) return; if (/^SS\d+$/i.test(String(code || '').trim())) return recipeToFormula(p, i, code); p.recipes[i].code = code; if (!String(code || '').trim()) { p.recipes[i].desc = ''; p.recipes[i].unit = ''; renderProducts(); return; } var rm = rmFind(code); if (rm) { p.recipes[i].desc = rm.desc; if (rm.unit) p.recipes[i].unit = rm.unit; } renderProducts(); };
   RD.addProduct = function () { var p = mkProduct({ recipes: [mkRecipe()], category:state.category, cateCode:state.cateCode }); if (String(state.cateCode || '').trim()) { p.code = npdReserveItem(state.cateCode); p._codeCat = state.cateCode; } state.products.push(p); renderProducts(); };
   RD.delProduct = function (pid) { var p0 = P(pid); if (p0 && p0.code) npdReturnItem(p0.code); state.products = state.products.filter(function (p) { return p.id !== pid; }); renderProducts(); };
   RD.addR = function (pid) { var p = P(pid); if (p) { p.recipes.push(mkRecipe({ channels: (p.saleModes || []).slice() })); renderProducts(); } };
@@ -1378,6 +1388,7 @@
       if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
       (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
       (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});
+      (p.recipes||[]).forEach(function(r){if(/^SS\d+$/i.test(String(r.code||'').trim()))add(3,name+': '+r.code+' เป็นรหัส SUBSET — ลบแถววัตถุดิบนี้ แล้วผูกด้วยปุ่ม “SUBSET (สูตรผง)”');});
       (p.recipes||[]).forEach(function(r,ri){var v=['code','desc','qty','unit'].map(function(k){return String(r[k]==null?'':r[k]).trim();});if(v.slice(0,3).some(Boolean) && !v.every(Boolean))add(3,name+': Recipe RM แถว '+(ri+1)+' กรอกให้ครบหรือล้างทั้งแถว');});
     });
     return issues;
