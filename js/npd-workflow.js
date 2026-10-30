@@ -32,7 +32,7 @@
     var intro=document.createElement('div');intro.id='npWorkflowIntro';intro.className='np-workflow-intro';root.insertBefore(intro,nav.nextSibling);
     // Step 1 starts with an explicit choice so only the relevant inputs are shown.
     var entry=document.createElement('section');entry.id='npEntryChoice';entry.dataset.npdStep='0';entry.className='bg-white border rounded-3 p-3 mb-3';
-    entry.innerHTML='<h4 class="h6 fw-bold">งานนี้จะเริ่มอย่างไร?</h4><p class="small mb-3">เลือกวิธีที่ใช้ ระบบจะแสดงเฉพาะส่วนที่ต้องกรอก เปลี่ยนวิธีภายหลังได้ ข้อมูลที่กรอกไว้ไม่หาย</p><div class="np-entry-options">'+
+    entry.innerHTML='<h4 class="h6 fw-bold">เลือกวิธีการทำงาน</h4><p class="small mb-3">เลือกวิธีที่ใช้ ระบบจะแสดงเฉพาะส่วนที่ต้องกรอก เปลี่ยนวิธีภายหลังได้ ข้อมูลที่กรอกไว้ไม่หาย</p><div class="np-entry-options">'+
       '<button type="button" class="np-entry" data-entry="excel" onclick="PC_NpdWorkflow.entry(\'excel\')"><b>นำเข้าไฟล์ Excel</b><small>มีไฟล์ Approval Form — ระบบเติมสินค้า ราคา และ SUBSET ให้</small></button>'+
       '<button type="button" class="np-entry" data-entry="manual" onclick="PC_NpdWorkflow.entry(\'manual\')"><b>กรอกเอง</b><small>ไม่มีไฟล์ — กรอกข้อมูลงานและสินค้าทีละรายการ</small></button></div>';
     root.insertBefore(entry,root.querySelector('.np-excel'));
@@ -75,11 +75,11 @@
     if(!el('npWorkflowNav').children.length) el('npWorkflowNav').innerHTML=titles.map(function(t,i){return '<button type="button" class="np-step" onclick="PC_NpdWorkflow.go('+i+')"><span>'+(i+1)+'. '+t+'</span><small></small></button>';}).join('');
     Array.from(el('npWorkflowNav').children).forEach(function(button,i){
       var pending=issues.filter(function(x){return x.step===i;}).length;
-      var status=i===0&&!mode?'เลือกวิธีเริ่มงาน':i===4?(issues.length?'รอตรวจ '+issues.length+' จุด':'พร้อมส่ง'):pending?'ต้องเติมข้อมูล':(i===1&&!d.workPowders.length?'ไม่มีผงใหม่':i===2&&!d.subsets.length?'ใช้ของเดิม / ข้ามได้':'พร้อมแล้ว');
+      var status=i===0&&!mode?'เลือกวิธีการทำงาน':i===4?(issues.length?'รอตรวจ '+issues.length+' จุด':'พร้อมส่ง'):pending?'ต้องเติมข้อมูล':(i===1&&!d.workPowders.length?'ไม่มีผงใหม่':i===2&&!d.subsets.length?'ใช้ของเดิม / ข้ามได้':'พร้อมแล้ว');
       button.classList.toggle('active',i===step);if(i===step)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');button.querySelector('small').textContent=status;
     });
     var help=['กรอกชื่อชุดสินค้า วันที่ และสาขา หรือนำเข้า Excel (Approval Form) เพื่อเติมข้อมูลให้อัตโนมัติ — นำเข้าเพิ่มภายหลังได้โดยไม่ล้างรายการเดิม','ถ้างานนี้มีผงรสชาติใหม่ ให้เพิ่มไว้ที่นี่ก่อน แล้วไปผูกเข้า SUBSET ในขั้นถัดไป · ไม่มีผงใหม่ กด “ไม่มีผงใหม่ ไปขั้น SUBSET”','สร้าง SUBSET ใหม่หรือเพิ่มผงเข้า SUBSET เดิม แล้วกรอกตัวย่อ (Subset Name 2) · สินค้าที่ไม่มีผง เช่น เครื่องดื่ม / ซอส ข้ามขั้นนี้ได้','เลือก Category ก่อน (ยังไม่มีให้กด “เพิ่มหมวด”) แล้วค่อยกรอกสินค้า ช่องทางขาย ราคา และเลือก SUBSET เฉพาะสินค้าที่ใช้ผง','ตรวจข้อมูลทั้งหมด จุดที่ยังไม่ครบกดที่ข้อความเพื่อกลับไปแก้ได้ เมื่อครบแล้วกด “ยืนยันส่งให้ IT”'];
-    if(step===0)help[0]=!mode?'เลือกก่อนว่าจะนำเข้าไฟล์ Excel หรือกรอกเอง':mode==='excel'?'เลือกไฟล์และชีต ตรวจตัวอย่าง แล้วกด “เติมข้อมูลลงฟอร์ม” จากนั้นตรวจชื่อชุดสินค้า วันที่ และสาขาด้านล่าง — นำเข้าหลายชีตได้ ไม่ล้างรายการเดิม':'กรอกชื่อชุดสินค้า วันที่ และสาขา แล้วกด “ถัดไป”';
+    if(step===0)help[0]=!mode?'เลือกวิธีการทำงานด้านล่างก่อน: นำเข้าไฟล์ Excel หรือกรอกเอง':mode==='excel'?'เลือกไฟล์และชีต ตรวจตัวอย่าง แล้วกด “เติมข้อมูลลงฟอร์ม” จากนั้นตรวจชื่อชุดสินค้า วันที่ และสาขาด้านล่าง — นำเข้าหลายชีตได้ ไม่ล้างรายการเดิม':'กรอกชื่อชุดสินค้า วันที่ และสาขา แล้วกด “ถัดไป”';
     el('npWorkflowIntro').innerHTML='<h4 tabindex="-1" class="h5">'+titles[step]+'</h4><p>'+help[step]+'</p>';
     el('npStepBack').disabled=step===0;el('npStepNext').hidden=step===4;el('npStepSubmit').hidden=step!==4;el('npStepSubmit').disabled=!!issues.length;el('npStepLabel').textContent='ขั้น '+(step+1)+' จาก 5';
     el('npWorkLibrary').innerHTML=d.workPowders.length?'<ul>'+d.workPowders.map(function(p){return '<li>'+esc(p.eng)+' · RM '+esc(p.code||'ยังไม่ระบุ')+' <button class="btn btn-sm btn-link text-danger" onclick="PC_NpdWorkflow.removePowder(\''+p.id+'\')">นำออกจากรายการเตรียมผง</button></li>';}).join('')+'</ul>':'<p class="text-secondary">ยังไม่ได้เตรียมผงใหม่</p>';
