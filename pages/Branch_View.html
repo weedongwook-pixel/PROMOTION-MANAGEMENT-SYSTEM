@@ -284,6 +284,8 @@
   var BV_CHANNELS_SEED = ['Take Away','Grab','LINE MAN','ShopeeFood','foodpanda','Robinhood','Gokoo'];
   // ช่องทางที่ Active จาก Sale mode master (pc_salemode_master) — ปิดช่องไหน หน้าสาขาไม่โชว์ช่องนั้น
   function bvChannels(){
+    // Sale mode settings via the shared helper; this page keeps its own spelling for known channels.
+    if(window.PC_SaleModes){ var ln=PC_SaleModes.names('view',{spell:{'Take-Away':'Take Away','Lineman':'LINE MAN'}}); if(ln.length) return ln; }
     var m=null; try{ m=JSON.parse(localStorage.getItem('pc_salemode_master')||'null'); }catch(e){}
     if(!Array.isArray(m)||!m.length) return BV_CHANNELS_SEED.slice();
     var out=[]; m.forEach(function(x){ if(!x||x.active===0||!x.name) return; var lo=String(x.name).trim().toLowerCase(); if(lo==='delivery'||lo==='all delivery'||lo==='all channel'||lo==='online') return; out.push(String(x.name).trim()); });
@@ -295,7 +297,7 @@
     var s=String(saleModeStr==null?'':saleModeStr).toLowerCase().trim();
     if(!s) return true;
     if(s.indexOf('all channel')>-1 || s==='all' || s==='online') return true;
-    var deliv = bvNormCh(ch)!=='takeaway';
+    var deliv = (window.PC_SaleModes && PC_SaleModes.typeOf(ch)) ? PC_SaleModes.isDelivery(ch) : bvNormCh(ch)!=='takeaway';
     if(s.indexOf('all delivery')>-1) return deliv;
     var sn=bvNormCh(s), keys=BV_CH_ALIAS[bvNormCh(ch)]||[bvNormCh(ch)];
     if(keys.some(function(k){ return sn.indexOf(k)>-1; })) return true;

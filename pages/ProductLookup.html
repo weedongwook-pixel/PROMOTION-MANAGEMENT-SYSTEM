@@ -481,6 +481,13 @@ window.initProductLookup = function () {
       (rows.length>state.limit?'<div class="pl-more"><button onclick="plMore()"><i class="fas fa-chevron-down me-1"></i>ดูเพิ่ม ('+(rows.length-state.limit)+')</button></div>':'');
   }
 
+  /* Price field per sale mode: known channels use their fixed field; a channel added in settings gets
+   * "price_<key>" filled from the item master prices{} by matching name/alias. */
+  var SM_FIELD={'Take Away':'priceTA','Grab':'priceGrab','Lineman':'priceLineman','ShopeeFood':'priceShopee','Robinhood':'priceRobinhood','foodpanda':'pricePanda','Gokoo':'priceGokoo'};
+  function smField(name){ var S=window.PC_SaleModes; var hit=Object.keys(SM_FIELD).filter(function(n){ return S?S.same(n,name):n===name; })[0];
+    var k=hit?SM_FIELD[hit]:'price_'+(S?S.key(name):String(name).toLowerCase());
+    if(!CHANS.some(function(c){return c.k===k;})) CHANS.push({k:k,label:String(name),icon:'fa-motorcycle'});
+    return k; }
   function priceLabelOf(m){ var c=CHANS.filter(function(x){return x.k===m;})[0]; return c?c.label:m; }
   // a few blue shades to vary the text buttons (like the real POS)
   var TXT_BG=['linear-gradient(180deg,#4a90d6,#3f86c6)','linear-gradient(180deg,#56c0f0,#33a8e8)','linear-gradient(180deg,#5a9ad6,#4a86c8)','linear-gradient(180deg,#3f86c6,#2f6dba)'];
@@ -625,9 +632,11 @@ window.initProductLookup = function () {
 
   // Sales Mode popup (matches real POS) — เฉพาะช่องทางที่ Active (pc_salemode_master)
   function activeSaleModes(){
-    var MAP={'Take Away':'priceTA','Grab':'priceGrab','Lineman':'priceLineman','ShopeeFood':'priceShopee','Robinhood':'priceRobinhood','foodpanda':'pricePanda','Gokoo':'priceGokoo'};
+    var MAP=SM_FIELD;
     var ICO={priceTA:'fa-bag-shopping',priceGrab:'fa-motorcycle',priceLineman:'fa-hashtag',priceRobinhood:'fa-leaf',pricePanda:'fa-drumstick-bite',priceShopee:'fa-bag-shopping',priceGokoo:'fa-bolt'};
     var COL={priceTA:'#1a1d20',priceGrab:'#00b14f',priceLineman:'#06c755',priceRobinhood:'#e2497a',pricePanda:'#d70f64',priceShopee:'#ee4d2d',priceGokoo:'#f5a623'};
+    // Sale mode settings via the shared helper: active channels incl. ones added later (own price field).
+    if(window.PC_SaleModes) return PC_SaleModes.list('view').map(function(m){ var k=smField(m.name); return {k:k,ta:m.type==='ta',label:(m.type==='ta'?m.name:(m.name+'-Delivery')),icon:ICO[k]||'fa-motorcycle',col:COL[k]||'#5b6470'}; });
     var modes=ls('pc_salemode_master',null);
     if(!Array.isArray(modes)||!modes.length) modes=[{name:'Take Away',active:1},{name:'Grab',active:1},{name:'Lineman',active:1},{name:'ShopeeFood',active:1},{name:'Robinhood',active:1},{name:'foodpanda',active:1},{name:'Gokoo',active:1}];
     var out=[];
@@ -636,7 +645,7 @@ window.initProductLookup = function () {
   }
   window.plOpenSmode=function(){
     var ms=activeSaleModes();
-    var ta=ms.filter(function(o){return o.k==='priceTA';}), dlv=ms.filter(function(o){return o.k!=='priceTA';});
+    var ta=ms.filter(function(o){return o.ta||o.k==='priceTA';}), dlv=ms.filter(function(o){return !(o.ta||o.k==='priceTA');});
     function optHTML(o){ return '<div class="opt'+(state.posMode===o.k?' on':'')+'" onclick="plPickMode(\''+o.k+'\')"><i class="fas '+o.icon+'" style="color:'+o.col+'"></i>'+esc(o.label)+(state.posMode===o.k?'<i class="fas fa-check" style="margin-left:auto;color:#27a35a"></i>':'')+'</div>'; }
     document.getElementById('plSmodeBox').innerHTML=
       '<div class="sh"><span><i class="fas fa-shuffle me-2"></i>Sales Mode</span><span class="x" onclick="plCloseSmode()"><i class="fas fa-xmark"></i></span></div>'+
@@ -706,6 +715,8 @@ window.initProductLookup = function () {
     var CHMAP={priceTA:'Take Away',priceGrab:'Grab',priceLineman:'LINE MAN',pricePanda:'foodpanda',priceShopee:'ShopeeFood',priceRobinhood:'Robinhood',priceGokoo:'Gokoo'};
     all.forEach(function(it){ if(!it) return; var pr=it.prices||{};
       Object.keys(CHMAP).forEach(function(fk){ if(it[fk]===undefined||it[fk]===''||it[fk]==null){ var pv=pr[CHMAP[fk]]; if(pv!==undefined&&pv!=='') it[fk]=pv; } });
+      if(window.PC_SaleModes) PC_SaleModes.list('view').forEach(function(m){ var fk=smField(m.name); if(it[fk]!==undefined&&it[fk]!==''&&it[fk]!=null) return;
+        var pk=Object.keys(pr).filter(function(k){ return PC_SaleModes.same(k,m.name); })[0]; if(pk&&pr[pk]!=='') it[fk]=pr[pk]; });
     });
     STATUS_ALL = {}; all.forEach(function(it){ if(it) STATUS_ALL[it.itemCode]=String(it.status||''); });
     ITEMS = all.filter(statusActive);

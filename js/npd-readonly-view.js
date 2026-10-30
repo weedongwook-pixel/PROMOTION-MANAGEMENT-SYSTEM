@@ -6,8 +6,14 @@
  * โหลดใน shell (global) — ทุกหน้าเรียกได้
  * ========================================================================== */
 (function () {
+  // Fallbacks only; channels come from Form Display Settings via js/sale-modes.js when loaded.
   var DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
   var CH = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  function spell(sm) { var sp = {}; CH.forEach(function (c) { sp[c] = c; }); (sm || []).forEach(function (c) { sp[c] = c; }); return sp; }
+  // Active channels plus the item's own (even if switched off since), in the stored spelling.
+  function viewChannels(sm) { return window.PC_SaleModes ? PC_SaleModes.names('view', { include: sm || [], spell: spell(sm) }) : CH; }
+  function isDlvCh(c) { return window.PC_SaleModes ? PC_SaleModes.isDelivery(c) : DLV.indexOf(c) !== -1; }
+  function dlvChannels() { return window.PC_SaleModes ? PC_SaleModes.deliveries('view', { spell: spell() }) : DLV.slice(); }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function normCh(c) { var k = String(c || '').toLowerCase().trim().replace(/[\s-]/g, ''); var M = { takeaway: 'Take-Away', grab: 'Grab', lineman: 'Lineman', shopeefood: 'ShopeeFood', robinhood: 'Robinhood', gokoo: 'Gokoo' }; return M[k] || c; }
   function baht(x) { try { return window.PCfmt ? PCfmt.baht(x) : ('฿' + x); } catch (e) { return '฿' + x; } }
@@ -97,8 +103,8 @@
 
   function itemCard(it, idx) {
     var sm = (it.saleModes || it.channels || []).map(normCh);
-    var pills = CH.map(function (ch) {
-      var on = sm.indexOf(ch) !== -1, dlv = DLV.indexOf(ch) !== -1;
+    var pills = viewChannels(sm).map(function (ch) {
+      var on = sm.indexOf(ch) !== -1, dlv = isDlvCh(ch);
       return '<span class="pill' + (on ? ' on' : '') + '">' + esc(ch) + (dlv ? ' <span class="d">DLV</span>' : '') + '</span>';
     }).join('');
     // prices
@@ -110,7 +116,7 @@
       pr += '<div class="price-box"><label>Selling Price · Delivery <span class="tag">แอดมินแก้ได้</span></label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" min="0" class="form-control form-control-sm border-dark text-center fw-bold" value="' + esc(it.priceDelivery || '') + '" oninput="PC_NpdView.setDlv(' + idx + ',this.value)"></div></div>';
     } else {
       if (it.priceDelivery) pr += '<div class="price-box"><label>Selling Price · Delivery</label><div class="ro">' + baht(it.priceDelivery) + '</div></div>';
-      DLV.forEach(function (c) { if (it.prices && it.prices[c] != null && it.prices[c] !== '') pr += '<div class="price-box"><label>' + esc(c) + ' DLV</label><div class="ro">' + baht(it.prices[c]) + '</div></div>'; });
+      Object.keys(it.prices || {}).filter(isDlvCh).forEach(function (c) { if (it.prices && it.prices[c] != null && it.prices[c] !== '') pr += '<div class="price-box"><label>' + esc(c) + ' DLV</label><div class="ro">' + baht(it.prices[c]) + '</div></div>'; });
     }
 
     // raw material
@@ -190,8 +196,8 @@
       var keep = [];
       if (hasTA) keep.push('Take-Away');
       if (hasDlv) {
-        var dl = sm.filter(function (x) { return DLV.indexOf(x) !== -1; });
-        keep = keep.concat(dl.length ? dl : DLV.slice());
+        var dl = sm.filter(isDlvCh);
+        keep = keep.concat(dl.length ? dl : dlvChannels());
       }
       c.saleModes = keep;
       var px = {};

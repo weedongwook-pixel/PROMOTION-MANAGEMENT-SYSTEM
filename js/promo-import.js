@@ -64,6 +64,7 @@
   function setSaleMode(card, modeStr) {
     var wanted = S(modeStr).split(/[,/|]/).map(function (x) { return normMode(x).toUpperCase(); }).filter(Boolean);
     if (!wanted.length) return;
+    if (window.PC_SaleModes) { window.PC_SaleModes.restoreChecks(card, S(modeStr).split(/[,/|]/).map(normMode)); return; }
     card.querySelectorAll('.mode-check, .mode-check-all, .mode-check-delivery').forEach(function (cb) {
       var v = S(cb.value).toUpperCase();
       cb.checked = wanted.indexOf(v) !== -1;

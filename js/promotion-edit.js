@@ -100,7 +100,8 @@
     if(window.createBranchTag&&form.fields.stores)window.createBranchTag(card.id,escapeHTML(form.fields.stores),false,form.fields.stores);
     put(card,'.camp-store',form.fields.stores);
     const modes=String(form.fields.saleMode||'').split(',').map(s=>s.trim().toLowerCase().replace(/[\s-]/g,''));
-    all(card,'.mode-check,.mode-check-all,.mode-check-delivery').forEach(el=>{el.checked=modes.includes(el.value.toLowerCase().replace(/[\s-]/g,''));if(el.checked){el.disabled=false;el.closest('.form-check')?.classList.remove('d-none');}});
+    if(window.PC_SaleModes)PC_SaleModes.restoreChecks(card,String(form.fields.saleMode||'').split(','));
+    else all(card,'.mode-check,.mode-check-all,.mode-check-delivery').forEach(el=>{el.checked=modes.includes(el.value.toLowerCase().replace(/[\s-]/g,''));if(el.checked){el.disabled=false;el.closest('.form-check')?.classList.remove('d-none');}});
     const bc=document.getElementById('btn-container-'+card.id);bc.innerHTML='';
     form.buttons.forEach(button=>{
       window.addButton(card.id);const block=bc.lastElementChild;block.dataset.editId=button.id;

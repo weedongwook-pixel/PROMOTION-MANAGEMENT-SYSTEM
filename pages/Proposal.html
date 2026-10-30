@@ -790,7 +790,32 @@
     window.updateSelectedCounter();
   };
 
-  window.pcApplyModeFilter = function(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} };
+  /* Sale-mode checkboxes follow Form Display Settings through js/sale-modes.js: every channel in
+     settings gets a checkbox (same markup as the static ones), channels switched off or hidden for this
+     form are hidden, and a box that is checked on a record always stays visible so saved data is kept. */
+  window.pcIsDeliveryMode = function(v){ var S=window.PC_SaleModes; if(S) return S.isDelivery(v); return /^(GRAB|LINEMAN|LINE MAN|SHOPEEFOOD|ROBINHOOD|GOKOO|FOODPANDA|PANDA|ALL DELIVERY)$/i.test(String(v||'').trim()); };
+  window.pcIsStoreMode = function(v){ var S=window.PC_SaleModes; if(S) return S.isTakeAway(v); return String(v||'').trim()==='Take Away'; };
+  window.pcApplyModeFilter = function(scope, formKey){ try{
+    scope=scope||document; var S=window.PC_SaleModes;
+    var boxes=Array.prototype.slice.call(scope.querySelectorAll('.mode-check'));
+    if(!S||!boxes.length){ pcLegacyModeFilter(scope, formKey); return; }
+    S.master().forEach(function(m){
+      if(boxes.some(function(cb){ return S.same(cb.value, m.name); })) return;
+      var dlv=m.type==='dlv', sameType=boxes.filter(function(cb){ return S.isDelivery(cb.value)===dlv; });
+      var tpl=sameType[sameType.length-1]||boxes[boxes.length-1], holder=tpl.closest('.form-check')||tpl.parentElement;
+      var clone=holder.cloneNode(true), cb=clone.querySelector('.mode-check');
+      cb.value=m.name; cb.checked=false; cb.disabled=false; cb.setAttribute('data-mode-added','1');
+      var lb=clone.querySelector('label'); if(lb) lb.textContent=m.name;
+      holder.parentNode.insertBefore(clone, holder.nextSibling); boxes.splice(boxes.indexOf(tpl)+1, 0, cb);
+    });
+    var listed=S.list(formKey), master=S.master();
+    boxes.forEach(function(cb){
+      var inSettings=master.some(function(m){ return S.same(m.name, cb.value); });
+      var show=cb.checked || !inSettings || listed.some(function(m){ return S.same(m.name, cb.value); });
+      var h=cb.closest('.form-check')||cb.parentElement; if(h){ h.classList.toggle('d-none', !show); h.style.display=''; }
+    });
+  }catch(e){} };
+  function pcLegacyModeFilter(scope, formKey){ try{ var nm=function(s){return String(s||'').toUpperCase().replace(/\s+/g,'');}; var M={}; (JSON.parse(localStorage.getItem('pc_salemode_master')||'[]')||[]).forEach(function(m){ if(m&&m.name) M[nm(m.name)]={a:m.active!==0,n:m.name}; }); var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; (scope||document).querySelectorAll('.mode-check').forEach(function(cb){ var v=cb.value; if(/^ALL\s/i.test(v)) return; var mm=M[nm(v)]; var show=true; if(mm){ if(!mm.a) show=false; var o=mf[mm.n]; if(o && o[formKey]===false) show=false; } var h=cb.closest('.form-check')||cb.parentElement; if(h) h.style.display=show?'':'none'; }); }catch(e){} }
   window.addCampaign = function() {
     window.campaignCount++;
     const campId = 'camp-' + Date.now();
@@ -1035,10 +1060,9 @@
         row.querySelector('.row-catecode').value = item.cateCode;
         row.querySelector('.row-catname').value = item.category;
         
-        const deliveryModes = ["GRAB", "LINEMAN", "SHOPEEFOOD", "ROBINHOOD", "GOKOO", "ALL DELIVERY"];
         let isDelivery = false;
         campCard.querySelectorAll('.mode-check:checked, .mode-check-all:checked').forEach(cb => {
-          if (deliveryModes.includes(cb.value.toUpperCase())) isDelivery = true;
+          if ((window.pcIsDeliveryMode ? window.pcIsDeliveryMode(cb.value) : ["GRAB","LINEMAN","LINE MAN","SHOPEEFOOD","ROBINHOOD","GOKOO","ALL DELIVERY"].includes(String(cb.value).toUpperCase()))) isDelivery = true;
         });
         row.querySelector('.row-op').value = isDelivery ? (item.priceDLV || 0) : (item.priceTA || 0); 
       } else {
@@ -1061,12 +1085,13 @@
       }
     } else {
       if (el.checked) {
-        if (el.value === "Take Away") {
-          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (cb !== el) cb.checked = false; });
+        // Store and delivery channels are never mixed; the type comes from Sale mode settings.
+        if (window.pcIsStoreMode(el.value)) {
+          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (cb !== el && !window.pcIsStoreMode(cb.value)) cb.checked = false; });
           campaignCard.querySelectorAll('.mode-check-all').forEach(cb => cb.checked = false);
         } else {
           campaignCard.querySelectorAll('.mode-check-all').forEach(cb => cb.checked = false);
-          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (cb.value === "Take Away") cb.checked = false; });
+          campaignCard.querySelectorAll('.mode-check').forEach(cb => { if (window.pcIsStoreMode(cb.value)) cb.checked = false; });
         }
       }
     }
@@ -1078,10 +1103,9 @@
     const campCard = document.getElementById(campId);
     if (!btnBlock || !campCard) return;
     
-    const deliveryModes = ["GRAB", "LINEMAN", "SHOPEEFOOD", "ROBINHOOD", "GOKOO", "ALL DELIVERY"];
     let isDelivery = false;
     campCard.querySelectorAll('.mode-check:checked, .mode-check-all:checked').forEach(cb => {
-      if (deliveryModes.includes(cb.value.toUpperCase())) isDelivery = true;
+      if ((window.pcIsDeliveryMode ? window.pcIsDeliveryMode(cb.value) : ["GRAB","LINEMAN","LINE MAN","SHOPEEFOOD","ROBINHOOD","GOKOO","ALL DELIVERY"].includes(String(cb.value).toUpperCase()))) isDelivery = true;
     });
     btnBlock.querySelectorAll('.item-body tr').forEach(row => {
       const itemName = row.querySelector('.row-search-input').value;

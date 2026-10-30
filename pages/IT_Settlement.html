@@ -488,13 +488,18 @@
       '<table class="table table-sm mb-1" style="font-size:.76rem"><thead><tr class="table-light"><th style="width:30px">No</th><th>CMPOS</th><th>ENG Name</th><th>TH Name</th><th>Code RM</th><th>Description</th><th class="text-center">Qty</th><th class="text-center">Unit</th><th>Spoon</th><th class="text-center">Price</th><th style="width:28px"></th></tr></thead><tbody>' + pw + '</tbody></table>' +
       '<button class="btn btn-sm btn-dark fw-bold" onclick="window.itAddPow(' + si + ')"><i class="fas fa-plus me-1"></i>เพิ่มผง</button></div>';
   }
-  var IT_CHANNELS = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
-  var IT_DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  /* Sale modes come from Form Display Settings (js/sale-modes.js); the item's own channels always
+     stay listed and keep their stored spelling, even if a channel was switched off since. */
+  var IT_DEF_CHANNELS = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  var IT_DEF_DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+  function itChannels(sm) { if (!window.PC_SaleModes) return IT_DEF_CHANNELS; var sp = {}; IT_DEF_CHANNELS.forEach(function (c) { sp[c] = c; }); (sm || []).forEach(function (c) { sp[c] = c; }); return PC_SaleModes.names('view', { include: sm || [], spell: sp }); }
+  function itIsDlv(c) { return window.PC_SaleModes ? PC_SaleModes.isDelivery(c) : IT_DEF_DLV.indexOf(c) !== -1; }
+  function itIsTA(c) { return window.PC_SaleModes ? PC_SaleModes.isTakeAway(c) : c === 'Take-Away'; }
   function itEditItem(it, i) {
     it.saleModes = it.saleModes || []; it.prices = it.prices || {}; it.formulas = it.formulas || [];
     var sm = it.saleModes;
-    var salePills = IT_CHANNELS.map(function (ch) {
-      var on = sm.indexOf(ch) !== -1, dlv = IT_DLV.indexOf(ch) !== -1;
+    var salePills = itChannels(sm).map(function (ch) {
+      var on = sm.indexOf(ch) !== -1, dlv = itIsDlv(ch);
       return '<label class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 me-1 mb-1" style="cursor:pointer;border:1px solid ' + (on ? '#198754' : '#ccc') + ';background:' + (on ? '#e8f6ee' : '#fff') + ';font-size:.78rem"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="window.itSaleMode(' + i + ',\'' + ch + '\')">' + ch + (dlv ? ' <span class="text-muted">DLV</span>' : '') + '</label>';
     }).join('');
     var rec = (it.recipes || []).map(function (r, ri) {
@@ -513,8 +518,8 @@
     }).join('');
     // price block
     var priceInputs = '';
-    if (sm.indexOf('Take-Away') !== -1) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Take Away</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceTakeaway || '') + '" oninput="window.itItem(' + i + ',\'priceTakeaway\',this.value)"></div></div>';
-    var dlvCh = sm.filter(function (c) { return IT_DLV.indexOf(c) !== -1; });
+    if (sm.some(itIsTA)) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Take Away</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceTakeaway || '') + '" oninput="window.itItem(' + i + ',\'priceTakeaway\',this.value)"></div></div>';
+    var dlvCh = sm.filter(itIsDlv);
     if (dlvCh.length) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Delivery</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceDelivery || '') + '" oninput="window.itItem(' + i + ',\'priceDelivery\',this.value)"></div></div>';
     var splitInputs = dlvCh.map(function (ch) {
       var val = (it.prices[ch] != null && it.prices[ch] !== '') ? it.prices[ch] : '';

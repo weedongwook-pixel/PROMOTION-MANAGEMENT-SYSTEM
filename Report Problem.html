@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/sale-modes.js"></script>
 <style>
   :root{ --pc-black:#1a1d20; --pc-yellow:#2e934a; --pc-green:#2e934a; --bg:#eef1f4; }
   *{ box-sizing:border-box; }
@@ -188,7 +189,9 @@ const CORRECT_FIELDS = {
 };
 function hasDetailType(set,type){ return ISSUE_TYPES.some(it=>it.detail===type && set.has(it.k)); }
 const FLAVOR_QUICK=['ชีส','บาร์บีคิว','สาหร่าย','ครีมชีส','ต้มยำ','ชีสเข้มข้น'];
-const PLATFORMS=(function(){ try{ const s=JSON.parse(localStorage.getItem('pc_master_lists')); if(s&&Array.isArray(s.platforms)&&s.platforms.length) return s.platforms; }catch(e){} return ['Grab','LINE MAN','ShopeeFood','Robinhood','foodpanda']; })();
+// Delivery platforms follow Sale mode settings (active delivery channels); the saved list is only a fallback.
+const PLATFORMS=(function(){ try{ if(window.PC_SaleModes){ const d=PC_SaleModes.deliveries('view',{spell:{'Lineman':'LINE MAN'}}); if(d.length) return d; } }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem('pc_master_lists')); if(s&&Array.isArray(s.platforms)&&s.platforms.length) return s.platforms; }catch(e){} return ['Grab','LINE MAN','ShopeeFood','Robinhood','foodpanda']; })();
 /* Subset ⇒ ผง/รสชาติ (item code) — จริงมาจาก product_formula / subset_flavor */
 const SUBSETS={
   'SS-FF01':{ code:'SS-FF01', name:'ผงปรุงรสเฟรนช์ฟรายส์', flavors:[
@@ -397,7 +400,8 @@ function setDetail(idx,key,val){ (detailByBtn[idx]||(detailByBtn[idx]={}))[key]=
 function togglePlatform(idx,p,el){ const d=detailByBtn[idx]||(detailByBtn[idx]={}); d.platforms=d.platforms||[]; d.platformIssues=d.platformIssues||[]; const i=d.platforms.indexOf(p); if(i>=0){ d.platforms.splice(i,1); const j=d.platformIssues.findIndex(x=>x.platform===p); if(j>=0) d.platformIssues.splice(j,1); } else { d.platforms.push(p); if(!d.platformIssues.find(x=>x.platform===p)) d.platformIssues.push({platform:p,appPrice:'',correctPrice:''}); } renderIssues(); }
 function platformsForSaleMode(sm){ sm=String(sm||''); const ALL=PLATFORMS.slice();
   if(/all channel|all delivery|delivery|ทุกช่อง|เดลิเวอรี/i.test(sm)) return ALL;
-  const found=ALL.filter(p=> sm.toLowerCase().includes(p.toLowerCase()) || (p==='LINE MAN' && /line ?man/i.test(sm)) || (p==='foodpanda' && /panda/i.test(sm)));
+  const S=window.PC_SaleModes, parts=sm.split(/[,/|+]+/).map(x=>x.trim()).filter(Boolean);
+  const found=ALL.filter(p=> sm.toLowerCase().includes(p.toLowerCase()) || (p==='LINE MAN' && /line ?man/i.test(sm)) || (p==='foodpanda' && /panda/i.test(sm)) || (S && parts.some(x=>S.same(x,p))));
   if(found.length) return found;
   if(/take ?away|หน้าร้าน/i.test(sm)) return [];
   return ALL;

@@ -348,13 +348,15 @@
   function getChannels(){
     var m=lsj('pc_salemode_master');
     var list=Array.isArray(m)?m.filter(function(x){return x&&x.active!==0&&x.name;}).map(function(x){return x.name;}):[];
+    // Sale mode settings via the shared helper (active channels, this page's spelling for known ones).
+    if(window.PC_SaleModes) list=PC_SaleModes.names('view',{spell:{'Take-Away':'Take Away','Lineman':'LINE MAN'}});
     if(!list.length) list=POS_MODE_SEED.slice();
     // เอา "Delivery" รวมออก — POS จริงเลือกเป็นช่องทางย่อย
     list=list.filter(function(n){ return String(n).toLowerCase()!=='delivery'; });
     if(list.map(function(n){return n.toLowerCase();}).indexOf('take away')<0) list.unshift('Take Away');
     return list;
   }
-  function isTakeAway(m){ var s=String(m||'').toLowerCase().replace(/[^a-z]/g,''); return s==='takeaway'||s==='ta'||s==='dinein'; }
+  function isTakeAway(m){ if(window.PC_SaleModes && PC_SaleModes.typeOf(m)) return PC_SaleModes.isTakeAway(m); var s=String(m||'').toLowerCase().replace(/[^a-z]/g,''); return s==='takeaway'||s==='ta'||s==='dinein'; }
   function normCh(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
   var CH_ALIAS={ takeaway:['takeaway','ta','dinein'], grab:['grab'], lineman:['lineman'], shopeefood:['shopeefood','shopee'], foodpanda:['foodpanda','panda'], robinhood:['robinhood'], gokoo:['gokoo'], delivery:['delivery'] };
   // ปุ่ม/สินค้านี้เล่นช่องทาง mode หรือไม่ (saleModeStr = ช่องทางที่ปุ่มรองรับ)

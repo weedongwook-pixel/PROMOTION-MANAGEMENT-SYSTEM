@@ -26,10 +26,21 @@
   function npdConvertUnitsLang() { var lang = npdLang(); function cv(w) { if (!w) return; if (w.unit) w.unit = convUnit(w.unit, lang); if (w.spoon) w.spoon = convSpoon(w.spoon, lang); } (state.subsets || []).forEach(function (s) { (s.powders || []).forEach(cv); }); (state.products || []).forEach(function (p) { (p.recipes || []).forEach(function (r) { if (r.unit) r.unit = convUnit(r.unit, lang); }); }); if (state.flavor && state.flavor.powders) state.flavor.powders.forEach(cv); }
   var NPD_CH_DEF = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
   /* Sale Mode = ดึงจาก master (pc_salemode_master) — เพิ่ม/เปิด-ปิดช่องทางได้ที่หน้า CatModeMaster ไม่ต้องแก้โค้ด */
-  function npdChannels(){ try{ var m=JSON.parse(localStorage.getItem('pc_salemode_master')||'null'); if(Array.isArray(m)){ var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; var a=m.filter(function(x){return x&&x.active!==0&&x.active!==false;}).map(function(x){return String(x.name||'').trim();}).filter(function(n){ var o=mf[n]; return n && !npdIsAggr(n) && !(o&&o.npd===false); }); if(a.length){ if(!a.some(npdIsTA)) a.unshift('Take-Away'); return a; } } }catch(e){} return NPD_CH_DEF; }
+  function npdChannelsLegacy(){ try{ var m=JSON.parse(localStorage.getItem('pc_salemode_master')||'null'); if(Array.isArray(m)){ var mf=JSON.parse(localStorage.getItem('pc_mode_forms')||'{}')||{}; var a=m.filter(function(x){return x&&x.active!==0&&x.active!==false;}).map(function(x){return String(x.name||'').trim();}).filter(function(n){ var o=mf[n]; return n && !npdIsAggr(n) && !(o&&o.npd===false); }); if(a.length){ if(!a.some(npdIsTA)) a.unshift('Take-Away'); return a; } } }catch(e){} return NPD_CH_DEF; }
   /* ตัดชื่อรวม ๆ ออก — Delivery/ALL DELIVERY/ALL CHANNEL/Online ไม่ใช่ช่องทางจริง ราคาแต่ละเจ้าไม่เท่ากัน ต้องกรอกแยกราย Grab/Lineman/… */
-  function npdIsAggr(c){ var lo=String(c||'').trim().toLowerCase(); return lo==='delivery'||lo==='all delivery'||lo==='all channel'||lo==='online'; }
-  function npdIsTA(c){ return String(c||'').replace(/[\s-]/g,'').toLowerCase()==='takeaway'; }
+  function npdIsAggr(c){ if(window.PC_SaleModes) return PC_SaleModes.isAggregate(c); var lo=String(c||'').trim().toLowerCase(); return lo==='delivery'||lo==='all delivery'||lo==='all channel'||lo==='online'; }
+  function npdIsTA(c){ if(window.PC_SaleModes) return PC_SaleModes.isTakeAway(c); return String(c||'').replace(/[\s-]/g,'').toLowerCase()==='takeaway'; }
+  /* Channels offered in NPD (Form Display key 'npd'), via js/sale-modes.js. Channels already used in
+     this draft keep their stored spelling and stay listed even if switched off since, so saved
+     sale modes, recipe channels and per-channel prices keep matching. */
+  function npdStored(){ var out=[]; (state.products||[]).forEach(function(p){ (p.saleModes||[]).forEach(function(c){ if(out.indexOf(c)<0) out.push(c); }); }); return out; }
+  function npdChannels(){
+    if(!window.PC_SaleModes) return npdChannelsLegacy();
+    var inc=npdStored(), sp={}; NPD_CH_DEF.forEach(function(c){ sp[c]=c; }); inc.forEach(function(c){ sp[c]=c; });
+    var a=PC_SaleModes.names('npd',{include:inc,spell:sp});
+    if(!a.some(npdIsTA)) a.unshift('Take-Away');
+    return a;
+  }
   function npdDelivery(){ return npdChannels().filter(function(c){ return !npdIsTA(c); }); }
 
   // Raw-material master — source for the "Code RM" dropdown (code + description)

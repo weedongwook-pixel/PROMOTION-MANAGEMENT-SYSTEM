@@ -863,7 +863,16 @@
   function npdOpEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
   window.npdDetailHTMLOp = function (n) {
     var esc = npdOpEsc;
-    var DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+    // Delivery channels follow Sale mode settings (PC_SaleModes); the fixed list is only a fallback.
+    var DLV_FALLBACK = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'], SM = window.PC_SaleModes;
+    var isDlv = function (c) { return SM ? SM.isDelivery(c) : DLV_FALLBACK.indexOf(c) !== -1; };
+    var dlvPriceKeys = function (prices) {
+      var keys = Object.keys(prices || {}).filter(function (k) { return prices[k] != null && prices[k] !== ''; });
+      if (!SM) return DLV_FALLBACK.filter(function (k) { return keys.indexOf(k) !== -1; });
+      var out = [];
+      SM.deliveries('view', { include: keys }).forEach(function (n) { keys.forEach(function (k) { if (SM.same(k, n) && out.indexOf(k) < 0) out.push(k); }); });
+      return out;
+    };
     var subsets = (n.subsets || []).map(function (s) {
       var pw = (s.powders || []).map(function (w, i) {
         return '<tr><td>' + (i + 1) + '</td><td class="mono">' + esc(w.cmpos || '—') + '</td><td class="text-start">' + esc(w.eng || '-') + '</td><td class="text-start">' + esc(w.th || '') + '</td><td class="mono">' + esc(w.code || '') + '</td><td class="text-start">' + esc(w.desc || '') + '</td><td>' + esc(w.qty || '') + '</td><td>' + esc(w.unit || '') + '</td><td class="small">' + esc(w.spoon || '') + '</td><td>' + ((+w.price > 0) ? '+฿' + (+w.price) : '-') + '</td></tr>';
@@ -875,12 +884,12 @@
 
     var items = (n.items || []).map(function (it) {
       var sm = it.saleModes || (it.channels || []);
-      var chips = sm.length ? sm.map(function (c) { return '<span class="badge bg-secondary me-1">' + esc(c) + (DLV.indexOf(c) !== -1 ? ' DLV' : '') + '</span>'; }).join('') : '<span class="text-muted small">—</span>';
+      var chips = sm.length ? sm.map(function (c) { return '<span class="badge bg-secondary me-1">' + esc(c) + (isDlv(c) ? ' DLV' : '') + '</span>'; }).join('') : '<span class="text-muted small">—</span>';
       var pr = [];
       var B = function (x) { return window.PCfmt ? PCfmt.baht(x) : '฿' + esc(x); };
       if (it.priceTakeaway) pr.push('Take Away ' + B(it.priceTakeaway));
       if (it.priceDelivery) pr.push('Delivery ' + B(it.priceDelivery));
-      DLV.forEach(function (c) { if (it.prices && it.prices[c] != null && it.prices[c] !== '') pr.push(esc(c) + ' ' + B(it.prices[c])); });
+      dlvPriceKeys(it.prices).forEach(function (c) { pr.push(esc(c) + ' ' + B(it.prices[c])); });
       if (!pr.length && (it.price || it.sellingPrice)) pr.push(B(it.price || it.sellingPrice));
       var priceTxt = pr.join(' · ') || '—';
       var rm = (it.recipes || []).map(function (r, i) {

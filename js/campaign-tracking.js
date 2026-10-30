@@ -33,7 +33,9 @@
   let ctItemMap = {};
   // ดึงราคาเต็ม (Gross) จาก item master ตาม Sale Mode — ใช้กับ Price Promotion (กฎ: Gross=ราคา item master, Net=[ราคา])
   window.ctPriceFor = function(p, sale){
-    p = p || {}; sale = String(sale||'').toLowerCase();
+    p = p || {}; var SM = window.PC_SaleModes, rawSale = String(sale||''); sale = rawSale.toLowerCase();
+    // Any channel in Sale mode settings: match the item price key by name/alias (LINE MAN = Lineman, Panda = foodpanda).
+    if(SM && p.prices){ var hit = Object.keys(p.prices).filter(function(k){ return SM.same(k, rawSale) && p.prices[k] !== '' && p.prices[k] != null; })[0]; if(hit) return p.prices[hit]; }
     if(/grab/.test(sale)) return (p.prices&&p.prices.Grab)||p.priceDLV||'';
     if(/line/.test(sale)) return (p.prices&&p.prices.Lineman)||p.priceDLV||'';
     if(/panda/.test(sale)) return (p.prices&&p.prices.Panda)||p.priceDLV||'';
@@ -42,6 +44,7 @@
     if(/gokoo/.test(sale)) return (p.prices&&p.prices.Gokoo)||p.priceDLV||'';
     if(/deliver/.test(sale)) return p.priceDLV||'';
     if(/take\s*away|takeaway/.test(sale)) return p.priceTA||'';
+    if(SM && SM.isDelivery(rawSale)) return p.priceDLV||'';
     return p.priceTA||p.priceDLV||'';
   };
   window.ctLoadItemMaster = function(){
@@ -168,7 +171,16 @@
 
   /* ===== shared NPD detail renderer (latest model: central Subset pool + products) ===== */
   window.npdDetailHTML = function (n, esc) {
-    var DLV = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
+    // Delivery channels follow Sale mode settings (PC_SaleModes); the fixed list is only a fallback.
+    var DLV_FALLBACK = ['Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'], SM = window.PC_SaleModes;
+    var isDlv = function (c) { return SM ? SM.isDelivery(c) : DLV_FALLBACK.indexOf(c) !== -1; };
+    var dlvPriceKeys = function (prices) {
+      var keys = Object.keys(prices || {}).filter(function (k) { return prices[k] != null && prices[k] !== ''; });
+      if (!SM) return DLV_FALLBACK.filter(function (k) { return keys.indexOf(k) !== -1; });
+      var out = [];
+      SM.deliveries('view', { include: keys }).forEach(function (n) { keys.forEach(function (k) { if (SM.same(k, n) && out.indexOf(k) < 0) out.push(k); }); });
+      return out;
+    };
     var subsets = (n.subsets || []).map(function (s) {
       var pw = (s.powders || []).map(function (w, i) {
         return '<tr><td>' + (i + 1) + '</td><td class="mono">' + esc(w.cmpos || '—') + '</td><td class="text-start">' + esc(w.eng || '-') + '</td><td class="mono">' + esc(w.code || '') + '</td><td class="text-start">' + esc(w.desc || '') + '</td><td>' + esc(w.qty || '') + '</td><td>' + esc(w.unit || '') + '</td><td class="small">' + esc(w.spoon || '') + '</td><td>' + ((+w.price > 0) ? '+฿' + (+w.price) : '-') + '</td></tr>';
@@ -180,12 +192,12 @@
 
     var items = (n.items || []).map(function (it) {
       var sm = it.saleModes || (it.channels || []);
-      var chips = sm.length ? sm.map(function (c) { return '<span class="badge bg-secondary me-1">' + esc(c) + (DLV.indexOf(c) !== -1 ? ' DLV' : '') + '</span>'; }).join('') : '<span class="text-muted small">—</span>';
+      var chips = sm.length ? sm.map(function (c) { return '<span class="badge bg-secondary me-1">' + esc(c) + (isDlv(c) ? ' DLV' : '') + '</span>'; }).join('') : '<span class="text-muted small">—</span>';
       var pr = [];
       var B = function (x) { return window.PCfmt ? PCfmt.baht(x) : '฿' + esc(x); };
       if (it.priceTakeaway) pr.push('Take Away ' + B(it.priceTakeaway));
       if (it.priceDelivery) pr.push('Delivery ' + B(it.priceDelivery));
-      DLV.forEach(function (c) { if (it.prices && it.prices[c] != null && it.prices[c] !== '') pr.push(esc(c) + ' ' + B(it.prices[c])); });
+      dlvPriceKeys(it.prices).forEach(function (c) { pr.push(esc(c) + ' ' + B(it.prices[c])); });
       if (!pr.length && (it.price || it.sellingPrice)) pr.push(B(it.price || it.sellingPrice));
       var priceTxt = pr.join(' · ') || '—';
       var rm = (it.recipes || []).map(function (r, i) {
@@ -930,6 +942,10 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
         else if(/robinhood/.test(sale)) pr=P.ROBINHOOD;
         else if(/gokoo/.test(sale)) pr=P.GOKOO;
         else if(/panda/.test(sale)) pr=P.PANDA;
+        // Channels added in Sale mode settings: match the price key by name, else use the delivery price.
+        var SMp = window.PC_SaleModes, rawS = (codeI&&codeI.getAttribute('data-sale'))||'';
+        if((pr===''||pr==null) && SMp){ var hk = Object.keys(P).filter(function(k){ return SMp.same(k, rawS); })[0]; if(hk) pr = P[hk]; }
+        if((pr===''||pr==null) && SMp && SMp.isTakeAway(rawS)) pr = P.TA;
         if(pr===''||pr==null) pr = P.DLV;
         if(pr===''||pr==null) pr = (it.price!=null&&it.price!=='')?it.price:'';
         if(grossI && pr!==''&&pr!=null){ grossI.value=pr; grossI.dispatchEvent(new Event('input',{bubbles:true})); }

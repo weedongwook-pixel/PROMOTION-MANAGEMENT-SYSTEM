@@ -180,8 +180,12 @@ var App = (function(){
   function subById(ss){ return SUBSETS.find(function(s){return s.ss===ss;}); }
 
   // Sale modes
-  var SALE_MODES = ['Take Away','GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
-  var DLV_MODES = ['GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
+  /* Sale modes come from Form Display Settings (js/sale-modes.js). This page keeps its stored
+     spelling ('Take Away','GRAB','LINEMAN') and a record's own channels always stay listed. */
+  var IS_DEF_MODES = ['Take Away','GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
+  var IS_DEF_DLV = ['GRAB','LINEMAN','ShopeeFood','Robinhood','Gokoo'];
+  function isModes(){ if(!window.PC_SaleModes) return IS_DEF_MODES; var sm=(store.set&&store.set.saleModes)||[], sp={}; IS_DEF_MODES.forEach(function(c){sp[c]=c;}); sm.forEach(function(c){sp[c]=c;}); return PC_SaleModes.names('itemset',{include:sm,spell:sp}); }
+  function isDlv(){ if(!window.PC_SaleModes) return IS_DEF_DLV; return isModes().filter(function(c){ return PC_SaleModes.isDelivery(c); }); }
   // Categories from seed
   var CATS = [...new Set(ITEMS.map(function(it){return it.category;}))].filter(Boolean).sort();
   var CAT_CODE = {}; ITEMS.forEach(function(it){ if(it.category && it.cateCode) CAT_CODE[it.category]=it.cateCode; });
@@ -900,6 +904,7 @@ var App = (function(){
   }
   function renderSaleModes(){
     var sm = store.set.saleModes||[];
+    var SALE_MODES = isModes(), DLV_MODES = isDlv();
     var allCh = SALE_MODES.every(function(c){return sm.indexOf(c)!==-1;});
     var allDlv = DLV_MODES.every(function(c){return sm.indexOf(c)!==-1;}) && !allCh;
     var pill = function(label,on,cb,extra){ return '<label class="form-check d-inline-flex align-items-center gap-1 px-2 py-1 rounded border" style="cursor:pointer;'+(on?'background:#e8f6ee;border-color:#198754!important;':'')+extra+'"><input type="checkbox" class="form-check-input m-0" '+(on?'checked':'')+' onchange="'+cb+'"><span class="small fw-bold">'+label+'</span></label>'; };
@@ -908,7 +913,7 @@ var App = (function(){
     document.getElementById('setSaleModes').innerHTML = html;
   }
   function saleToggle(c){ var sm=store.set.saleModes=store.set.saleModes||[]; var i=sm.indexOf(c); if(i===-1) sm.push(c); else sm.splice(i,1); persist(); renderSaleModes(); }
-  function saleAll(kind,on){ var sm=store.set.saleModes=store.set.saleModes||[]; var aff=kind==='all'?SALE_MODES:DLV_MODES; aff.forEach(function(c){ var i=sm.indexOf(c); if(on&&i===-1) sm.push(c); if(!on&&i!==-1) sm.splice(i,1); }); persist(); renderSaleModes(); }
+  function saleAll(kind,on){ var sm=store.set.saleModes=store.set.saleModes||[]; var aff=kind==='all'?isModes():isDlv(); aff.forEach(function(c){ var i=sm.indexOf(c); if(on&&i===-1) sm.push(c); if(!on&&i!==-1) sm.splice(i,1); }); persist(); renderSaleModes(); }
   function renderSetSource(){
     var q = (document.getElementById('setSearch').value||'').toLowerCase();
     var memCodes = store.set.members.map(function(m){return m.code;});

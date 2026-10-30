@@ -171,7 +171,9 @@ window.initFormDisplaySettings = function(){
   function modes(){
     var master=ls('pc_salemode_master',[]);
     if(!Array.isArray(master)||!master.length) master=['Take Away','Delivery','Grab','Lineman','ShopeeFood','Robinhood','foodpanda','Gokoo'].map(function(n){return {name:n,active:1};});
-    return master.map(function(m,i){ return {id:m.name, code:String(i+1), name:m.name, th:'', n:null, custom:!!m.custom}; });
+    var S=window.PC_SaleModes;
+    return master.map(function(m,i){ return {id:m.name, code:String(i+1), name:m.name, th:'', n:null, custom:!!m.custom,
+      type:(m.type==='ta'||m.type==='dlv')?m.type:(S?(S.typeOf(m.name)||'dlv'):'dlv'), group:!!(S&&S.isAggregate(m.name))}; });
   }
   function syncModeActive(id){ if(MODE!=='mode') return; var master=ls('pc_salemode_master',[])||[]; var any=enabledForms(id).length>0; var ch=false;
     master.forEach(function(m){ if(m && m.name===id){ var v=any?1:0; if(m.active!==v){ m.active=v; ch=true; } } });
@@ -206,7 +208,7 @@ window.initFormDisplaySettings = function(){
     if(!rows.length){ body.innerHTML='<tr><td colspan="4" style="text-align:center;color:#9aa1aa;padding:30px">ไม่พบรายการ</td></tr>'; }
     else body.innerHTML=rows.map(function(c){ var nk=esc(c.id).replace(/'/g,"\\'"); var en=enabledForms(c.id); var isOpen=en.length>0;
       return '<tr><td class="ccode">'+esc(c.code||'-')+'</td>'+
-        '<td><span class="cname">'+esc(c.name)+'</span>'+(c.n!=null?' <span class="cnt">('+c.n+' สินค้า)</span>':'')+((c.th&&c.th!==c.name)?'<div style="font-size:.76rem;color:#9aa1aa">'+esc(c.th)+'</div>':'')+'</td>'+
+        '<td><span class="cname">'+esc(c.name)+'</span>'+(MODE==='mode'&&!c.group?' <button type="button" class="chip" style="cursor:pointer;border:0" title="กดเพื่อเปลี่ยนประเภท — ใช้แยกราคาเดลิเวอรีและปุ่ม ALL DELIVERY ในทุกฟอร์ม" onclick="window.FDS.setType(\''+nk+'\')">'+(c.type==='ta'?'หน้าร้าน':'เดลิเวอรี')+'</button>':'')+(c.n!=null?' <span class="cnt">('+c.n+' สินค้า)</span>':'')+((c.th&&c.th!==c.name)?'<div style="font-size:.76rem;color:#9aa1aa">'+esc(c.th)+'</div>':'')+'</td>'+
         '<td>'+chipsHTML(c.id)+'</td>'+
         '<td><div style="display:flex;align-items:center;gap:9px"><span class="sw2'+(isOpen?' on':'')+'" title="เปิด/ปิดรายการนี้ในทุกฟอร์ม" onclick="window.FDS.masterToggle(\''+nk+'\')"></span><span class="swlbl'+(isOpen?' on':'')+'">'+(isOpen?'เปิด':'ปิด')+'</span><button class="ic-btn" onclick="window.FDS.edit(\''+nk+'\')"><i class="fas fa-pen me-1"></i>แก้ไข</button>'+((MODE==='mode'&&c.custom)?'<button class="ic-btn" style="color:#b3261e;border-color:#f3c9c6;background:#fdeaea" title="ลบช่องทาง" onclick="window.FDS.delMode(\''+nk+'\')"><i class="fas fa-trash-can"></i></button>':'')+'</div></td></tr>';
     }).join('');
@@ -254,14 +256,28 @@ window.initFormDisplaySettings = function(){
     },
     edToggle:function(fk){ var id=window.__fdsId; setShown(id,fk,!shown(id,fk)); syncModeActive(id); edRender(); },
     edAll:function(on){ var id=window.__fdsId; var m=cfg(); m[id]=m[id]||{}; forms().forEach(function(f){ m[id][f.k]=on; }); save(keyOf(),m); syncModeActive(id); edRender(); },
+    /* A new channel needs a type so every page knows whether it is a delivery channel. */
     addMode:function(){
-      var master=ls('pc_salemode_master',[])||[];
-      var apply=function(name){ name=(name||'').trim(); if(!name) return;
-        if(master.some(function(m){return String(m.name).toLowerCase()===name.toLowerCase();})){ if(window.Swal) Swal.fire({icon:'warning',title:'มีช่องทางนี้แล้ว',confirmButtonColor:'#2e934a'}); return; }
-        master.push({name:name,active:1,custom:true}); save('pc_salemode_master',master); render();
+      var master=ls('pc_salemode_master',[])||[], S=window.PC_SaleModes;
+      var dup=function(name){ return master.some(function(m){ return S?S.same(m.name,name):String(m.name).toLowerCase()===name.toLowerCase(); }); };
+      var apply=function(name,type){ name=(name||'').trim(); if(!name) return;
+        if(dup(name)){ if(window.Swal) Swal.fire({icon:'warning',title:'มีช่องทางนี้แล้ว',confirmButtonColor:'#2e934a'}); return; }
+        master.push({name:name,active:1,custom:true,type:type==='ta'?'ta':'dlv'}); save('pc_salemode_master',master); render();
       };
-      if(window.Swal){ Swal.fire({title:'เพิ่มช่องทางขาย (Sale mode)',input:'text',inputPlaceholder:'เช่น foodpanda',showCancelButton:true,confirmButtonText:'เพิ่ม',confirmButtonColor:'#2e934a',cancelButtonText:'ยกเลิก',inputValidator:function(v){ if(!v||!v.trim()) return 'ใส่ชื่อช่องทาง'; }}).then(function(r){ if(r.isConfirmed) apply(r.value); }); }
-      else { var n=prompt('ชื่อช่องทางใหม่'); if(n) apply(n); }
+      if(window.Swal){ Swal.fire({title:'เพิ่มช่องทางขาย (Sale mode)',
+        html:'<div style="text-align:left"><label for="fdsModeName" style="font-weight:700">ชื่อช่องทาง</label><input id="fdsModeName" class="swal2-input" style="margin:6px 0 14px;width:100%" placeholder="เช่น foodpanda">'+
+          '<label for="fdsModeType" style="font-weight:700">ประเภท</label><select id="fdsModeType" class="swal2-select" style="margin:6px 0 0;width:100%"><option value="dlv">เดลิเวอรี (แอปส่งอาหาร)</option><option value="ta">หน้าร้าน</option></select>'+
+          '<div style="font-size:.8rem;color:#667085;margin-top:8px">ช่องทางใหม่จะขึ้นในทุกฟอร์มและทุกหน้าที่ใช้ Sale mode — ปิดรายฟอร์มได้ภายหลัง</div></div>',
+        showCancelButton:true,confirmButtonText:'เพิ่ม',confirmButtonColor:'#2e934a',cancelButtonText:'ยกเลิก',
+        preConfirm:function(){ var n=document.getElementById('fdsModeName').value.trim(); if(!n){ Swal.showValidationMessage('ใส่ชื่อช่องทาง'); return false; } if(dup(n)){ Swal.showValidationMessage('มีช่องทางนี้แล้ว'); return false; } return {name:n,type:document.getElementById('fdsModeType').value}; }
+      }).then(function(r){ if(r.isConfirmed) apply(r.value.name,r.value.type); }); }
+      else { var n=prompt('ชื่อช่องทางใหม่'); if(n) apply(n,'dlv'); }
+    },
+    setType:function(id){
+      var master=ls('pc_salemode_master',[])||[], S=window.PC_SaleModes;
+      if(!master.length) master=modes().map(function(m){ return {name:m.name,active:1,type:m.type}; });
+      master.forEach(function(m){ if(m&&m.name===id){ var cur=(m.type==='ta'||m.type==='dlv')?m.type:(S?(S.typeOf(m.name)||'dlv'):'dlv'); m.type=cur==='ta'?'dlv':'ta'; } });
+      save('pc_salemode_master',master); render();
     },
     delMode:function(id){
       var go=function(){ var master=ls('pc_salemode_master',[])||[]; master=master.filter(function(m){return m.name!==id;}); save('pc_salemode_master',master);
