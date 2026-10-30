@@ -5077,10 +5077,9 @@
     return { status: "success", message: msg };
   };
 
-  /* ⭐ FX-P87 — NPD Item Name EN/TH และชื่อผงไม่เกิน 20
-     EN = ชื่อที่ไปโผล่บน "บิลครัว" · TH = ชื่อบน "ปุ่ม POS"
+  /* ⭐ FX-P87 — NPD ชื่อ TH (ปุ่ม POS) ไม่เกิน 20 · ชื่อ EN (บิลครัว) ไม่เกิน 40
      ตรวจทั้งชื่อสินค้า (items) และชื่อผงใน Subset (powders/flavors) */
-  var NAME_MAX_EN = 20;
+  var NAME_MAX_EN = 40;
   var NAME_MAX_TH = 20;
   function nameTooLong(payload) {
     var bad = [];
@@ -5089,10 +5088,10 @@
       if (v.length > max) bad.push(label + " \"" + v + "\" = " + v.length + "/" + max + " ตัว");
     };
     (payload.items || []).forEach(function (it) { chk(it.name, "ชื่อ (EN)", NAME_MAX_EN); chk(it.th, "ชื่อ (TH)", NAME_MAX_TH); chk(it.itemNameEN, "ชื่อ (EN)", NAME_MAX_EN); chk(it.itemNameTH, "ชื่อ (TH)", NAME_MAX_TH); });
-    (payload.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { chk(p.eng, "ชื่อผง (EN)", NAME_MAX_TH); chk(p.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
-    (payload.groups || []).forEach(function (g) { (g.flavors || []).forEach(function (f) { chk(f.eng, "ชื่อผง (EN)", NAME_MAX_TH); chk(f.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
+    (payload.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { chk(p.eng, "ชื่อผง (EN)", NAME_MAX_EN); chk(p.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
+    (payload.groups || []).forEach(function (g) { (g.flavors || []).forEach(function (f) { chk(f.eng, "ชื่อผง (EN)", NAME_MAX_EN); chk(f.th, "ชื่อผง (TH)", NAME_MAX_TH); }); });
     if (!bad.length) return "";
-    return "ชื่อยาวเกินกำหนด (NPD Item Name EN/TH และชื่อผงไม่เกิน " + NAME_MAX_EN + " ตัวอักษร) — กรุณาย่อให้สั้นลง:\n• " +
+    return "ชื่อยาวเกินกำหนด (ชื่อ TH ไม่เกิน " + NAME_MAX_TH + " · ชื่อ EN ไม่เกิน " + NAME_MAX_EN + " ตัวอักษร) — กรุณาย่อให้สั้นลง:\n• " +
       bad.slice(0, 6).join("\n• ") + (bad.length > 6 ? "\n…และอีก " + (bad.length - 6) + " รายการ" : "");
   }
 

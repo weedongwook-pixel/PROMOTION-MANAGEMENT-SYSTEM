@@ -404,7 +404,7 @@
       '<div class="p-3">' +
         '<div class="row g-3 mb-3">' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Code <span class="cc-resv"><i class="fas fa-hourglass-half"></i> RESERVED</span></label><input class="form-control it-field mono" readonly title="รันอัตโนมัติจากโค้ดกลาง (ตามหมวด)" value="' + esc(p.code) + '" placeholder="' + (p.cateCode ? '— IT —' : 'เลือก Category ก่อน') + '"></div>' +
-        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/20</div></div>' +
+        '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1 req">Item Name (EN) <span class="it-tag" style="background:#198754;color:#fff">โชว์บิลครัว</span></label><input class="form-control border-dark" maxlength="40" value="' + esc(p.name) + '" oninput="RD.setP(\'' + p.id + '\',\'name\',this.value);RD.posCount(this,40)"><div class="char-count text-muted text-end">' + (p.name || '').length + '/40</div></div>' +
         '<div class="col-md-3"><label class="small fw-bold text-uppercase mb-1">Item Name (TH) <span class="it-tag" style="background:#198754;color:#fff">ปุ่ม POS</span></label><input class="form-control border-dark" maxlength="20" value="' + esc(p.th) + '" oninput="RD.setP(\'' + p.id + '\',\'th\',this.value);RD.posCount(this,20)"><div class="char-count text-muted text-end">' + (p.th || '').length + '/20</div></div>' +
         '<div class="col-md-3">' + productCategoryField(p) + '</div>' +
         '</div>' +
@@ -421,7 +421,7 @@
     document.getElementById('productList').innerHTML = npdChannelBar() + state.products.map(productCard).join('');
     refreshUnitDatalist();
   }
-  function renderAll() { npdConvertUnitsLang(); renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
+  function renderAll() { npdConvertUnitsLang(); state.subsets.forEach(tidyPowderNames); renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
 
   /* ===================== FLAVOR TAB (per-powder target subset) ===================== */
   function flavorPowderRow(w, i) {
@@ -1411,7 +1411,8 @@
       var name=p.name||'สินค้า #'+(i+1);
       if(!p.name)add(3,name+': กรอกชื่อสินค้า');
       if(!p.cateCode)add(3,name+': เลือก Category');
-      [['EN',p.name],['TH',p.th]].forEach(function(n){var len=String(n[1]||'').length;if(len>20)add(3,name+': ชื่อ '+n[0]+' บน POS ยาว '+len+'/20 ตัวอักษร',true);});
+      // EN is the kitchen-bill name (40); TH is the POS button (20).
+      [['EN',p.name,40,'บิลครัว'],['TH',p.th,20,'ปุ่ม POS']].forEach(function(n){var len=String(n[1]||'').length;if(len>n[2])add(3,name+': ชื่อ '+n[0]+' ('+n[3]+') ยาว '+len+'/'+n[2]+' ตัวอักษร',true);});
       if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
       (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
       (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});

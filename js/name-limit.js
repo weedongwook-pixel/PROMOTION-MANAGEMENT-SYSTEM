@@ -1,4 +1,4 @@
-/* FX-P87 — NPD Item Name EN/TH และชื่อผงไม่เกิน 20; IT Settlement EN ไม่เกิน 40
+/* FX-P87 — ชื่อ TH (ปุ่ม POS) ไม่เกิน 20; ชื่อ EN (บิลครัว) ทั้ง NPD ชื่อผง และ IT Settlement ไม่เกิน 40
    ชื่อ (EN) = ที่ไปโผล่บน "บิลครัว" · ชื่อ (TH) = ที่ไปโผล่บน "ปุ่ม POS"
    บังคับที่ช่องกรอก: maxlength + ตัวนับ + ขอบแดงเมื่อเกิน
    ทำงานกับหน้าที่โหลดทีหลังด้วย (SPA) ผ่าน MutationObserver */
@@ -14,10 +14,11 @@
     'input[name="productName"]', 'input[name="productNameTH"]'
   ].join(',');
 
+  var EN_SEL = '.f-itemname,.f-eng,.n-name,.flv-eng,input[name="itemNameEN"],input[name="productName"]';
   function limitFor(el) {
     var explicit = Number(el.getAttribute('data-name-limit'));
     if (explicit === MAX_SETTLEMENT_EN || explicit === MAX) return explicit;
-    return el.matches && el.matches('.f-itemname') ? MAX_SETTLEMENT_EN : MAX;
+    return el.matches && el.matches(EN_SEL) ? MAX_SETTLEMENT_EN : MAX;
   }
 
   function count(el) {
@@ -70,12 +71,12 @@
 
   window.PC_NameLimit = {
     MAX: MAX,
-    MAX_EN: MAX,
+    MAX_EN: MAX_SETTLEMENT_EN,
     MAX_TH: MAX,
     MAX_SETTLEMENT_EN: MAX_SETTLEMENT_EN,
     /* ตรวจก่อนส่ง — คืนรายการที่ยาวเกิน */
     check: function (list, context) {
-      var max = String(context || '').toUpperCase() === 'SETTLEMENT_EN' ? MAX_SETTLEMENT_EN : MAX;
+      var max = /^(SETTLEMENT_)?EN$/.test(String(context || '').toUpperCase()) ? MAX_SETTLEMENT_EN : MAX;
       return (list || []).filter(function (v) { return String(v == null ? '' : v).trim().length > max; });
     }
   };
