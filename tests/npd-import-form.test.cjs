@@ -230,6 +230,16 @@ test('review issues match submit rules for recipe rows, powder name length and d
   assert.match(msgs(),/ยาว 21\/20/);assert.match(msgs(),/ตัวย่อ SUBSET AB ซ้ำ/);
 });
 
+test('existing SUBSETs that already share an abbreviation in the system are not flagged; a new one that copies it is',()=>{
+  const {c}=form();c.PC_SUBSET_MASTER=[{ssCode:'SS0096',name:'Flavored Crispy Fried Squid 1',short:'Flavored CFS'},{ssCode:'SS0097',name:'Flavored Crispy Fried Squid 2',short:'Flavored CFS'}];
+  c.RD.importWorkFlavors({errors:[],subsets:[{ssCode:'SS0096',name:'Flavored Crispy Fried Squid 1',powders:[{eng:'Mala CSF 1',seq:16,code:'3278',desc:'Mala',qty:'2',unit:'g'}]},{ssCode:'SS0097',name:'Flavored Crispy Fried Squid 2',powders:[{eng:'Mala CSF 2',seq:17,code:'3278',desc:'Mala',qty:'3',unit:'g'}]},{ssCode:'',name:'New',powders:[{eng:'Mala N',code:'3278',desc:'Mala',qty:'2',unit:'g'}]}]});
+  const msgs=()=>c.RD.workflowIssues().map(x=>x.message).join('\n');
+  const d=c.RD.workflowSnapshot();assert.equal(d.subsets.filter(s=>s.existing&&s.name2==='Flavored CFS').length,2);
+  assert.doesNotMatch(msgs(),/ซ้ำ/);
+  c.RD.setS(d.subsets.find(s=>!s.existing).id,'name2','Flavored CFS');
+  assert.match(msgs(),/ตัวย่อ SUBSET Flavored CFS ซ้ำ/);
+});
+
 test('review fixes: distinct sizes stay separate, untouched subsets keep edits, and chosen dates are guarded',()=>{
   let {c}=form();
   const g={sheet:'f',errors:[],subsets:[{name:'Sizes',ssCode:'',powders:[{eng:'Mala ENF 1',code:'3278',desc:'Mala',qty:'6.48',unit:'g'},{eng:'Mala ENF 2',code:'3278',desc:'Mala',qty:'9.72',unit:'g'},{eng:'Cheese',code:'3097',desc:'Cheese',qty:'1',unit:'g'},{eng:'Cheese CS',code:'3097',desc:'Cheese',qty:'1',unit:'g'}]}]};

@@ -971,9 +971,10 @@
       var names = {}, dupName = null, abbrs = {}, dupAbbr = null;
       var _nrm = function (s) { return String(s || '').replace(/\s+/g, ''); };
       var _nab = function (s) { return String(s || '').replace(/\s+/g, '').toUpperCase(); };
-      state.subsets.forEach(function (s) {
-        var k = _nrm(s.name); if (k) { if (names[k]) dupName = s.name; names[k] = 1; }
-        var a = _nab(s.name2); if (a) { if (abbrs[a]) dupAbbr = s.name2; abbrs[a] = 1; }
+      state.subsets.forEach(function (s) {   // existing SUBSETs sharing a name in the system are not this job's clash
+        var mark = s.existing ? 'old' : 'new';
+        var k = _nrm(s.name); if (k) { if (names[k] && (names[k] === 'new' || mark === 'new')) dupName = s.name; if (names[k] !== 'new') names[k] = mark; }
+        var a = _nab(s.name2); if (a) { if (abbrs[a] && (abbrs[a] === 'new' || mark === 'new')) dupAbbr = s.name2; if (abbrs[a] !== 'new') abbrs[a] = mark; }
       });
       if (dupName) return Swal.fire('ชื่อ Subset ซ้ำ', 'มี Subset ชื่อ "' + dupName + '" มากกว่าหนึ่งรายการ — กรุณาแก้ก่อนส่ง', 'error');
       if (dupAbbr) return Swal.fire('ตัวย่อ Subset ซ้ำ', 'มี Subset ที่ใช้ตัวย่อ (Name 2) "' + dupAbbr + '" มากกว่าหนึ่งรายการ — กรุณาแก้ก่อนส่ง', 'error');
@@ -1384,10 +1385,12 @@
     });
     // Same duplicate rules as RD.submit, so the review step never shows ready for a form submit rejects.
     var subNames={},subAbbr={};
+    // Two existing SUBSETs may already share a name in the system (e.g. SS0096 / SS0097 "Flavored CFS");
+    // only a clash that involves a new SUBSET is this job's to fix.
     state.subsets.forEach(function(s){
-      var n=String(s.name||'').replace(/\s+/g,''),a=String(s.name2||'').replace(/\s+/g,'').toUpperCase();
-      if(n){if(subNames[n])add(2,'ชื่อ SUBSET '+s.name+' ซ้ำ');subNames[n]=1;}
-      if(a){if(subAbbr[a])add(2,'ตัวย่อ SUBSET '+s.name2+' ซ้ำ');subAbbr[a]=1;}
+      var n=String(s.name||'').replace(/\s+/g,''),a=String(s.name2||'').replace(/\s+/g,'').toUpperCase(),mark=s.existing?'old':'new';
+      if(n){if(subNames[n] && (subNames[n]==='new' || mark==='new'))add(2,'ชื่อ SUBSET '+s.name+' ซ้ำ');if(subNames[n]!=='new')subNames[n]=mark;}
+      if(a){if(subAbbr[a] && (subAbbr[a]==='new' || mark==='new'))add(2,'ตัวย่อ SUBSET '+s.name2+' ซ้ำ');if(subAbbr[a]!=='new')subAbbr[a]=mark;}
     });
     if(!state.products.length)add(3,'เพิ่มสินค้าอย่างน้อย 1 รายการ');
     state.products.forEach(function(p,i){
