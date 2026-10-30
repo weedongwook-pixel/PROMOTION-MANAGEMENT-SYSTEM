@@ -20,8 +20,11 @@
   /* หน่วย + ขนาดช้อน = สลับ TH/EN ตามปุ่มเปลี่ยนภาษา (แปลงค่าในตาราง ไม่ใช่แค่ label) */
   function npdLang() { return (window.PC_LANG === 'EN') ? 'EN' : 'TH'; }
   var UNIT_TH2EN = { 'กรัม': 'g', 'มล.': 'ml', 'ชิ้น': 'pcs', 'ช้อน': 'spoon', 'กก.': 'kg' };
-  var UNIT_EN2TH = { 'g': 'กรัม', 'G': 'กรัม', 'ml': 'มล.', 'pcs': 'ชิ้น', 'spoon': 'ช้อน', 'kg': 'กก.' };
-  function convUnit(u, lang) { u = String(u == null ? '' : u).trim(); if (!u) return u; var m = (lang === 'EN') ? UNIT_TH2EN : UNIT_EN2TH; return (m[u] != null) ? m[u] : u; }
+  var UNIT_EN2TH = { 'g': 'กรัม', 'ml': 'มล.', 'pcs': 'ชิ้น', 'spoon': 'ช้อน', 'kg': 'กก.' };
+  // Spellings seen in Excel files (Gram, Pcs., ML …) fold to one key before converting.
+  var UNIT_ALIAS = { gram: 'g', grams: 'g', gm: 'g', gr: 'g', grm: 'g', milliliter: 'ml', millilitre: 'ml', mls: 'ml', cc: 'ml', pc: 'pcs', piece: 'pcs', pieces: 'pcs', ea: 'pcs', spoons: 'spoon', kgs: 'kg', kilogram: 'kg', 'มิลลิลิตร': 'ml', 'กิโลกรัม': 'kg', 'กก': 'kg', 'มล': 'ml', 'กรัม': 'g', 'ชิ้น': 'pcs', 'ช้อน': 'spoon' };
+  function unitKey(u) { var k = String(u).toLowerCase().replace(/[\s.]+/g, ''); k = UNIT_ALIAS[k] || k; return UNIT_EN2TH[k] ? k : ''; }
+  function convUnit(u, lang) { u = String(u == null ? '' : u).trim(); if (!u) return u; var k = unitKey(u); if (!k) return u; return lang === 'EN' ? k : UNIT_EN2TH[k]; }
   function convSpoon(s, lang) { s = String(s == null ? '' : s); if (!s) return s; return (lang === 'EN') ? s.replace(/ช้อน/g, 'spoon') : s.replace(/spoon/g, 'ช้อน'); }
   function npdConvertUnitsLang() { var lang = npdLang(); function cv(w) { if (!w) return; if (w.unit) w.unit = convUnit(w.unit, lang); if (w.spoon) w.spoon = convSpoon(w.spoon, lang); } (state.subsets || []).forEach(function (s) { (s.powders || []).forEach(cv); }); (state.products || []).forEach(function (p) { (p.recipes || []).forEach(function (r) { if (r.unit) r.unit = convUnit(r.unit, lang); }); }); if (state.flavor && state.flavor.powders) state.flavor.powders.forEach(cv); }
   var NPD_CH_DEF = ['Take-Away', 'Grab', 'Lineman', 'ShopeeFood', 'Robinhood', 'Gokoo'];
@@ -405,7 +408,7 @@
     document.getElementById('productList').innerHTML = npdChannelBar() + state.products.map(productCard).join('');
     refreshUnitDatalist();
   }
-  function renderAll() { renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
+  function renderAll() { npdConvertUnitsLang(); renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
 
   /* ===================== FLAVOR TAB (per-powder target subset) ===================== */
   function flavorPowderRow(w, i) {

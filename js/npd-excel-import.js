@@ -7,7 +7,7 @@
   'use strict';
   function text(v) { return String(v == null ? '' : v).replace(/\u00a0/g, ' ').trim(); }
   function key(v) { return text(v).replace(/\s+/g, ' ').toLowerCase(); }
-  function unit(v) { return /^(g|gram|grams|กรัม)$/i.test(text(v)) ? 'g' : text(v); }
+  function unit(v) { var t = text(v), k = t.toLowerCase().replace(/[\s.]+/g, ''); return /^(g|gm|gr|gram|grams|กรัม)$/.test(k) ? 'g' : /^(ml|mls|cc|มล|มิลลิลิตร)$/.test(k) ? 'ml' : /^(pc|pcs|piece|pieces|ชิ้น)$/.test(k) ? 'pcs' : /^(kg|kgs|กก|กิโลกรัม)$/.test(k) ? 'kg' : t; }
   function spoonKey(v) { return key(v).replace(/spoons?/g,'ช้อน').replace(/\s+/g,'').replace(/(\d)ช้อน$/, '$1'); }
   function rows(wb, sheet, X) {
     var ws = wb.Sheets[sheet];

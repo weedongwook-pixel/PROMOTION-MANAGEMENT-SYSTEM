@@ -179,7 +179,15 @@ test('subset recipe import fills generated standard placeholders while preservin
   const before=c.RD.workflowSnapshot().subsets[0], truffle=before.powders.find(w=>w.eng==='Truffle 2');
   c.RD.importExcelSubsetPlan({errors:[],subsets:[{name:'New subset',powders:[{eng:'Truffle 2 FF1',code:'3024',desc:'Truffle',qty:'2.16',unit:'g',spoon:'1 spoon'}]}]},{mergeExisting:true});
   const after=c.RD.workflowSnapshot().subsets[0].powders.find(w=>w.cmpos===truffle.cmpos);
-  assert.equal(after.qty,'2.16');assert.equal(after.spoon,'1 spoon');
+  // Units and spoon sizes follow the page language (Thai by default), whatever the file used.
+  assert.equal(after.qty,'2.16');assert.equal(after.spoon,'1 ช้อน');assert.equal(after.unit,'กรัม');
+});
+test('units switch with the TH / EN language toggle',()=>{
+  const {c}=form();c.RD.importWorkFlavors({errors:[],subsets:[{name:'New subset',powders:[{eng:'Mala',code:'3278',desc:'Mala',qty:'2',unit:'Grams'},{eng:'Bag',code:'1',desc:'Bag',qty:'1',unit:'Pcs.'}]}]});
+  const units=()=>c.RD.workflowSnapshot().subsets[0].powders.filter(w=>/Mala|Bag/.test(w.eng)).map(w=>w.unit).join(',');
+  assert.equal(units(),'กรัม,ชิ้น');
+  c.PC_LANG='EN';c.RD.importWorkFlavors({errors:[],subsets:[]});
+  assert.equal(units(),'g,pcs');
 });
 
 test('failed append render releases only newly allocated codes, never restored shared codes',()=>{
