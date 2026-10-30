@@ -34,12 +34,23 @@
      this draft keep their stored spelling and stay listed even if switched off since, so saved
      sale modes, recipe channels and per-channel prices keep matching. */
   function npdStored(){ var out=[]; (state.products||[]).forEach(function(p){ (p.saleModes||[]).forEach(function(c){ if(out.indexOf(c)<0) out.push(c); }); }); return out; }
+  /* The product step can add a sale mode that is on in the system, or remove one, for this job only. */
+  function npdJobCh(){ var w=state.workflow||{}; w.channels=w.channels||{add:[],remove:[]}; return w.channels; }
   function npdChannels(){
     if(!window.PC_SaleModes) return npdChannelsLegacy();
-    var inc=npdStored(), sp={}; NPD_CH_DEF.forEach(function(c){ sp[c]=c; }); inc.forEach(function(c){ sp[c]=c; });
-    var a=PC_SaleModes.names('npd',{include:inc,spell:sp});
-    if(!a.some(npdIsTA)) a.unshift('Take-Away');
+    var job=npdJobCh(), inc=npdStored().concat(job.add), sp={}; NPD_CH_DEF.forEach(function(c){ sp[c]=c; }); inc.forEach(function(c){ sp[c]=c; });
+    var stored=npdStored(), removed=function(c){ return stored.indexOf(c)<0 && job.remove.some(function(r){ return PC_SaleModes.same(r,c); }); };
+    var a=PC_SaleModes.names('npd',{include:inc,spell:sp}).filter(function(c){ return !removed(c); });
+    if(!a.some(npdIsTA) && !removed('Take-Away')) a.unshift('Take-Away');
     return a;
+  }
+  function npdChannelBar(){
+    if(!window.PC_SaleModes) return '';
+    var on=npdChannels(), extra=PC_SaleModes.master().filter(function(m){ return m.active && !on.some(function(c){ return PC_SaleModes.same(c,m.name); }); });
+    return '<div class="np-job-channels border rounded-3 p-2 mb-3 d-flex flex-wrap align-items-center gap-2"><b class="small">Sale mode ในงานนี้:</b>'+
+      on.map(function(c){ return '<span class="badge rounded-pill text-bg-light border">'+esc(c)+' <button type="button" class="btn btn-sm btn-link p-0 ms-1 text-danger" aria-label="เอา '+esc(c)+' ออกจากงานนี้" data-ch="'+esc(c)+'" onclick="RD.removeJobChannel(this.dataset.ch)">×</button></span>'; }).join('')+
+      (extra.length?'<select class="form-select form-select-sm w-auto" aria-label="เพิ่ม Sale mode" onchange="RD.addJobChannel(this.value)"><option value="">+ เพิ่ม Sale mode</option>'+extra.map(function(m){ return '<option value="'+esc(m.name)+'">'+esc(m.name)+'</option>'; }).join('')+'</select>':'')+
+      '<span class="hint">เพิ่ม / เอาออกเฉพาะงานนี้ · เปิด-ปิดทั้งระบบที่หน้าตั้งค่า Sale mode</span></div>';
   }
   function npdDelivery(){ return npdChannels().filter(function(c){ return !npdIsTA(c); }); }
 
@@ -390,7 +401,7 @@
       '</div></div>';
   }
   function renderProducts() {
-    document.getElementById('productList').innerHTML = state.products.map(productCard).join('');
+    document.getElementById('productList').innerHTML = npdChannelBar() + state.products.map(productCard).join('');
     refreshUnitDatalist();
   }
   function renderAll() { renderSubsets(); renderProducts(); refreshUnitDatalist(); if (window.PC_NpdWorkflow) PC_NpdWorkflow.refresh(); }
@@ -617,6 +628,25 @@
       (p.recipes || []).forEach(function (r) { r.channels = (r.channels || []).filter(function (c) { return c !== ch; }); });
     }
     renderProducts();
+  };
+  RD.addJobChannel = function (name) {
+    if (!name) return; var job = npdJobCh();
+    job.remove = job.remove.filter(function (r) { return !PC_SaleModes.same(r, name); });
+    if (!npdChannels().some(function (c) { return PC_SaleModes.same(c, name); })) job.add.push(name);
+    renderProducts();
+  };
+  RD.removeJobChannel = function (ch) {
+    var used = state.products.filter(function (p) { return (p.saleModes || []).indexOf(ch) !== -1; });
+    var go = function () {
+      used.forEach(function (p) {
+        p.saleModes = p.saleModes.filter(function (c) { return c !== ch; }); if (p.prices) delete p.prices[ch];
+        (p.recipes || []).forEach(function (r) { r.channels = (r.channels || []).filter(function (c) { return c !== ch; }); });
+      });
+      var job = npdJobCh(); job.add = job.add.filter(function (a) { return !PC_SaleModes.same(a, ch); }); job.remove.push(ch);
+      renderProducts();
+    };
+    if (!used.length) return go();
+    Swal.fire({ icon: 'warning', title: 'เอา ' + ch + ' ออกจากงานนี้?', text: 'มีสินค้า ' + used.length + ' รายการใช้ช่องทางนี้ ระบบจะเอาช่องทาง ราคา และการผูก Recipe ของ ' + ch + ' ออกจากสินค้าเหล่านั้น', showCancelButton: true, confirmButtonText: 'เอาออก', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#b42318' }).then(function (r) { if (r.isConfirmed) go(); });
   };
   RD.saleAll = function (pid, kind, on) {
     var p = P(pid); if (!p) return; p.saleModes = p.saleModes || [];
