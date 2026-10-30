@@ -127,7 +127,7 @@
     { seq: 2,  eng: 'BBQ',            th: 'BBQ',            code: '3128', desc: 'ผงปรุงรส BBQ 500G',          unit: 'g', spoon: 'ช้อน 5 ml * 2 ช้อน' },
     { seq: 3,  eng: 'Sour Cream',     th: 'Sour Cream',     code: '3095', desc: 'ผงปรุงรส Sour Cream 500G',   unit: 'g', spoon: 'ช้อน 5 ml * 2 ช้อน' },
     { seq: 4,  eng: 'Chilli BBQ',     th: 'Chilli BBQ',     code: '3096', desc: 'ผงปรุงรส Chilli BBQ 500G',   unit: 'g', spoon: 'ช้อน 5 ml * 2 ช้อน' },
-    { seq: 5,  eng: 'Truffle +THB10', th: 'Truffle +THB10', code: '3024', desc: 'ผงปรุงรส Truffle',           unit: 'g', addon: 10, spoon: 'ช้อน 5 ml * 1 ช้อน' },
+    { seq: 5,  eng: 'Truffle +THB10', th: 'Truffle 1',      code: '3024', desc: 'ผงปรุงรส Truffle',           unit: 'g', addon: 10, spoon: 'ช้อน 5 ml * 1 ช้อน' },
     { seq: 6,  eng: 'Truffle 2',      th: 'Truffle 2',      code: '3024', desc: 'ผงปรุงรส Truffle',           unit: 'g', spoon: 'ช้อน 5 ml * 1 ช้อน' },
     { seq: 7,  eng: 'Sweet Corn',     th: 'Sweet Corn',     code: '3101', desc: 'ผงปรุงรส sweet corn 500 G.', unit: 'g', spoon: 'ช้อน 5 ml * 2 ช้อน' },
     { seq: 8,  eng: 'Salted',         th: 'Salted',         code: '3022', desc: 'เกลือ',                       unit: 'g', spoon: '1 ช้อน pinch' },
@@ -144,7 +144,19 @@
     }
     return 0;
   }
+  /* POS names use single spaces ("Truffle +THB10 ENF 1" fits 20); the TH name of Truffle +THB10 is "Truffle 1 <ตัวย่อ>". */
+  function oneSpace(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+  var TRUFFLE10 = /^truffle\s*\+\s*(thb\s*10|10\s*thb)\b/i;
+  function tidyPowderNames(sub) {
+    if (!sub) return;
+    if (sub.name2) sub.name2 = oneSpace(sub.name2);
+    (sub.powders || []).forEach(function (w) {
+      w.eng = oneSpace(w.eng); w.th = oneSpace(w.th);
+      if (TRUFFLE10.test(w.th)) w.th = w.th.replace(TRUFFLE10, 'Truffle 1');
+    });
+  }
   function orderStdPowders(sub) {
+    tidyPowderNames(sub);
     if (!sub || sub.existing) return;
     var rank = function (w) { return w.noFlavor ? 99 : (stdSeq(w.eng, sub) || 50); };
     var list = sub.powders.map(function (w, i) { return { w: w, i: i, r: rank(w), seq: Number(w.seq) || 0 }; });
@@ -167,6 +179,7 @@
         w[k] = (base && newN2 && !alreadySuffixed) ? base + ' ' + newN2 : base;
       });
     });
+    tidyPowderNames(sub);
   }
   function mkProduct(seed) {
     seed = seed || {};
@@ -245,7 +258,7 @@
         : '<input type="number" min="1" class="form-control form-control-sm text-center fw-bold" style="width:58px" value="' + esc(w.seq || (i + 1)) + '" title="ลำดับแสดงบน POS" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'seq\',this.value)">') + '</td>';
       var cmposCell = '<td><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง (หมวดผง 103)" style="width:88px" value="' + esc(w.cmpos) + '" placeholder="' + (nf ? '—' : '— IT —') + '"></td>';
       var engCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:200px" value="' + esc(w.eng) + '" placeholder="Cheese" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'eng\',this.value)"></td>';
-      var thCell = '<td><input data-th-for="' + esc(w.id) + '" class="form-control form-control-sm border-secondary" style="min-width:200px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
+      var thCell = '<td><input data-th-for="' + esc(w.id) + '" class="form-control form-control-sm border-secondary" maxlength="20" style="min-width:200px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
       var rest = nf
         ? (naCell + naCell + naCell + naCell + naCell)
         : ('<td><input class="form-control form-control-sm border-secondary mono" list="rmList" style="width:120px" value="' + esc(w.code) + '" placeholder="Code RM" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'code\',this.value)" onchange="RD.rmPick(\'' + sub.id + '\',\'' + w.id + '\',this.value)"></td>' +
@@ -714,7 +727,7 @@
       var sub = mkSubset({ powders: stdPowders(f) }); sub.ssCode = npdReserveSS(); state.subsets.push(sub); renderAll();
     });
   };
-  RD.applyN2 = function (sid) { var s = Ssub(sid); if (!s) return; applyName2Suffix(s, s._appliedN2 || '', s.name2 || ''); s._appliedN2 = String(s.name2 || '').trim(); renderSubsets(); renderProducts();
+  RD.applyN2 = function (sid) { var s = Ssub(sid); if (!s) return; s.name2 = oneSpace(s.name2); applyName2Suffix(s, s._appliedN2 || '', s.name2 || ''); s._appliedN2 = String(s.name2 || '').trim(); renderSubsets(); renderProducts();
     var ab = String(s.name2 || '').trim(); if (ab && dbHasSubAbbr(ab, sid)) npdDupToast('ตัวย่อ "' + ab + '" ซ้ำกับ Subset ที่มีอยู่แล้ว (ตรวจจากฐานข้อมูล) — กรุณาใช้ตัวย่ออื่น'); };
   /* dup-check helpers — เทียบกับฐานข้อมูลจริง (SUBSETS_MASTER) + Subset ในฟอร์ม */
   function dbHasSubName(name, exceptSid) { var nrm = function (s) { return String(s || '').replace(/\s+/g, ''); }; name = nrm(name); if (!name) return false;
@@ -1379,7 +1392,8 @@
       var seen={};
       s.powders.forEach(function(w){
         if(!w.noFlavor && (!w.code || !w.desc || !(Number(w.qty)>0) || !w.unit))add(at,(s.name||'SUBSET')+' / '+w.eng+': ตรวจ RM ปริมาณและหน่วย');
-        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(at,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร',true);});
+        // Powder EN is the kitchen-bill name (warn over 40); TH is the POS button and must fit 20.
+        [['EN',w.eng,40],['TH',w.th,20]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>n[2])add(at,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/'+n[2]+' ตัวอักษร',n[0]==='EN');});
         var k=String(w.eng||'').replace(/\s+/g,'').toLowerCase();if(k && !w.noFlavor){if(seen[k])add(at,(s.name||'SUBSET')+': ชื่อผง '+w.eng+' ซ้ำในชุด');seen[k]=1;}
       });
     });

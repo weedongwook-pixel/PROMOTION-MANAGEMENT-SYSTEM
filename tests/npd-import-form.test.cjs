@@ -225,7 +225,7 @@ test('review issues match submit rules for recipe rows, powder name length and d
   assert.doesNotMatch(msgs(),/Recipe RM/,'a new row holding only the default unit is not a recipe');
   assert.equal(c.RD.workflowPayload().items[0].recipes.length,0);
   c.RD.setR(p.id,0,'code','3277');assert.match(msgs(),/Recipe RM แถว 1/);
-  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group A',ssCode:'',powders:[{eng:'Truffle +THB10  ENF 1',code:'3024',desc:'Truffle',qty:'1',unit:'g'}]},{name:'Group B',ssCode:'',powders:[{eng:'Mala',code:'3278',desc:'Mala',qty:'1',unit:'g'}]}]});
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group A',ssCode:'',powders:[{eng:'Spicy Mala Extra ENF1',code:'3024',desc:'Truffle',qty:'1',unit:'g'}]},{name:'Group B',ssCode:'',powders:[{eng:'Mala',code:'3278',desc:'Mala',qty:'1',unit:'g'}]}]});
   const subs=c.RD.workflowSnapshot().subsets;subs.forEach(s=>c.RD.setS(s.id,'name2','AB'));
   assert.match(msgs(),/ยาว 21\/20/);assert.match(msgs(),/ตัวย่อ SUBSET AB ซ้ำ/);
 });
@@ -271,12 +271,30 @@ test('a category added in a draft stays selectable after reopening and its code 
   assert.equal(reopened.c.RD.workflowSnapshot().products[0].cateCode,'116');
 });
 
+test('powder names use single spaces and Truffle +THB10 is "Truffle 1 <abbr>" in TH',()=>{
+  const {c}=form();
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group',ssCode:'',powders:[{eng:'Truffle +THB10  ENF 1',th:'Truffle +THB10  ENF 1',code:'3024',desc:'T',qty:'1',unit:'g'},{eng:'Mala  ENF 1',code:'3278',desc:'M',qty:'1',unit:'g'}]}]});
+  const s=c.RD.workflowSnapshot().subsets[0],t=s.powders.find(x=>/^Truffle \+/.test(x.eng));
+  assert.equal(t.eng,'Truffle +THB10 ENF 1');assert.equal(t.th,'Truffle 1 ENF 1');
+  assert.ok(s.powders.some(x=>x.eng==='Mala ENF 1'));
+  assert.ok(!c.RD.workflowIssues().some(x=>/ยาว/.test(x.message)));
+  // EN may run past 20 (kitchen bill); TH over 20 blocks submit.
+  c.RD.setW(s.id,t.id,'eng','Truffle +THB10 Extra ENF 1');c.RD.setW(s.id,t.id,'th','Truffle 1 Extra Long ENF 1');
+  const long=c.RD.workflowIssues().filter(x=>/ยาว/.test(x.message));
+  assert.equal(long.length,1);assert.ok(long[0].message.includes(' TH '));assert.equal(long[0].warn,false);
+  // Typing the abbreviation with extra spaces still gives one space.
+  const mala=s.powders.find(x=>x.eng==='Mala ENF 1');c.RD.setW(s.id,mala.id,'eng','Mala');
+  c.RD.setW(s.id,t.id,'eng','Truffle +THB10');c.RD.setW(s.id,t.id,'th','Truffle 1');
+  c.RD.setS(s.id,'name2','FF  1');c.RD.applyN2(s.id);
+  const after=c.RD.workflowSnapshot().subsets[0];assert.equal(after.name2,'FF 1');
+  assert.ok(after.powders.some(x=>x.eng==='Mala FF 1'));assert.ok(after.powders.some(x=>x.th==='Truffle 1 FF 1'));
+});
 test('the powder POS name follows the English name until it is edited separately',()=>{
   const {c}=form();
-  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group',ssCode:'',powders:[{eng:'Truffle +THB10 ENF 1',th:'Truffle +THB10 ENF 1',code:'3024',desc:'T',qty:'1',unit:'g'}]}]});
-  let s=c.RD.workflowSnapshot().subsets[0],w=s.powders.find(x=>/Truffle \+/.test(x.eng));
-  c.RD.setW(s.id,w.id,'eng','Truffle +10 ENF 1');
-  w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'Truffle +10 ENF 1');
+  c.RD.importWorkFlavors({sheet:'f',errors:[],subsets:[{name:'Group',ssCode:'',powders:[{eng:'Mala ENF 1',th:'Mala ENF 1',code:'3278',desc:'M',qty:'1',unit:'g'}]}]});
+  let s=c.RD.workflowSnapshot().subsets[0],w=s.powders.find(x=>/Mala/.test(x.eng));
+  c.RD.setW(s.id,w.id,'eng','Mala Hot ENF 1');
+  w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'Mala Hot ENF 1');
   c.RD.setW(s.id,w.id,'th','ทรัฟเฟิล');c.RD.setW(s.id,w.id,'eng','Truffle Plus');
   w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'ทรัฟเฟิล');
 });

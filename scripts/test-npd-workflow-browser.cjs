@@ -150,7 +150,7 @@ async function addPowder(page,name,rm,desc){
     assert.equal(await page.locator('#npStepSubmit').isDisabled(),false);
     const review=await page.locator('#npWorkflowReview').textContent();
     assert.match(review,/ยังกรอกไม่ครบ/);assert.match(review,/ควรตรวจ/);
-    assert.match(review,/ชื่อ TH บน POS ยาว 24\/20/);assert.match(review,/ชื่อผง EN "Truffle \+THB10\s+ENF 1" ยาว 21\/20/);
+    assert.match(review,/ชื่อ TH บน POS ยาว 24\/20/);assert.doesNotMatch(review,/Truffle \+THB10 ENF 1" ยาว/,'single-spaced it fits 20');
     await page.screenshot({path:shots+'/npd-review-blocked-1440.png',fullPage:true});
     // Submitting with missing data lists every gap and goes back to the first one.
     await page.locator('#npStepSubmit').click();
