@@ -9,8 +9,7 @@ if(!file)throw Error('Pass the sample .xlsx path');
 const root=path.resolve(__dirname,'..'), shots=process.env.SCREENSHOT_DIR || '/private/tmp';
 const snap=page=>page.evaluate(()=>RD.workflowSnapshot());
 async function importSheet(page,sheet,category){
-  await page.locator('.np-step').nth(0).click();
-  await page.locator('[data-entry="excel"]').click();
+  await page.locator('.np-step').nth(3).click();
   await page.locator('#npExcelSheet').selectOption(sheet);
   await page.locator('#npExcelCategory').selectOption(category);
   const panda=page.locator('[data-excel-channel="FoodPanda"]');if(await panda.count())await panda.selectOption('__skip__');
@@ -67,24 +66,29 @@ async function addPowder(page,name,rm,desc){
     assert.equal(await page.locator('.np-excel').isVisible(),false);
     await page.locator('#npProject').fill('Guided manual + import');
     for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
+    assert.equal(await page.locator('.np-excel').isVisible(),false,'manual entry shows no product file picker');
     await page.locator('#productList input[oninput*="\'name\'"]').first().fill('Manual Item');
     const manual=(await snap(page)).products[0];
+    // Excel mode: step 1 keeps only job details; each step offers its own file picker.
     await page.locator('.np-step').nth(0).click();await page.locator('[data-entry="excel"]').click();
+    assert.equal(await page.locator('#npExcelFile').isVisible(),false);assert.equal(await page.locator('#npProject').isVisible(),true);
+    await page.locator('.np-step').nth(1).click();assert.equal(await page.locator('#npFlavorFile').isVisible(),true);
+    await page.locator('.np-step').nth(2).click();assert.equal(await page.locator('#npSubsetExcelFile').isVisible(),true);
+    await page.locator('.np-step').nth(3).click();
     await page.locator('#npExcelFile').setInputFiles(file);
     await page.waitForFunction(()=>!document.getElementById('npExcelSheet').disabled);
     await importSheet(page,'Tem1','110');
     const enoki=await snap(page);
-    // Step 1 lists the imported products with their recipes before moving on to SUBSET.
-    assert.equal(await snap(page).then(x=>x.workflow.step),0);
-    assert.equal(await page.locator('#npImportedProducts tbody tr').count(),5);
-    assert.match(await page.locator('#npImportedProducts tbody').textContent(),/\d+ (g|G)/);
+    // The product import lands on step 4 with the imported products listed.
+    assert.equal(await snap(page).then(x=>x.workflow.step),3);
+    assert.equal(await page.locator('#productList .item-card').count(),6);
     await page.screenshot({path:shots+'/npd-imported-1440.png',fullPage:true});
     assert.deepEqual(enoki.products[0],manual);assert.equal(enoki.project,'Guided manual + import');
     assert.equal(enoki.products.length,6);assert.deepEqual(enoki.subsets.map(s=>s.powders.length),[10,10]);
     await importSheet(page,'mala sauce','115');
     let d=await snap(page);
-    // Steps go one page at a time: after the import, the optional powder step comes next and can be skipped.
-    await page.getByRole('button',{name:'ถัดไป: ผงรสชาติใหม่'}).click();
+    // Steps go one page at a time; the optional powder step can be skipped.
+    await page.locator('.np-step').nth(0).click();await page.locator('#npStepNext').click();
     assert.equal((await snap(page)).workflow.step,1);
     assert.match(await page.locator('#npPowderFromFile').textContent(),/ผงจากไฟล์ที่นำเข้า \d+ รายการ/);
     await page.getByRole('button',{name:'ไม่มีผงใหม่ ข้ามขั้นนี้'}).click();
