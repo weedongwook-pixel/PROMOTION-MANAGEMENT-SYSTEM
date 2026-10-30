@@ -244,8 +244,8 @@
         ? '<input type="number" class="form-control form-control-sm text-center fw-bold it-field" readonly title="ลำดับมาตรฐาน — แก้ไม่ได้" style="width:58px" value="' + esc(w.seq || (i + 1)) + '">'
         : '<input type="number" min="1" class="form-control form-control-sm text-center fw-bold" style="width:58px" value="' + esc(w.seq || (i + 1)) + '" title="ลำดับแสดงบน POS" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'seq\',this.value)">') + '</td>';
       var cmposCell = '<td><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง (หมวดผง 103)" style="width:88px" value="' + esc(w.cmpos) + '" placeholder="' + (nf ? '—' : '— IT —') + '"></td>';
-      var engCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:120px" value="' + esc(w.eng) + '" placeholder="Cheese" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'eng\',this.value)"></td>';
-      var thCell = '<td><input data-th-for="' + esc(w.id) + '" class="form-control form-control-sm border-secondary" style="min-width:120px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
+      var engCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:200px" value="' + esc(w.eng) + '" placeholder="Cheese" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'eng\',this.value)"></td>';
+      var thCell = '<td><input data-th-for="' + esc(w.id) + '" class="form-control form-control-sm border-secondary" style="min-width:200px" value="' + esc(w.th) + '" placeholder="ชีส" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'th\',this.value)"></td>';
       var rest = nf
         ? (naCell + naCell + naCell + naCell + naCell)
         : ('<td><input class="form-control form-control-sm border-secondary mono" list="rmList" style="width:120px" value="' + esc(w.code) + '" placeholder="Code RM" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'code\',this.value)" onchange="RD.rmPick(\'' + sub.id + '\',\'' + w.id + '\',this.value)"></td>' +
