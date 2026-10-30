@@ -262,3 +262,12 @@ test('the powder POS name follows the English name until it is edited separately
   c.RD.setW(s.id,w.id,'th','ทรัฟเฟิล');c.RD.setW(s.id,w.id,'eng','Truffle Plus');
   w=c.RD.workflowSnapshot().subsets[0].powders.find(x=>x.id===w.id);assert.equal(w.th,'ทรัฟเฟิล');
 });
+
+test('a blank starting row that only has a category and code is replaced by the import and its code released',()=>{
+  const {c}=form();const blank=c.RD.workflowSnapshot().products[0];
+  c.RD.setProductCategory(blank.id,'110');const code=c.RD.workflowSnapshot().products[0].code;assert.ok(code);
+  c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},append:true});
+  const d=c.RD.workflowSnapshot();
+  assert.ok(d.products.every(p=>p.importGroup),'no empty row before the imported products');
+  assert.ok(!d.products.some(p=>p.id===blank.id));
+});

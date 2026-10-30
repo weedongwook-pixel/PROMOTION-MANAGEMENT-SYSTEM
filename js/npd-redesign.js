@@ -1173,7 +1173,7 @@
     if (o.append && plan.products.some(function(p){return state.products.some(function(x){return String(x.sourceName || x.name).toLowerCase()===String(p.sourceName || p.name).toLowerCase();});})) throw Error('มีสินค้าจากชีตนี้ในงานแล้ว กรุณาแก้รายการเดิมแทนการนำเข้าซ้ำ');
     // The first product sheet sets the job period (dates typed in step 1 are replaced and reported);
     // a later sheet with another period belongs to a separate job.
-    var datesBefore = { start: getVal('npStart'), end: getVal('npEnd') };
+    var datesBefore = { start: getVal('npStart'), end: getVal('npEnd') }, blankCodes = [];
     if (o.append && state.products.some(function (p) { return p.importGroup; }) && datesBefore.start && (datesBefore.start!==plan.start || datesBefore.end!==plan.end)) throw Error('ช่วงวันที่ของชีตนี้ ('+plan.start+' ถึง '+plan.end+') ต่างจากชีตที่นำเข้าไว้แล้ว ('+datesBefore.start+' ถึง '+datesBefore.end+') กรุณาแยกเป็นอีกงาน');
     var before = npdSnapshot(), draft = PC_NpdExcel.createDraft(plan, {
       category: o.category, channelMap: o.channelMap, subsetMaster: current.subsetMaster, existingSubsets:o.append?state.subsets:[],
@@ -1186,7 +1186,10 @@
       state.category = draft.category; state.cateCode = draft.cateCode; state.dept = draft.dept;
       if(o.append) {
         var importedGroup=uid('import'); draft.products.forEach(function(p){p.importGroup=importedGroup; p.importRules=plan.storeRules; p.storesReviewed=false;});
-        state.products=state.products.filter(function(p){return p.name || p.th || p.cateCode || p.priceTakeaway || p.priceDelivery || (p.saleModes||[]).length || (p.formulas||[]).length || Object.keys(p.prices||{}).length || p.recipes.some(function(r){return r.code || r.desc || r.qty;});}).concat(draft.products);
+        // A row with only a category / reserved code (e.g. the starting blank row) is not a product yet.
+        var filled=function(p){return p.name || p.th || p.priceTakeaway || p.priceDelivery || (p.saleModes||[]).length || (p.formulas||[]).length || Object.keys(p.prices||{}).length || p.recipes.some(function(r){return r.code || r.desc || r.qty;});};
+        blankCodes=state.products.filter(function(p){return !filled(p) && p.code;}).map(function(p){return p.code;});
+        state.products=state.products.filter(filled).concat(draft.products);
         state.subsets=state.subsets.filter(function(s){return !draft.subsets.some(function(d){return d.id===s.id;});}).concat(draft.subsets);
       } else { state.products = draft.products; state.subsets = draft.subsets; }
       draft.subsets.forEach(orderStdPowders);
@@ -1198,6 +1201,7 @@
       npdReturnNewCodes(draft,before); npdRestoreSnapshot(before); throw e;
     }
     state.workflow.datesChosen = true;
+    blankCodes.forEach(npdReturnItem);
     // Only return reservations belonging to the form that was replaced. Never
     // return the new draft's codes or codes already confirmed downstream.
     if(!o.append) npdReturnSnapshotCodes(before);
