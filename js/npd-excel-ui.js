@@ -35,9 +35,54 @@
       var sheets = PC_NpdExcel.listSheets(workbook, X);
       if (!sheets.length) throw Error('ไม่พบชีต Approval Form สินค้า NPD ในไฟล์นี้ กรุณาตรวจรูปแบบหัวตาราง');
       picker.innerHTML = sheets.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
-      picker.disabled = false; preview();
+      picker.disabled = false;
+      if (window.PC_NpdWorkflow) await autoImport(); else preview();
     } catch (e) { workbook = null; status('อ่านไฟล์ไม่ได้: ' + e.message, true); }
   }
+  /* Guided workflow: picking the file fills the form with every product sheet straight away.
+     A sheet stops for input only when its category or a channel cannot be matched; the
+     category chosen for a file category is remembered for later files. */
+  var CAT_MAP_KEY = 'pc_npd_excel_cat_map';
+  function catMap() { try { return JSON.parse(localStorage.getItem(CAT_MAP_KEY)) || {}; } catch (_) { return {}; } }
+  function rememberCategory(fileCat, code) { try { var m = catMap(); m[norm(fileCat)] = code; localStorage.setItem(CAT_MAP_KEY, JSON.stringify(m)); } catch (_) {} }
+  function resolve(p, options) {
+    var cats = [], channels = [], map = {};
+    p.products.forEach(function (x) { if (cats.indexOf(x.category) < 0) cats.push(x.category); x.saleModes.forEach(function (ch) { if (channels.indexOf(ch) < 0) channels.push(ch); }); });
+    // Every category spelling in the sheet must lead to the same system category (by name or a remembered choice).
+    var memory = catMap(), codes = cats.map(function (n) { var c = options.categories.find(function (x) { return norm(x.name) === norm(n); }) || options.categories.find(function (x) { return x.code === memory[norm(n)]; }); return c ? c.code : ''; });
+    var category = codes.length && codes.every(function (c) { return c && c === codes[0]; }) ? options.categories.find(function (c) { return c.code === codes[0]; }) : null;
+    var ok = !!category;
+    channels.forEach(function (ch) {
+      var match = options.channels.find(function (c) { return window.PC_SaleModes ? PC_SaleModes.same(c, ch) : norm(c) === norm(ch); });
+      if (match) map[ch] = match;
+      else if (window.PC_SaleModes && PC_SaleModes.master().some(function (m) { return m.key === PC_SaleModes.key(ch); })) map[ch] = '__skip__';
+      else ok = false;
+    });
+    return ok ? { category: category, channelMap: map } : null;
+  }
+  async function autoImport() {
+    if (!workbook || applying) return;
+    var X = window.XLSX, sheets = PC_NpdExcel.listSheets(workbook, X), done = [], skipped = [];
+    applying = true;
+    try {
+      if (window.PC_CLOUD && PC_CLOUD.enabled && PC_CLOUD.enabled()) { status('กำลังตรวจเลขกลางล่าสุด…'); await PC_CLOUD.syncNow(); await PC_CLOUD.pull(false); if (PC_API.reloadFromStorage) PC_API.reloadFromStorage(); }
+      if (PC_COUNTER.reloadFromStorage) PC_COUNTER.reloadFromStorage();
+      for (var i = 0; i < sheets.length; i++) {
+        var p = PC_NpdExcel.parse(workbook, sheets[i], X), have = RD.workflowSnapshot().products;
+        if (p.products.length && p.products.every(function (x) { return have.some(function (h) { return String(h.sourceName || h.name).toLowerCase() === String(x.sourceName || x.name).toLowerCase(); }); })) { skipped.push(sheets[i]); continue; }
+        var r = !p.errors.length && resolve(p, RD.getExcelImportOptions());
+        if (!r) { applying = false; node('npExcelSheet').value = sheets[i]; preview(); status((done.length ? 'เติมแล้ว ' + done.join(', ') + ' · ' : '') + 'ชีต ' + sheets[i] + ': เลือกหมวด / ช่องทางด้านล่าง แล้วกด “เติมข้อมูลลงฟอร์ม NPD” — ชีตที่เหลือจะเติมต่อให้อัตโนมัติ', true); return; }
+        var summary = RD.importExcelPlan(p, { category: r.category, channelMap: r.channelMap, project: getProject(sheets[i]), fileName: fileName, append: true });
+        done.push(sheets[i] + ' (' + summary.products + ' สินค้า)');
+        if (summary.datesChanged) Swal.fire({ icon: 'info', title: 'ใช้ช่วงวันที่ตามไฟล์', text: summary.datesChanged.to.start + ' ถึง ' + summary.datesChanged.to.end + ' (เดิม ' + summary.datesChanged.from.start + ' ถึง ' + summary.datesChanged.from.end + ')', confirmButtonColor: '#237840' });
+      }
+      node('npExcelPreview').hidden = true;
+      status((done.length ? 'เติมข้อมูลลงฟอร์มแล้ว: ' + done.join(', ') : 'สินค้าทุกชีตในไฟล์นี้อยู่ในฟอร์มแล้ว' + (skipped.length ? ' (' + skipped.join(', ') + ')' : '')) + ' — ตรวจและแก้ไขแต่ละสินค้าด้านล่าง ยังไม่ได้ส่งงาน');
+      PC_NpdWorkflow.go(3); node('productList').scrollIntoView({ block: 'start' });
+    } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); Swal.fire({ icon: 'error', title: 'เติมข้อมูลลงฟอร์มไม่ได้', text: e.message, confirmButtonColor: '#237840' }); }
+    finally { applying = false; }
+  }
+  function getProject(sheet) { var v = node('npProject') && node('npProject').value.trim(); return v || fileName.replace(/\.xlsx$/i, '') + ' · ' + sheet; }
   function rulesHTML(rules) {
     return (rules || []).map(function (r) { return '<div class="mb-1"><b>' + esc(r.type) + ':</b> ' + r.values.map(function (v) { return esc(v.label) + ' = ' + (v.selected ? 'Yes' : 'No'); }).join(' · ') + '</div>'; }).join('');
   }
@@ -88,7 +133,6 @@
         return '<b class="small">' + esc(p.sourceName) + '</b><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Code RM</th><th>รายละเอียด</th><th>จำนวน</th><th>หน่วย</th><th>ช่องทาง</th></tr></thead><tbody>' + p.recipes.map(function (r) { return '<tr><td>' + esc(r.code) + '</td><td>' + esc(r.desc) + '</td><td>' + esc(r.qty) + '</td><td>' + esc(r.unit) + '</td><td>' + esc(r.channels.filter(shown).join(', ')) + '</td></tr>'; }).join('') + '</tbody></table></div>';
       }).join('') + '</details>';
       if (plan.subsets.length) html += '<details><summary>ตรวจผงใน Subset ใหม่ (' + plan.subsets.reduce(function (n,s) { return n + s.powders.length; },0) + ' ตัวเลือก)</summary>' + plan.subsets.map(function (s) { return '<p class="small"><b>' + esc(s.name) + '</b><br>' + s.powders.map(function (w) { return esc(w.eng) + ' · RM ' + esc(w.code) + ' · ' + esc(w.qty + ' ' + w.unit) + ' · ' + esc(w.spoon); }).join('<br>') + '</p>'; }).join('') + '</details>';
-      html += '<details><summary>เงื่อนไขสาขาจาก Excel — ต้องเลือกในฟอร์มอีกครั้ง</summary><div class="small">' + rulesHTML(plan.storeRules) + '</div></details>';
       html += '<div class="d-flex flex-wrap align-items-center gap-3 mt-3"><button id="npExcelApply" type="button" class="btn btn-success fw-bold" onclick="PC_NpdExcelUI.apply()"' + (errors ? ' disabled' : '') + '>เติมข้อมูลลงฟอร์ม NPD</button><span class="small">ขั้นตอนนี้จองรหัส แต่ยังไม่ส่งให้ IT</span></div>';
       var panel = node('npExcelPreview'); panel.innerHTML = html; panel.hidden = false;
       status(plan.errors.length ? 'พบข้อผิดพลาด ' + plan.errors.length + ' รายการ กรุณาแก้ไฟล์แล้วเลือกใหม่' : 'อ่านไฟล์แล้ว กรุณาตรวจตัวอย่างและเลือกหมวด / ช่องทางก่อนเติมฟอร์ม', !!plan.errors.length);
@@ -102,7 +146,7 @@
     if (!category || !project || Object.keys(map).some(function (ch) { return !map[ch]; })) { status('กรุณากรอกชื่อ Project และเลือกหมวด / ช่องทางให้ครบ', true); return; }
     applying = true; node('npExcelApply').disabled = true; node('npExcelFile').disabled = true; node('npExcelSheet').disabled = true;
     try {
-      var result = await Swal.fire({ title: 'เติมข้อมูลลงฟอร์ม NPD?', icon: 'question',
+      var result = window.PC_NpdWorkflow ? { isConfirmed: true } : await Swal.fire({ title: 'เติมข้อมูลลงฟอร์ม NPD?', icon: 'question',
         text: 'เพิ่มข้อมูลต่อจากรายการที่กรอกไว้ ไม่แทนที่รายการเดิม ' + 'ระบบจะจองรหัสสินค้า / SS / CMPOS ผ่านเลขกลาง แต่ยังไม่ส่งงานให้ IT',
         showCancelButton: true, confirmButtonText: 'เติมข้อมูลและจองรหัส', cancelButtonText: 'กลับไปตรวจ', confirmButtonColor: '#237840' });
       if (!result.isConfirmed || mine !== ticket || node('npExcelFile') !== fileInput) return;
@@ -118,17 +162,15 @@
       node('npExcelPreview').hidden = true;
       status('เติมฟอร์มแล้ว: ' + summary.products + ' สินค้า / ' + summary.subsets + ' Subset ใหม่ — ยังไม่ได้ส่งงาน');
       var dates = summary.datesChanged ? ' · ช่วงวันที่ของงานเปลี่ยนเป็นตามชีต: ' + summary.datesChanged.to.start + ' ถึง ' + summary.datesChanged.to.end + ' (เดิม ' + summary.datesChanged.from.start + ' ถึง ' + summary.datesChanged.from.end + ')' : '';
-      await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: window.PC_NpdWorkflow ? 'ตรวจสินค้า Recipe และ SUBSET ของแต่ละรายการ แก้ชื่อ EN/TH ให้ไม่เกิน 20 ตัวอักษร และยืนยันสาขาของกลุ่มที่นำเข้า' + dates : 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ดูรายการสินค้า', confirmButtonColor: '#237840' });
-      if(window.PC_NpdWorkflow){PC_NpdWorkflow.go(3);node('productList').scrollIntoView({block:'start'});} else if (node('npProject')) node('npProject').focus();
+      if (!window.PC_NpdWorkflow) await Swal.fire({ icon: 'success', title: 'เติมข้อมูลในฟอร์มแล้ว', text: window.PC_NpdWorkflow ? 'ตรวจสินค้า Recipe และ SUBSET ของแต่ละรายการ แก้ชื่อ EN/TH ให้ไม่เกิน 20 ตัวอักษร ' + dates : 'ตรวจชื่อ EN/TH ตัวย่อ Subset และเลือกสาขาให้ครบ จากนั้นกดส่งให้ IT เพื่อบันทึกงานจริง', confirmButtonText: 'ดูรายการสินค้า', confirmButtonColor: '#237840' });
+      if(window.PC_NpdWorkflow){var fileCats=[];selectedPlan.products.forEach(function(x){if(fileCats.indexOf(x.category)<0)fileCats.push(x.category);});fileCats.forEach(function(n){rememberCategory(n,category.code);});applying=false;PC_NpdWorkflow.go(3);await autoImport();} else if (node('npProject')) node('npProject').focus();
     } catch (e) { status('เติมฟอร์มไม่ได้: ' + e.message, true); Swal.fire({ icon: 'error', title: 'เติมข้อมูลลงฟอร์มไม่ได้', text: e.message, confirmButtonColor: '#237840' }); }
     finally { applying = false; if (node('npExcelApply')) node('npExcelApply').disabled = false; if (node('npExcelFile')) node('npExcelFile').disabled = false; if (node('npExcelSheet')) node('npExcelSheet').disabled = !workbook; }
   }
   function renderReview() {
     var el = node('npExcelReview'); if (!el || !window.RD) return;
     var source = RD.getExcelImportReview(); el.hidden = !source; if (!source) { el.innerHTML = ''; return; }
-    el.innerHTML = '<hr><p class="small mb-2"><b>ข้อมูลจาก Excel:</b> ' + esc(source.file || '') + ' · ' + esc(source.sheet) + '<br>ข้อมูลอยู่ในฟอร์มแล้ว ยังไม่ใช่งานที่ส่งให้ IT</p>' +
-      '<details><summary>อ้างอิงเงื่อนไขสาขาในไฟล์</summary><div class="small">' + rulesHTML(source.storeRules) + '</div></details>' +
-      '<label class="d-flex align-items-start gap-2"><input type="checkbox" class="form-check-input mt-1" onchange="RD.reviewImportStores(this.checked)"' + (source.storesReviewed ? ' checked' : '') + '><span>ได้ตรวจเงื่อนไข Excel และเลือกสาขาที่ร่วมรายการในฟอร์มถูกต้องแล้ว</span></label>';
+    el.innerHTML = '<hr><p class="small mb-2"><b>ข้อมูลจาก Excel:</b> ' + esc(source.file || '') + ' · ' + esc(source.sheet) + '<br>ข้อมูลอยู่ในฟอร์มแล้ว ยังไม่ใช่งานที่ส่งให้ IT</p>';
   }
   var ssWorkbook = null, ssPlan = null, ssFileName = '', ssTicket = 0;
   function ssStatus(message, failed) { var el = node('npSubsetExcelStatus'); if (el) { el.textContent = message; el.className = 'small mt-2 ' + (failed ? 'text-danger' : ''); } }

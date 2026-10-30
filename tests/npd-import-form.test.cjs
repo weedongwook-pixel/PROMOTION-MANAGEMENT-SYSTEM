@@ -34,12 +34,12 @@ test('Excel fills the real NPD form and draft, without creating a submitted NPD 
   assert.equal(c.PC_API.getNPDList().length,before);
 });
 
-test('imported form cannot submit with unreviewed stores and a failed second import preserves the first draft',()=>{
+test('Excel branch conditions never block submit and a failed second import preserves the first draft',()=>{
   const {c,saved,el,messages}=form();
   assert.equal(typeof c.RD.importExcelPlan,'function');
   c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{'Take-Away':'Take-Away'},project:'First draft'});
   c.RD.submit('new');
-  assert.ok(messages.some(a=>String(a[0]?.text||a[1]||'').includes('สาขา')));
+  assert.ok(!messages.some(a=>String(a[0]?.text||a[1]||'').includes('เงื่อนไขสาขาจาก Excel')));
   c.RD.saveDraft();const first=JSON.parse(saved.get('pc_npd_draft'));
   assert.throws(()=>c.RD.importExcelPlan(plan(),{category:{code:'110',name:'Small Bites'},channelMap:{},project:'Wrong'}));
   assert.equal(el('npProject').value,'First draft');

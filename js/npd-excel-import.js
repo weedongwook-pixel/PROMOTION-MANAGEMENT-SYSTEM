@@ -185,7 +185,6 @@
     });
     plan.subsets.forEach(function (s) { completeStandardFlavors(s, plan); });
     if (plan.subsets.length) issue(plan, 'warnings', 'SUBSET_NAMES', 'กรอกตัวย่อ Subset Name 2 และตรวจชื่อผง TH ในฟอร์มก่อนส่ง');
-    if (plan.storeRules.length) issue(plan, 'warnings', 'STORES', 'ตรวจและเลือกสาขาในฟอร์มตามเงื่อนไข Excel ก่อนส่ง ระบบจะไม่เลือกทุกสาขาให้โดยอัตโนมัติ');
     return plan;
   }
   function buildDraftSubsets(plan, reserve, prefix, existing) {

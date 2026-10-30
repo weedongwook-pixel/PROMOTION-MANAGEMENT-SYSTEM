@@ -913,7 +913,6 @@
   RD.submit = function (which) {
     if (which === 'new') {
       if(window.PC_NpdWorkflow){var workflowIssues=RD.workflowIssues();if(workflowIssues.length){PC_NpdWorkflow.go(workflowIssues[0].step);return warnFill(workflowIssues[0].message);}}
-      if (state.importSource && (!state.importSource.storesReviewed || (state.storeMode !== 'ALL' && !condBranchCount(state.storeConds)))) return warnFill('กรุณาเลือกสาขาและยืนยันว่าได้ตรวจเงื่อนไขสาขาจาก Excel แล้วก่อนส่ง');
       var project = getVal('npProject'), start = getVal('npStart'), end = getVal('npEnd');
       if (!project) return warnFill('กรุณาระบุชื่อชุดสินค้า / Project');
       if (!start) return warnFill('กรุณาระบุวันที่เริ่ม');
@@ -1337,14 +1336,12 @@
       if(a){if(subAbbr[a])add(2,'ตัวย่อ SUBSET '+s.name2+' ซ้ำ');subAbbr[a]=1;}
     });
     if(!state.products.length)add(3,'เพิ่มสินค้าอย่างน้อย 1 รายการ');
-    var reviewedGroups={};
     state.products.forEach(function(p,i){
       var name=p.name||'สินค้า #'+(i+1);
       if(!p.name)add(3,name+': กรอกชื่อสินค้า');
       if(!p.cateCode)add(3,name+': เลือก Category');
       [['EN',p.name],['TH',p.th]].forEach(function(n){var len=String(n[1]||'').length;if(len>20)add(3,name+': ชื่อ '+n[0]+' บน POS ยาว '+len+'/20 ตัวอักษร');});
       if(!(p.saleModes||[]).length)add(3,name+': เลือกช่องทางขาย');
-      if(p.importGroup && !p.storesReviewed && !reviewedGroups[p.importGroup]){add(3,'กลุ่ม '+(p.category||name)+': ตรวจและยืนยันสาขาที่นำเข้า');reviewedGroups[p.importGroup]=true;}
       (p.saleModes||[]).forEach(function(ch){var price=p.prices && p.prices[ch];if(price==null || price==='')price=npdIsTA(ch)?p.priceTakeaway:p.priceDelivery;if(price==null || price==='' || !Number.isFinite(Number(price)) || Number(price)<0)add(3,name+': กรอกราคาขาย '+ch);});
       (p.formulas||[]).forEach(function(f){if(!resolveFormulaSub(f.subId))add(3,name+': เลือก SUBSET ให้ครบ');});
       (p.recipes||[]).forEach(function(r,ri){var v=['code','desc','qty','unit'].map(function(k){return String(r[k]==null?'':r[k]).trim();});if(v.slice(0,3).some(Boolean) && !v.every(Boolean))add(3,name+': Recipe RM แถว '+(ri+1)+' กรอกให้ครบหรือล้างทั้งแถว');});

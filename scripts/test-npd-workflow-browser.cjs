@@ -9,16 +9,16 @@ if(!file)throw Error('Pass the sample .xlsx path');
 const root=path.resolve(__dirname,'..'), shots=process.env.SCREENSHOT_DIR || '/private/tmp';
 const snap=page=>page.evaluate(()=>RD.workflowSnapshot());
 async function importSheet(page,sheet,category){
+  // Picking the file fills every sheet it can; a sheet whose category is unknown waits for a choice.
   await page.locator('.np-step').nth(3).click();
-  await page.locator('#npExcelSheet').selectOption(sheet);
+  await page.waitForFunction(s=>document.getElementById('npExcelSheet').value===s&&!document.getElementById('npExcelPreview').hidden,sheet);
   await page.locator('#npExcelCategory').selectOption(category);
-  const panda=page.locator('[data-excel-channel="FoodPanda"]');if(await panda.count())await panda.selectOption('__skip__');
+  const panda=page.locator('select[data-excel-channel="FoodPanda"]');if(await panda.count())await panda.selectOption('__skip__');
+  const before=await page.evaluate(()=>RD.workflowSnapshot().products.length);
   await page.locator('#npExcelApply').click();
-  assert.match(await page.locator('.swal2-html-container').textContent(),/ไม่แทนที่รายการเดิม/);
-  await page.locator('.swal2-confirm').click();
-  try{await page.getByText('เติมข้อมูลในฟอร์มแล้ว',{exact:true}).waitFor();}
+  try{await page.waitForFunction(n=>RD.workflowSnapshot().products.length>n,before);}
   catch(e){console.error('Import diagnostic:',await page.locator('#npExcelStatus').textContent());throw e;}
-  await page.locator('.swal2-confirm').click();await page.locator('.swal2-container').waitFor({state:'hidden'});
+  assert.equal(await page.locator('.swal2-container').count(),0,'no confirm or success popup in the guided flow');
 }
 async function attach(page,libId,target,qty){
   await page.locator('#npLibraryPick').selectOption(libId);await page.locator('#npTargetPick').selectOption(target);
@@ -154,13 +154,8 @@ async function addPowder(page,name,rm,desc){
     const th=page.locator('#productList input[oninput*="\'th\'"]');
     for(let i=1,n=await th.count();i<n;i++)await th.nth(i).fill('ไทย '+i);
     await page.locator('#productList input[oninput*="\'name\'"]').nth(6).fill('Bow Mala Sauce');
-    const confirmStores=page.getByRole('button',{name:'ยืนยันใช้สาขาที่เลือกกับกลุ่มนี้'});
-    // A store condition matching no branch cannot be confirmed for an import group.
-    await page.evaluate(()=>{RD._stTmp=[{type:'Zone',label:'Empty zone',ids:[]}];RD.storeApply();});
-    await confirmStores.first().click();
-    assert.match(await page.locator('#npWorkflowMessage').textContent(),/ไม่ตรงกับสาขาใดเลย/);
-    await page.evaluate(()=>RD.storeClearAll());
-    while(await confirmStores.count())await confirmStores.first().click();
+    // Branch conditions in the sheet are ignored: imported products use the job's branches, no per-group confirmation.
+    assert.equal(await page.locator('.np-import-stores').count(),0);
     assert.deepEqual(await page.evaluate(()=>RD.workflowIssues()),[]);
     await page.setViewportSize({width:390,height:844});
     await page.locator('.np-step').nth(4).click();await page.screenshot({path:shots+'/npd-review-ready-390.png',fullPage:true});
