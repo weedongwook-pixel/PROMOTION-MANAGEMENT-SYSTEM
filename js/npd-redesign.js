@@ -248,10 +248,14 @@
       '</div>';
   }
   function subsetsA() {
-    if (!state.subsets.length) {
-      return '<button class="btn ghost-btn w-100" onclick="RD.addS()"><i class="fas fa-plus-circle me-2"></i>สร้าง Subset แรก</button>';
+    // In the guided workflow, existing SUBSETs that only received new powders are reviewed on the powder step.
+    var list = window.PC_NpdWorkflow ? state.subsets.filter(function (s) { return !s.existing; }) : state.subsets;
+    var hidden = state.subsets.length - list.length;
+    var note = hidden ? '<p class="hint mb-3">ผงใหม่ที่เพิ่มเข้า SUBSET เดิม ' + hidden + ' ชุด ดูและแก้ไขได้ที่ขั้น 2 เพิ่มผงรสชาติใหม่</p>' : '';
+    if (!list.length) {
+      return note + '<button class="btn ghost-btn w-100" onclick="RD.addS()"><i class="fas fa-plus-circle me-2"></i>สร้าง Subset แรก</button>';
     }
-    return state.subsets.map(function (s, i) {
+    return note + list.map(function (s, i) {
       return '<div class="subset-card mb-3">' +
         '<div class="subset-head d-flex justify-content-between align-items-center px-3 py-2">' +
         '<span class="fw-bold"><i class="fas fa-mortar-pestle me-2 text-warning"></i>Subset #' + (i + 1) + (s.ssCode ? ' · <span class="ss-badge">' + esc(s.ssCode) + '</span>' : '') + '</span>' +
@@ -1289,12 +1293,13 @@
     if(!getVal('npStart') || !getVal('npEnd') || getVal('npStart')>getVal('npEnd'))add(0,'ตรวจวันที่เริ่มและวันที่สิ้นสุด');
     state.workPowders.forEach(function(w){if(!w.code || !w.desc)add(1,'ผง '+w.eng+': กรอกรหัส RM และรายละเอียด');});
     state.subsets.forEach(function(s){
+      var at=s.existing?1:2; // existing SUBSETs are edited on the powder step
       if(!s.name || (!s.existing && !s.name2))add(2,'SUBSET '+(s.name||'ใหม่')+': กรอกชื่อและตัวย่อ');
       var seen={};
       s.powders.forEach(function(w){
-        if(!w.noFlavor && (!w.code || !w.desc || !(Number(w.qty)>0) || !w.unit))add(2,(s.name||'SUBSET')+' / '+w.eng+': ตรวจ RM ปริมาณและหน่วย');
-        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(2,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร');});
-        var k=String(w.eng||'').replace(/\s+/g,'').toLowerCase();if(k && !w.noFlavor){if(seen[k])add(2,(s.name||'SUBSET')+': ชื่อผง '+w.eng+' ซ้ำในชุด');seen[k]=1;}
+        if(!w.noFlavor && (!w.code || !w.desc || !(Number(w.qty)>0) || !w.unit))add(at,(s.name||'SUBSET')+' / '+w.eng+': ตรวจ RM ปริมาณและหน่วย');
+        [['EN',w.eng],['TH',w.th]].forEach(function(n){var len=String(n[1]||'').trim().length;if(len>20)add(at,(s.name||'SUBSET')+': ชื่อผง '+n[0]+' "'+n[1]+'" ยาว '+len+'/20 ตัวอักษร');});
+        var k=String(w.eng||'').replace(/\s+/g,'').toLowerCase();if(k && !w.noFlavor){if(seen[k])add(at,(s.name||'SUBSET')+': ชื่อผง '+w.eng+' ซ้ำในชุด');seen[k]=1;}
       });
     });
     // Same duplicate rules as RD.submit, so the review step never shows ready for a form submit rejects.

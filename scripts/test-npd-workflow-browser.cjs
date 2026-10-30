@@ -120,6 +120,13 @@ async function addPowder(page,name,rm,desc){
     assert.deepEqual((({chooseMin,chooseMax})=>({chooseMin,chooseMax}))((await snap(page)).products[1].formulas[0]),{chooseMin:'2',chooseMax:'2'});
     await firstSs.fill('1');
     await page.locator('.np-step').nth(0).click();
+    // The SUBSET step lists only new SUBSETs; existing ones that got a new powder stay on the powder step.
+    await page.evaluate(()=>{const lib=RD.addWorkPowder({eng:'Kelp',code:'3012',desc:'ผงสาหร่ายทะเล'});const db=RD.workflowSubsets().find(s=>String(s.status||'Active').toLowerCase()!=='inactive');RD.attachWorkPowder(lib,'db:'+db.ssCode,{qty:'2',seq:'50'});});
+    await page.locator('.np-step').nth(2).click();
+    assert.equal(await page.locator('#subsetSection .subset-card').count(),(await snap(page)).subsets.filter(s=>!s.existing).length);
+    assert.match(await page.locator('#subsetSection').textContent(),/SUBSET เดิม 1 ชุด/);
+    await page.evaluate(()=>{const s=RD.workflowSnapshot().subsets.find(x=>x.existing);RD.delS(s.id);});
+    await page.locator('.np-step').nth(0).click();
     // Draft resume restores the step, products and every reserved code. 
     for(let i=0;i<3;i++)await page.locator('#npStepNext').click();
     await page.getByRole('button',{name:'บันทึกร่าง'}).click();
