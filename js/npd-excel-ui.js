@@ -60,12 +60,17 @@
       var options = RD.getExcelImportOptions(), sourceChannels = [], categories = [];
       plan.products.forEach(function (p) { if (categories.indexOf(p.category) < 0) categories.push(p.category); p.saleModes.forEach(function (ch) { if (sourceChannels.indexOf(ch) < 0) sourceChannels.push(ch); }); });
       var category = categories.length === 1 ? options.categories.find(function (c) { return norm(c.name) === norm(categories[0]); }) : null;
-      if (!category) category = options.categories.find(function (c) { return c.code === options.selectedCategoryCode; });
+      // Categories named in the file that the system does not have yet. Never silently fall back
+      // to another category for them: the user must add the category or pick one explicitly.
+      var missingCats = categories.filter(function (n) { return n && !options.categories.some(function (c) { return norm(c.name) === norm(n); }); });
+      if (!category && !missingCats.length) category = options.categories.find(function (c) { return c.code === options.selectedCategoryCode; });
       var errors = plan.errors.map(function (e) { return '<li>' + esc(e.message) + '</li>'; }).join('');
       var warnings = plan.warnings.map(function (e) { return '<li>' + esc(e.message) + '</li>'; }).join('');
       var html = '<hr class="my-3"><p class="small mb-2">ช่วงวันที่ <b>' + esc(plan.start) + ' – ' + esc(plan.end) + '</b> · สินค้า <b>' + plan.products.length + '</b> รายการ · Subset ใหม่ <b>' + plan.subsets.length + '</b> กลุ่ม</p>';
       if (errors) html += '<div class="alert alert-danger" role="alert"><b>ต้องแก้ข้อมูลใน Excel ก่อนนำเข้า</b><ul class="mb-0 mt-1">' + errors + '</ul></div>';
       if (warnings) html += '<details open><summary>รายการที่ต้องตรวจและแก้ในฟอร์ม</summary><ul class="small mb-3">' + warnings + '</ul></details>';
+      if (missingCats.length) html += '<div id="npExcelMissingCat" class="alert alert-warning" role="alert"><b>หมวดในไฟล์ยังไม่มีในระบบ</b><p class="mb-2 small">สินค้าทุกรายการในชีตนี้จะใช้หมวดเดียวกัน 1 หมวด — กดเพิ่มหมวดใหม่ด้านล่าง หรือเลือกหมวดที่มีอยู่แล้วในช่อง "หมวดที่จะใช้ในระบบ" หากเป็นหมวดเดียวกันแต่สะกดต่างกัน</p>' +
+        missingCats.map(function (n) { return '<button type="button" class="btn btn-sm btn-outline-dark me-2 mb-1" data-new-cat="' + esc(n) + '" onclick="PC_NpdExcelUI.addMissingCategory(this.dataset.newCat)"><i class="fas fa-plus me-1"></i>เพิ่มหมวด “' + esc(n) + '”</button>'; }).join('') + '</div>';
       html += '<div class="row g-3 mb-3"><div class="col-md-7"><label for="npExcelProject" class="form-label">ชื่อ Project</label><input id="npExcelProject" class="form-control" value="' + esc(fileName.replace(/\.xlsx$/i,'') + ' · ' + plan.sheet) + '"></div>' +
         '<div class="col-md-5"><label for="npExcelCategory" class="form-label">หมวดที่จะใช้ในระบบ</label><select id="npExcelCategory" class="form-select"><option value="">— เลือกหมวดจริง —</option>' + options.categories.map(function (c) { return '<option value="' + esc(c.code) + '"' + (category && c.code === category.code ? ' selected' : '') + '>' + esc(c.code + ' · ' + c.name) + '</option>'; }).join('') + '</select><div class="form-text">หมวดในไฟล์: ' + esc(categories.join(' / ')) + '<br>หากยังไม่มีหมวด ให้เลือก Department และกดเพิ่มหมวดในฟอร์มด้านล่าง ระบบจะเลือกหมวดใหม่ที่นี่ให้</div></div></div>';
       html += '<div class="row g-3 mb-3">' + sourceChannels.map(function (ch, i) {
@@ -175,6 +180,22 @@
     } catch (e) { ssStatus('เพิ่ม Subset ไม่ได้: ' + e.message,true); }
     finally { applying = false; if (node('npSubsetExcelApply')) node('npSubsetExcelApply').disabled = false; if (node('npSubsetExcelFile')) node('npSubsetExcelFile').disabled = false; if (node('npSubsetExcelSheet')) node('npSubsetExcelSheet').disabled = !ssWorkbook; }
   }
-  window.PC_NpdExcelUI = { read: read, preview: preview, apply: apply, renderReview: renderReview, refreshCategories: refreshCategories,
+  // Add a category named in the file, then refresh the preview so the new category is selected.
+  function addMissingCategory(name) {
+    var result = RD.addCategory(name);
+    if (!result || !result.then) return;
+    result.then(function (added) {
+      if (!added) return;
+      // Keep what the user already chose in the preview: project name and channel mapping.
+      var project = node('npExcelProject') ? node('npExcelProject').value : '', channels = {};
+      document.querySelectorAll('[data-excel-channel]').forEach(function (el) { channels[el.dataset.excelChannel] = el.value; });
+      preview();
+      if (project && node('npExcelProject')) node('npExcelProject').value = project;
+      document.querySelectorAll('[data-excel-channel]').forEach(function (el) { if (channels[el.dataset.excelChannel] != null) el.value = channels[el.dataset.excelChannel]; });
+      if (node('npExcelCategory')) node('npExcelCategory').value = added.code;
+      status('เพิ่มหมวด ' + added.name + ' (' + added.code + ') แล้ว และเลือกให้ใช้กับการนำเข้านี้', false);
+    });
+  }
+  window.PC_NpdExcelUI = { read: read, preview: preview, apply: apply, renderReview: renderReview, refreshCategories: refreshCategories, addMissingCategory: addMissingCategory,
     readSubset: readSubset, previewSubset: previewSubset, applySubset: applySubset };
 })();

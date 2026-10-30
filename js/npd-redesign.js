@@ -1014,18 +1014,28 @@
   };
   /* รหัสหมวดใหม่ = รันในช่วงของแผนกที่เลือก (100→1xx, 200→2xx ...) */
   function nextCateCode() { var base = parseInt(state.dept || '100', 10); var mx = base; CAT_LIST.forEach(function (c) { var n = parseInt(c.code, 10); if (!isNaN(n) && n >= base && n < base + 100 && n > mx) mx = n; }); return String(mx + 1); }
-  RD.addCategory = function () {
-    if (!state.dept) { Swal.fire('เลือกแผนกก่อน', 'กรุณาเลือก Department ก่อนเพิ่มหมวดสินค้า (รหัสหมวดจะรันตามช่วงของแผนก)', 'warning'); return; }
-    Swal.fire({
-      title: 'เพิ่มหมวดสินค้าใหม่ · แผนก ' + state.dept + ' (' + deptName(state.dept) + ')', input: 'text', inputLabel: 'ชื่อหมวด (EN)', inputPlaceholder: 'เช่น Specialty Wraps',
+  /* Add a category that does not exist yet. The department is chosen in the same dialog so this
+   * also works from the Excel import step; `prefill` carries the category name found in a file. */
+  RD.addCategory = function (prefill) {
+    var nrm = function (s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); };
+    var deptOptions = departments().map(function (d) { return '<option value="' + d + '"' + (d === state.dept ? ' selected' : '') + '>' + esc(d + ' · ' + deptName(d)) + '</option>'; }).join('');
+    return Swal.fire({
+      title: 'เพิ่มหมวดสินค้าใหม่',
+      html: '<div class="text-start"><label for="npNewCatDept" class="form-label fw-bold">Department</label><select id="npNewCatDept" class="form-select mb-3"><option value="">— เลือกแผนก —</option>' + deptOptions + '</select>' +
+        '<label for="npNewCatName" class="form-label fw-bold">ชื่อหมวด (EN)</label><input id="npNewCatName" class="form-control" placeholder="เช่น Specialty Wraps" value="' + esc(prefill || '') + '">' +
+        '<div class="form-text">รหัสหมวดรันอัตโนมัติตามช่วงของแผนก และส่งให้ IT สร้างใน POS พร้อมงานนี้</div></div>',
       showCancelButton: true, confirmButtonText: '<i class="fas fa-plus me-1"></i>เพิ่ม', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#2e934a',
-      inputValidator: function (v) {
-        v = String(v || '').trim(); if (!v) return 'กรุณากรอกชื่อหมวด';
-        var nrm = function (s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); };
-        if (CAT_LIST.some(function (c) { return nrm(c.name) === nrm(v); })) return 'มีหมวด "' + v + '" อยู่แล้วในฐานข้อมูล — เลือกจากรายการได้เลย';
+      preConfirm: function () {
+        var dept = document.getElementById('npNewCatDept').value, v = String(document.getElementById('npNewCatName').value || '').trim();
+        if (!dept) { Swal.showValidationMessage('กรุณาเลือก Department'); return false; }
+        if (!v) { Swal.showValidationMessage('กรุณากรอกชื่อหมวด'); return false; }
+        if (CAT_LIST.some(function (c) { return nrm(c.name) === nrm(v); })) { Swal.showValidationMessage('มีหมวด "' + v + '" อยู่แล้วในฐานข้อมูล — เลือกจากรายการได้เลย'); return false; }
+        return { dept: dept, name: v };
       }
     }).then(function (r) {
-      if (!r.isConfirmed) return; var nm = String(r.value || '').trim(); var code = nextCateCode();
+      if (!r.isConfirmed) return null;
+      state.dept = r.value.dept; renderDeptList();
+      var nm = r.value.name, code = nextCateCode();
       CAT_LIST.push({ code: code, name: nm });
       state.category = nm; state.cateCode = code;
       renderCatList();
@@ -1033,6 +1043,7 @@
       var cc = document.getElementById('npCateCode'); if (cc) cc.value = code;
       npdSyncItemCodes(); renderProducts();
       Swal.fire({ icon: 'success', title: 'เพิ่มหมวดแล้ว', html: 'หมวด: <b>' + esc(nm) + '</b><br>รหัสหมวด (auto · แผนก ' + state.dept + '): <b>' + esc(code) + '</b>', timer: 2200, showConfirmButton: false });
+      return { code: code, name: nm };
     });
   };
   function loadRealCategories(cb) {
