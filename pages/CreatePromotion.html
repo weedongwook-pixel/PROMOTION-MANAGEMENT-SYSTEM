@@ -15,6 +15,18 @@
   #cp2-page .pm-rail-item.on{ background:#2e934a; color:#fff; }
   #cp2-page .pm-rail-item.on i{ color:#ffffff; }
   #cp2-page .pm-main{ flex:1; min-width:0; background:#fff; border:1px solid #e7eaee; border-radius:14px; overflow:hidden; position:relative; min-height:82vh; }
+  /* ลำดับงานแจ้งโปรฯ (ย่อ/ขยายได้ จำค่าไว้ในเครื่อง) */
+  #cp2-page .cp2-steps{ margin:14px 18px 0; background:#f6fbf7; border:1px solid #d6eadb; border-radius:14px; padding:10px 14px; }
+  #cp2-page .cp2-steps summary{ cursor:pointer; font-weight:800; font-size:.86rem; color:#1b5e20; list-style:none; display:flex; align-items:center; gap:8px; }
+  #cp2-page .cp2-steps summary::-webkit-details-marker{ display:none; }
+  #cp2-page .cp2-steps summary .hint{ font-weight:600; color:#6b7480; font-size:.78rem; margin-left:auto; }
+  #cp2-page .cp2-steps ol{ list-style:none; margin:10px 0 2px; padding:0; display:flex; flex-wrap:wrap; gap:8px; counter-reset:cp2; }
+  #cp2-page .cp2-steps li{ counter-increment:cp2; flex:1 1 180px; background:#fff; border:1px solid #e3eee6; border-radius:10px; padding:8px 10px 8px 38px; position:relative; font-size:.8rem; color:#48505a; line-height:1.45; }
+  #cp2-page .cp2-steps li::before{ content:counter(cp2); position:absolute; left:10px; top:8px; width:20px; height:20px; border-radius:50%; background:#2e934a; color:#fff; font-weight:800; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
+  #cp2-page .cp2-steps li b{ display:block; color:#1a1d20; font-size:.84rem; }
+  #cp2-page .pm-rail-item .sub{ display:block; font-size:.7rem; font-weight:500; color:#8a929c; line-height:1.3; margin-top:2px; }
+  #cp2-page .pm-rail-item.on .sub{ color:rgba(255,255,255,.8); }
+  @media (max-width: 760px){ #cp2-page .pm-layout{ flex-direction:column; margin:12px; } #cp2-page .pm-rail{ width:100%; position:static; } #cp2-page .cp2-steps{ margin:12px 12px 0; } }
 </style>
 
 <div id="cp2-page" class="pc-workspace">
@@ -25,6 +37,16 @@
       <div class="cp2-crumb" id="cp2Crumb">เลือกประเภทโปรโมชั่นจากเมนูด้านซ้าย</div>
     </div>
   </div>
+  <details class="cp2-steps" id="cp2Steps">
+    <summary><i class="fas fa-route"></i> ลำดับการแจ้งโปรโมชั่น <span class="hint">กดเพื่อย่อ/ขยาย</span></summary>
+    <ol>
+      <li><b>เลือกประเภทโปรฯ</b>จากเมนูด้านซ้าย (ดูคำอธิบายใต้ชื่อแต่ละประเภท)</li>
+      <li><b>กรอกฟอร์ม</b>ติ๊ก <b style="display:inline">Co-Promotion</b> ใต้ชื่อแคมเปญ ถ้าเป็นโปรร่วมกับพาร์ทเนอร์ (ข้อมูลเข้าหน้า Co-Promotion)</li>
+      <li><b>กดบันทึก</b>ระบบตรวจข้อมูลและจองโค้ดให้</li>
+      <li><b>เลือกส่งเมล</b>ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่ง · ส่งจาก it@rocks-foods.com · ลูปเดิมต้องมี it@rocks-foods.com ใน To หรือ CC</li>
+      <li><b>ติดตามงาน</b>ที่ “งานที่ฉันส่ง” · IT ขึ้นปุ่มแล้ว ระบบตอบกลับในลูปที่เลือกไว้</li>
+    </ol>
+  </details>
   <div class="pm-layout">
     <aside class="pm-rail" id="cp2Rail"></aside>
     <div class="pm-main" id="cp2Main">
@@ -36,11 +58,11 @@
 <script>
 (function () {
   var ITEMS = [
-    { pg:'Proposal',             icon:'fa-file-invoice',  en:'Item Set Proposal',      th:'เสนอ Item Set' },
-    { pg:'Coupon',               icon:'fa-ticket-alt',    en:'Coupon Proposal',         th:'เสนอคูปอง' },
-    { pg:'BillDiscountProposal', icon:'fa-calculator',    en:'Bill Discount Proposal',  th:'เสนอ Bill Discount' },
-    { pg:'VoucherProposal',      icon:'fa-gift',          en:'Voucher Proposal',        th:'เสนอ Voucher' },
-    { pg:'SubmissionLog',        icon:'fa-clipboard-check', en:'My Submissions',        th:'งานที่ฉันส่ง' },
+    { pg:'Proposal',             icon:'fa-file-invoice',  en:'Item Set Proposal',      th:'เสนอ Item Set',      subTh:'ชุดสินค้า/เซ็ตราคาพิเศษ', subEn:'Item sets at a special price' },
+    { pg:'Coupon',               icon:'fa-ticket-alt',    en:'Coupon Proposal',         th:'เสนอคูปอง',          subTh:'คูปองส่วนลดหรือแลกสินค้า', subEn:'Discount or redemption coupons' },
+    { pg:'BillDiscountProposal', icon:'fa-calculator',    en:'Bill Discount Proposal',  th:'เสนอ Bill Discount', subTh:'ส่วนลดท้ายบิล', subEn:'Discount on the whole bill' },
+    { pg:'VoucherProposal',      icon:'fa-gift',          en:'Voucher Proposal',        th:'เสนอ Voucher',       subTh:'Voucher / E-Coupon ใช้แทนเงินสด', subEn:'Cash vouchers / e-coupons' },
+    { pg:'SubmissionLog',        icon:'fa-clipboard-check', en:'My Submissions',        th:'งานที่ฉันส่ง',       subTh:'ติดตามสถานะงานและเมล', subEn:'Track jobs and email status' },
     { pg:'Memo',                 icon:'fa-file-lines',    en:'Create Memo',             th:'สร้าง MEMO' },
   ];
   function allowed(pg) {
@@ -59,7 +81,8 @@
       ITEMS.filter(function(it){ return allowed(it.pg); }).map(function (it) {
         return '<div class="pm-rail-item ' + (it.pg === curSub ? 'on' : '') + '" onclick="window.cp2Go(\'' + it.pg + '\')">' +
           '<i class="fas ' + it.icon + '"></i>' +
-          '<span class="navlbl" data-en="' + it.en + '" data-th="' + it.th + '">' + (L === 'en' ? it.en : it.th) + '</span></div>';
+          '<span><span class="navlbl" data-en="' + it.en + '" data-th="' + it.th + '">' + (L === 'en' ? it.en : it.th) + '</span>' +
+          (it.subTh ? '<span class="sub">' + (L === 'en' ? it.subEn : it.subTh) + '</span>' : '') + '</span></div>';
       }).join('');
     var cur = ITEMS.find(function (x) { return x.pg === curSub; });
     var cr = document.getElementById('cp2Crumb');
@@ -81,6 +104,9 @@
   window.disposeCreatePromotion = function () { curSub = null; if(window.PC_PromotionEdit)PC_PromotionEdit.clear(); };
 
   window.initCreatePromotion = function () {
+    /* ลำดับงาน: เปิดไว้จนกว่าผู้ใช้ย่อเอง (จำในเครื่อง) */
+    var st = document.getElementById('cp2Steps');
+    if (st) { try { st.open = localStorage.getItem('pc_cp2_steps') !== 'closed'; } catch (e) { st.open = true; } st.addEventListener('toggle', function () { try { localStorage.setItem('pc_cp2_steps', st.open ? 'open' : 'closed'); } catch (e) {} }); }
     try { var saved = localStorage.getItem('pc_createpromo_sub'); if (saved) curSub = saved; } catch (e) {}
     renderRail();
     if (curSub) {
