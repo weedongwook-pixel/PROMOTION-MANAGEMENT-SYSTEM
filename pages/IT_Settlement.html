@@ -461,6 +461,7 @@
     box.innerHTML = hdr + info + subPool + items +
       '<button class="btn btn-outline-dark fw-bold w-100 mb-3" onclick="window.itAddItem()"><i class="fas fa-plus-circle me-2"></i>เพิ่มปุ่มสินค้า</button>' +
       '<div class="text-center mb-5"><button class="btn btn-success shadow fw-bold px-5 py-2" onclick="window.itNpdSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+    itCopyApply(box);
   };
   /* ===== Subset pool editor (shared central pool) ===== */
   function itEditSubset(s, si) {
@@ -657,6 +658,62 @@
     return c;
   }
   /* ปุ่มคัดลอกข้างหัวช่อง (ชื่อสินค้า EN/TH) หรือค่าที่ผูกกับปุ่ม (data-copy เช่น SS Code ในสูตรผง) */
+  /* จำปุ่มคัดลอก (หน้า IT NPD / เพิ่มผง) — IT คัดลอกไปวางระบบหลังบ้านทีละช่อง ข้อมูลเยอะจนลืมว่าทำถึงไหน
+     ช่องที่คัดลอกแล้ว = ปุ่มมี ✓ เขียว · ช่องล่าสุด = กรอบเหลือง + แถบด้านบน "คัดลอกล่าสุด" กดไปที่ช่องนั้นได้
+     จำแยกตามใบงาน (เครื่องนี้) แม้ออกจากหน้าหรือรีเฟรช · ลำดับปุ่มในหน้าเป็นตัวระบุช่อง */
+  var IT_COPY_BOXES = '#itNpdTab,#itFlvTab';
+  function itCopyKey(box) { var id = box.id === 'itNpdTab' ? window._itEditId : window._itFlvId; return id ? 'pc_it_copy_mark::' + box.id + '::' + id : ''; }
+  function itCopyRead(k) { try { return JSON.parse(localStorage.getItem(k) || 'null') || { done: {} }; } catch (e) { return { done: {} }; } }
+  function itCopyBtns(box) { return Array.prototype.slice.call(box.querySelectorAll('button[onclick*="window.itCopy"]')).filter(function (b) { return !/itCopyAll/.test(b.getAttribute('onclick')) && !b.closest('.it-copy-bar'); }); }
+  function itCopyValueOf(btn) {
+    var v = btn.getAttribute('data-copy'); if (v != null) return v;
+    var host = btn.closest('.input-group') || btn.closest('[class*="col-"]') || btn.parentElement, inp = host && host.querySelector('input,select,textarea');
+    return inp ? inp.value : '';
+  }
+  function itCopyLabel(btn) {
+    var where = '', field = '', td = btn.closest('td'), card = btn.closest('.border.rounded-3');
+    var head = card && card.querySelector('.fw-bold');
+    if (head && /ปุ่มสินค้า|Subset/.test(head.textContent)) where = head.textContent.replace(/\s+/g, ' ').trim();
+    else { var ss = card && card.querySelector('input[data-cc-reserve="ss"]'); if (ss && ss.value) where = 'Subset ' + ss.value; }
+    if (td) {
+      var tr = td.parentElement, table = td.closest('table'), th = table && table.querySelectorAll('thead th')[td.cellIndex];
+      field = (th ? th.textContent.replace(/RESERVED/, '').trim() : 'ช่อง') + ' แถว ' + ((tr.cells[0] && tr.cells[0].textContent.trim()) || (tr.rowIndex));
+    } else if (btn.getAttribute('data-copy') != null) field = 'SS Code (สูตรผง)';
+    else { var col = btn.closest('[class*="col-"]'), lb = col && col.querySelector('label'); field = lb ? lb.childNodes[0].textContent.trim() : (btn.title || 'ช่อง').replace(/^คัดลอก\s*/, ''); }
+    return (where ? where + ' · ' : '') + field;
+  }
+  function itCopyApply(box) {
+    if (!box) return; var k = itCopyKey(box); if (!k) return;
+    if (!document.getElementById('itCopyMarkCss')) { var st = document.createElement('style'); st.id = 'itCopyMarkCss'; st.textContent = '.it-copied{position:relative}.it-copied::after{content:"\\2713";position:absolute;top:-6px;right:-6px;background:#198754;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;line-height:14px;text-align:center;font-weight:700;pointer-events:none}.it-copy-last{outline:3px solid #f0b400!important;outline-offset:1px;box-shadow:0 0 0 6px rgba(240,180,0,.18)!important}.it-copy-bar{position:sticky;top:0;z-index:30;background:#fff8e1;border:1px solid #f0d27a;border-radius:10px;padding:8px 12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.85rem}'; document.head.appendChild(st); }
+    var state = itCopyRead(k), btns = itCopyBtns(box);
+    btns.forEach(function (b, i) { b.classList.toggle('it-copied', !!state.done[i]); var host = b.closest('.input-group') || b; host.classList.toggle('it-copy-last', state.last === i); });
+    var bar = box.querySelector('.it-copy-bar');
+    if (state.last == null || !btns[state.last]) { if (bar) bar.remove(); return; }
+    if (!bar) { bar = document.createElement('div'); bar.className = 'it-copy-bar'; box.insertBefore(bar, box.firstChild); }
+    var n = Object.keys(state.done).filter(function (i) { return btns[i]; }).length;
+    bar.innerHTML = '<span><i class="fas fa-clipboard-check text-warning me-1"></i><b>คัดลอกล่าสุด:</b> ' + itEsc(state.label || '') + (state.value ? ' · <span class="mono">' + itEsc(String(state.value).slice(0, 60)) + '</span>' : '') + '</span>' +
+      '<span class="text-muted">คัดลอกแล้ว ' + n + '/' + btns.length + ' ช่อง' + (state.at ? ' · ' + itEsc(new Date(state.at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })) : '') + '</span>' +
+      '<button type="button" class="btn btn-sm btn-warning fw-bold py-0" onclick="window.itCopyGoLast(this)">ไปที่ช่องนี้</button>' +
+      '<button type="button" class="btn btn-sm btn-link text-muted py-0" onclick="window.itCopyReset(this)">ล้างเครื่องหมาย</button>';
+  }
+  window.itCopyGoLast = function (el) {
+    var box = el.closest(IT_COPY_BOXES), state = itCopyRead(itCopyKey(box)), b = itCopyBtns(box)[state.last]; if (!b) return;
+    var host = b.closest('.input-group') || b; host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var inp = host.querySelector && host.querySelector('input'); if (inp) setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 400);
+  };
+  window.itCopyReset = function (el) { var box = el.closest(IT_COPY_BOXES); try { localStorage.removeItem(itCopyKey(box)); } catch (e) {} itCopyApply(box); };
+  if (!window.__itCopyMarkBound) {
+    window.__itCopyMarkBound = true;
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target.closest && ev.target.closest('button[onclick*="window.itCopy"]'); if (!btn || /itCopyAll/.test(btn.getAttribute('onclick')) || btn.closest('.it-copy-bar')) return;
+      var box = btn.closest(IT_COPY_BOXES), k = box && itCopyKey(box); if (!k) return;
+      var v = String(itCopyValueOf(btn) || '').trim(); if (!v) return;   // ช่องว่าง = ไม่ได้คัดลอกจริง
+      var idx = itCopyBtns(box).indexOf(btn); if (idx < 0) return;
+      var state = itCopyRead(k); state.done = state.done || {}; state.done[idx] = 1; state.last = idx; state.label = itCopyLabel(btn); state.value = v; state.at = Date.now();
+      try { localStorage.setItem(k, JSON.stringify(state)); } catch (e) {}
+      setTimeout(function () { itCopyApply(box); }, 0);
+    }, true);
+  }
   window.itCopyField = function (btn) {
     var v = btn.getAttribute('data-copy'), col = btn.closest('[class*="col-"]');
     if (v == null) { var inp = col && col.querySelector('input'); v = inp ? inp.value : ''; }
@@ -863,6 +920,7 @@
       '<div class="text-center mb-5 d-flex gap-2 justify-content-center flex-wrap">' +
       '<button class="btn btn-outline-dark fw-bold px-4 py-2" onclick="window.itCopyAllFlv()"><i class="fas fa-clipboard-list me-1"></i>คัดลอกทั้งเอกสาร (วางลง Excel)</button>' +
       '<button class="btn btn-success shadow fw-bold px-5 py-2" onclick="window.itFlvSave()"><i class="fas fa-check me-1"></i>บันทึก + ขึ้นปุ่มเสร็จ</button></div>';
+    itCopyApply(box);
   };
   /* คัดลอกค่าในช่อง (ปุ่มไอคอนข้างช่องกรอก) — IT ต้องเอาไปวางในระบบหลังบ้าน */
   window.itCopyVal = function (btn, sel) {
