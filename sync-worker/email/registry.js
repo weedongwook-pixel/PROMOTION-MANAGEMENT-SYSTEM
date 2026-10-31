@@ -4,6 +4,9 @@
   api.emailThreadMode=r=>r.delivery_mode||r.mode;
   api.emailActorKey=actor=>actor.staffId?'staff:'+actor.staffId:actor.tenantId+':'+actor.objectId;
   api.threadAudience=function(record,actor){return JSON.parse(record.audience_json).some(x=>x.tenantId===actor.tenantId&&x.objectId===actor.objectId);};
+  // "New email" subject names the job: แจ้งขยายโปร <campaign>, แจ้งยกเลิกโปร <campaign>, ...
+  const SUBJECTS={submitted:'แจ้งรายละเอียดโปร ',copro:'แจ้งรายละเอียดโปร ',edit:'แจ้งแก้ไขโปร ',extended:'แจ้งขยายโปร ',reduced:'แจ้งลดระยะเวลาโปร ',cancelled:'แจ้งยกเลิกโปร ',change:'แจ้งเปลี่ยนแปลงโปร '};
+  const newSubject=kind=>Object.hasOwn(SUBJECTS,kind||'')?SUBJECTS[kind]:'แจ้งรายละเอียด ';
   function summary(r){return {newMessage:r.message_id.startsWith('new:'),id:r.id,version:r.version,subject:r.subject,recipients:{to:JSON.parse(r.to_json),cc:JSON.parse(r.cc_json)},mode:api.emailThreadMode(r)};}
   api.searchThreads=async function(actor,query,env,deps={},pageToken='',mode='test'){
     await api.requireEmailPermission(actor,'manage',env);
@@ -24,7 +27,7 @@
       if(mode!=='production'||env.EMAIL_AUTH_MODE!=='gmail_owner'||!api.isGmailOwner(actor))throw Error('email_admin_required');
       const campaign=await env.DB.prepare("SELECT campaign_key FROM email_campaigns WHERE id=? AND owner_tenant=? AND owner_oid=? AND status='active'").bind(input.campaignId,actor.tenantId,actor.objectId).first();
       if(!campaign)throw Error('email_campaign_denied');
-      const recipients=api.emailRecipients(input.recipients),subject=api.emailHeader('แจ้งรายละเอียด '+decodeURIComponent(campaign.campaign_key.slice(10))),id=crypto.randomUUID();
+      const recipients=api.emailRecipients(input.recipients),subject=api.emailHeader(newSubject(input.subjectKind)+decodeURIComponent(campaign.campaign_key.slice(10))),id=crypto.randomUUID();
       await env.DB.prepare("INSERT INTO email_threads(id,thread_id,message_id,rfc_message_id,references_json,subject,to_json,cc_json,audience_json,version,mode,enabled,published_by,updated_at,delivery_mode) VALUES (?,'',?,'','[]',?,?,?,?,1,'test',1,?,?,'production')").bind(id,'new:'+id,subject,JSON.stringify(recipients.to),JSON.stringify(recipients.cc),JSON.stringify([{tenantId:actor.tenantId,objectId:actor.objectId}]),api.emailActorKey(actor),Date.now()).run();
       return summary(await env.DB.prepare('SELECT * FROM email_threads WHERE id=?').bind(id).first());
     }

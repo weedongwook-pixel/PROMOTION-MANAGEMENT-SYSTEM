@@ -21,6 +21,7 @@
         return json({items:await api.listApprovedThreads(actor,env)});
       }
       if(path==='/email/promo/submissions'&&request.method==='POST')return json(await api.registerPilotSubmission(actor,body,env));
+      if(path==='/email/copro/ensure'&&request.method==='POST')return json(await api.ensureCampaign(actor,body,env));
       if(path==='/email/copro/adopt'&&request.method==='POST')return json(await api.adoptCoProCampaign(actor,body,env));
       if(path==='/email/copro/revision/preview'&&request.method==='POST')return json(await api.previewPromotionRevision(actor,body,env));
       if(path==='/email/copro/revision'&&request.method==='POST')return json(await api.commitPromotionRevision(actor,body,env));

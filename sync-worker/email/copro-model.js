@@ -32,10 +32,10 @@
   };
   const changeKinds={EXTENDED:'extended',REDUCED:'reduced',CANCELLED:'cancelled'};
   api.emailChangeKind=function(rows){const statuses=rows.map(r=>String(r.changeStatus||'').toUpperCase());if(!rows.length||statuses.some(s=>!changeKinds[s]))return null;return statuses.includes('CANCELLED')?'cancelled':statuses.every(s=>s==='REDUCED')?'reduced':'extended';};
-  // Lifecycle mail shows only public button identity and dates, never CoPromo accounting records.
+  // Lifecycle mail shows the same public button details as the announcement, never CoPromo accounting records.
   api.emailChangeDetails=function(rows){
     const first=rows[0]||{},seen=new Set(),buttons=[];
-    for(const r of rows){const key=r.emailButtonId||r.shortName||'';if(seen.has(key))continue;seen.add(key);buttons.push({buttonId:String(r.emailButtonId||''),name:String(r.shortName||''),promoType:String(r.typePromotion||r.promoType||''),codePromotion:String(r.codePromotion||''),start:String(r.start||''),end:String(r.end||''),previousEnd:String(r.changePreviousEnd||''),changeStatus:String(r.changeStatus||'').toUpperCase()});}
+    for(const r of rows){const key=r.emailButtonId||r.shortName||'';if(seen.has(key))continue;seen.add(key);buttons.push({buttonId:String(r.emailButtonId||''),name:String(r.shortName||''),promoType:String(r.typePromotion||r.promoType||''),codePromotion:String(r.codePromotion||''),start:String(r.start||''),end:String(r.end||''),previousEnd:String(r.changePreviousEnd||''),changeStatus:String(r.changeStatus||'').toUpperCase(),promotionDetail:String(r.detail||''),condition:String(r.condition||r.mechanic||'')});}
     const previous=[...new Set(buttons.map(b=>b.previousEnd))],ends=[...new Set(buttons.map(b=>b.end))];
     return {campaign:String(first.campaign||''),start:String(first.start||''),end:ends.length===1?ends[0]:'',previousEnd:previous.length===1?previous[0]:'',reason:String(first.cancelReason||first.reason||''),buttons};
   };

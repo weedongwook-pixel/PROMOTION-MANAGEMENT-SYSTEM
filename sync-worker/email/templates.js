@@ -32,8 +32,12 @@
         if(snapshot.milestone==='it_done'&&!change&&review&&review.status!=='unchanged')lines.push('ผลตรวจสอบโค้ด: '+(review.status==='changed'?'Code Promotion มีการเปลี่ยนแปลงแก้ไข จาก '+review.previous+' เป็น '+review.current+' · กรุณาใช้รหัส '+review.current:'ยืนยันรหัสล่าสุด '+String(b.codePromotion||'-')+' · ไม่มีข้อมูลเพียงพอสำหรับเปรียบเทียบกับเมลครั้งแรก'));
         lines.push('ชื่อปุ่ม: '+String(b.name||'-'));
         if(change&&change!=='CANCELLED'&&!d.previousEnd&&b.previousEnd)lines.push('วันที่สิ้นสุดเดิม → ใหม่: '+b.previousEnd+' → '+String(b.end||'-'));
+        // Extend / shorten / cancel repeat the announcement's details so the mail stands on its own.
+        if(lifecycle[snapshot.milestone]){lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));lines.push('เงื่อนไข: '+String(b.condition||'-'));}
       }
       if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
+      if(lifecycle[snapshot.milestone]&&snapshot.attachments!==undefined)lines.push('ไฟล์แนบ: '+(snapshot.attachments.map(file=>file.name).join(', ')||'ไม่มี'));
+      requester(lines,snapshot);
       return html(lines);
     }
     const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?(snapshot.notificationOnly?'แจ้งรายละเอียดโปรโมชั่น':'แจ้งรายละเอียดขึ้นปุ่ม Co-Promotion'):'แจ้งสถานะขึ้นปุ่ม และ Interface เรียบร้อย',
@@ -52,16 +56,24 @@
     }
     if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
     lines.push('ไฟล์แนบ: '+((snapshot.attachments||[]).map(file=>file.name).join(', ')||'ไม่มี'));
+    requester(lines,snapshot);
     return html(lines);
   };
+  // Mail always leaves from the central it@rocks-foods.com (never a staff mailbox); name who entered the job.
+  const FOOTER='เมลนี้ส่งจากระบบ Promotion Management ผ่าน it@rocks-foods.com แทนผู้ทำรายการ';
+  function requester(lines,snapshot){
+    const by=snapshot.requestedBy;if(!by?.staffName)return;
+    lines.push((['it_done','it_interface_complete'].includes(snapshot.milestone)?'ดำเนินการโดย (IT): ':'แจ้งโดย: ')+by.staffName+(by.staffEmail?' ('+by.staffEmail+')':''));
+    lines.push('',FOOTER);
+  }
   function html(lines){
     const text=lines.join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|วันที่สิ้นสุดเดิม → ใหม่|สถานะ|เหตุผลการยกเลิก|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ):/;
+    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|วันที่สิ้นสุดเดิม → ใหม่|สถานะ|เหตุผลการยกเลิก|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ|แจ้งโดย|ดำเนินการโดย \(IT\)):/;
     return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map((x,i)=>{
       const match=x.match(label);
       const content=i===0?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);
-      return '<p style="white-space:pre-wrap">'+content+'</p>';
+      return '<p style="white-space:pre-wrap'+(x.startsWith(FOOTER)?';color:#6b7280;font-size:12px':'')+'">'+content+'</p>';
     }).join('')+'</div>'};
   }
 })(globalThis);

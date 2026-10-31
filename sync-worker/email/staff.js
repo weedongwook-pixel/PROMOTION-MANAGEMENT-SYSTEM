@@ -50,7 +50,7 @@
     const row=await stmt(env,'SELECT u.*,s.csrf,s.expires_at FROM email_staff_sessions s JOIN email_staff u ON u.id=s.staff_id AND u.version=s.version AND u.enabled=1 WHERE s.session_hash=? AND s.expires_at>?',await api.hash(value),Date.now()).first();
     if(!row)deny();
     if(!['GET','HEAD'].includes(request.method)&&(request.headers.get('Origin')!==api.readEmailConfig(env).origin||request.headers.get('X-PC-Email-CSRF')!==row.csrf))deny();
-    return {...OWNER,staffId:row.id,staffVersion:row.version,staffName:row.name,csrf:row.csrf,expiresAt:row.expires_at,staff:exposed(row)};
+    return {...OWNER,staffId:row.id,staffVersion:row.version,staffName:row.name,staffEmail:String(row.username||'').includes('@')?String(row.username).toLowerCase():'',csrf:row.csrf,expiresAt:row.expires_at,staff:exposed(row)};
   };
   async function session(user,env){
     const value=api.random(),csrf=api.random(),expires=Date.now()+LIFETIME*1000;
