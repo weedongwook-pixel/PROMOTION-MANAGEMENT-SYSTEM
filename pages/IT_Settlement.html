@@ -1390,7 +1390,7 @@
               </div>
               <div class="col-md-1 border-start border-secondary ps-3 text-nowrap">
                 <div class="text-warning small mb-1 opacity-75">Sale Mode</div>
-                <span class="badge bg-warning text-dark fw-bold" style="white-space: normal; word-wrap: break-word; display: block; line-height: 1.2; padding: 5px; border-radius: 10px; text-align: left;">${(first.saleMode || 'ALL').toUpperCase()}</span>
+                <span class="badge bg-warning text-dark fw-bold" style="white-space: normal; word-wrap: break-word; display: block; line-height: 1.2; padding: 5px; border-radius: 10px; text-align: left;">${(window.PC_SaleModes ? PC_SaleModes.visibleText(first.saleMode || 'ALL') : (first.saleMode || 'ALL')).toUpperCase()}</span>
               </div>
               <div class="col-md-2 border-start border-secondary ps-3">
                 <div class="text-warning small mb-1 opacity-75">ให้ปุ่มขึ้นที่หมวด (POS)</div>

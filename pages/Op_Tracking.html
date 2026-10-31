@@ -950,6 +950,7 @@
 
     var items = (n.items || []).map(function (it) {
       var sm = it.saleModes || (it.channels || []);
+      if (window.PC_SaleModes) sm = PC_SaleModes.visible(sm);   // ช่องทางที่ปิดในหน้าตั้งค่า ไม่แสดง
       var chips = sm.length ? sm.map(function (c) { return '<span class="badge bg-secondary me-1">' + esc(c) + (DLV.indexOf(c) !== -1 ? ' DLV' : '') + '</span>'; }).join('') : '<span class="text-muted small">—</span>';
       var pr = [];
       var B = function (x) { return window.PCfmt ? PCfmt.baht(x) : '฿' + esc(x); };

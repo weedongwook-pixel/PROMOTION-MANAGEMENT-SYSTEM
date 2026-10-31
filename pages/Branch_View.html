@@ -714,7 +714,7 @@
       '<div class="pc-strip" style="background:'+st.color+'"><span><i class="fas '+st.icon+' me-2"></i>'+st.label+'</span><span class="cd">'+bvCountdown(c,st)+'</span></div>'+
       '<div class="pc-body"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div class="pc-name" style="margin:0">'+c.campaign+'</div>'+bvCustBadgeBig(c)+'</div>'+bvBranchNote(c)+
         '<div class="pc-detail">'+
-          '<div class="drow"><i class="fas fa-truck"></i><span><b>ช่องทางขาย:</b> '+(c.saleMode||'-')+'</span></div>'+
+          '<div class="drow"><i class="fas fa-truck"></i><span><b>ช่องทางขาย:</b> '+(window.PC_SaleModes?PC_SaleModes.visibleText(c.saleMode||'-'):(c.saleMode||'-'))+'</span></div>'+
           '<div class="drow"><i class="fas fa-tag"></i><span><b>ประเภทปุ่ม:</b> '+bvProposalLabel(c)+'</span></div>'+
           (bvCatRemarkOf(c)?'<div class="drow"><i class="fas fa-layer-group"></i><span><b>หมวดหมู่:</b> '+bvCatRemarkOf(c)+'</span></div>':'')+
           '<div class="drow"><i class="far fa-calendar"></i><span><b>ช่วงเวลา:</b> '+bvFmtShort(c.start)+' – '+bvFmtShort(c.end)+'</span></div>'+
@@ -740,7 +740,7 @@
       '<div><div class="lr-pill"><span class="dot"></span><i class="fas '+st.icon+'"></i>'+st.label+'</div>'+
         '<div class="lr-cd">'+bvCountdown(c,st)+' · '+bvFmtShort(c.start)+'–'+bvFmtShort(c.end)+'</div></div>'+
       '<div class="lr-main"><div class="nm">'+c.campaign+'</div>'+
-        '<div class="meta"><span class="mtag"><i class="fas fa-truck"></i>'+(c.saleMode||'-')+'</span><span class="mtag"><i class="fas fa-tag"></i>'+bvProposalLabel(c)+'</span>'+bvCustTag(c)+bvCatBadge(c)+'</div>'+
+        '<div class="meta"><span class="mtag"><i class="fas fa-truck"></i>'+(window.PC_SaleModes?PC_SaleModes.visibleText(c.saleMode||'-'):(c.saleMode||'-'))+'</span><span class="mtag"><i class="fas fa-tag"></i>'+bvProposalLabel(c)+'</span>'+bvCustTag(c)+bvCatBadge(c)+'</div>'+
         '<div class="lr-btns">'+btns+'</div></div>'+
       '<div class="lr-right">'+
         '<button class="btn btn-outline-dark btn-sm" onclick="window.bvDetail(\''+bvEscQ(c.campaign)+'\')"><i class="fas fa-circle-info me-1"></i>รายละเอียด</button>'+
@@ -783,7 +783,7 @@
       html: '<div class="text-start" style="font-family:Kanit">'+
         '<div class="d-flex flex-wrap gap-2 mb-3"><span class="badge" style="background:'+st.color+'">'+st.label+'</span>'+
           '<span class="badge bg-light text-dark border">'+bvFmt(c.start)+' – '+bvFmt(c.end)+'</span>'+
-          '<span class="badge bg-light text-dark border">'+(c.saleMode||'-')+'</span>'+
+          '<span class="badge bg-light text-dark border">'+(window.PC_SaleModes?PC_SaleModes.visibleText(c.saleMode||'-'):(c.saleMode||'-'))+'</span>'+
           ((c.customerGroup||'')==='koi'
             ? '<span class="badge" style="background:#f6efe6;color:#6e4218;border:1px solid #e3cdab"><i class="fas fa-mug-hot me-1"></i>ลูกค้า KOC — เฉพาะสมาชิก KOC</span>'
             : (c.customerGroup||'')==='crm'

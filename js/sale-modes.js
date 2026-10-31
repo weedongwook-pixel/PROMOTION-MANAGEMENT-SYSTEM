@@ -58,7 +58,8 @@
 
   /* Channels to offer in a form or show in a view.
    * formKey: proposal | coupon | bill | voucher | npd | flavor | itemset | it | view (view = all active)
-   * opts.include: values already stored in the record — always kept, even if switched off since.
+   * opts.include: values already stored in the record — kept when the channel is only hidden for this
+   *               form; a channel switched off (or removed) in settings is hidden on every working page.
    * opts.spell:   { 'Lineman': 'LINEMAN', ... } keeps a page's stored spelling for known channels. */
   function list(formKey, opts) {
     opts = opts || {};
@@ -66,19 +67,16 @@
     var out = [], have = {};
     master().forEach(function (m) {
       var include = (opts.include || []).some(function (v) { return same(v, m.name); });
+      if (!m.active) return;   // ปิดที่หน้าตั้งค่า = ไม่เห็นในหน้าทำงานทุกหน้า แม้งานเดิมเคยเลือกไว้
       if (!include && !shownIn(m, formKey === 'view' ? '' : formKey)) return;
       out.push({ name: spell[m.key] || m.name, key: m.key, type: m.type, active: m.active }); have[m.key] = 1;
-    });
-    (opts.include || []).forEach(function (v) {
-      if (!v || isAggregate(v) || have[key(v)]) return;
-      out.push({ name: spell[key(v)] || String(v), key: key(v), type: typeOf(v) || 'dlv', active: false }); have[key(v)] = 1;
     });
     return out;
   }
   /* Tick a record's saved channels in a form card. Matching is alias-aware, and a saved channel
    * that has no checkbox any more (deleted from settings) gets one, ticked, so re-saving keeps it. */
   function restoreChecks(card, values) {
-    var vals = (values || []).map(function (v) { return String(v == null ? '' : v).trim(); }).filter(Boolean);
+    var vals = visible(values);
     var match = function (v, el) { return same(v, el.value) || norm(v) === norm(el.value); };
     var boxes = Array.prototype.slice.call(card.querySelectorAll('.mode-check,.mode-check-all,.mode-check-delivery'));
     var reveal = function (el) { el.disabled = false; var h = el.closest('.form-check') || el.parentElement; if (h) { h.classList.remove('d-none'); h.style.display = ''; } };
@@ -94,11 +92,23 @@
       holder.parentNode.insertBefore(copy, holder.nextSibling); reveal(cb); boxes.push(cb); plain.push(cb);
     });
   }
+  /* ช่องทางที่บันทึกไว้ในงาน → เหลือเฉพาะที่ยังเปิดอยู่ในหน้าตั้งค่า (ป้ายรวมเช่น ALL DELIVERY คงไว้) */
+  function isActive(n) { var m = find(n); return !!m && m.active; }
+  function visible(values) {
+    return (values || []).map(function (v) { return String(v == null ? '' : v).trim(); }).filter(function (v) { return v && (isAggregate(v) || isActive(v)); });
+  }
+  /* ข้อความช่องทางของงาน เช่น "GRAB, LINEMAN, ROBINHOOD" → ตัดช่องทางที่ปิดออก (ไม่เหลือเลย = '-') */
+  function visibleText(text) {
+    var raw = String(text == null ? '' : text).trim(); if (!raw) return raw;
+    var parts = raw.split(/\s*[,/+|]\s*/).filter(Boolean);
+    var left = parts.filter(function (v) { return isAggregate(v) || !find(v) || isActive(v); });   // ชื่อที่ระบบไม่รู้จัก (ไม่ใช่ช่องทาง) คงไว้
+    return left.length === parts.length ? raw : (left.join(', ') || '-');
+  }
   function names(formKey, opts) { return list(formKey, opts).map(function (m) { return m.name; }); }
   function deliveries(formKey, opts) { return list(formKey, opts).filter(function (m) { return m.type === 'dlv'; }).map(function (m) { return m.name; }); }
 
   root.PC_SaleModes = {
-    list: list, names: names, restoreChecks: restoreChecks, deliveries: deliveries, master: master,
+    list: list, names: names, restoreChecks: restoreChecks, visible: visible, visibleText: visibleText, isActive: isActive, deliveries: deliveries, master: master,
     key: key, same: same, typeOf: typeOf, isAggregate: isAggregate,
     isDelivery: function (n) { return typeOf(n) === 'dlv'; },
     isTakeAway: function (n) { return typeOf(n) === 'ta'; },

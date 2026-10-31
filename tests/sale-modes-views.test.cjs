@@ -23,14 +23,13 @@ const item = { name: 'Fries', saleModes: ['Take-Away', 'Grab', 'Wongnai Express'
   prices: { 'Take-Away': '49', Grab: '59', 'Wongnai Express': '61', Robinhood: '60' } };
 
 for (const [file, fn] of [['js/op-tracking.js', 'npdDetailHTMLOp'], ['js/campaign-tracking.js', 'npdDetailHTML']]) {
-  test(`${file}: delivery tags and prices follow Sale mode settings, old records keep switched-off channels`, () => {
+  test(`${file}: delivery tags and prices follow Sale mode settings; switched-off channels are hidden even on old records`, () => {
     const c = load(file);
     const html = c[fn]({ items: [item], subsets: [] }, esc);
     assert.match(html, /Wongnai Express DLV/, 'a channel added in settings is tagged as delivery');
-    assert.match(html, /Robinhood DLV/, 'a switched-off channel still displays on a record that has it');
+    assert.doesNotMatch(html, /Robinhood/, 'a channel switched off in settings is not shown on working pages');
     assert.doesNotMatch(html, /Take-Away DLV/);
     assert.match(html, /Wongnai Express ฿?61/);
-    assert.match(html, /Robinhood ฿?60/);
   });
 }
 

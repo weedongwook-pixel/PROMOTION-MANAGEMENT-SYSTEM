@@ -30,14 +30,17 @@ test('a channel added in settings appears everywhere with its type', () => {
   assert.deepEqual(S.deliveries('it'), ['Grab', 'Wongnai Express']);
 });
 
-test('a channel switched off or hidden for one form disappears there, but stays on records that use it', () => {
+test('a channel hidden for one form disappears there; a channel switched off in settings disappears everywhere, even on records that use it', () => {
   const S = load({
     pc_salemode_master: [{ name: 'Take Away', active: 1 }, { name: 'Grab', active: 1 }, { name: 'Robinhood', active: 0 }, { name: 'Gokoo', active: 1 }],
     pc_mode_forms: { Gokoo: { coupon: false } }
   });
   assert.deepEqual(S.names('coupon'), ['Take Away', 'Grab']);
   assert.deepEqual(S.names('proposal'), ['Take Away', 'Grab', 'Gokoo']);
-  assert.deepEqual(S.names('coupon', { include: ['ROBINHOOD'] }), ['Take Away', 'Grab', 'Robinhood']);
+  assert.deepEqual(S.names('coupon', { include: ['ROBINHOOD'] }), ['Take Away', 'Grab']);
+  assert.deepEqual(S.names('coupon', { include: ['Gokoo'] }), ['Take Away', 'Grab', 'Gokoo'], 'hidden only for this form: the record keeps it');
+  assert.deepEqual(S.visible(['Grab', 'Robinhood', 'ALL DELIVERY']), ['Grab', 'ALL DELIVERY']);
+  assert.equal(S.visibleText('GRAB, ROBINHOOD'), 'GRAB');assert.equal(S.visibleText('Robinhood'), '-');assert.equal(S.visibleText('ALL'), 'ALL');assert.equal(S.visibleText('Grab + Gokoo'), 'Grab + Gokoo');
   assert.deepEqual(S.names('view'), ['Take Away', 'Grab', 'Gokoo']);
 });
 

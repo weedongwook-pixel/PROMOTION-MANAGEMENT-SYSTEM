@@ -112,6 +112,8 @@ window.initSaleModePrice = function () {
     {k:'robin',label:'Robinhood',  icon:'fa-leaf',           col:'priceRobin',     pkey:'Robinhood'},
     {k:'gokoo',label:'Gokoo',      icon:'fa-bolt',           col:'priceGokoo',     pkey:'Gokoo'},
   ];
+  // ช่องทางที่ปิดในหน้าตั้งค่า Sale mode ไม่แสดงคอลัมน์ราคา
+  if (window.PC_SaleModes) CHANS = CHANS.filter(function (c) { return PC_SaleModes.isActive(c.pkey); });
 
   var ITEMS = [], FLAGS = {}, visChans, BRANDS_M = [];
   var colF = {};
