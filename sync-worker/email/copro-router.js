@@ -27,6 +27,7 @@
       if(path==='/email/copro/change/preview'&&request.method==='POST')return json(await api.previewPromotionChange(actor,body,env));
       if(path==='/email/copro/change'&&request.method==='POST')return json(await api.commitPromotionChange(actor,body,env));
       if(path==='/email/copro/it-done'&&request.method==='POST')return json(await api.commitITDone(actor,body,env));
+      if(path==='/email/copro/loop'&&request.method==='GET')return json(await api.campaignLoop(actor,{campaignKey:url.searchParams.get('campaignKey')||'',month:url.searchParams.get('month')||''},env));
       if(path==='/email/copro/mail-history'&&request.method==='GET')return json(await api.mailHistory(actor,env));
       if(path==='/email/copro/preview'&&request.method==='POST')return json(await api.previewCoPromo(actor,body,env));
       if(path==='/email/copro'&&request.method==='POST')return json(await api.commitCoPromo(actor,body,env));

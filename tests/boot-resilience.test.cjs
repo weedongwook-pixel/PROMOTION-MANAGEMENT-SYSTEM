@@ -51,7 +51,7 @@ test('a transient module failure retries without skipping a dependency', async (
   });
   await new Promise(resolve => app.window.__pcBoot.onReady(resolve));
   assert.equal(attempts, 2);
-  assert.equal(app.window.__moduleLog.length, 74);
+  assert.equal(app.window.__moduleLog.length, 75);
   assert.equal(app.window.__pcBoot.failed(), null);
   assert.equal(app.retry.hidden, true);
 });

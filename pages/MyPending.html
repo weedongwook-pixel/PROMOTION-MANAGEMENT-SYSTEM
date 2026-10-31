@@ -1,7 +1,8 @@
 <div class="p-4" style="max-width:1100px;margin:auto">
   <h2>งานค้างของฉัน</h2>
-  <p class="text-muted">CoPromo รอส่งเมลและฉบับร่าง · โปรฯ บันทึกให้ IT แล้ว เลือกทำต่อเพื่อส่งเมลหรือเก็บไว้ก่อน</p>
+  <p class="text-muted">งานรอส่งเมล, CoPromo รอส่งเมลและฉบับร่าง · โปรฯ บันทึกให้ IT แล้ว เลือกทำต่อเพื่อส่งเมลหรือเก็บไว้ก่อน</p>
   <button class="btn btn-outline-success mb-3" type="button" onclick="initMyPending()">โหลดอีกครั้ง</button>
+  <div id="mail-job-list" aria-live="polite"></div>
   <div id="copro-draft-list" aria-live="polite"></div>
 </div>
-<script>window.initMyPending=function(){window.PC_CoPromoDrafts.mount(document.getElementById('copro-draft-list'));};</script>
+<script>window.initMyPending=function(){if(window.PC_SendMail)window.PC_SendMail.mountPending(document.getElementById('mail-job-list'));window.PC_CoPromoDrafts.mount(document.getElementById('copro-draft-list'));};</script>

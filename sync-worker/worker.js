@@ -255,7 +255,7 @@ async function commitCampaignEdit(db, body, env) {
   const original=JSON.parse(record.v),model=globalThis.PC_PromotionEditModel;
   const deletion=await db.prepare("SELECT t.value AS deletedAt FROM promo_store p,json_each(p.v) t WHERE p.k='promo::deleted' AND t.key=?1").bind(body.campaign).first();
   if(Number(deletion?.deletedAt)>0&&Number(deletion.deletedAt)>=(Number(original._ts)||0))return json({ok:false,error:'campaign_deleted',message:'แคมเปญนี้ถูกลบแล้ว กรุณาเปิดศูนย์ติดตามใหม่'},env,409);
-  const policy=model.policy(original,body.actor,body.month);
+  const policy=model.policy(original,body.actor,body.month,{role:typeof body.actorRole==='string'?body.actorRole:''});   // IT / Admin แก้โปรฯ ของคนอื่นได้ (ฟอร์มเดียวกับผู้แจ้ง)
   if(!policy.allowed)return json({ok:false,error:'edit_locked',message:policy.reason},env,403);
   if(body.form.fields?.campaign!==body.campaign)return json({ok:false,error:'rename_requires_it',message:'หากต้องการเปลี่ยนชื่อแคมเปญ กรุณาติดต่อ IT เพื่อคงการอ้างอิงรหัสเดิม'},env,409);
   const now=Date.now();let next,resources;

@@ -464,6 +464,21 @@
     return check;
   }
 
+  /* งานรอส่งเมลของผู้ใช้ (หน้า "ส่งเมลโปรโมชั่น") — ออกจากหน้าก่อนส่งก็กลับมาทำต่อได้ */
+  async function saveMailJobs(owner, value, expectedUpdatedAt) {
+    if (!owner || typeof value !== 'string' || value.length > 500000) throw new Error('ข้อมูลงานรอส่งเมลไม่ถูกต้อง');
+    var key = 'pc_mail_jobs::' + encodeURIComponent(owner);
+    var response = await api('/promo/store/' + encodeURIComponent(key), {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({value:value, expectedUpdatedAt:expectedUpdatedAt})
+    });
+    if (response.status === 409) throw new Error('งานรอส่งเมลเปลี่ยนจากอีกหน้าต่าง กรุณาโหลดหน้าใหม่');
+    if (!response.ok) throw new Error('บันทึกงานรอส่งเมลบน Cloud ไม่สำเร็จ');
+    var ack = await response.json(), check = await readCloudKey(key);
+    if (!ack.ok || !check || check.value !== value || Number(check.updatedAt) !== Number(ack.updated_at)) throw new Error('ยังตรวจยืนยันงานรอส่งเมลบน Cloud ไม่สำเร็จ');
+    return check;
+  }
+
   async function readMailHistory() {
     var response = await api('/promo/mail-history', { cache: 'no-store' });
     if (!response.ok) throw new Error('อ่านสถานะเมลจาก Cloud ไม่สำเร็จ');
@@ -1445,7 +1460,7 @@
   window.PC_CLOUD = {
     cfg: cfg, setup: function (url, token) { return testAndSave(url, token); },
     enabled: enabled, pull: pull, pushAll: pushAll, syncNow: syncNow,
-    readMailHistory:readMailHistory, saveMailDecision:saveMailDecision, readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
+    readMailHistory:readMailHistory, saveMailDecision:saveMailDecision, saveMailJobs:saveMailJobs, readCloudKey: readCloudKey, saveCoPromoDrafts: saveCoPromoDrafts, saveCoPromoRecords: saveCoPromoRecords, submissionReceipt: submissionReceipt, commitSubmission: commitSubmission,
     loadCampaignEdit:loadCampaignEdit, saveCampaignEdit:saveCampaignEdit, assignITButtonCode:assignITButtonCode,
     prepareCampaignWrites: prepareCampaignWrites,
     savePreparedCampaignRows: savePreparedCampaignRows,

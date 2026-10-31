@@ -266,8 +266,8 @@
       // Refresh failure cannot invalidate an already durable edit receipt.
       try{await PC_CLOUD.pull({force:true});}catch(e){context.cacheWarning=String(e.message||e);}
       await Swal.fire('บันทึกการแก้ไขสำเร็จ',context.cacheWarning?'Cloud ยืนยันแล้ว แต่รีโหลดหน้าจอไม่สำเร็จ กรุณารีเฟรชเพื่อดูข้อมูลล่าสุด':'ข้อมูลรายการเดิมและประวัติการแก้ไขได้รับการบันทึกบน Cloud แล้ว','success');
-      if(window.PC_CoProEmailUI?.notifyEdit)await window.PC_CoProEmailUI.notifyEdit(context,receipt);
-      clear();window.loadPage('Campaign_Tracking',document.getElementById('nav-Campaign_Tracking'));
+      const mail=window.PC_CoProEmailUI?.notifyEdit?await window.PC_CoProEmailUI.notifyEdit(context,receipt):null;
+      clear();if(mail!=='page')window.loadPage('Campaign_Tracking',document.getElementById('nav-Campaign_Tracking'));   // ส่งเมล = ไปหน้าส่งเมลแล้ว
     }catch(e){await Swal.fire('ยังบันทึกการแก้ไขไม่สำเร็จ',e.message||String(e),'error');}
     finally{context.saving=false;if(button&&button.isConnected)button.disabled=false;}
   }

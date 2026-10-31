@@ -165,3 +165,14 @@ test('a confirmed lifecycle mail can start a loop, sends once, and is held if th
   DB.db.close();
  }
 });
+
+test('send-mail page can see the loop a campaign already uses, or that it has none yet',async()=>{
+ const none=await fixture({send:false});
+ const before=await none.a.campaignLoop(actor,{campaignKey:none.c.key},none.env);
+ assert.equal(before.registered,true);assert.equal(before.bound,false);assert.equal(before.lastMail,null);
+ const {a,env,c}=await fixture();
+ const r=await a.campaignLoop(actor,{campaignKey:c.key,month:'2026-10'},env);
+ assert.equal(r.bound,true);assert.equal(r.usable,true);assert.equal(r.loop.id,'policy');
+ assert.equal(JSON.stringify(r.loop.recipients),JSON.stringify({to:['test@example.net'],cc:[]}));assert.equal(r.lastMail.status,'queued');
+ assert.equal(JSON.stringify(await a.campaignLoop(actor,{campaignKey:'promo::c::Unknown'},env)),JSON.stringify({registered:false,bound:false}));
+});

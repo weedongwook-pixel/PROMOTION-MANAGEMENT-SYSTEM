@@ -1,40 +1,17 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 // Browser side: every lifecycle / edit mail is optional (reply / new / none) and IT replies follow a durable IT save.
-function ui(answers,requests,decisions,enabled=true){
- const window={PC_CLOUD:{saveMailDecision:async(...args)=>decisions.push(args)},PC_CoProEmail:{
-  capabilities:async()=>({coproEnabled:enabled,authMode:'staff'}),
-  list:async()=>[{id:'campaign-1',key:'promo::c::Test%20promo',month:'2026-10'}],
-  request:async(pathname,options={})=>{requests.push({path:pathname,body:options.body});if(pathname.endsWith('/preview'))return {previewHash:'hash-1',subject:'Loop subject',recipients:{to:['team@example.net'],cc:[]},text:'แจ้งขยายระยะเวลาโปรโมชั่น',newMessage:Boolean(options.body.policyId),rebind:Boolean(options.body.policyId)};return {saved:true,mailStatus:'queued'};}}};
- const Swal={fire:async options=>{if(options?.didOpen&&/กำลัง/.test(options.title||''))return {};for(const [match,answer] of answers)if(match(options))return answer;return {isConfirmed:false};},showLoading(){},showValidationMessage(){}};
- const context={window,Swal,document:{getElementById:()=>null}};vm.runInNewContext(fs.readFileSync('js/copro-email-ui.js','utf8'),context);return window.PC_CoProEmailUI;
+// The choice of loop, recipients and preview moved to the send-mail page (js/send-mail.js); here only the hand-off.
+function ui(send,calls,enabled=true){
+ const window={PC_CoProEmail:{capabilities:async()=>({coproEnabled:enabled,authMode:'staff'}),request:async()=>{calls.push('request');}},
+  PC_SendMail:{ask:async()=>{calls.push('ask');return send;},decline:async job=>calls.push('decline:'+job.kind+':'+job.changeId),open:async jobs=>{calls.push('page:'+jobs[0].kind+':'+jobs[0].changeId);return {mailPage:true};}}};
+ vm.runInNewContext(fs.readFileSync('js/copro-email-ui.js','utf8'),{window,Swal:{fire:async()=>({})}});return window.PC_CoProEmailUI;
 }
-const chooser=answer=>[o=>o?.input==='textarea'&&/หรือไม่/.test(o.title||''),answer];
-const review=answer=>[o=>/^ตรวจเมลแจ้ง/.test(o?.title||''),answer];
-test('choosing not to send a lifecycle mail records the decision and never calls the mail service',async()=>{
- const requests=[],decisions=[],api=ui([chooser({isDismissed:true,dismiss:'cancel'})],requests,decisions);
- const result=await api.notifyChange({campaign:'Test promo',changeId:'chg-test-0001',changeStatus:'CANCELLED'});
- assert.equal(result.mailStatus,'not_sent');assert.equal(requests.length,0);assert.deepEqual(decisions,[['Test promo','promotion_changed','chg-test-0001','not_sent']]);
-});
-test('reply in the bound loop previews, then queues exactly the confirmed change with the optional message',async()=>{
- const requests=[],decisions=[],api=ui([chooser({isConfirmed:true,value:' ขยายตามยอดขาย '}),review({isConfirmed:true})],requests,decisions);
- const result=await api.notifyChange({campaign:'Test promo',changeId:'chg-test-0002',changeStatus:'EXTENDED'});
- assert.equal(result.mailStatus,'queued');assert.deepEqual(requests.map(r=>r.path),['copro/change/preview','copro/change']);
- const commit=requests[1].body;assert.equal(commit.changeId,'chg-test-0002');assert.equal(commit.campaignKey,'promo::c::Test%20promo');assert.equal(commit.additionalMessage,'ขยายตามยอดขาย');
- assert.equal(commit.confirmed,true);assert.equal(commit.previewHash,'hash-1');assert.equal(commit.policyId,undefined,'reply uses the bound loop');assert.equal(decisions.length,0);
-});
-test('new email creates a new loop with the chosen recipients and binds the edit mail to it',async()=>{
- const requests=[],decisions=[],policy={id:'policy-new',version:1,newMessage:true,recipients:{to:['new@example.net'],cc:[]}};
- const api=ui([chooser({isDenied:true,value:''}),[o=>/ส่งเมลใหม่ — ระบุผู้รับ/.test(o?.title||''),{isConfirmed:true,value:policy}],review({isConfirmed:true})],requests,decisions);
- assert.equal(await api.notifyEdit({campaign:'Test promo',month:'2026-10'},{editId:'edit-client-1'}),true);
- assert.deepEqual(requests.map(r=>r.path),['copro/revision/preview','copro/revision']);
- const commit=requests[1].body;assert.equal(commit.policyId,'policy-new');assert.equal(commit.policyVersion,1);assert.deepEqual(commit.recipients,policy.recipients);assert.equal(commit.editId,'edit-client-1');
-});
-test('declining at review records not sent; missing email service skips the question entirely',async()=>{
- const requests=[],decisions=[],api=ui([chooser({isConfirmed:true,value:''}),review({isDismissed:true,dismiss:'cancel'})],requests,decisions);
- assert.equal((await api.notifyChange({campaign:'Test promo',changeId:'chg-test-0003',changeStatus:'REDUCED'})).mailStatus,'not_sent');
- assert.deepEqual(requests.map(r=>r.path),['copro/change/preview']);assert.equal(decisions[0][1],'promotion_changed');
- const asked=[],offRequests=[],off=ui([[o=>{asked.push(o);return false;},null]],offRequests,[],false);
- assert.equal((await off.notifyChange({campaign:'Test promo',changeId:'chg-test-0004',changeStatus:'EXTENDED'})).mailStatus,'unavailable');assert.equal(asked.length,0);assert.equal(offRequests.length,0);
+test('lifecycle mail: no records not sent, yes opens the send-mail page, no email service skips the question',async()=>{
+ let calls=[];assert.equal((await ui(false,calls).notifyChange({campaign:'Test promo',changeId:'chg-test-0001',changeStatus:'CANCELLED'})).mailStatus,'not_sent');
+ assert.deepEqual([...calls],['ask','decline:change:chg-test-0001']);
+ calls=[];assert.equal((await ui(true,calls).notifyChange({campaign:'Test promo',changeId:'chg-test-0002',changeStatus:'EXTENDED'})).mailStatus,'page');
+ assert.deepEqual([...calls],['ask','page:change:chg-test-0002']);
+ calls=[];assert.equal((await ui(true,calls,false).notifyChange({campaign:'Test promo',changeId:'chg-test-0004',changeStatus:'EXTENDED'})).mailStatus,'unavailable');assert.equal(calls.length,0);
 });
 function client(rows,saves){
  const calls=[],w={PC_EmailAuth:{acquireToken:async()=> 'verified'},PC_CLOUD:{readCloudKey:async()=>({value:JSON.stringify(rows)}),enabled:()=>true,hasPending:()=>true,syncNow:async()=>calls.push('sync')},

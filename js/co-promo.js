@@ -43,54 +43,38 @@
     campaigns = (campaigns || []).filter(Boolean);
     if (!campaigns.length || !window.Swal) return;
     var co = Array.isArray(opts.coPromo) ? opts.coPromo : [];
-    var result = { coPromo: false, completed: true };
+    var result = { coPromo: false, completed: true }, jobs = [];
     for (const campaign of campaigns) {
       var isCo = co.indexOf(campaign) >= 0;
       if (isCo) result.coPromo = true;
-      var delivery = await askDelivery(campaign, isCo);
+      var send = await askDelivery(campaign, isCo);
       if (isCo) {
         if(!window.PC_CoPromoDrafts?.recordCoPromo)throw Error('ระบบบันทึก CoPromo ยังไม่พร้อม กรุณาเปิดเว็บใหม่');
-        if (delivery === 'none') { await window.PC_CoPromoDrafts.recordCoPromo(campaign, {}, 'not_sent'); continue; }
+        if (!send) { await window.PC_CoPromoDrafts.recordCoPromo(campaign, {}, 'not_sent'); continue; }
         await window.PC_CoPromoDrafts.recordCoPromo(campaign);
-        var done = await prepareMail(campaign, { delivery: delivery });
-        if (done !== true) return Object.assign({ coPromo: true }, done && typeof done === 'object' ? done : { completed: false });
+        jobs.push({ kind: 'copro', campaign: campaign, returnPage: 'CoPromotion' });
         continue;
       }
-      if (delivery === 'none') {
+      if (!send) {
         if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(campaign,'submitted','','not_sent');
         continue;
       }
-      var sent = await window.PC_CoProEmailUI.save({campaign},{notificationOnly:true,delivery:delivery});
-      if (!sent) return Object.assign(result, { completed: false });
+      jobs.push({ kind: 'submitted', campaign: campaign, returnPage: 'SubmissionLog' });
     }
+    // ส่งเมล = ไปทำต่อที่หน้า "ส่งเมลโปรโมชั่น" (เลือกลูปเดิม/เมลใหม่ ตรวจตัวอย่าง แล้วยืนยันส่ง)
+    if (jobs.length) { await window.PC_SendMail.open(jobs); return Object.assign(result, { completed: false, mailPage: true }); }
     return result;
   }
+  /* ถามสั้นๆ ว่าส่งเมลไหม · ลูปเดิม/เมลใหม่ เลือกในหน้าส่งเมล */
   async function askDelivery(campaign, isCo) {
-    var res = await Swal.fire({
-      icon: "question", title: "ส่งเมลแจ้งโปรโมชั่นหรือไม่?",
-      html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6"><b style="color:#1a1d20">' + esc(campaign) + '</b>' +
-        (isCo ? '<br><i class="fas fa-handshake"></i> Co-Promotion · บันทึกเข้าหน้า Co-Promotion แล้ว' : '') +
-        '<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div><div style="margin-top:8px;padding:8px 10px;background:#fff8e1;border:1px solid #f3dd9b;border-radius:8px;font-size:.82rem;color:#5d4a00;text-align:left"><i class="fas fa-circle-info"></i> <b>ตอบกลับลูปเดิม</b> ได้เฉพาะลูปที่มี <b>it@rocks-foods.com</b> อยู่ใน To หรือ CC · ถ้าไม่มี ให้เลือก <b>ส่งเมลใหม่</b></div>',
-      showCancelButton: true, showDenyButton: true, allowOutsideClick: false, allowEscapeKey: false,
-      confirmButtonText: '<i class="fas fa-reply"></i> ตอบกลับลูปเดิม',
-      denyButtonText: '<i class="fas fa-envelope"></i> ส่งเมลใหม่',
-      cancelButtonText: "ไม่ส่งเมล", confirmButtonColor: "#2e934a", denyButtonColor: "#1b5e20", cancelButtonColor: "#9aa0a6",
-    });
-    return res.isConfirmed ? 'reply' : res.isDenied ? 'new' : 'none';
+    return window.PC_SendMail.ask('ส่งเมลแจ้งโปรโมชั่นหรือไม่?', campaign, isCo ? 'Co-Promotion · บันทึกเข้าหน้า Co-Promotion แล้ว' : '');
   }
   async function prepareMail(campaign, options) {
     options = options || {};
-    if (!window.PC_CoProEmailUI) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาเปิดเว็บใหม่');
-    const result = await window.PC_CoProEmailUI.save({campaign}, {mode:'production',delivery:options.delivery});
-    if (!result) return {draftSaved:true}; // Intake remains in My Pending.
-    if (!['queued','accepted'].includes(result.mailStatus)) throw Error('ยังไม่ได้รับการยืนยันคำขอส่งเมล กรุณาตรวจสถานะก่อนทำซ้ำ');
-    try {
-      await window.PC_CoPromoDrafts.recordCoPromo(campaign, {}, 'queued');
-      if (options.draft) await window.PC_CoPromoDrafts.remove(options.draft);
-    } catch(e) {
-      await Swal.fire({icon:'warning',title:'บันทึกคำขอส่งเมลแล้ว',text:'ไม่ต้องส่งซ้ำ แต่สถานะงานค้างยังอัปเดตไม่สำเร็จ: '+e.message});
-    }
-    return true;
+    if (!window.PC_SendMail) throw Error('ระบบอีเมลยังไม่พร้อม กรุณาเปิดเว็บใหม่');
+    // ส่งเมล CoPromo ทำต่อที่หน้า "ส่งเมลโปรโมชั่น" · ส่งสำเร็จแล้วหน้านั้นอัปเดตสถานะ CoPromo และลบฉบับร่างให้
+    await window.PC_SendMail.open([{ kind: 'copro', campaign: campaign, record: options.selection || (options.draft && options.draft.record) || null, draft: options.draft || null, returnPage: 'CoPromotion' }]);
+    return { mailPage: true };
   }
 
   async function openForm(campaign, existing, options) {

@@ -136,6 +136,23 @@
     if(JSON.stringify(recipients)!==JSON.stringify({to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)}))throw Error('email_unapproved_recipients');
     return {binding,thread,recipients,rebind:!binding||binding.thread_id!==thread.id||binding.policy_version!==thread.version||binding.recipients_json!==JSON.stringify(recipients)};
   }
+  // Send-mail page: does this campaign already have a loop? Returns the latest bound loop (subject + approved
+  // recipients) the actor may still use, plus the latest mail status, so "reply in the old loop" needs no search.
+  api.campaignLoop=async function(actor,input,env){
+    await api.requireEmailPermission(actor,'submit',env);
+    if(typeof input.campaignKey!=='string'||!input.campaignKey.startsWith('promo::c::'))throw Error('email_source_changed');
+    const month=typeof input.month==='string'&&input.month?input.month:null;
+    const c=await statement(env,"SELECT c.* FROM email_campaigns c LEFT JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND (? IS NULL OR c.month=?) AND c.owner_tenant=? AND c.owner_oid=? AND c.status='active' ORDER BY b.campaign_id IS NULL,b.confirmed_at DESC LIMIT 1",input.campaignKey,month,month,actor.tenantId,actor.objectId).first();
+    if(!c)return {registered:false,bound:false};
+    const last=await statement(env,'SELECT status,updated_at FROM email_outbox WHERE campaign_id=? ORDER BY updated_at DESC LIMIT 1',c.id).first();
+    const binding=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
+    const lastMail=last?{status:last.status,at:last.updated_at}:null;
+    if(!binding)return {registered:true,campaignId:c.id,month:c.month,bound:false,lastMail};
+    const thread=await statement(env,'SELECT * FROM email_threads WHERE id=?',binding.thread_id).first();
+    const usable=!!thread&&thread.enabled===1&&thread.version===binding.policy_version&&api.threadAudience(thread,actor);
+    return {registered:true,campaignId:c.id,month:c.month,bound:true,usable,lastMail,
+      loop:thread?{id:thread.id,version:thread.version,subject:thread.subject,newMessage:thread.message_id.startsWith('new:'),mode:api.emailThreadMode(thread),recipients:{to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)}}:null};
+  };
   const targetVersion=t=>t.rebind?(t.binding?t.binding.version+1:1):t.binding.version;
   const targetHash=t=>({bindingVersion:t.binding?.version||0,thread:t.thread.id,threadVersion:t.thread.version,rebind:t.rebind});
   function bindStatements(env,c,t,hash,actor){

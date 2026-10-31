@@ -468,8 +468,8 @@
       return '<tr>' +
         '<td class="text-center">' + (wi + 1) + '</td>' +
         '<td><div class="input-group input-group-sm" style="width:126px;flex-wrap:nowrap"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-cat="103" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(w.cmpos || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'cmpos\',this.value)" placeholder="CMPOS"><button class="btn btn-outline-info px-1" type="button" title="คัดลอก CMPOS (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
-        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.eng || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'eng\',this.value)"></td>' +
-        '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.th || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'th\',this.value)"></td>' +
+        '<td><div class="input-group input-group-sm" style="flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.eng || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'eng\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอก ENG Name" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
+        '<td><div class="input-group input-group-sm" style="flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.th || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'th\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอก TH Name" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
         '<td><div class="input-group input-group-sm" style="width:112px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary mono" value="' + itEsc(w.code || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'code\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกรหัส RM" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
         '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(w.desc || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'desc\',this.value)"></td>' +
         '<td style="width:96px"><div class="input-group input-group-sm" style="flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary text-center" value="' + itEsc(w.qty || '') + '" oninput="window.itPow(' + si + ',' + wi + ',\'qty\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกจำนวน" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
@@ -552,6 +552,7 @@
       var max = (s && (s.powders || []).length) ? s.powders.length : 99;
       return '<div class="d-flex gap-2 align-items-center mb-2 flex-wrap"><span class="badge bg-dark">#' + (fi + 1) + '</span>' +
         '<span class="badge bg-secondary">' + itEsc(s ? (s.ssCode || '— SS —') : '—') + '</span>' +
+        (s && s.ssCode ? '<button class="btn btn-sm btn-outline-info px-2 py-0" type="button" title="คัดลอก SS Code" data-copy="' + itEsc(s.ssCode) + '" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button>' : '') +
         '<select class="form-select form-select-sm border-dark" style="max-width:240px" onchange="window.itFml(' + i + ',' + fi + ',\'ss\',this.value)">' + subOpts(f.ss) + '</select>' +
         '<span class="small">เลือกได้</span><input type="number" min="1" max="' + max + '" class="form-control form-control-sm border-dark text-center" style="width:64px" value="' + itEsc(f.choose || 1) + '" oninput="window.itFml(' + i + ',' + fi + ',\'choose\',this.value)"><span class="small">ผง</span>' +
         '<i class="fas fa-times text-danger ms-auto" style="cursor:pointer" onclick="window.itDelFml(' + i + ',' + fi + ')"></i></div>';
@@ -561,8 +562,8 @@
       '<div class="p-3">' +
         '<div class="row g-2 mb-2">' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span></label><input class="form-control form-control-sm border-dark" maxlength="40" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span><button class="btn btn-link btn-sm p-0 ms-1 align-baseline" type="button" title="คัดลอก Item Name (EN)" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button></label><input class="form-control form-control-sm border-dark" maxlength="40" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span><button class="btn btn-link btn-sm p-0 ms-1 align-baseline" type="button" title="คัดลอก Item Name (TH)" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><select class="form-select form-select-sm border-dark" onchange="window.itItemCate(' + i + ',this.value)">' + itCateOpts(it) + '</select>' + (it._origCode && it._origCode !== it.code ? '<div class="small text-warning-emphasis" style="font-size:.72rem">เลขเดิม ' + itEsc(it._origCode) + ' คืนระบบเมื่อกดบันทึก</div>' : '') + '</div>' +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode</div><div class="mb-2">' + salePills + '</div>' +
@@ -626,6 +627,16 @@
     (c.items || []).forEach(function (it) { delete it._origCode; delete it._origCate; });
     return c;
   }
+  /* ปุ่มคัดลอกข้างหัวช่อง (ชื่อสินค้า EN/TH) หรือค่าที่ผูกกับปุ่ม (data-copy เช่น SS Code ในสูตรผง) */
+  window.itCopyField = function (btn) {
+    var v = btn.getAttribute('data-copy'), col = btn.closest('[class*="col-"]');
+    if (v == null) { var inp = col && col.querySelector('input'); v = inp ? inp.value : ''; }
+    v = String(v || '').trim();
+    if (!v) { if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'ยังไม่มีข้อมูลให้คัดลอก', timer: 1400, showConfirmButton: false }); return; }
+    var ok = function () { if (window.Swal) Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'คัดลอก ' + v + ' แล้ว', timer: 1200, showConfirmButton: false }); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(v).then(ok, function () {}); return; } } catch (e) {}
+    var t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); ok(); } catch (e) {} t.remove();
+  };
   window.itCopyCode = function (btn) {
     var inp = btn.parentElement.querySelector('input'); if (!inp) return;
     var v = String(inp.value || '').trim();

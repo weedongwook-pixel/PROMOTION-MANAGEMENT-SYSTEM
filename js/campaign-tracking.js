@@ -230,6 +230,8 @@
   };
 
   window.loadTrackingData = function() {
+    // หลังบันทึกแล้วผู้ใช้เลือกส่งเมล → ไปหน้าส่งเมลแล้ว ไม่ต้องโหลดตารางทับ
+    try { if (localStorage.getItem('pc_last_page') === 'SendMail') return; } catch (e) {}
     Swal.fire({ 
       html: `
         <div class="d-flex flex-column align-items-center justify-content-center py-3">
@@ -815,7 +817,7 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
     var done = async function(res){
       if (!res || res.status !== 'success') { Swal.fire('ผิดพลาด', (res && res.message) || 'บันทึกไม่สำเร็จ', 'error'); return; }
       await window.ctAfterChangeSaved(res, campaignName, 'ปุ่มที่เลือก: ' + checked.join(', '));
-      window.fetchItemsToRow(rowIdx); if(window.loadTrackingData) window.loadTrackingData();
+      if (localStorage.getItem('pc_last_page') !== 'SendMail') { window.fetchItemsToRow(rowIdx); if(window.loadTrackingData) window.loadTrackingData(); }
     };
     if(mode==='cancel'){
       Swal.fire({ icon:'warning', title:'ยกเลิก '+checked.length+' ปุ่ม?', html:'ปุ่มที่จะยกเลิก:'+listHtml+'<input id="ctCancelReason" class="swal2-input" placeholder="เหตุผล (ไม่บังคับ)">', showCancelButton:true, confirmButtonText:'ยกเลิกปุ่มที่เลือก', confirmButtonColor:'#dc3545', cancelButtonText:'ปิด' }).then(function(r){
