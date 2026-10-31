@@ -657,16 +657,30 @@
     if (k === 'ssCode') itMoveSs(e, s, s.ssCode, v);
     s[k] = v; if (k === 'name') window.renderItEdit();
   };
-  /* IT แก้ SS Code → สูตรผงของทุกปุ่มที่อ้างรหัสเดิมย้ายตามทันที · ข้ามถ้ามี Subset อื่นในใบใช้รหัสเดิมเดียวกัน (แยกไม่ได้ว่าเป็นของชุดไหน)
+  /* IT แก้ SS Code → สูตรผงของทุกปุ่มที่อ้าง Subset นี้ย้ายตามทันที
+     จำว่าสูตรไหนเป็นของ Subset ไหนตั้งแต่ก่อนแก้ครั้งแรก จึงสลับเลขต่อกันได้ (เช่น SS0176→SS0177 และ SS0177→SS0178 ในใบเดียวกัน)
      เลขเดิมคืนระบบตอนกดบันทึก (backend) */
-  function itMoveSs(e, s, from, to) {
-    from = String(from || '').trim(); to = String(to || '').trim();
-    if (!from || from === to) return;
-    if ((e.subsets || []).some(function (x) { return x !== s && String(x.ssCode || '').trim() === from; })) return;
-    (e.items || []).forEach(function (it) {
-      (it.formulas || []).forEach(function (f) { if (String(f.ss || '').trim() === from) { f.ss = to; window._itSsMoved = true; } });
-      if (String(it.ssCode || '').trim() === from) { it.ssCode = to; window._itSsMoved = true; }
+  var itSsOwn = new WeakMap();
+  function itSsOwners(e) {
+    if (itSsOwn.has(e)) return itSsOwn.get(e);
+    var own = new Map();
+    (e.subsets || []).forEach(function (s) {
+      var c = String(s.ssCode || '').trim(), mine = { f: [], it: [] };
+      if (c && (e.subsets || []).filter(function (x) { return String(x.ssCode || '').trim() === c; }).length === 1) {
+        (e.items || []).forEach(function (it) {
+          (it.formulas || []).forEach(function (f) { if (String(f.ss || '').trim() === c) mine.f.push(f); });
+          if (String(it.ssCode || '').trim() === c) mine.it.push(it);
+        });
+      }
+      own.set(s, mine);
     });
+    itSsOwn.set(e, own); return own;
+  }
+  function itMoveSs(e, s, from, to) {
+    var mine = itSsOwners(e).get(s); if (!mine) return;
+    to = String(to || '').trim(); if (String(from || '').trim() === to) return;
+    mine.f.forEach(function (f) { f.ss = to; window._itSsMoved = true; });
+    mine.it.forEach(function (it) { it.ssCode = to; window._itSsMoved = true; });
   }
   /* วาดสูตรผงใหม่หลังออกจากช่อง SS Code · ถ้ากำลังกดปุ่ม (เช่น บันทึก) ไม่วาดทับ ปุ่มจะได้ทำงาน */
   window.itSubSsBlur = function (ev) {
@@ -684,7 +698,17 @@
   window.itAddPow = function (si) { var s = window._itEdit.subsets[si]; (s.powders = s.powders || []).push({ cmpos: '', eng: '', th: '', code: '', desc: '', qty: '', unit: 'กรัม', spoon: '', price: 0 }); window.renderItEdit(); };
   window.itDelPow = function (si, wi) { var w = window._itEdit.subsets[si] && window._itEdit.subsets[si].powders[wi]; if (w) itReturnCode(w.cmpos, 'item'); window._itEdit.subsets[si].powders.splice(wi, 1); window.renderItEdit(); };
   /* formula handlers */
-  window.itFml = function (i, fi, k, v) { window._itEdit.items[i].formulas[fi][k] = v; if (k === 'ss') window.renderItEdit(); };
+  window.itFml = function (i, fi, k, v) {
+    var e = window._itEdit, f = e.items[i].formulas[fi]; f[k] = v;
+    if (k === 'ss') {
+      // IT เลือก Subset เอง → ผูกสูตรนี้กับ Subset ที่เลือก (ถ้าแก้ SS Code ทีหลัง สูตรนี้จะย้ายตาม)
+      if (itSsOwn.has(e)) itSsOwn.get(e).forEach(function (mine, sub) {
+        mine.f = mine.f.filter(function (x) { return x !== f; });
+        if (v && String(sub.ssCode || '').trim() === String(v).trim()) mine.f.push(f);
+      });
+      window.renderItEdit();
+    }
+  };
   window.itAddFml = function (i) { var it = window._itEdit.items[i]; (it.formulas = it.formulas || []).push({ ss: '', choose: 1 }); window.renderItEdit(); };
   window.itDelFml = function (i, fi) { window._itEdit.items[i].formulas.splice(fi, 1); window.renderItEdit(); };
   window.itAddItem = function () { window._itEdit.items.push({ name: '', th: '', category: '', code: '', saleModes: [], priceTakeaway: '', priceDelivery: '', prices: {}, recipes: [{ code: '', desc: '', qty: '', unit: 'กรัม', channels: [] }], formulas: [] }); window.renderItEdit(); };
@@ -706,7 +730,9 @@
       ((res && res.returned) || []).forEach(function (c) { if (back.indexOf(c) < 0) back.push(c); });   // เลขเดิมที่ค้างใน Product Master (เปลี่ยนหมวดก่อนหน้านี้) → backend คืนให้แล้ว
       ((res && res.returnedSs) || []).forEach(function (c) { if (back.indexOf(c) < 0) back.push(c); });  // SS Code เดิมที่ IT เปลี่ยน → backend คืนให้แล้ว
       itClearDraft('npd', id);
-      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ' + (back.length ? ' · คืนเลขเดิม ' + back.join(', ') + ' เข้าระบบแล้ว' : ''), timer: back.length ? 2600 : 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
+      var fixed = (res && res.ssFixed) || [];   // สูตรผงที่ยังอ้าง SS Code เดิม → ระบบย้ายให้ตรง Subset แล้ว
+      var note = (back.length ? ' · คืนเลขเดิม ' + back.join(', ') + ' เข้าระบบแล้ว' : '') + (fixed.length ? ' · ปรับสูตรผงตาม SS Code ใหม่: ' + fixed.join(', ') : '');
+      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ' + note, timer: note ? (fixed.length ? 6000 : 2600) : 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
     }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, itCleanEdit(e));
   };
 

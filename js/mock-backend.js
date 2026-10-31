@@ -5437,6 +5437,12 @@
       (n.items || []).forEach(function (it) { add(it.code, "NPD item"); add(it.cmpos, "NPD cmpos"); });
       (n.subsets || []).forEach(function (s) {
         (s.powders || []).forEach(function (p) { add(p.cmpos, "Flavor " + (s.ssCode || "")); });
+        /* SS Code ของ Subset ใหม่ก็ล็อก CONFIRMED · ไม่งั้นตัวกวาดเลขค้างนับเป็นเลขว่าง (เคส SS0176-0178 ของ NPD-2026008) */
+        var ss = String(s.ssCode || "").trim(); if (s.existing || !/^SS\d+$/i.test(ss)) return;
+        var e = st.reservations["ss::" + ss], num = Number(ss.slice(2)) || 0;
+        if (e) { if (e.status !== "CONFIRMED") { e.status = "CONFIRMED"; e.confirmedAt = now; got++; } }
+        else { st.reservations["ss::" + ss] = { code: ss, type: "ss", num: num, status: "CONFIRMED", where: who, campaign: who, field: "NPD subset", by: "IT", at: now, confirmedAt: now, releasedAt: "" }; got++; }
+        var t = st.types && st.types.ss; if (t && t.freed && t.freed.indexOf(num) >= 0) { t.freed = t.freed.filter(function (x) { return x !== num; }); got++; }
       });
       (n.groups || []).forEach(function (g) {
         (g.flavors || []).forEach(function (f) { add(f.cmpos, "Flavor " + (g.ssCode || "")); });
@@ -5472,7 +5478,7 @@
       npdToProducts(target); npdSubsetToProducts(target);
       const writeErrors = npdMasterWriteErrors(target);
       if (writeErrors.length) return { status: "error", message: "ตรวจสอบการเขียน Master ไม่ผ่าน:\n• " + writeErrors.join("\n• ") };
-      (target.subsets || []).forEach(function (s) { subsetRegister(s.ssCode, s.name, s.name2 || s.short, "npd:" + target.id); }); lockNpdCodes(target); /* FX-P86 */
+      (target.subsets || []).forEach(function (s) { subsetRegister(s.ssCode, s.name, s.name2 || s.short, "npd:" + target.id, true); }); lockNpdCodes(target); /* FX-P86 */
     }
     stampVersion(target);
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
@@ -5507,6 +5513,7 @@
       if (inputErrors.length) return { status: "error", message: "ยังขึ้น Product Master ไม่ได้:\n• " + inputErrors.slice(0, 8).join("\n• ") };
     }
     npdNoFlavorSeq(next);
+    const _ssFixed = npdRepairSsRefs(n, next);
     harvestRm(next);   // new RM from IT edits also flows into rm_master
     const _ssGone = npdGoneSsCodes(n, next);
     store.npd[idx] = next;
@@ -5523,12 +5530,12 @@
       // subset ที่ IT บันทึก → เก็บเข้าหน้าจัดการ Subset (pc_subset_custom)
       try { const _c = JSON.parse(localStorage.getItem("pc_subset_custom") || "[]"); (store.npd[idx].subsets || []).forEach(s => { const ss = s.ssCode || s.code; if (ss && !_c.find(x => x.ssCode === ss)) _c.push({ ssCode: ss, nameTH: s.name || ss, nameEN: s.name || ss }); }); localStorage.setItem("pc_subset_custom", JSON.stringify(_c)); } catch (e) {}
       /* FX-P72 — ขึ้นทะเบียน Subset จริง เพื่อให้หน้าแจ้งโปร/Item Set เลือกเป็นกลุ่มได้ */
-      try { (store.npd[idx].subsets || []).forEach(s => subsetRegister(s.ssCode || s.code, s.name, s.name2 || s.short, "npd:" + store.npd[idx].id)); } catch (e) {}
+      try { (store.npd[idx].subsets || []).forEach(s => subsetRegister(s.ssCode || s.code, s.name, s.name2 || s.short, "npd:" + store.npd[idx].id, true)); } catch (e) {}
     }
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
     const returned = (syncMaster && _stale && _stale.length) ? npdReturnCodes(next, _stale) : [];
     const returnedSs = npdReturnSsCodes(_ssGone);
-    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version, returned: returned, returnedSs: returnedSs };
+    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version, returned: returned, returnedSs: returnedSs, ssFixed: _ssFixed };
   };
 
   function seedDemoNpd() {
@@ -5889,16 +5896,42 @@
    *  (เดิม pc_addon_subsets มีแต่เขียน ไม่มีใครอ่านกลับ → รีเฟรชทีเดียวหาย)
    * ========================================================================== */
   /* IT เปลี่ยน SS Code ของ Subset ใหม่ในงานนี้ → เลขเดิมไม่ใช้แล้ว: ถอดออกจากทะเบียน Subset และคืนเลขเข้าคลังเสมอ (แม้เคยขึ้นปุ่มแล้ว)
-     ไม่แตะ Subset เดิมในระบบ (existing) และเลขที่งานอื่น/ทะเบียนอื่นยังใช้อยู่ */
+     ไม่แตะ Subset เดิมในระบบ (existing) และเลขที่งานอื่น/ทะเบียนอื่นยังใช้อยู่ · เก็บกวาดเลขเดิมที่ค้างในทะเบียนจากการบันทึกก่อนหน้าด้วย */
+  function npdSsOf(s) { return String(s && (s.ssCode || s.code) || "").trim(); }
+  function npdOwnSsReg(id) {
+    var src = "npd:" + id, reg = {};
+    try { (window.PC_SUBSET_MASTER || []).forEach(function (x) { if (String(x._src || "") === src && x.ssCode) reg[String(x.ssCode)] = x; }); } catch (e) {}
+    try { var a = JSON.parse(localStorage.getItem("pc_addon_subsets") || "{}") || {}; Object.keys(a).forEach(function (k) { var x = a[k] || {}; if (String(x._src || "") === src && !reg[x.ssCode || k]) reg[x.ssCode || k] = x; }); } catch (e) {}
+    return reg;
+  }
+  /* สูตรผงที่ยังอ้างเลขเดิมหลังสลับ SS Code (บันทึกก่อนมีระบบย้ายสูตรตาม) → ย้ายไป Subset ที่เลขนั้นเคยหมายถึง
+     ดูจากชื่อ Subset ที่เลขนั้นลงทะเบียนไว้ตอนบันทึกครั้งก่อน · แตะเฉพาะสูตรที่ IT ไม่ได้แก้ในรอบนี้ (ตรงกับที่บันทึกไว้เดิม) */
+  function npdRepairSsRefs(prev, next) {
+    var norm = function (v) { return String(v || "").trim().toLowerCase(); };
+    var reg = npdOwnSsReg(next.id), byName = {}, map = {}, fixed = [];
+    (next.subsets || []).forEach(function (s) { var c = npdSsOf(s), k = norm(s.name); if (!c || s.existing || !k) return; byName[k] = byName[k] === undefined ? c : null; });
+    Object.keys(reg).forEach(function (c) { var y = byName[norm(reg[c].name)]; if (y && y !== c) map[c] = y; });
+    if (!Object.keys(map).length) return fixed;
+    (next.items || []).forEach(function (it, ii) {
+      var code = String(it.code || "").trim();
+      var pit = (prev.items || []).find(function (x) { return code && String(x.code || "").trim() === code; }) || (prev.items || [])[ii];
+      (it.formulas || []).forEach(function (f, fi) {
+        var c = String(f.ss || "").trim(), pf = pit && (pit.formulas || [])[fi];
+        if (!map[c] || !pf || String(pf.ss || "").trim() !== c) return;
+        f.ss = map[c]; fixed.push(code + ": " + c + " → " + map[c]);
+      });
+    });
+    return fixed;
+  }
   function npdGoneSsCodes(prev, next) {
     var id = String(next && next.id || ""), src = "npd:" + id, keep = {}, gone = [];
-    var ssOf = function (s) { return String(s && (s.ssCode || s.code) || "").trim(); };
-    (next && next.subsets || []).forEach(function (s) { var c = ssOf(s); if (c) keep[c] = 1; });
+    (next && next.subsets || []).forEach(function (s) { var c = npdSsOf(s); if (c) keep[c] = 1; });
+    (next && next.items || []).forEach(function (it) { if (it.ssCode) keep[String(it.ssCode).trim()] = 1; (it.formulas || []).forEach(function (f) { if (f.ss) keep[String(f.ss).trim()] = 1; }); });
     var usedOutside = function (ss) {
       var same = function (v) { return String(v || "").trim() === ss; };
       if ((store.npd || []).some(function (n) {
         if (String(n.id || "") === id) return false;
-        return (n.subsets || []).some(function (s) { return same(ssOf(s)); }) || (n.groups || []).some(function (g) { return same(g.ssCode); }) ||
+        return (n.subsets || []).some(function (s) { return same(npdSsOf(s)); }) || (n.groups || []).some(function (g) { return same(g.ssCode); }) ||
           (n.items || []).some(function (it) { return same(it.ssCode) || (it.formulas || []).some(function (f) { return same(f.ss); }); });
       })) return true;
       try { if ((window.PC_SUBSET_MASTER || []).some(function (x) { return same(x.ssCode) && String(x._src || "") !== src; })) return true; } catch (e) {}
@@ -5908,8 +5941,9 @@
       } catch (e) {}
       return false;
     };
-    (prev && prev.subsets || []).forEach(function (s) {
-      var c = ssOf(s); if (!/^SS\d/i.test(c) || s.existing || keep[c] || gone.indexOf(c) >= 0 || usedOutside(c)) return;
+    var cand = (prev && prev.subsets || []).filter(function (s) { return !s.existing; }).map(npdSsOf).concat(Object.keys(npdOwnSsReg(id)));
+    cand.forEach(function (c) {
+      if (!/^SS\d/i.test(c) || keep[c] || gone.indexOf(c) >= 0 || usedOutside(c)) return;
       gone.push(c);
     });
     return gone;
@@ -5923,17 +5957,28 @@
   }
   function npdReturnSsCodes(codes) {
     var back = [];
-    try { var C = window.PC_COUNTER; if (!C || !C.returnCode) return back; (codes || []).forEach(function (c) { if (C.returnCode(c, "ss", "IT NPD (เปลี่ยน SS Code — คืนเลขเดิม)", true)) back.push(c); }); } catch (e) {}
+    try {
+      var C = window.PC_COUNTER; if (!C || !C.returnCode) return back;
+      (codes || []).forEach(function (c) {
+        if (C.returnCode(c, "ss", "IT NPD (เปลี่ยน SS Code — คืนเลขเดิม)", true)) { back.push(c); return; }
+        // ไม่มีเรคคอร์ดในคลังเลข (เคยถูกคืนไว้แล้ว) → เลขอยู่ในคลังแล้ว ถอดทะเบียนก็พอ
+        var st = C.state && C.state(), t = st && st.types && st.types.ss, n = Number(String(c).replace(/^SS/i, ""));
+        if (t && n && !(st.reservations || {})["ss::" + c]) { if (n <= (t.cursor || 0) && (t.freed || []).indexOf(n) < 0) { t.freed = (t.freed || []).concat(n); if (C._save) C._save(); } back.push(c); }
+      });
+    } catch (e) {}
     return back;
   }
 
-  function subsetRegister(ss, name, short, src) {
+  /* refresh = บันทึกงานซ้ำ (IT) → ชื่อในทะเบียนของงานนี้ตามใบงาน · ตอนเปิดระบบไม่ส่ง refresh เพื่อเก็บความหมายเดิมของเลขไว้ให้ npdRepairSsRefs */
+  function subsetRegister(ss, name, short, src, refresh) {
     ss = String(ss || "").trim(); if (!/^SS\d/i.test(ss)) return false;
     name = String(name || ss).trim(); short = String(short || "").trim() || name;
     var added = false;
     try {
       var SM = window.PC_SUBSET_MASTER || (window.PC_SUBSET_MASTER = []);
-      if (!SM.find(function (x) { return String(x.ssCode) === ss; })) {
+      var own = SM.find(function (x) { return String(x.ssCode) === ss; });
+      if (own && refresh && src && String(own._src || "") === src && (own.name !== name || own.short !== short)) { own.name = name; own.short = short; }   // งานเดิมบันทึกซ้ำ (เช่น IT สลับ SS Code) → ชื่อในทะเบียนตามใบงาน
+      if (!own) {
         SM.push({ ssCode: ss, name: name, short: short, status: "Active", promoFormActive: "Show", _src: src || "npd" });
         added = true;
       }
@@ -5941,10 +5986,13 @@
     try {
       var reg = JSON.parse(localStorage.getItem("pc_addon_subsets") || "{}") || {};
       if (!reg[ss]) { reg[ss] = { ssCode: ss, name: name, short: short, status: "Active", _src: src || "npd" }; localStorage.setItem("pc_addon_subsets", JSON.stringify(reg)); }
+      else if (refresh && src && String(reg[ss]._src || "") === src && (reg[ss].name !== name || reg[ss].short !== short)) { reg[ss].name = name; reg[ss].short = short; localStorage.setItem("pc_addon_subsets", JSON.stringify(reg)); }
     } catch (e) {}
     try {
       var cust = JSON.parse(localStorage.getItem("pc_subset_custom") || "[]") || [];
-      if (!cust.find(function (x) { return String(x.ssCode) === ss; })) { cust.push({ ssCode: ss, nameTH: name, nameEN: name }); localStorage.setItem("pc_subset_custom", JSON.stringify(cust)); }
+      var cu = cust.find(function (x) { return String(x.ssCode) === ss; });
+      if (!cu) { cust.push({ ssCode: ss, nameTH: name, nameEN: name }); localStorage.setItem("pc_subset_custom", JSON.stringify(cust)); }
+      else if (refresh && src && /^npd:/.test(src) && (cu.nameTH !== name || cu.nameEN !== name)) { try { var _r = JSON.parse(localStorage.getItem("pc_addon_subsets") || "{}") || {}; if (_r[ss] && String(_r[ss]._src || "") === src) { cu.nameTH = name; cu.nameEN = name; localStorage.setItem("pc_subset_custom", JSON.stringify(cust)); } } catch (e) {} }
     } catch (e) {}
     return added;
   }

@@ -64,3 +64,31 @@ test('No flavor is always POS order 99999', () => {
   assert.equal(rows(data).find(p => p.itemCode === '1031001').posSeq, 1);
   assert.equal(JSON.parse(data.get('pc_mock_store_v28')).npd[0].subsets[0].powders[1].seq, 99999);
 });
+
+/* เคสจริง NPD-2026008: IT สลับ SS0176→SS0177 และ SS0177→SS0178 ในใบเดียวกัน ก่อนมีระบบย้ายสูตรตาม
+   สูตรผงยังอ้างเลขเดิม → บันทึกซ้ำแล้วระบบต้องย้ายตามชื่อ Subset ที่เลขนั้นเคยลงทะเบียนไว้ และบันทึกอีกรอบต้องไม่เปลี่ยนอีก */
+test('a chained SS swap saved earlier is repaired on the next IT save, and only once', () => {
+  const { ctx, npd, data } = setup();
+  npd.subsets = [
+    { ssCode: 'SS0176', name: 'Enoki 1', name2: 'ENF 1', powders: [{ cmpos: '1031001', eng: 'Cheese ENF 1', code: '3097', desc: 'C', qty: '2', unit: 'g', seq: 1 }] },
+    { ssCode: 'SS0177', name: 'Enoki 2', name2: 'ENF 2', powders: [{ cmpos: '1031002', eng: 'Cheese ENF 2', code: '3097', desc: 'C', qty: '2', unit: 'g', seq: 1 }] }
+  ];
+  npd.items[0].formulas = [{ ss: 'SS0176', choose: 1 }];
+  npd.items.push(Object.assign(JSON.parse(JSON.stringify(npd.items[0])), { code: '101502', formulas: [{ ss: 'SS0177', choose: 1 }] }));
+  assert.equal(ctx.PC_API.updateNpd(npd.id, JSON.parse(JSON.stringify(npd))).status, 'success');
+  // old IT page: codes swapped but formulas left behind
+  const swapped = JSON.parse(JSON.stringify(npd)); swapped.subsets[0].ssCode = 'SS0177'; swapped.subsets[1].ssCode = 'SS0178';
+  ctx.PC_API.updateNpd(npd.id, swapped);
+  const saved = JSON.parse(data.get('pc_mock_store_v28')).npd[0];
+  const r = ctx.PC_API.updateNpd(npd.id, JSON.parse(JSON.stringify(saved)));
+  assert.equal(r.status, 'success', r.message);
+  const job = JSON.parse(data.get('pc_mock_store_v28')).npd[0];
+  assert.deepEqual(job.items.map(it => it.formulas[0].ss), ['SS0177', 'SS0178']);
+  assert.deepEqual(['101501', '101502'].map(c => JSON.parse(data.get('pc_itemset_comp'))[c][0].code), ['SS0177', 'SS0178']);
+  assert.equal(ctx.PC_SUBSET_MASTER.find(x => x.ssCode === 'SS0177').name, 'Enoki 1');
+  assert.ok(!ctx.PC_SUBSET_MASTER.some(x => x.ssCode === 'SS0176'));
+  assert.equal(ctx.PC_COUNTER.entryOf('SS0177', 'ss').status, 'CONFIRMED');
+  const again = ctx.PC_API.updateNpd(npd.id, JSON.parse(JSON.stringify(job)));
+  assert.deepEqual([...again.ssFixed], []);
+  assert.deepEqual(JSON.parse(data.get('pc_mock_store_v28')).npd[0].items.map(it => it.formulas[0].ss), ['SS0177', 'SS0178']);
+});
