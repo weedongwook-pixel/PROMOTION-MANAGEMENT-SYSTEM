@@ -137,7 +137,7 @@
   /* ทุกเมลไม่บังคับ: ถามแบบเดียวกับตอนแจ้งโปรฯ — ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่งเมล (+ ข้อความเพิ่มเติม) */
   async function chooseDelivery(title,campaign,detail){
     const r=await Swal.fire({icon:'question',title,
-      html:'<div style="font-size:.9rem;color:#48505a;line-height:1.6"><b style="color:#1a1d20">'+esc(campaign)+'</b>'+(detail?'<br>'+esc(detail):'')+'<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div>',
+      html:'<div style="font-size:.9rem;color:#48505a;line-height:1.6"><b style="color:#1a1d20">'+esc(campaign)+'</b>'+(detail?'<br>'+esc(detail):'')+'<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div><div style="margin-top:8px;padding:8px 10px;background:#fff8e1;border:1px solid #f3dd9b;border-radius:8px;font-size:.82rem;color:#5d4a00;text-align:left"><i class="fas fa-circle-info"></i> <b>ตอบกลับลูปเดิม</b> ได้เฉพาะลูปที่มี <b>it@rocks-foods.com</b> อยู่ใน To หรือ CC · ถ้าไม่มี ให้เลือก <b>ส่งเมลใหม่</b></div>',
       input:'textarea',inputLabel:'ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)',inputAttributes:{maxlength:4000},returnInputValueOnDeny:true,
       showCancelButton:true,showDenyButton:true,allowOutsideClick:false,allowEscapeKey:false,
       confirmButtonText:'<i class="fas fa-reply"></i> ตอบกลับลูปเดิม',denyButtonText:'<i class="fas fa-envelope"></i> ส่งเมลใหม่',

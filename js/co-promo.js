@@ -70,7 +70,7 @@
       icon: "question", title: "ส่งเมลแจ้งโปรโมชั่นหรือไม่?",
       html: '<div style="font-size:.9rem;color:#48505a;line-height:1.6"><b style="color:#1a1d20">' + esc(campaign) + '</b>' +
         (isCo ? '<br><i class="fas fa-handshake"></i> Co-Promotion · บันทึกเข้าหน้า Co-Promotion แล้ว' : '') +
-        '<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div>',
+        '<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div><div style="margin-top:8px;padding:8px 10px;background:#fff8e1;border:1px solid #f3dd9b;border-radius:8px;font-size:.82rem;color:#5d4a00;text-align:left"><i class="fas fa-circle-info"></i> <b>ตอบกลับลูปเดิม</b> ได้เฉพาะลูปที่มี <b>it@rocks-foods.com</b> อยู่ใน To หรือ CC · ถ้าไม่มี ให้เลือก <b>ส่งเมลใหม่</b></div>',
       showCancelButton: true, showDenyButton: true, allowOutsideClick: false, allowEscapeKey: false,
       confirmButtonText: '<i class="fas fa-reply"></i> ตอบกลับลูปเดิม',
       denyButtonText: '<i class="fas fa-envelope"></i> ส่งเมลใหม่',
