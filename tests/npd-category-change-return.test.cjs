@@ -23,7 +23,7 @@ function setup() {
   };
   ctx.window = ctx; vm.createContext(ctx);
   for (const file of ['js/mock-backend.js', 'js/code-counter.js']) vm.runInContext(fs.readFileSync(file, 'utf8'), ctx);
-  return { ctx, npd, item };
+  return { ctx, data, npd, item };
 }
 
 test('re-saving a COMPLETE NPD after a category change drops the old item rows and returns the old codes', () => {
@@ -47,4 +47,21 @@ test('re-saving without a category change returns nothing', () => {
   assert.equal(r.status, 'success', r.message);
   assert.deepEqual([...r.returned], []);
   assert.ok(ctx.PC_COUNTER.entryOf('121021', 'item'));
+});
+
+test('opening the NPD list or Product Master clears old codes stuck from an earlier category change without a re-save', () => {
+  for (const open of ['getNPDList', 'getMasterDataExtended']) {
+    const { ctx, data, npd, item } = setup();
+    const saved = JSON.parse(data.get('pc_mock_store_v28'));
+    saved.npd[0].items = [item('115028', '115', 'SAUCE & TOPPING'), item('115029', '115', 'SAUCE & TOPPING')];
+    data.set('pc_mock_store_v28', JSON.stringify(saved));
+    ctx.PC_API.reloadFromStorage();
+    ctx.PC_API[open]();
+    const codes = ctx.PC_API.getNpdProducts().map(p => p.itemCode);
+    assert.ok(!codes.includes('121021') && !codes.includes('121022'), open);
+    assert.ok(codes.includes('121099'), open);
+    assert.equal(ctx.PC_COUNTER.entryOf('121021', 'item'), null, open);
+    assert.equal(ctx.PC_COUNTER.entryOf('121022', 'item'), null, open);
+    assert.ok(!(JSON.parse(data.get('pc_mock_store_v28')).npdProducts || []).some(p => p.itemCode === '121021'), open + ' persisted');
+  }
 });

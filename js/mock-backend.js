@@ -1547,7 +1547,7 @@
     return { status: "success", message: "แก้ไขผู้ใช้เรียบร้อย" };
   };
 
-  API.getMasterDataExtended = () => ({
+  API.getMasterDataExtended = () => (settleNpdStaleItems(), {
     items: SEED.items.concat(store.npdProducts || []).map(i => Object.assign({}, i)),
     branches: SEED.branches.map(b => ({
       id: b.id, name: b.name, nameTH: b.nameTH, type: b.type, group: b.group, class: b.class,
@@ -5180,8 +5180,29 @@
         } catch (e) {}
       });
     });
-    if (repairedRecipes && !persist()) return { recipes: 0, formulaMaps: repairedFormulaMaps, failed: true };
-    return { recipes: repairedRecipes, formulaMaps: repairedFormulaMaps, failed: false };
+    /* เลขเดิมของงานที่ IT เปลี่ยนหมวดไปแล้ว (แถวค้างใน Product Master) → ล้าง + คืนเลข โดยไม่ต้องรอ IT กดบันทึกซ้ำ */
+    var stale = sweepNpdStaleItems();
+    if ((repairedRecipes || stale.dropped) && !persist()) return { recipes: 0, formulaMaps: repairedFormulaMaps, failed: true };
+    if (stale.dropped) stale.jobs.forEach(function (j) { npdReturnCodes(j.n, j.codes); });
+    return { recipes: repairedRecipes, formulaMaps: repairedFormulaMaps, staleCodes: stale.codes, failed: false };
+  }
+  /* ตารางสินค้า: ล้างเฉพาะแถวเลขเดิมที่ค้าง (เบา — ไม่ซ่อมสูตร) */
+  function settleNpdStaleItems() {
+    try {
+      var stale = sweepNpdStaleItems(); if (!stale.dropped) return;
+      if (!persist()) return;
+      stale.jobs.forEach(function (j) { npdReturnCodes(j.n, j.codes); });
+    } catch (e) {}
+  }
+  function sweepNpdStaleItems() {
+    var out = { dropped: 0, codes: [], jobs: [] };
+    (store.npd || []).forEach(function (n) {
+      if (String(n.itStatus || '').toUpperCase() !== 'COMPLETE') return;
+      var gone = npdDropStaleItems(n);
+      if (!gone.length) return;
+      out.dropped += gone.length; out.codes = out.codes.concat(gone); out.jobs.push({ n: n, codes: gone });
+    });
+    return out;
   }
   API.syncCompletedNpdMasters = syncCompletedNpdMasters;
   API.getNPDList = () => { syncCompletedNpdMasters(); return (store.npd || []).slice().reverse(); };
