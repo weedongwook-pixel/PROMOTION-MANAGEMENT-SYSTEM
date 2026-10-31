@@ -524,7 +524,7 @@
       return '<tr><td class="text-center">' + (ri + 1) + '</td>' +
         '<td><div class="input-group input-group-sm" style="width:118px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary mono" value="' + itEsc(r.code || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'code\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกรหัสสินค้า" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
         '<td><input class="form-control form-control-sm border-secondary" value="' + itEsc(r.desc || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'desc\',this.value)"></td>' +
-        '<td style="width:64px"><input class="form-control form-control-sm border-secondary text-center" value="' + itEsc(r.qty || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'qty\',this.value)"></td>' +
+        '<td style="width:96px"><div class="input-group input-group-sm" style="flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary text-center" value="' + itEsc(r.qty || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'qty\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกจำนวน (Qty)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
         '<td style="width:80px">' + itUnitSel(r.unit || '', "window.itRec(" + i + "," + ri + ",'unit',this.value)") + '</td>' +
         '<td><div class="d-flex flex-wrap">' + chCell + '</div></td>' +
         '<td class="text-center"><i class="fas fa-times text-danger" style="cursor:pointer" onclick="window.itDelRec(' + i + ',' + ri + ')"></i></td></tr>';
