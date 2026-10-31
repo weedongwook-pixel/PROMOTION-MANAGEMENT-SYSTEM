@@ -14,8 +14,8 @@ test('failed mail lookup remains unknown without inventing an unsent status',asy
  const html=await render([],true);assert.equal((html.match(/<td>ยังตรวจสถานะไม่ได้<\/td>/g)||[]).length,0);assert.doesNotMatch(html,/ไม่ได้ส่งเมล/);
 });
 
-test('no edit notification is shown as a dash after a successful lookup',async()=>{
- const html=await render([]);assert.equal((html.match(/<td>-<\/td>/g)||[]).length,1);assert.doesNotMatch(html,/<td>A<\/td>/);
+test('no edit, lifecycle or IT notification is shown as a dash after a successful lookup',async()=>{
+ const html=await render([]);assert.equal((html.match(/<td>-<\/td>/g)||[]).length,3);assert.doesNotMatch(html,/<td>A<\/td>/);
 });
 
 test('Interface uses actual completion, independent of email delivery',async()=>{
@@ -28,4 +28,10 @@ test('mail date uses Bangkok day and all view keeps latest campaigns first',asyn
  const events=[{campaign:'Old',kind:'submitted',status:'accepted',at:Date.parse('2026-10-19T12:00:00Z')},{campaign:'New',kind:'submitted',status:'accepted',at:Date.parse('2026-10-19T18:00:00Z')}];
  const today=await render(events,false,{date:'2026-10-20'});assert.match(today,/<td>New<\/td>/);assert.doesNotMatch(today,/<td>Old<\/td>/);
  const all=await render(events);assert.ok(all.indexOf('<td>New</td>')<all.indexOf('<td>Old</td>'));
+});
+
+test('lifecycle and IT reply mail have their own columns',async()=>{
+ const html=await render([{campaign:'A',kind:'submitted',status:'accepted',at:1000},{campaign:'A',kind:'promotion_cancelled',status:'queued',at:2000},{campaign:'A',kind:'it_done',status:'accepted',at:3000}]);
+ assert.match(html,/<th>แจ้งขยาย\/ลด\/ยกเลิก<\/th><th>IT แจ้งขึ้นปุ่ม<\/th>/);
+ assert.match(html,/<td>A<\/td><td>ส่งสำเร็จ<\/td><td>-<\/td><td>✕ Interface \(ยังไม่เสร็จ\)<\/td><td>รอส่ง<\/td><td>ส่งสำเร็จ<\/td>/);
 });

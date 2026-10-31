@@ -119,11 +119,45 @@
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }
+  // Where an edit/lifecycle mail goes: the campaign's bound loop, or a loop the user chose now.
+  // A chosen loop must be an approved policy this actor may use with its exact approved recipients;
+  // committing re-binds the campaign so later mail (IT replies included) follows the latest loop.
+  async function deliveryTarget(actor,input,env,c){
+    const binding=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
+    if(input.policyId===undefined||input.policyId===null||input.policyId===''){
+      if(!binding)throw Error('email_revision_loop_missing');
+      const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',binding.thread_id).first();
+      if(!thread||thread.version!==binding.policy_version||!api.threadAudience(thread,actor))throw Error('email_policy_changed');
+      return {binding,thread,recipients:JSON.parse(binding.recipients_json),rebind:false};
+    }
+    const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',input.policyId).first();
+    if(!thread||thread.version!==input.policyVersion||!api.threadAudience(thread,actor)||!['test','production'].includes(api.emailThreadMode(thread)))throw Error('email_policy_changed');
+    const recipients=api.emailRecipients(input.recipients);
+    if(JSON.stringify(recipients)!==JSON.stringify({to:JSON.parse(thread.to_json),cc:JSON.parse(thread.cc_json)}))throw Error('email_unapproved_recipients');
+    return {binding,thread,recipients,rebind:!binding||binding.thread_id!==thread.id||binding.policy_version!==thread.version||binding.recipients_json!==JSON.stringify(recipients)};
+  }
+  const targetVersion=t=>t.rebind?(t.binding?t.binding.version+1:1):t.binding.version;
+  const targetHash=t=>({bindingVersion:t.binding?.version||0,thread:t.thread.id,threadVersion:t.thread.version,rebind:t.rebind});
+  function bindStatements(env,c,t,hash,actor){
+    if(!t.binding)return [statement(env,'INSERT INTO email_bindings VALUES (?,?,?,?,?,?,?,1)',c.id,t.thread.id,t.thread.version,JSON.stringify(t.recipients),hash,api.emailActorKey(actor),Date.now())];
+    const statements=[statement(env,'INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_bindings WHERE campaign_id=? AND version=? AND thread_id=?) THEN 1 ELSE 0 END',c.id,t.binding.version,t.binding.thread_id),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];
+    if(t.rebind)statements.push(statement(env,'UPDATE email_bindings SET thread_id=?,policy_version=?,recipients_json=?,confirmed_by=?,confirmed_at=?,version=version+1 WHERE campaign_id=? AND version=?',t.thread.id,t.thread.version,JSON.stringify(t.recipients),api.emailActorKey(actor),Date.now(),c.id,t.binding.version),...guard(env));
+    return statements;
+  }
+  // One durable request per event key; a repeated confirmation returns the queued state.
+  async function commitEvent(actor,env,d,eventKey,event){
+    const old=await statement(env,'SELECT snapshot_json,status FROM email_outbox WHERE event_key=?',eventKey).first();
+    if(old){if(old.snapshot_json!==JSON.stringify(d.snap))throw Error('email_version_conflict');return {saved:true,mailStatus:old.status};}
+    const statements=[...authorizationGuard(env,actor,'submit',d.c,d.target.thread,d.row.updated_at),...bindStatements(env,d.c,d.target,d.hash,actor)];
+    if(d.files&&d.files.version!==null)statements.push(...fileGuard(env,d.files.version));
+    statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,d.c.id,targetVersion(d.target),JSON.stringify(d.snap),Date.now(),Date.now()),audit(env,d.c.id,actor,event));
+    await env.DB.batch(statements);return {saved:true,mailStatus:'queued',rebound:d.target.rebind};
+  }
   async function revisionDraft(actor,input,env){
     await api.requireEmailPermission(actor,'submit',env);
     if(typeof input.editId!=='string'||!input.editId.startsWith('edit-'))throw Error('email_source_changed');
-    const c=await statement(env,"SELECT c.* FROM email_campaigns c JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND c.month=? AND c.owner_tenant=? AND c.owner_oid=? AND c.status='active' ORDER BY b.confirmed_at DESC LIMIT 1",input.campaignKey,input.month,actor.tenantId,actor.objectId).first();
-    if(!c)throw Error('email_revision_loop_missing');
+    const c=await statement(env,"SELECT c.* FROM email_campaigns c LEFT JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND c.month=? AND c.owner_tenant=? AND c.owner_oid=? AND c.status='active' ORDER BY b.campaign_id IS NULL,b.confirmed_at DESC LIMIT 1",input.campaignKey,input.month,actor.tenantId,actor.objectId).first();
+    if(!c)throw Error('email_campaign_unregistered');
     const row=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',c.campaign_key).first();
     if(!row)throw Error('email_source_changed');
     const block=JSON.parse(row.v),raw=block.m?.[c.month];
@@ -131,36 +165,104 @@
     const receipt=await statement(env,'SELECT response_json FROM promo_submission_receipts WHERE submission_id=?',input.editId).first();
     const saved=receipt&&JSON.parse(receipt.response_json);
     if(saved?.kind!=='CAMPAIGN_EDIT'||!saved.versions?.[c.campaign_key])throw Error('email_source_changed');
-    const binding=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
-    const thread=await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',binding.thread_id).first();
-    if(!thread||thread.version!==binding.policy_version||!api.threadAudience(thread,actor))throw Error('email_policy_changed');
+    const target=await deliveryTarget(actor,input,env,c);
     const rows=api.coProSource(block,c.month),files=await api.readEmailAttachments(raw,env),sourceHash=await api.hash(JSON.stringify(rows));
-    const snap=snapshot(c,thread,JSON.parse(binding.recipients_json),'promotion_edited',rows,[],files.manifest,additionalMessage(input),actor);
+    const snap=snapshot(c,target.thread,target.recipients,'promotion_edited',rows,[],files.manifest,additionalMessage(input),actor);
     snap.revision={editId:input.editId,sourceHash};
-    const hash=await api.hash(JSON.stringify({snapshot:snap,bindingVersion:binding.version}));
-    return {c,row,thread,binding,files,snap,hash};
+    const hash=await api.hash(JSON.stringify({snapshot:snap,...targetHash(target)}));
+    return {c,row,target,thread:target.thread,files,snap,hash};
   }
   api.previewPromotionRevision=async function(actor,input,env){
     const d=await revisionDraft(actor,input,env);
-    return {previewHash:d.hash,subject:d.snap.subject,recipients:d.snap.recipients,attachments:d.files.manifest,text:api.renderCoProEmail(d.snap).text};
+    return {previewHash:d.hash,subject:d.snap.subject,recipients:d.snap.recipients,attachments:d.files.manifest,text:api.renderCoProEmail(d.snap).text,newMessage:d.snap.newMessage,rebind:d.target.rebind};
   };
   api.commitPromotionRevision=async function(actor,input,env){
     const d=await revisionDraft(actor,input,env);
     if(input.confirmed!==true||input.previewHash!==d.hash)throw Error('email_confirmation_required');
-    const eventKey=d.c.id+':'+d.c.month+':revision:'+input.editId;
-    const old=await statement(env,'SELECT snapshot_json,status FROM email_outbox WHERE event_key=?',eventKey).first();
-    if(old){if(old.snapshot_json!==JSON.stringify(d.snap))throw Error('email_version_conflict');return {saved:true,mailStatus:old.status};}
-    const statements=authorizationGuard(env,actor,'submit',d.c,d.thread,d.row.updated_at);
-    statements.push(statement(env,'INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_bindings WHERE campaign_id=? AND version=? AND thread_id=?) THEN 1 ELSE 0 END',d.c.id,d.binding.version,d.thread.id),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1'));
-    if(d.files.version!==null)statements.push(...fileGuard(env,d.files.version));
-    statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,d.c.id,d.binding.version,JSON.stringify(d.snap),Date.now(),Date.now()));
-    await env.DB.batch(statements);return {saved:true,mailStatus:'queued'};
+    return commitEvent(actor,env,d,d.c.id+':'+d.c.month+':revision:'+input.editId,'promotion_edited');
+  };
+  // Extend / shorten / cancel. The change id is written on the changed rows by the same Cloud save.
+  async function changeDraft(actor,input,env){
+    await api.requireEmailPermission(actor,'submit',env);
+    if(typeof input.campaignKey!=='string'||!input.campaignKey.startsWith('promo::c::')||typeof input.changeId!=='string'||!/^chg-[A-Za-z0-9-]{8,80}$/.test(input.changeId))throw Error('email_source_changed');
+    const row=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',input.campaignKey).first();
+    if(!row)throw Error('email_source_changed');
+    const block=JSON.parse(row.v);
+    const list=(await statement(env,"SELECT c.* FROM email_campaigns c LEFT JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND c.owner_tenant=? AND c.owner_oid=? AND c.status='active' ORDER BY b.campaign_id IS NULL,b.confirmed_at DESC,c.month",input.campaignKey,actor.tenantId,actor.objectId).all()).results;
+    if(!list.length)throw Error('email_campaign_unregistered');
+    const c=list.find(x=>Array.isArray(block.m?.[x.month])&&block.m[x.month].some(r=>r.changeId===input.changeId));
+    if(!c)throw Error('email_source_changed');
+    const rows=block.m[c.month].filter(r=>r.changeId===input.changeId),kind=api.emailChangeKind(rows);
+    if(!kind)throw Error('email_source_changed');
+    const target=await deliveryTarget(actor,input,env,c);
+    const snap=snapshot(c,target.thread,target.recipients,'promotion_'+kind,rows,[],undefined,additionalMessage(input),actor);
+    snap.details=api.emailChangeDetails(rows);snap.event={type:'change',id:input.changeId,fingerprint:await api.emailMailFingerprint(rows)};
+    const hash=await api.hash(JSON.stringify({snapshot:snap,...targetHash(target)}));
+    return {c,row,target,snap,hash,eventKey:c.id+':'+c.month+':change:'+kind+':'+input.changeId};
+  }
+  api.previewPromotionChange=async function(actor,input,env){
+    const d=await changeDraft(actor,input,env);
+    return {previewHash:d.hash,subject:d.snap.subject,recipients:d.snap.recipients,attachments:[],text:api.renderCoProEmail(d.snap).text,newMessage:d.snap.newMessage,rebind:d.target.rebind};
+  };
+  api.commitPromotionChange=async function(actor,input,env){
+    const d=await changeDraft(actor,input,env);
+    if(input.confirmed!==true||input.previewHash!==d.hash)throw Error('email_confirmation_required');
+    return commitEvent(actor,env,d,d.eventKey,d.snap.milestone);
+  };
+  // Compare final codes with the latest mail the submitter sent (first announcement or edit).
+  function reviewCodes(buttons,originalButtons){
+    for(const button of buttons){
+      let previous=button.buttonId?originalButtons.filter(b=>b.buttonId===button.buttonId):[];
+      // Older announcements have no stable ID. Only an unambiguous unchanged name
+      // can establish a comparison; never guess by position or the mutable code.
+      if(!previous.length&&buttons.filter(b=>b.name===button.name).length===1)
+        previous=originalButtons.filter(b=>!b.buttonId&&b.name===button.name);
+      const original=previous.length===1?previous[0]:null;
+      const old=original?String(original.codePromotion??(original.code||'').split(' / ')[0]).trim():'';
+      const current=String(button.codePromotion||'').trim();
+      button.codeReview={status:old&&current?(old===current?'unchanged':'changed'):'unavailable',previous:old,current};
+    }
+  }
+  // IT finished a non-CoPromo campaign (or a lifecycle change of any bound campaign). Replies in the
+  // campaign's bound loop only; no binding means the submitter chose not to send, so nothing is queued.
+  api.commitITDone=async function(actor,input,env){
+    await api.requireEmailPermission(actor,'it',env);
+    const month=input.month||'';
+    if(typeof input.campaignKey!=='string'||!input.campaignKey.startsWith('promo::c::')||typeof month!=='string'||month&&!/^\d{4}-\d{2}$/.test(month))throw Error('email_source_changed');
+    const row=await statement(env,'SELECT v,updated_at FROM promo_store WHERE k=?',input.campaignKey).first();
+    if(!row)return {items:[]};
+    const block=JSON.parse(row.v),items=[];
+    const list=(await statement(env,"SELECT c.* FROM email_campaigns c JOIN email_bindings b ON b.campaign_id=c.id WHERE c.campaign_key=? AND c.status='active' AND (?='' OR c.month=?)",input.campaignKey,month,month).all()).results;
+    for(const c of list){
+      const rows=block.m?.[c.month];
+      if(!Array.isArray(rows)||!rows.length){items.push({month:c.month,mailStatus:'not_ready'});continue;}
+      const round=await api.emailITRound(rows);
+      if(round.kind!=='change'&&await statement(env,'SELECT 1 FROM email_copro_records WHERE campaign_id=? LIMIT 1',c.id).first()){items.push({month:c.month,mailStatus:'copro'});continue;}
+      if(!api.emailITComplete(round.rows)){items.push({month:c.month,mailStatus:'waiting'});continue;}
+      const binding=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
+      const thread=binding&&await statement(env,'SELECT * FROM email_threads WHERE id=? AND enabled=1',binding.thread_id).first();
+      if(!thread||thread.version!==binding.policy_version){items.push({month:c.month,mailStatus:'loop_unavailable'});continue;}
+      const eventKey=c.id+':'+c.month+':it_done'+(round.round?':'+round.round:'');
+      const old=await statement(env,'SELECT status FROM email_outbox WHERE event_key=?',eventKey).first();
+      if(old&&old.status!=='held'){items.push({month:c.month,mailStatus:old.status});continue;}
+      const snap=snapshot(c,thread,JSON.parse(binding.recipients_json),'it_done',round.rows,[],undefined,undefined,actor);
+      if(round.kind==='change')snap.details=api.emailChangeDetails(round.rows);
+      else{const latest=await statement(env,"SELECT snapshot_json FROM email_outbox WHERE campaign_id=? AND (event_key LIKE '%:submitted' OR event_key LIKE '%:revision:%') ORDER BY created_at DESC LIMIT 1",c.id).first();reviewCodes(snap.details.buttons,latest?JSON.parse(latest.snapshot_json).details?.buttons||[]:[]);}
+      snap.event={type:'it_done',kind:round.kind,...(round.change?{change:round.change}:{}),round:round.round,fingerprint:await api.emailMailFingerprint(round.rows)};
+      const now=Date.now(),statements=[...authorizationGuard(env,actor,'it',c,thread,row.updated_at),statement(env,'INSERT INTO promo_commit_guard(id) SELECT CASE WHEN EXISTS(SELECT 1 FROM email_bindings WHERE campaign_id=? AND version=? AND thread_id=?) THEN 1 ELSE 0 END',c.id,binding.version,thread.id),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];
+      // A held completion (e.g. Cloud changed before sending) is re-queued by the next IT completion, never duplicated.
+      if(old)statements.push(statement(env,"UPDATE email_outbox SET snapshot_json=?,binding_version=?,status='queued',sanitized_error=NULL,attempts=0,next_attempt_at=0,lease_token=NULL,lease_until=NULL,updated_at=? WHERE event_key=? AND status='held'",JSON.stringify(snap),binding.version,now,eventKey),...guard(env));
+      else statements.push(statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) VALUES(?,?,?,?,?,'queued',?,?)",crypto.randomUUID(),eventKey,c.id,binding.version,JSON.stringify(snap),now,now));
+      statements.push(audit(env,c.id,actor,'it_done'));
+      await env.DB.batch(statements);items.push({month:c.month,mailStatus:'queued'});
+    }
+    return {items};
   };
   // Read-only projection for the shared promotion history. No mailbox contents,
   // recipients, policies, credentials, or send capabilities are exposed.
   api.sharedMailHistory=async function(env){
     const rows=(await env.DB.prepare("SELECT c.campaign_key,c.month,o.event_key,o.status,CASE WHEN o.provider_id IS NOT NULL AND o.provider_id<>'' THEN 1 ELSE 0 END AS confirmed,o.sanitized_error,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id WHERE o.id IS NOT NULL ORDER BY o.created_at DESC").all()).results;
-    const items=rows.map(r=>({campaign:decodeURIComponent(r.campaign_key.slice(10)),month:r.month,eventKey:r.event_key||'',kind:r.event_key?.includes(':revision:')?'promotion_edited':r.event_key?.endsWith(':it_interface_complete')?'it_interface_complete':'submitted',status:r.status==='accepted'&&!r.confirmed?'needs_verification':r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null}));
+    const items=rows.map(r=>({campaign:decodeURIComponent(r.campaign_key.slice(10)),month:r.month,eventKey:r.event_key||'',kind:api.emailEventKind(r.event_key),status:r.status==='accepted'&&!r.confirmed?'needs_verification':r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null}));
     const stages=(await env.DB.prepare("SELECT c.campaign_key,c.month,COUNT(b.button_id) AS total,SUM(CASE WHEN r.interface_done=1 THEN 1 ELSE 0 END) AS done FROM email_campaigns c LEFT JOIN email_campaign_buttons b ON b.campaign_id=c.id AND b.cancelled=0 LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id GROUP BY c.id").all()).results;
     for(const r of stages){
       const campaign=decodeURIComponent(r.campaign_key.slice(10)),interfaceStatus=r.total>0&&r.done===r.total?'interface_done':'waiting';
@@ -184,7 +286,7 @@
   api.mailHistory=async function(actor,env){
     await api.requireEmailPermission(actor,'submit',env);
     const rows=(await statement(env,"SELECT c.campaign_key,c.month,c.source_json,o.event_key,o.status,o.sanitized_error,o.created_at,o.updated_at FROM email_campaigns c LEFT JOIN email_outbox o ON o.campaign_id=c.id WHERE c.owner_tenant=? AND c.owner_oid=? ORDER BY o.created_at DESC",actor.tenantId,actor.objectId).all()).results;
-    return {items:rows.map(r=>{const source=JSON.parse(r.source_json),first=source[0]||{};return {campaign:first.campaign||decodeURIComponent(r.campaign_key.slice(10)),month:r.month,submitter:first.submittedBy||first.reporter||'',eventKey:r.event_key||'',kind:r.event_key?.includes(':revision:')?'promotion_edited':r.event_key?.endsWith(':it_interface_complete')?'it_interface_complete':'submitted',status:r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null};})};
+    return {items:rows.map(r=>{const source=JSON.parse(r.source_json),first=source[0]||{};return {campaign:first.campaign||decodeURIComponent(r.campaign_key.slice(10)),month:r.month,submitter:first.submittedBy||first.reporter||'',eventKey:r.event_key||'',kind:api.emailEventKind(r.event_key),status:r.status||'unselected',error:r.sanitized_error||'',at:r.updated_at||null};})};
   };
   api.commitCoPromo=async function(actor,input,env){
     const d=await draft(actor,input,env),{c,thread,records,recipients,contentHash}=d;
@@ -237,17 +339,7 @@
     const predicate='EXISTS(SELECT 1 FROM email_campaign_buttons WHERE campaign_id=? AND cancelled=0) AND NOT EXISTS(SELECT 1 FROM email_campaign_buttons b LEFT JOIN email_copro_records r ON r.campaign_id=b.campaign_id AND r.button_id=b.button_id WHERE b.campaign_id=? AND b.cancelled=0 AND (b.it_done=0 OR COALESCE(r.interface_done,0)=0))';
     const completion=snapshot(c,thread,JSON.parse(binding.recipients_json),'it_interface_complete',JSON.parse(c.source_json),records,attachmentData.manifest,undefined,actor);
     const originalButtons=announcement?JSON.parse(announcement.snapshot_json).details?.buttons||[]:[];
-    for(const button of completion.details.buttons){
-      let previous=button.buttonId?originalButtons.filter(b=>b.buttonId===button.buttonId):[];
-      // Older announcements have no stable ID. Only an unambiguous unchanged name
-      // can establish a comparison; never guess by position or the mutable code.
-      if(!previous.length&&completion.details.buttons.filter(b=>b.name===button.name).length===1)
-        previous=originalButtons.filter(b=>!b.buttonId&&b.name===button.name);
-      const original=previous.length===1?previous[0]:null;
-      const old=original?String(original.codePromotion??(original.code||'').split(' / ')[0]).trim():'';
-      const current=String(button.codePromotion||'').trim();
-      button.codeReview={status:old&&current?(old===current?'unchanged':'changed'):'unavailable',previous:old,current};
-    }
+    reviewCodes(completion.details.buttons,originalButtons);
     statements.push(queued(env,c,binding.version,'it_interface_complete',completion,predicate,[c.id,c.id]),audit(env,c.id,actor,kind));
     await env.DB.batch(statements);return {saved:true,mailStatus:await mailState(c,env),campaignId:c.id};
   }

@@ -47,7 +47,7 @@
     @media(max-width:600px){.pc-mail-popup .swal2-title{font-size:20px!important;padding:18px!important}.pc-mail-popup .swal2-html-container{padding:16px!important;max-height:63vh}.pc-mail-popup .swal2-actions{padding:12px!important}.pc-mail-popup .swal2-actions button{flex:1;padding:10px}.pc-mail-popup .d-flex input{min-width:0}.pc-mail-popup pre{padding:12px}}
   </style>`;
   function mailDetailsHtml(text){
-    const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
+    const label=/^(หัวข้อ|Subject|To|CC|ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|วันที่สิ้นสุดเดิม → ใหม่|สถานะ|เหตุผลการยกเลิก|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ)\s*:/;
     return String(text||'').split('\n').map(line=>{const match=line.match(label);return match?'<strong>'+esc(match[0])+'</strong>'+esc(line.slice(match[0].length)):esc(line);}).join('\n');
   }
   const addresses=value=>String(value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
@@ -134,19 +134,89 @@
     });
     generation++;return result.isConfirmed?result.value:result.isDenied?{switchToNew:true}:null;
   }
+  /* ทุกเมลไม่บังคับ: ถามแบบเดียวกับตอนแจ้งโปรฯ — ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่งเมล (+ ข้อความเพิ่มเติม) */
+  async function chooseDelivery(title,campaign,detail){
+    const r=await Swal.fire({icon:'question',title,
+      html:'<div style="font-size:.9rem;color:#48505a;line-height:1.6"><b style="color:#1a1d20">'+esc(campaign)+'</b>'+(detail?'<br>'+esc(detail):'')+'<br>ส่งจาก Potato Promotion Mail (it@rocks-foods.com) · ตรวจรายละเอียดก่อนยืนยันส่งทุกครั้ง</div>',
+      input:'textarea',inputLabel:'ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)',inputAttributes:{maxlength:4000},returnInputValueOnDeny:true,
+      showCancelButton:true,showDenyButton:true,allowOutsideClick:false,allowEscapeKey:false,
+      confirmButtonText:'<i class="fas fa-reply"></i> ตอบกลับลูปเดิม',denyButtonText:'<i class="fas fa-envelope"></i> ส่งเมลใหม่',
+      cancelButtonText:'ไม่ส่งเมล',confirmButtonColor:'#2e934a',denyButtonColor:'#1b5e20',cancelButtonColor:'#9aa0a6'});
+    return {delivery:r.isConfirmed?'reply':r.isDenied?'new':'none',message:typeof r.value==='string'?r.value.trim():''};
+  }
+  /* ส่งเมลใหม่: สร้างลูปใหม่ (หัวข้อ แจ้งรายละเอียด <แคมเปญ>) พร้อมผู้รับที่ระบุ · server ตรวจสิทธิ์และผู้รับเอง */
+  async function newLoop(campaignKey,month){
+    const campaigns=(await client().list()).filter(c=>c.key===campaignKey&&(!month||c.month===month));
+    if(!campaigns.length)throw Error('โปรฯ นี้ไม่ได้ลงทะเบียนกับระบบอีเมลตอนแจ้งโปรฯ จึงส่งเมลจากระบบไม่ได้');
+    const form=await Swal.fire({title:'ส่งเมลใหม่ — ระบุผู้รับ',customClass:{popup:'pc-mail-popup'},width:640,
+      html:mailDialogStyle+'<div style="text-align:left"><p class="small">หัวข้อเมล: แจ้งรายละเอียด '+esc(decodeURIComponent(campaignKey.slice(10)))+' · เมลถัดไปของโปรฯ นี้ (รวมเมลจาก IT) จะตอบกลับในเมลใหม่นี้</p><label for="coproNewLoopTo">To — ผู้รับ</label><textarea id="coproNewLoopTo" class="form-control" rows="2"></textarea><label for="coproNewLoopCc">CC — เว้นว่างได้</label><textarea id="coproNewLoopCc" class="form-control" rows="2"></textarea><p class="small">ใส่ได้หลายอีเมล คั่นด้วย , เช่น name1@example.com, name2@example.com</p></div>',
+      showCancelButton:true,confirmButtonText:'ใช้ผู้รับนี้',cancelButtonText:'กลับ',allowOutsideClick:false,confirmButtonColor:'#1b5e20',showLoaderOnConfirm:true,
+      async preConfirm(){
+        const to=addresses(document.getElementById('coproNewLoopTo').value),cc=addresses(document.getElementById('coproNewLoopCc').value);
+        if(!to.length){Swal.showValidationMessage('กรุณาระบุผู้รับ To');return false;}
+        try{
+          const caps=await client().capabilities(),context=caps.authMode==='gmail_owner'?await window.PC_EmailAuth.ownerSession():await window.PC_EmailMsalContext();
+          return await client().request('threads',{method:'POST',body:{mode:'production',newMessage:true,campaignId:campaigns[0].id,recipients:{to,cc},audience:[context.identity]},interactive:true});
+        }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
+      }});
+    return form.isConfirmed?form.value:null;
+  }
+  /* เมลแจ้งเหตุการณ์หลังบันทึกงานแล้ว (แก้ไข / ขยาย / ลด / ยกเลิก): เลือกลูป → ตรวจตัวอย่าง → ยืนยัน
+     ไม่ส่ง = บันทึกสถานะ "ไม่ส่ง" · ส่งไม่สำเร็จไม่กระทบงานที่บันทึกแล้ว */
+  async function eventMail(o){
+    const decline=async()=>{
+      try{if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(o.campaign,o.decisionKind,o.decisionId,'not_sent');}
+      catch(e){await Swal.fire({icon:'error',title:'บันทึกงานแล้ว แต่สถานะไม่ส่งเมลยังบันทึกไม่ได้',text:e.message});}
+      return {mailStatus:'not_sent'};
+    };
+    try{if(client()?.capabilities){const caps=await client().capabilities();if(!caps.coproEnabled)return {mailStatus:'unavailable'};}}catch(_){return {mailStatus:'unavailable'};}
+    const choice=await chooseDelivery(o.title,o.campaign,o.detail);
+    if(choice.delivery==='none')return decline();
+    try{
+      if(window.PC_EmailAuth?.ownerSession&&(await client().capabilities()).authMode==='gmail_owner')await window.PC_EmailAuth.ownerSession({interactive:true});
+      let policy=null;
+      const pick=async()=>{const selected=await approveConversation('production');if(selected?.switchToNew)return newLoop(o.campaignKey,o.month);return selected;};
+      if(choice.delivery==='new'){policy=await newLoop(o.campaignKey,o.month);if(!policy)return decline();}
+      while(true){
+        const body={...o.body,additionalMessage:choice.message,...(policy?{policyId:policy.id,policyVersion:policy.version,recipients:policy.recipients}:{})};
+        Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        let preview;
+        try{preview=await client().request(o.preview,{method:'POST',body,interactive:true});}
+        catch(e){
+          // ยังไม่มีลูปผูกไว้ → ให้ค้นหาลูปเดิม (หรือส่งเมลใหม่) แทนการล้ม
+          if(!policy&&e.code==='email_revision_loop_missing'){policy=await pick();if(!policy)return decline();continue;}
+          throw e;
+        }
+        const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
+        const confirm=await Swal.fire({title:o.reviewTitle,customClass:{popup:'pc-mail-popup'},width:740,allowOutsideClick:false,
+          html:mailDialogStyle+'<p class="pc-compose-intro">'+esc(preview.newMessage?'ส่งเป็นเมลใหม่':'ตอบกลับในลูปเมลเดิม')+(preview.rebind?' · เมลถัดไปของโปรฯ นี้จะใช้ลูปนี้':'')+'</p><pre style="text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;font:inherit;font-weight:400">'+mailDetailsHtml(text)+'</pre>',
+          showCancelButton:true,showDenyButton:!preview.newMessage,confirmButtonText:'ยืนยันส่งเมล',denyButtonText:'ค้นหาลูปอื่น',denyButtonColor:'#1b5e20',cancelButtonText:'ไม่ส่ง',confirmButtonColor:'#1b5e20'});
+        if(confirm.isDenied){const other=await pick();if(other)policy=other;continue;}
+        if(!confirm.isConfirmed)return decline();
+        Swal.fire({title:'กำลังบันทึกคำขอส่งเมล…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        const result=await client().request(o.commit,{method:'POST',body:{...body,previewHash:preview.previewHash,confirmed:true}});
+        await Swal.fire({icon:'success',title:result.mailStatus==='accepted'?'Gmail รับเมลแล้ว':'บันทึกคำขอส่งเมลแล้ว',text:'ส่งจาก it@rocks-foods.com · รายการนี้ไม่ถูกส่งซ้ำ'});
+        return result;
+      }
+    }catch(e){
+      await Swal.fire({icon:'error',title:'บันทึกงานแล้ว แต่ยังส่งเมลไม่ได้',text:String(e.message||e)});
+      return {mailStatus:'failed',error:String(e.message||e)};
+    }
+  }
   window.PC_CoProEmailUI={
     async mountHistory(root,entries,options={}){
-      const kinds={submitted:'แจ้งโปรฯ',promotion_edited:'แจ้งแก้ไข',it_interface_complete:'Interface'};
+      const kinds={submitted:'แจ้งโปรฯ',promotion_edited:'แจ้งแก้ไข',it_interface_complete:'Interface',promotion_changed:'แจ้งขยาย/ลด/ยกเลิก',it_done:'IT แจ้งขึ้นปุ่ม'};
+      const column=kind=>/^promotion_(extended|reduced|cancelled)$/.test(kind)?'promotion_changed':kind;
       const labels={not_recorded:'ไม่ได้ส่งเมล',none:'-',unknown:'ยังตรวจสถานะไม่ได้',unselected:'ยังไม่เลือก',not_sent:'ไม่ส่ง',queued:'รอส่ง',retry:'รอส่ง · กำลังลองใหม่',sending:'รอส่ง · กำลังส่ง',accepted:'ส่งสำเร็จ',failed:'ส่งไม่สำเร็จ',held:'ส่งไม่สำเร็จ',needs_verification:'ต้องตรวจผลส่งก่อนส่งซ้ำ',cancelled:'ยกเลิกการส่ง',waiting:'-',interface_partial:'-',interface_done:'Interfaced'};
       root.textContent='กำลังอ่านสถานะเมล…';
       try{
         const results=await Promise.allSettled([window.PC_CLOUD.readMailHistory?window.PC_CLOUD.readMailHistory():client().request('copro/mail-history'),window.PC_CLOUD.readCloudKey('pc_mail_decisions::'+encodeURIComponent(localStorage.getItem('pc_userName')||''))]);
         if(!root.isConnected)return;
-        const events=results[0].status==='fulfilled'?results[0].value.items:[],decision=results[1].status==='fulfilled'&&results[1].value?Object.values(JSON.parse(results[1].value.value)):[];
+        const events=(results[0].status==='fulfilled'?results[0].value.items:[]).map(e=>({...e,kind:column(e.kind)})),decision=results[1].status==='fulfilled'&&results[1].value?Object.values(JSON.parse(results[1].value.value)):[];
         const rows=events.filter(e=>!(e.status==='unselected'&&decision.some(d=>d.campaign===e.campaign&&d.kind===e.kind)));
-        for(const d of decision)if(events.some(e=>e.campaign===d.campaign)&&!events.some(e=>e.campaign===d.campaign&&e.kind===d.kind&&(d.revisionId?e.eventKey.endsWith(':revision:'+d.revisionId):e.status!=='unselected')))rows.push(d);
+        for(const d of decision)if(events.some(e=>e.campaign===d.campaign)&&!events.some(e=>e.campaign===d.campaign&&e.kind===d.kind&&(d.revisionId?String(e.eventKey||'').endsWith(':'+d.revisionId):e.status!=='unselected')))rows.push(d);
         const campaigns=new Set(rows.map(e=>e.campaign));
-        for(const campaign of campaigns)for(const kind of Object.keys(kinds))if(!rows.some(e=>e.campaign===campaign&&e.kind===kind))rows.push({campaign,kind,status:results[0].status==='rejected'?'unknown':kind==='it_interface_complete'?'waiting':kind==='promotion_edited'?'none':'not_recorded'});
+        for(const campaign of campaigns)for(const kind of Object.keys(kinds))if(!rows.some(e=>e.campaign===campaign&&e.kind===kind))rows.push({campaign,kind,status:results[0].status==='rejected'?'unknown':kind==='it_interface_complete'?'waiting':kind==='submitted'?'not_recorded':'none'});
         const reason={approval_or_source_changed:'ข้อมูลโปรฯ หรือสิทธิ์เปลี่ยนหลังยืนยัน',approval_or_target_changed:'ลูปเมลหรือสิทธิ์เปลี่ยน',connection_unavailable:'บัญชี Gmail ยังไม่พร้อม',provider_rejected:'Gmail ปฏิเสธการส่ง',provider_rate_limited:'Gmail จำกัดการส่งชั่วคราว',provider_outcome_unknown:'ยังยืนยันผลตอบกลับจาก Gmail ไม่ได้',lease_expired:'ระบบไม่ได้รับผลส่งภายในเวลาที่กำหนด',acknowledgement_not_saved:'บันทึกผลตอบกลับ Gmail ไม่สำเร็จ'};
         const time=r=>{const n=typeof r.at==='number'?r.at:Date.parse(r.at);return Number.isFinite(n)?n:0;};
         const day=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
@@ -158,28 +228,22 @@
           if(options.date&&(!at||day(at)!==options.date))return {at,html:''};
           return {at,html:'<tr><td>'+esc(campaign)+'</td>'+Object.keys(kinds).map(kind=>'<td>'+esc(kind==='it_interface_complete'?(latest[kind]?.interfaceStatus==='interface_done'||latest[kind]?.status==='interface_done'?'✓ Interfaced':'✕ Interface (ยังไม่เสร็จ)'):(labels[latest[kind]?.status]||latest[kind]?.status||'ยังตรวจสถานะไม่ได้'))+'</td>').join('')+'<td>'+esc(at?new Date(at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}):'—')+'</td><td>'+esc(errors.join(' · ')||'—')+'</td></tr>'};
         });
-        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังอ่านประวัติส่งเมลจาก Cloud ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th>'+Object.values(kinds).map(kind=>'<th>'+esc(kind)+'</th>').join('')+'<th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+(grouped.sort((a,b)=>b.at-a.at).map(r=>r.html).join('')||'<tr><td colspan="6">ไม่พบรายการในวันที่เลือก กดดูทั้งหมดเพื่อดูประวัติ</td></tr>')+'</tbody></table></div>';
+        root.innerHTML=(results[0].status==='rejected'?'<p role="alert">ยังอ่านประวัติส่งเมลจาก Cloud ไม่ได้: '+esc(results[0].reason.message)+'. รายการที่ไม่มีผลยืนยันจะไม่แสดงว่าส่งสำเร็จ</p>':'')+(results[1].status==='rejected'?'<p role="alert">ยังอ่านการเลือกไม่ส่งจาก Cloud ไม่ได้</p>':'')+'<div class="sl-table-wrap"><table><thead><tr><th>แคมเปญ</th>'+Object.values(kinds).map(kind=>'<th>'+esc(kind)+'</th>').join('')+'<th>เวลาล่าสุด</th><th>สาเหตุ</th></tr></thead><tbody>'+(grouped.sort((a,b)=>b.at-a.at).map(r=>r.html).join('')||'<tr><td colspan="'+(Object.keys(kinds).length+3)+'">ไม่พบรายการในวันที่เลือก กดดูทั้งหมดเพื่อดูประวัติ</td></tr>')+'</tbody></table></div>';
 
       }catch(e){root.textContent='อ่านสถานะเมลไม่สำเร็จ: '+e.message;}
     },
     async notifyEdit(context,receipt){
-      const answer=await Swal.fire({icon:'question',title:'ต้องการส่งเมลแจ้งการแก้ไขหรือไม่?',text:context.campaign,input:'textarea',inputLabel:'ข้อความเพิ่มเติมถึงผู้รับ (เว้นว่างได้)',inputAttributes:{maxlength:4000},showCancelButton:true,confirmButtonText:'ส่ง',cancelButtonText:'ไม่ส่ง',allowOutsideClick:false});
-      if(!answer.isConfirmed){try{if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(context.campaign,'promotion_edited',receipt.editId,'not_sent');}catch(e){await Swal.fire({icon:'error',title:'โปรฯ บันทึกแล้ว แต่สถานะไม่ส่งเมลยังบันทึกไม่ได้',text:e.message});}return false;}
-      try{
-        const body={campaignKey:'promo::c::'+encodeURIComponent(context.campaign),month:context.month,editId:receipt.editId,additionalMessage:answer.value||''};
-        Swal.fire({title:'กำลังเตรียมเมลจากข้อมูลล่าสุด…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-        const preview=await client().request('copro/revision/preview',{method:'POST',body,interactive:true});
-        const text=['หัวข้อ: '+preview.subject,'To: '+preview.recipients.to.join(', '),'CC: '+preview.recipients.cc.join(', '),preview.text].join('\n\n');
-        const confirm=await Swal.fire({title:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',html:'<pre style="text-align:left;white-space:pre-wrap;max-height:55vh;overflow:auto;font-weight:400">'+mailDetailsHtml(text)+'</pre>',showCancelButton:true,confirmButtonText:'ยืนยันส่งเมล',cancelButtonText:'ไม่ส่ง',width:740});
-        if(!confirm.isConfirmed){if(window.PC_CLOUD?.saveMailDecision)await window.PC_CLOUD.saveMailDecision(context.campaign,'promotion_edited',receipt.editId,'not_sent');return false;}
-        Swal.fire({title:'กำลังบันทึกคำขอส่งเมล…',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
-        const result=await client().request('copro/revision',{method:'POST',body:{...body,previewHash:preview.previewHash,confirmed:true}});
-        await Swal.fire({icon:'success',title:result.mailStatus==='accepted'?'Gmail รับเมลแล้ว':'บันทึกคำขอส่งเมลแล้ว',text:'รายการแจ้งแก้ไขนี้ไม่ถูกส่งซ้ำ'});
-        return true;
-      }catch(e){
-        await Swal.fire({icon:'error',title:'บันทึกโปรฯ แล้ว แต่ยังส่งเมลไม่ได้',text:String(e.message||e)});
-        return false;
-      }
+      const key='promo::c::'+encodeURIComponent(context.campaign);
+      const result=await eventMail({campaign:context.campaign,campaignKey:key,month:context.month,title:'ส่งเมลแจ้งการแก้ไขโปรโมชั่นหรือไม่?',reviewTitle:'ตรวจเมลแจ้งแก้ไขโปรโมชั่น',
+        preview:'copro/revision/preview',commit:'copro/revision',body:{campaignKey:key,month:context.month,editId:receipt.editId},decisionKind:'promotion_edited',decisionId:receipt.editId});
+      return ['queued','accepted','sending','retry'].includes(result?.mailStatus);
+    },
+    /* หลังบันทึกขยาย / ลด / ยกเลิก สำเร็จบน Cloud: change.changeId มาจากการบันทึกเดียวกัน */
+    async notifyChange(change){
+      if(!change?.changeId||!change.campaign)return {mailStatus:'unavailable'};
+      const status=String(change.changeStatus||'').toUpperCase(),label=status==='CANCELLED'?'การยกเลิกโปรโมชั่น':status==='REDUCED'?'การลดระยะเวลาโปรโมชั่น':'การขยายระยะเวลาโปรโมชั่น',key='promo::c::'+encodeURIComponent(change.campaign);
+      return eventMail({campaign:change.campaign,campaignKey:key,title:'ส่งเมลแจ้ง'+label+'หรือไม่?',detail:change.detail||'',reviewTitle:'ตรวจเมลแจ้ง'+label,
+        preview:'copro/change/preview',commit:'copro/change',body:{campaignKey:key,changeId:change.changeId},decisionKind:'promotion_changed',decisionId:change.changeId});
     },
     async save(record,options={}){
       if(window.PC_EmailAuth?.ownerSession&&(await client().capabilities()).authMode==='gmail_owner')await window.PC_EmailAuth.ownerSession({interactive:true});

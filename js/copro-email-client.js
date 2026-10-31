@@ -15,13 +15,30 @@
     const authHeaders=window.PC_EmailAuth.requestHeaders ? await window.PC_EmailAuth.requestHeaders({caps,interactive}) : {Authorization:'Bearer '+await window.PC_EmailAuth.acquireToken({scope:caps.scope,interactive})};
     const r=await fetch('/email/'+path,{method,credentials:'same-origin',cache:'no-store',headers:{...authHeaders,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
     const result=await r.json();
-    const fileErrors={email_revision_loop_missing:'โปรฯ นี้ยังไม่มีลูปเมลที่ยืนยันไว้ กรุณาผูกลูปเมลของโปรฯ ก่อนส่งแจ้งแก้ไข',email_attachment_missing:'ไม่พบเนื้อไฟล์แนบต้นฉบับ กรุณาแนบไฟล์ใหม่ในงานแจ้งโปรโมชั่นเดิมแล้วบันทึกก่อนส่งเมล',email_attachment_unsupported:'ไฟล์แนบเป็นลิงก์ภายนอก กรุณาอัปโหลดไฟล์ต้นฉบับเข้าระบบ',email_attachment_invalid:'ข้อมูลไฟล์แนบไม่ถูกต้อง กรุณาตรวจไฟล์ต้นฉบับ',email_attachment_too_large:'ไฟล์แนบเกินขนาดหรือจำนวนที่ระบบรองรับ',email_attachments_changed:'ไฟล์แนบเปลี่ยนหลังตรวจตัวอย่าง กรุณาตรวจตัวอย่างเมลใหม่'};
-    if(!r.ok)throw Error(fileErrors[result.error]||'ยังดำเนินการอีเมลไม่ได้ / Email not completed: '+(result.error||r.status));return result;
+    const fileErrors={email_revision_loop_missing:'โปรฯ นี้ยังไม่มีลูปเมลที่ยืนยันไว้ กรุณาค้นหาลูปเดิมหรือส่งเมลใหม่',email_campaign_unregistered:'โปรฯ นี้ไม่ได้ลงทะเบียนกับระบบอีเมลตอนแจ้งโปรฯ จึงส่งเมลจากระบบไม่ได้',email_attachment_missing:'ไม่พบเนื้อไฟล์แนบต้นฉบับ กรุณาแนบไฟล์ใหม่ในงานแจ้งโปรโมชั่นเดิมแล้วบันทึกก่อนส่งเมล',email_attachment_unsupported:'ไฟล์แนบเป็นลิงก์ภายนอก กรุณาอัปโหลดไฟล์ต้นฉบับเข้าระบบ',email_attachment_invalid:'ข้อมูลไฟล์แนบไม่ถูกต้อง กรุณาตรวจไฟล์ต้นฉบับ',email_attachment_too_large:'ไฟล์แนบเกินขนาดหรือจำนวนที่ระบบรองรับ',email_attachments_changed:'ไฟล์แนบเปลี่ยนหลังตรวจตัวอย่าง กรุณาตรวจตัวอย่างเมลใหม่'};
+    if(!r.ok){const error=Error(fileErrors[result.error]||'ยังดำเนินการอีเมลไม่ได้ / Email not completed: '+(result.error||r.status));error.code=result.error||'';throw error;}return result;
   }
   async function list(){return (await request('copro')).items;}
   async function refresh(){if(window.PC_CLOUD?.pull)await window.PC_CLOUD.pull({force:true});}
+  /* IT ปิดงานปกติ (ไม่ใช่ CoPromo) หรือปิดงานขยาย/ลด/ยกเลิก → ถ้าผู้แจ้งเลือกส่งเมลไว้ (มีลูปผูกอยู่) ให้ server ตอบกลับลูปเดิม
+     server ตรวจเองว่างาน IT เสร็จจริง และส่งครั้งเดียวต่อรอบ · ไม่มีลูป = ไม่ส่ง · เมลล้มเหลวไม่ทำให้การบันทึกงาน IT ล้ม */
+  async function notifyITDone(items){
+    const results=[],seen=new Set();
+    try{const available=await capabilities();if(!available.coproEnabled)return results;}catch(_){return results;}
+    for(const item of items||[]){
+      const month=/^\d{4}-\d{2}$/.test(String(item.month||''))?String(item.month):'',id=JSON.stringify([item.campaign,month]);
+      if(!item.campaign||seen.has(id))continue;seen.add(id);
+      try{results.push(await request('copro/it-done',{method:'POST',body:{campaignKey:'promo::c::'+encodeURIComponent(item.campaign),month}}));}catch(e){results.push({error:String(e.message||e)});}
+    }
+    return results;
+  }
+  async function afterOrdinaryIT(items){
+    // อ่านข้อมูลจาก Cloud เท่านั้น: ต้องรอ Cloud ยืนยันงาน IT ก่อน (ถ้ายังไม่ยืนยัน หน้าเว็บจะแจ้งข้อผิดพลาดเองและไม่ส่งเมล)
+    try{if(window.PC_CLOUD?.enabled?.()&&window.PC_CLOUD.hasPending?.())await window.PC_CLOUD.syncNow();}catch(_){return [];}
+    const results=await notifyITDone(items);api.lastITMail=results;return results;
+  }
   const api=window.PC_CoProEmail={
-    active,request,capabilities,list,
+    active,request,capabilities,list,notifyITDone,afterOrdinaryIT,lastITMail:[],
     afterITClosed(campaign){
       if(!closedCoPromo.delete(campaign))return false;
       window.loadPage('InterfaceERP',document.getElementById('nav-InterfaceERP'));
@@ -96,18 +113,32 @@
       return record?api.interfaceRecord(record):originalInterface(id,by);
     };
     backend.saveSettlementBatch=async function(month,updates){
+      // ปิดงานลด/ขยาย = IT ยืนยันว่าปรับวันที่ใน POS แล้ว ไม่เปลี่ยนรหัส → ใช้การบันทึกปกติได้ทั้ง CoPromo และงานทั่วไป
+      const changeOnly=updates.length>0&&updates.every(u=>u.changeOnly);
       let copro=[];
       if(window.PC_CLOUD?.readCloudKey){
         const saved=await window.PC_CLOUD.readCloudKey('pc_co_promotions');
         if(saved)copro=JSON.parse(saved.value).filter(r=>updates.some(u=>u.campaign===r.campaign));
       }
-      const mailedCoPromo=copro.some(r=>r.emailIntake&&r.emailPending===false);
+      const mailedCoPromo=!changeOnly&&copro.some(r=>r.emailIntake&&r.emailPending===false);
       if(mailedCoPromo&&!active())await api.enable();
-      if(active()){const result=await api.saveIT(month,updates);if(result)return result;}
+      if(!changeOnly&&active()){const result=await api.saveIT(month,updates);if(result)return result;}
       if(mailedCoPromo)throw Error('ไม่พบงาน CoPromo ที่ผูกลูปเมล กรุณาโหลดงานใหม่ก่อนปิดงาน');
       const result=await originalIT(month,updates);
-      if(result==='SUCCESS'||result?.value==='SUCCESS')for(const row of copro)closedCoPromo.add(row.campaign);
+      if(result==='SUCCESS'||result?.value==='SUCCESS'){
+        if(!changeOnly)for(const row of copro)closedCoPromo.add(row.campaign);
+        await afterOrdinaryIT(updates.map(u=>({campaign:u.campaign,month:u.month||month})));
+      }
       return result;
     };
+    // IT ปิดงานยกเลิก (ลบออกจาก POS / ปิดการขาย) → ตอบกลับลูปเดิมเมื่อผู้แจ้งเลือกส่งเมลไว้
+    for(const name of ['itRemoveCancelled','itKeepCancelled']){
+      const original=backend[name];if(typeof original!=='function')continue;
+      backend[name]=async function(campaign,month,...rest){
+        const result=await original.call(this,campaign,month,...rest);
+        if(result?.status==='success')await afterOrdinaryIT([{campaign,month}]);
+        return result;
+      };
+    }
   }
 })(window);
