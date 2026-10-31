@@ -857,9 +857,9 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
     var checked = [].slice.call(document.querySelectorAll('#btnLife-'+rowIdx+' .ct-blife:checked')).map(function(c){ return c.getAttribute('data-sn'); });
     if(!checked.length){ Swal.fire('ยังไม่ได้เลือกปุ่ม','ติ๊กปุ่มที่ต้องการก่อน','info'); return; }
     var listHtml = '<div style="text-align:left;font-size:13px;max-height:150px;overflow:auto;background:#f8f9fa;border-radius:8px;padding:8px 12px;margin-top:8px">'+checked.map(function(s){ return '• '+String(s).replace(/</g,'&lt;'); }).join('<br>')+'</div>';
-    var done = function(res){
+    var done = async function(res){
       if (!res || res.status !== 'success') { Swal.fire('ผิดพลาด', (res && res.message) || 'บันทึกไม่สำเร็จ', 'error'); return; }
-      Swal.fire(res._activityWarning ? 'งานบันทึกแล้ว แต่ Log ยังไม่ครบ' : 'สำเร็จ', res.message || 'บันทึกแล้ว', res._activityWarning ? 'warning' : 'success');
+      await window.ctAfterChangeSaved(res, campaignName, 'ปุ่มที่เลือก: ' + checked.join(', '));
       window.fetchItemsToRow(rowIdx); if(window.loadTrackingData) window.loadTrackingData();
     };
     if(mode==='cancel'){
@@ -1230,6 +1230,14 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
   };
   /* กู้การขยายที่ค้าง: ถ้าเคยเลือก "ขยาย + เพิ่มโค้ด" แล้วปิดหน้า/รีเฟรชไปก่อนแนบโค้ด
      เดิมค้างเงียบ ไม่มีอะไรเกิด (งานไม่เด้งเข้าหน้า IT) → ถามให้ชัดว่าจะขยายเลยไหม */
+  /* หลังบันทึกขยาย / ลด / ยกเลิกสำเร็จบน Cloud → แจ้งผล แล้วถามว่าจะส่งเมลหรือไม่ (ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่ง)
+     ข้อความ "ส่งเมล" จะแสดงเฉพาะเมื่อมีคำขอส่งเมลจริงในคิวเท่านั้น */
+  window.ctAfterChangeSaved = async function (res, campaignName, detail) {
+    await Swal.fire(res && res._activityWarning ? 'งานบันทึกแล้ว แต่ Log ยังไม่ครบ' : 'บันทึกสำเร็จ', (res && res.message) || 'บันทึกแล้ว', res && res._activityWarning ? 'warning' : 'success');
+    if (!res || !res.changeId || !window.PC_CoProEmailUI || !window.PC_CoProEmailUI.notifyChange) return null;
+    try { return await window.PC_CoProEmailUI.notifyChange({ campaign: campaignName, changeId: res.changeId, changeStatus: res.changeStatus, detail: detail || '' }); }
+    catch (e) { return null; }
+  };
   window.ctResumePendingExtend = function () {
     var p = null; try { p = JSON.parse(localStorage.getItem('pc_pending_extend') || 'null'); } catch (e) {}
     if (!p || !p.campaign) return;
@@ -1244,10 +1252,11 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
     }).then(function (r) {
       if (r.isConfirmed) {
         try { localStorage.removeItem('pc_pending_extend'); } catch (e) {}
-        google.script.run.withSuccessHandler(function (res) {
-          Swal.fire(res && res._activityWarning ? 'งานบันทึกแล้ว แต่ Log ยังไม่ครบ' : 'สำเร็จ', (res && res.message) || 'ขยายเวลาแล้ว', res && res._activityWarning ? 'warning' : 'success');
+        google.script.run.withSuccessHandler(async function (res) {
+          if (!res || res.status !== 'success') { Swal.fire('ผิดพลาด', (res && res.message) || 'บันทึกไม่สำเร็จ', 'error'); return; }
+          await window.ctAfterChangeSaved(res, p.campaign, 'วันที่สิ้นสุดใหม่: ' + p.newEnd);
           window.loadTrackingData();
-        }).extendCampaign(p.campaign, p.newEnd, (p.note || '') + ' (ยังไม่ได้แนบโค้ดใหม่)');
+        }).withFailureHandler(function (e) { Swal.fire('ยังบันทึกไม่สำเร็จ', String(e && e.message || e), 'error'); }).extendCampaign(p.campaign, p.newEnd, (p.note || '') + ' (ยังไม่ได้แนบโค้ดใหม่)');
       } else if (r.isDenied) {
         if (typeof window.loadPage === 'function') window.loadPage('CodeMgmt', document.getElementById('nav-CodeMgmt'));
       } else {
@@ -1283,11 +1292,11 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
           <hr>
           <label class="small fw-bold">ระบุวันที่สิ้นสุดใหม่:</label>
           <input type="date" id="newEndDate" class="form-control mt-2" min="${todayStr}">
-          <p class="mt-2 text-muted" style="font-size: 11px;">*จะส่งเมลแจ้ง MKT อัตโนมัติ (ขยายเวลา/ลดเวลา)</p>
+          <p class="mt-2 text-muted" style="font-size: 11px;">*ระบบตรวจให้ว่าเป็นการขยายหรือลดเวลา · หลังบันทึกจะถามว่าจะส่งเมลแจ้งหรือไม่ (ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่ง)</p>
           ${onlineExtras}
         </div>`,
       showCancelButton: true,
-      confirmButtonText: 'ยืนยันและส่งเมล',
+      confirmButtonText: 'ยืนยันบันทึก',
       confirmButtonColor: '#2e934a',
       preConfirm: () => {
         const dateVal = document.getElementById('newEndDate').value;
@@ -1315,11 +1324,11 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
         return;
       }
       // ขยายทันที (ไม่เพิ่มโค้ด) — แนบ Noted ถ้าติ๊กขยายโค้ดเดิม
-      Swal.fire({ title: 'กำลังดำเนินการและส่ง Email...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      google.script.run.withSuccessHandler(res => {
-        if (res.status === "success") { Swal.fire(res._activityWarning ? 'งานบันทึกแล้ว แต่ Log ยังไม่ครบ' : 'สำเร็จ', res.message, res._activityWarning ? 'warning' : 'success'); window.loadTrackingData(); }
-        else Swal.fire('ผิดพลาด', res.message, 'error');
-      }).extendCampaign(campaignName, newEnd, note);
+      Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      google.script.run.withSuccessHandler(async res => {
+        if (res && res.status === "success") { await window.ctAfterChangeSaved(res, campaignName, 'วันที่สิ้นสุด: ' + currentEnd + ' → ' + newEnd); window.loadTrackingData(); }
+        else Swal.fire('ผิดพลาด', (res && res.message) || 'บันทึกไม่สำเร็จ', 'error');
+      }).withFailureHandler(e => Swal.fire('ยังบันทึกไม่สำเร็จ', String(e && e.message || e), 'error')).extendCampaign(campaignName, newEnd, note);
     });
   };
 
@@ -1332,19 +1341,19 @@ const fileDisplay = isHeader ? (i.itemRowUrl && i.itemRowUrl.trim() !== "" ?
       icon: 'error',
       showCancelButton: true,
       confirmButtonColor: '#dc3545',
-      confirmButtonText: 'ยืนยันยกเลิกและส่งเมล',
+      confirmButtonText: 'ยืนยันยกเลิกแคมเปญ',
       preConfirm: (val) => { if(!val) return Swal.showValidationMessage('กรุณาระบุเหตุผล'); return val; }
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังดำเนินการและส่ง Email...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        google.script.run.withSuccessHandler(res => {
-          if(res.status === "success") {
-            Swal.fire(res._activityWarning ? 'งานบันทึกแล้ว แต่ Log ยังไม่ครบ' : 'สำเร็จ', res.message, res._activityWarning ? 'warning' : 'success');
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        google.script.run.withSuccessHandler(async res => {
+          if(res && res.status === "success") {
+            await window.ctAfterChangeSaved(res, campaignName, 'เหตุผล: ' + result.value);
             window.loadTrackingData();
           } else {
-            Swal.fire('ผิดพลาด', res.message, 'error');
+            Swal.fire('ผิดพลาด', (res && res.message) || 'บันทึกไม่สำเร็จ', 'error');
           }
-        }).cancelCampaign(campaignName, result.value);
+        }).withFailureHandler(e => Swal.fire('ยังบันทึกไม่สำเร็จ', String(e && e.message || e), 'error')).cancelCampaign(campaignName, result.value);
       }
     });
   };

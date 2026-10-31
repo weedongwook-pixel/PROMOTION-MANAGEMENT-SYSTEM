@@ -3650,6 +3650,10 @@
     return "SUCCESS";
   };
 
+  /* changeId: ผูกแถวที่ถูกขยาย/ลด/ยกเลิกในการบันทึกครั้งเดียวกัน → ใช้ส่งเมลแจ้ง (ถ้าผู้ใช้เลือกส่ง) และให้ IT ตอบกลับลูปเดิมครั้งเดียวต่อรอบ */
+  function newChangeId() { try { if (window.crypto && crypto.randomUUID) return "chg-" + crypto.randomUUID(); } catch (e) {} return "chg-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12); }
+  function markChange(r, changeId, previousEnd) { r.changeId = changeId; r.changeAt = NOW(); if (previousEnd !== undefined) r.changePreviousEnd = previousEnd || ""; else delete r.changePreviousEnd; }
+
   /* ---- extend / reduce (extendCampaign) — sets changeStatus marker, keeps IT completion ---- */
   API.extendCampaign = (campaignName, newEndDate, extendNote) => {
     if (!store.working.some(w => w.campaign === campaignName)) return { status: "error", message: "ไม่พบแคมเปญ" };
@@ -3658,36 +3662,35 @@
     store.working.forEach(w => {
       if (w.campaign === campaignName && new Date(newEndDate) < new Date(w.end)) mode = "REDUCED";
     });
-    const note = String(extendNote || "").trim();
+    const note = String(extendNote || "").trim(), changeId = newChangeId();
     Object.keys(store.months).forEach(m => store.months[m].forEach(r => {
-      if (r.campaign === campaignName) { if (String(r.opStatus||"").toUpperCase()==="CONFIRMED") r.wentLive = true; r.end = newEndDate; r.changeStatus = mode; r.itStatus = "PENDING"; r.opStatus = "WAITING"; r.opDoneDate = ""; if (note) r.extendCodeNote = note; }
+      if (r.campaign === campaignName) { if (String(r.opStatus||"").toUpperCase()==="CONFIRMED") r.wentLive = true; markChange(r, changeId, r.end); r.end = newEndDate; r.changeStatus = mode; r.itStatus = "PENDING"; r.opStatus = "WAITING"; r.opDoneDate = ""; if (note) r.extendCodeNote = note; }
     }));
     store.working.forEach(w => {
-      if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; w.end = newEndDate; w.changeStatus = mode; w.itStatus = "PENDING"; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); if (note) w.extendCodeNote = note; }
+      if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; markChange(w, changeId, w.end); w.end = newEndDate; w.changeStatus = mode; w.itStatus = "PENDING"; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); if (note) w.extendCodeNote = note; }
     });
     if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     try { syncCoPromoDates(campaignName, { end: newEndDate, lifecycle: mode }); } catch (e) {}
     const label = mode === "REDUCED" ? "ลดระยะเวลา" : "ขยายระยะเวลา";
-    sendMail("it@rocks-foods.com", "[" + label + "] " + campaignName, "MKT โปรดทราบ: แคมเปญ \"" + campaignName + "\" " + label + " เป็นวันที่ " + newEndDate + (note ? "\nหมายเหตุถึง IT: " + note : ""));
     try { if (window.PC_notify) window.PC_notify(mode === "REDUCED" ? "promo_reduced" : "promo_extended", { threadKey: campaignName, text: label + 'โปร “' + campaignName + '” — สิ้นสุดใหม่ ' + newEndDate + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ " + label + "เรียบร้อย และส่งเมลแจ้ง MKT แล้ว (" + mode + ")",
+    return { status: "success", message: "✅ " + label + "เรียบร้อย (" + mode + ") · รอ IT ปรับในระบบและ OP ยืนยัน", changeId: changeId, changeStatus: mode,
       _activity: { kind: mode, campaign: campaignName, scope: 'campaign', before: oldEnds.join(', '), after: newEndDate, note: note } };
   };
 
   /* ---- cancel (cancelCampaign) — sets CANCELLED marker, keeps record visible ---- */
   API.cancelCampaign = (campaignName, reason) => {
     if (!store.working.some(w => w.campaign === campaignName)) return { status: "error", message: "ไม่พบแคมเปญ" };
+    const changeId = newChangeId();
     Object.keys(store.months).forEach(m => store.months[m].forEach(r => {
-      if (r.campaign === campaignName) { if (String(r.opStatus||"").toUpperCase()==="CONFIRMED") r.wentLive = true; r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; }
+      if (r.campaign === campaignName) { if (String(r.opStatus||"").toUpperCase()==="CONFIRMED") r.wentLive = true; markChange(r, changeId); r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; }
     }));
     store.working.forEach(w => {
-      if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; w.changeStatus = "CANCELLED"; w.cancelReason = reason || ""; w.reason = reason || ""; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); }
+      if (w.campaign === campaignName) { if (String(w.opStatus||"").toUpperCase()==="CONFIRMED") w.wentLive = true; markChange(w, changeId); w.changeStatus = "CANCELLED"; w.cancelReason = reason || ""; w.reason = reason || ""; w.opStatus = "WAITING"; w.opDoneDate = ""; w.updatedDate = NOW(); }
     });
     if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
-    sendMail("it@rocks-foods.com", "[ยกเลิกโปรโมชั่น] " + campaignName, "MKT โปรดทราบ: แคมเปญ \"" + campaignName + "\" ถูกยกเลิก\nเหตุผล: " + (reason || "-") + "\nปุ่มถูกนำออกจาก POS แล้ว (ข้อมูลยังคงอยู่ในระบบเพื่อการติดตาม)");
     try { syncCoPromoDates(campaignName, { lifecycle: "CANCELLED" }); } catch (e) {}
     try { if (window.PC_notify) window.PC_notify("promo_cancelled", { threadKey: campaignName, text: 'ยกเลิกโปร “' + campaignName + '”' + (reason ? ' — ' + reason : '') + ' · โปรดนำปุ่มออกจาก POS · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ ยกเลิกแคมเปญเรียบร้อย · นำปุ่มออกจาก POS · ส่งเมลแจ้ง MKT แล้ว",
+    return { status: "success", message: "✅ ยกเลิกแคมเปญเรียบร้อย · รอ IT นำปุ่มออกจาก POS และ OP ยืนยัน", changeId: changeId, changeStatus: "CANCELLED",
       _activity: { kind: 'CANCELLED', campaign: campaignName, scope: 'campaign', note: String(reason || '').trim() } };
   };
 
@@ -4116,7 +4119,7 @@
   API.extendButtons = (campaignName, shortNames, newEndDate, extendNote) => {
     const snSet = {}; (shortNames || []).forEach(s => { const k = String(s || "").trim(); if (k) snSet[k] = 1; });
     if (!Object.keys(snSet).length) return { status: "error", message: "ไม่ได้เลือกปุ่ม" };
-    const note = String(extendNote || "").trim();
+    const note = String(extendNote || "").trim(), changeId = newChangeId();
     const modeSeen = {};
     const oldEnds = [...new Set(Object.keys(store.months).reduce((out, m) => out.concat((store.months[m] || []).filter(r => r.campaign === campaignName && snSet[String(r.shortName || '').trim()]).map(r => r.end).filter(Boolean)), []))];
     const apply = (r) => {
@@ -4124,7 +4127,7 @@
       const mode = (r.end && new Date(newEndDate) < new Date(r.end)) ? "REDUCED" : "EXTENDED";
       modeSeen[mode] = 1;
       if (String(r.opStatus || "").toUpperCase() === "CONFIRMED") r.wentLive = true;
-      r.end = newEndDate; r.changeStatus = mode; r.itStatus = "PENDING"; r.opStatus = "WAITING"; r.opDoneDate = "";
+      markChange(r, changeId, r.end); r.end = newEndDate; r.changeStatus = mode; r.itStatus = "PENDING"; r.opStatus = "WAITING"; r.opDoneDate = "";
       if (note) r.extendCodeNote = note; r.updatedDate = NOW();
     };
     Object.keys(store.months).forEach(m => store.months[m].forEach(apply));
@@ -4134,20 +4137,19 @@
     const label = (modeSeen.REDUCED && !modeSeen.EXTENDED) ? "ลดระยะเวลา" : "ขยายระยะเวลา";
     try { syncCoPromoDates(campaignName, { end: newEndDate, lifecycle: (modeSeen.REDUCED && !modeSeen.EXTENDED) ? "REDUCED" : "EXTENDED" }); } catch (e) {}
     const n = Object.keys(snSet).length;
-    sendMail("it@rocks-foods.com", "[" + label + " (รายปุ่ม)] " + campaignName,
-      "ปุ่มที่ " + label + " (" + n + " ปุ่ม): " + Object.keys(snSet).join(", ") + "\nวันสิ้นสุดใหม่: " + newEndDate + (note ? "\nหมายเหตุถึง IT: " + note : ""));
     try { if (window.PC_notify) window.PC_notify((modeSeen.REDUCED && !modeSeen.EXTENDED) ? "promo_reduced" : "promo_extended", { text: label + ' “' + campaignName + '” ' + n + ' ปุ่ม (' + Object.keys(snSet).join(', ') + ') — สิ้นสุด ' + newEndDate + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ " + label + " " + n + " ปุ่มเรียบร้อย (" + Object.keys(modeSeen).join("/") + ") · รอ OP ยืนยัน", buttons: Object.keys(snSet), mode: Object.keys(modeSeen).join("/"),
+    return { status: "success", message: "✅ " + label + " " + n + " ปุ่มเรียบร้อย (" + Object.keys(modeSeen).join("/") + ") · รอ OP ยืนยัน", buttons: Object.keys(snSet), mode: Object.keys(modeSeen).join("/"), changeId: changeId, changeStatus: (modeSeen.REDUCED && !modeSeen.EXTENDED) ? "REDUCED" : "EXTENDED",
       _activity: { kind: Object.keys(modeSeen).join('/'), campaign: campaignName, scope: 'buttons', buttons: Object.keys(snSet), before: oldEnds.join(', '), after: newEndDate, note: note } };
   };
 
   API.cancelButtons = (campaignName, shortNames, reason) => {
     const snSet = {}; (shortNames || []).forEach(s => { const k = String(s || "").trim(); if (k) snSet[k] = 1; });
     if (!Object.keys(snSet).length) return { status: "error", message: "ไม่ได้เลือกปุ่ม" };
+    const changeId = newChangeId();
     const apply = (r) => {
       if (r.campaign !== campaignName || !snSet[String(r.shortName || "").trim()]) return;
       if (String(r.opStatus || "").toUpperCase() === "CONFIRMED") r.wentLive = true;
-      r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.reason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; r.updatedDate = NOW();
+      markChange(r, changeId); r.changeStatus = "CANCELLED"; r.cancelReason = reason || ""; r.reason = reason || ""; r.opStatus = "WAITING"; r.opDoneDate = ""; r.updatedDate = NOW();
     };
     const found = Object.keys(store.months).some(m => store.months[m].some(r => r.campaign === campaignName && snSet[String(r.shortName || '').trim()]));
     if (!found) return { status: "error", message: "ไม่พบปุ่มที่เลือก" };
@@ -4156,9 +4158,8 @@
     if (!persist()) return { status: "error", message: "บันทึกลงเครื่องไม่สำเร็จ" };
     const n = Object.keys(snSet).length;
     try { syncCoPromoDates(campaignName, { lifecycle: "CANCELLED" }); } catch (e) {}
-    sendMail("it@rocks-foods.com", "[ยกเลิก (รายปุ่ม)] " + campaignName, "ปุ่มที่ยกเลิก (" + n + "): " + Object.keys(snSet).join(", ") + "\nเหตุผล: " + (reason || "-"));
     try { if (window.PC_notify) window.PC_notify("promo_cancelled", { text: 'ยกเลิก ' + n + ' ปุ่มของ “' + campaignName + '” (' + Object.keys(snSet).join(', ') + ')' + (reason ? ' — ' + reason : '') + ' · รอ OP ยืนยัน' }); } catch (e) {}
-    return { status: "success", message: "✅ ยกเลิก " + n + " ปุ่มเรียบร้อย · รอ OP ยืนยัน", buttons: Object.keys(snSet),
+    return { status: "success", message: "✅ ยกเลิก " + n + " ปุ่มเรียบร้อย · รอ OP ยืนยัน", buttons: Object.keys(snSet), changeId: changeId, changeStatus: "CANCELLED",
       _activity: { kind: 'CANCELLED', campaign: campaignName, scope: 'buttons', buttons: Object.keys(snSet), note: String(reason || '').trim() } };
   };
 

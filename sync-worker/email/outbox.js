@@ -1,6 +1,15 @@
 (function(root){
   'use strict';const api=root.PC_Email;
   const statement=(env,sql,...args)=>env.DB.prepare(sql).bind(...args);
+  // Migration 008. Before it is applied, new-email loops keep the earlier behaviour (each mail starts fresh).
+  async function threadStart(env,id){try{return await statement(env,'SELECT * FROM email_thread_starts WHERE thread_id=?',id).first();}catch(_){return null;}}
+  async function recordThreadStart(env,id,providerId,token,deps){
+    try{
+      const sent=await api.gmailMessage(providerId,token,deps),rfc=sent.headers['message-id']||'';
+      if(sent.messageId!==providerId||!/^[a-zA-Z0-9_-]{1,128}$/.test(sent.threadId||'')||!/^<[^\s<>]+@[^\s<>]+>$/.test(rfc))return;
+      await statement(env,'INSERT OR IGNORE INTO email_thread_starts(thread_id,gmail_thread_id,message_id,rfc_message_id,created_at) VALUES(?,?,?,?,?)',id,sent.threadId,sent.messageId,rfc,Date.now()).run();
+    }catch(_){}
+  }
   api.dispatchEmail=async function(env,deps={}){
     const counts={accepted:0,failed:0,held:0};
     if(env.EMAIL_CONNECTION_ENABLED!=='true'||env.EMAIL_COPRO_ENABLED!=='true'||(env.EMAIL_TEST_SEND_ENABLED!=='true'&&env.EMAIL_SEND_ENABLED!=='true'))return counts;
@@ -8,7 +17,7 @@
     await statement(env,"UPDATE email_outbox SET status='needs_verification',sanitized_error='lease_expired',updated_at=? WHERE status='sending' AND lease_until<=?",now,now).run();
     for(let index=0;index<5;index++){
       const lease=crypto.randomUUID();
-      const event=await statement(env,"UPDATE email_outbox SET status='sending',lease_token=?,lease_until=?,attempts=attempts+1,updated_at=? WHERE id=(SELECT o.id FROM email_outbox o WHERE o.status IN ('queued','retry') AND o.next_attempt_at<=? AND EXISTS(SELECT 1 FROM email_bindings b JOIN email_threads t ON t.id=b.thread_id WHERE b.campaign_id=o.campaign_id AND ((t.delivery_mode='test' AND ?=1) OR (t.delivery_mode='production' AND ?=1))) AND (o.event_key LIKE '%:submitted' OR o.event_key LIKE '%:revision:%' OR EXISTS(SELECT 1 FROM email_outbox prior WHERE prior.campaign_id=o.campaign_id AND prior.event_key LIKE '%:submitted' AND prior.status='accepted')) ORDER BY o.created_at,o.event_key DESC LIMIT 1) AND status IN ('queued','retry') RETURNING *",lease,now+120000,now,now,env.EMAIL_TEST_SEND_ENABLED==='true'?1:0,env.EMAIL_SEND_ENABLED==='true'?1:0).first();
+      const event=await statement(env,"UPDATE email_outbox SET status='sending',lease_token=?,lease_until=?,attempts=attempts+1,updated_at=? WHERE id=(SELECT o.id FROM email_outbox o WHERE o.status IN ('queued','retry') AND o.next_attempt_at<=? AND EXISTS(SELECT 1 FROM email_bindings b JOIN email_threads t ON t.id=b.thread_id WHERE b.campaign_id=o.campaign_id AND ((t.delivery_mode='test' AND ?=1) OR (t.delivery_mode='production' AND ?=1))) AND (o.event_key LIKE '%:submitted' OR o.event_key LIKE '%:revision:%' OR o.event_key LIKE '%:change:%' OR EXISTS(SELECT 1 FROM email_outbox prior WHERE prior.campaign_id=o.campaign_id AND prior.status='accepted' AND (prior.event_key LIKE '%:submitted' OR prior.event_key LIKE '%:revision:%' OR prior.event_key LIKE '%:change:%'))) ORDER BY o.created_at,o.event_key DESC LIMIT 1) AND status IN ('queued','retry') RETURNING *",lease,now+120000,now,now,env.EMAIL_TEST_SEND_ENABLED==='true'?1:0,env.EMAIL_SEND_ENABLED==='true'?1:0).first();
       if(!event)break;
       const update=(status,error=null,provider=null,next=0)=>statement(env,"UPDATE email_outbox SET status=?,sanitized_error=?,provider_id=?,next_attempt_at=?,updated_at=? WHERE id=? AND lease_token=? AND status='sending'",status,error,provider,next,Date.now(),event.id,lease).run();
       let snapshot,connection;
@@ -17,13 +26,19 @@
         if(!c)throw Error();
         await api.requireEmailPermission({tenantId:c.owner_tenant,objectId:c.owner_oid},'submit',env);
         snapshot=JSON.parse(event.snapshot_json);
-        if(snapshot.requestedBy){if(!api.requireStaffPermission||!snapshot.requestedBy.staffId)throw Error();await api.requireStaffPermission(snapshot.requestedBy,snapshot.milestone==='it_interface_complete'?'it':'submit',env);}
+        if(snapshot.requestedBy){if(!api.requireStaffPermission||!snapshot.requestedBy.staffId)throw Error();await api.requireStaffPermission(snapshot.requestedBy,['it_interface_complete','it_done'].includes(snapshot.milestone)?'it':'submit',env);}
         let source;
         if(snapshot.milestone==='promotion_edited'){
           if(!snapshot.revision||event.event_key!==c.id+':'+c.month+':revision:'+snapshot.revision.editId)throw Error();
           const row=await statement(env,'SELECT v FROM promo_store WHERE k=?',c.campaign_key).first();
           if(!row)throw Error();const block=JSON.parse(row.v),raw=block.m?.[c.month];
           if(!raw?.length||raw.some(r=>r.editId!==snapshot.revision.editId||r.changeStatus==='CANCELLED')||await api.hash(JSON.stringify(api.coProSource(block,c.month)))!==snapshot.revision.sourceHash)throw Error();
+          source={block};
+        }else if(snapshot.event){
+          // Lifecycle and IT replies: re-check the mail-relevant fields of the current Cloud promotion.
+          const row=await statement(env,'SELECT v FROM promo_store WHERE k=?',c.campaign_key).first();
+          if(!row)throw Error();const block=JSON.parse(row.v);
+          if(!['it_done','promotion_extended','promotion_reduced','promotion_cancelled'].includes(snapshot.milestone)||!await api.verifyEmailEvent(c,block,event.event_key,snapshot))throw Error();
           source={block};
         }else source=await api.checkCoProSource(c,env);
         const b=await statement(env,'SELECT * FROM email_bindings WHERE campaign_id=?',c.id).first();
@@ -46,7 +61,7 @@
         const held=await statement(env,"SELECT id FROM email_outbox WHERE id=? AND status='sending' AND lease_token=? AND lease_until>?",event.id,lease,Date.now()).first();if(!held)throw Error();
         return t;
       };
-      let thread;
+      let thread,start=null;
       try{thread=await validate();}catch(_){await update('held','approval_or_source_changed');counts.held++;continue;}
       let token;
       try{
@@ -55,18 +70,25 @@
         if(!current||current.generation!==connection.generation)throw Error();
       }catch(_){await update('held','connection_unavailable');counts.held++;continue;}
       try{
-        if(!thread.message_id.startsWith('new:')){
+        // A "new email" loop replies to its own first accepted message once Gmail has it.
+        if(thread.message_id.startsWith('new:'))start=await threadStart(env,thread.id);
+        if(start){
+          const original=await api.gmailMessage(start.message_id,token,deps);
+          if(original.messageId!==start.message_id||original.threadId!==start.gmail_thread_id||original.headers['message-id']!==start.rfc_message_id)throw Error();
+        }else if(!thread.message_id.startsWith('new:')){
         const original=await api.gmailMessage(thread.message_id,token,deps);
         if(original.messageId!==thread.message_id||original.threadId!==thread.thread_id||original.headers['message-id']!==thread.rfc_message_id||original.headers.subject!==thread.subject||String(original.headers.references||'').trim().split(/\s+/).filter(Boolean).join(' ')!==JSON.parse(thread.references_json).join(' '))throw Error();
         }else if(!snapshot.newMessage||thread.thread_id||thread.rfc_message_id)throw Error();
         // Refresh and Gmail reads may take seconds. Honour changes made during either wait.
         await validate();
       }catch(_){await update('held','approval_or_target_changed');counts.held++;continue;}
+      if(start)snapshot={...snapshot,newMessage:false,threadId:start.gmail_thread_id,rfcMessageId:start.rfc_message_id,references:[]};
       let outcome;
       try{outcome=await api.sendReply(token,snapshot,deps);}catch(_){outcome={outcome:'ambiguous'};}
       try{
         if(outcome.outcome==='accepted'){
           await update('accepted',null,outcome.providerId);counts.accepted++;
+          if(snapshot.newMessage)await recordThreadStart(env,thread.id,outcome.providerId,token,deps);
         }else if(outcome.outcome==='rejected'){
           const delays=[60000,300000,900000];
           if(outcome.retryable&&event.attempts<=3)await update('retry','provider_rate_limited',null,Date.now()+delays[event.attempts-1]);
