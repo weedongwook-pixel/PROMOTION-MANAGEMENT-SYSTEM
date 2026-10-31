@@ -394,11 +394,13 @@
       </div>
       <div class="login-card">
         <h4 class="fw-bold mb-4 text-center">L O G I N</h4>
+        <!-- เข้าระบบด้วยอีเมลบริษัท (Microsoft) อย่างเดียว · ช่องชื่อผู้ใช้/รหัสผ่านซ่อนไว้ สำรองฉุกเฉินเปิดด้วย #local-login -->
+        <div id="localLoginBox" hidden>
         <div class="mb-3 text-start">
           <label for="user" class="form-label fw-bold small">USERNAME</label>
           <div class="input-group">
             <span class="input-group-text bg-white border-dark" style="border-width: 2px;"><i class="fas fa-user"></i></span>
-            <input type="text" id="user" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus>
+            <input type="text" id="user" class="form-control border-dark" style="border-width: 2px; border-left: none;" placeholder="Username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           </div>
         </div>
         <div class="mb-4 text-start">
@@ -417,6 +419,8 @@
           <span class="small fw-bold text-muted">หรือ</span>
           <div style="flex:1;height:2px;background:#e3e3e3;"></div>
         </div>
+        </div>
+        <script>try{if(location.hash==='#local-login')document.getElementById('localLoginBox').hidden=false;}catch(e){}</script>
 
         <button class="btn w-100 d-flex align-items-center justify-content-center" onclick="loginWithMicrosoft()" id="msLoginBtn" style="gap:11px; border:1px solid rgba(0,0,0,.10); background:#fff; color:#1a1d20; border-radius:14px; padding:14px; font-weight:600; box-shadow:0 2px 10px rgba(16,24,40,.08); transition:transform .15s, box-shadow .15s, border-color .15s;">
           <svg width="19" height="19" viewBox="0 0 20 20" aria-hidden="true">
