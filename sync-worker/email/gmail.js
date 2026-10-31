@@ -44,11 +44,24 @@
       'Subject: =?UTF-8?B?'+utf8(subject)+'?=',...(snapshot.newMessage?[]:['In-Reply-To: '+original,'References: '+refs.join(' ')]),'MIME-Version: 1.0','Content-Type: multipart/alternative; boundary="'+boundary+'"'];
     const part=(type,body)=>'--'+boundary+'\r\nContent-Type: '+type+'; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+body+'\r\n';
     let mime=headers.join('\r\n')+'\r\n\r\n'+part('text/plain',content.text)+part('text/html',content.html)+'--'+boundary+'--\r\n';
+    // Pasted images sit inside the message body (cid:), so the alternative part is wrapped in multipart/related.
+    if(snapshot.images?.length){
+      const related='pc_img_'+crypto.randomUUID().replace(/-/g,'');
+      const body=mime.slice(mime.indexOf('\r\n\r\n')+4);
+      headers[headers.length-1]='Content-Type: multipart/related; boundary="'+related+'"';
+      mime=headers.join('\r\n')+'\r\n\r\n--'+related+'\r\nContent-Type: multipart/alternative; boundary="'+boundary+'"\r\n\r\n'+body;
+      snapshot.images.forEach((img,i)=>{
+        const ext={'image/png':'png','image/jpeg':'jpg','image/gif':'gif','image/webp':'webp'}[img.mime];
+        if(!ext||!img.base64||!/^[A-Za-z0-9+/]*={0,2}$/.test(img.base64))throw Error('email_attachment_invalid');
+        mime+='--'+related+'\r\nContent-Type: '+img.mime+'\r\nContent-ID: <'+api.emailImageCid(i)+'>\r\nContent-Disposition: inline; filename="image-'+(i+1)+'.'+ext+'"\r\nContent-Transfer-Encoding: base64\r\n\r\n'+img.base64.match(/.{1,76}/g).join('\r\n')+'\r\n';
+      });
+      mime+='--'+related+'--\r\n';
+    }
     if(snapshot.attachments?.length){
       const mixed='pc_files_'+crypto.randomUUID().replace(/-/g,'');
       const body=mime.slice(mime.indexOf('\r\n\r\n')+4);
       const mainHeaders=headers.slice(0,-1).concat('Content-Type: multipart/mixed; boundary="'+mixed+'"');
-      mime=mainHeaders.join('\r\n')+'\r\n\r\n--'+mixed+'\r\nContent-Type: multipart/alternative; boundary="'+boundary+'"\r\n\r\n'+body;
+      mime=mainHeaders.join('\r\n')+'\r\n\r\n--'+mixed+'\r\n'+headers[headers.length-1]+'\r\n\r\n'+body;
       for(const f of snapshot.attachments){
         if(!f.name||/[\r\n\0]/.test(f.name)||! /^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/.test(f.mime)||!f.base64||!/^[A-Za-z0-9+/]*={0,2}$/.test(f.base64))throw Error('email_attachment_invalid');
         const encoded=encodeURIComponent(f.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());

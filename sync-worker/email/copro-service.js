@@ -1,6 +1,19 @@
 (function(root){
   'use strict';const api=root.PC_Email;
-  function additionalMessage(input){const value=input.additionalMessage??'';if(typeof value!=='string'||value.length>4000)throw Error('email_invalid_record');return value.trim();}
+  // The sender's note: message, where it goes (after the details by default) and up to 4 pasted images.
+  const IMAGE_TYPES=['image/png','image/jpeg','image/gif','image/webp'];
+  function additionalMessage(input){
+    const value=input.additionalMessage??'',images=input.images??[];
+    if(typeof value!=='string'||value.length>4000||!Array.isArray(images)||images.length>4)throw Error('email_invalid_record');
+    let total=0;
+    const list=images.map(x=>{
+      if(!x||!IMAGE_TYPES.includes(x.mime)||typeof x.base64!=='string'||!x.base64||x.base64.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(x.base64))throw Error('email_image_invalid');
+      total+=x.base64.length;return {mime:x.mime,base64:x.base64};
+    });
+    if(total>900000)throw Error('email_image_too_large');
+    const message=value.trim();
+    return {...(message?{additionalMessage:message}:{}),...(input.messagePosition==='before'&&(message||list.length)?{messagePosition:'before'}:{}),...(list.length?{images:list}:{})};
+  }
   const owner=(c,a)=>c.owner_tenant===a.tenantId&&c.owner_oid===a.objectId;
   const statement=(env,sql,...args)=>env.DB.prepare(sql).bind(...args);
   const guard=env=>[env.DB.prepare('INSERT INTO promo_commit_guard(id) VALUES (CASE WHEN changes()=1 THEN 1 ELSE 0 END)'),env.DB.prepare('DELETE FROM promo_commit_guard WHERE id=1')];
@@ -112,6 +125,25 @@
     }
     return {registered:true,created};
   };
+  // Send-mail page: the mail body from the current Cloud promotion, shown before recipients are chosen.
+  // Read-only: no registration, loop or queue. The confirmed preview still comes from the endpoints below.
+  api.contentPreview=async function(actor,input,env){
+    await api.requireEmailPermission(actor,'submit',env);
+    if(typeof input.campaignKey!=='string'||!input.campaignKey.startsWith('promo::c::')||!['submitted','copro','edit','change'].includes(input.kind))throw Error('email_source_changed');
+    const live=await statement(env,'SELECT v FROM promo_store WHERE k=?',input.campaignKey).first();
+    if(!live)throw Error('email_source_changed');
+    const block=JSON.parse(live.v),months=Object.keys(block.m||{}).filter(m=>Array.isArray(block.m[m])&&block.m[m].length);
+    const id=input.kind==='change'?input.changeId:input.kind==='edit'?input.editId:'';
+    const month=typeof input.month==='string'&&months.includes(input.month)?input.month:id?months.find(m=>block.m[m].some(r=>(input.kind==='change'?r.changeId:r.editId)===id)):months[0];
+    if(!month)throw Error('email_source_changed');
+    const all=block.m[month],message=additionalMessage(input),files=await api.readEmailAttachments(all,env);
+    let snap;
+    if(input.kind==='change'){
+      const rows=all.filter(r=>r.changeId===id),kind=api.emailChangeKind(rows);if(!kind)throw Error('email_source_changed');
+      snap={milestone:'promotion_'+kind,details:api.emailChangeDetails(rows)};
+    }else snap={milestone:input.kind==='edit'?'promotion_edited':'submitted',notificationOnly:input.kind!=='copro',details:api.coProDetails(api.coProSource(block,month))};
+    return {text:api.renderCoProEmail({...requester(actor),...snap,...message,attachments:files.manifest}).text,attachments:files.manifest};
+  };
   api.registerPilotSubmission=async function(actor,body,env){
     await api.requireEmailPermission(actor,'submit',env);
     if(!api.commitPilotPrimary)throw Error('email_primary_unavailable');
@@ -140,12 +172,12 @@
     }).sort((a,b)=>a.buttonId.localeCompare(b.buttonId));
     const attachmentData=await api.readEmailAttachments(current.block.m[c.month],env);
     const message=additionalMessage(input);
-    const contentHash=await api.hash(JSON.stringify({...(input.notificationOnly===true?{notificationOnly:true}:{}),...(message?{additionalMessage:message}:{}),source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
+    const contentHash=await api.hash(JSON.stringify({...(input.notificationOnly===true?{notificationOnly:true}:{}),...message,source:c.source_hash,thread:thread.id,version:thread.version,recipients,records,...(attachmentData.manifest.length?{attachments:attachmentData.manifest}:{})}));
     return {c,thread,recipients,records,contentHash,message,attachmentData,sourceVersion:current.row.updated_at,current};
   }
-  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({...requester(actor),milestone:'submitted',notificationOnly:input.notificationOnly===true,details,attachments:d.attachmentData.manifest,additionalMessage:d.message}).text,recipients:d.recipients,subject:d.thread.subject};};
+  api.previewCoPromo=async function(actor,input,env){const d=await draft(actor,input,env),details=api.coProDetails(JSON.parse(d.c.source_json),d.records);return {previewHash:d.contentHash,attachments:d.attachmentData.manifest,details,text:api.renderCoProEmail({...requester(actor),milestone:'submitted',notificationOnly:input.notificationOnly===true,details,attachments:d.attachmentData.manifest,...d.message}).text,recipients:d.recipients,subject:d.thread.subject};};
   const requester=actor=>actor?.staffId?{requestedBy:{staffId:actor.staffId,staffVersion:actor.staffVersion,staffName:actor.staffName,...(actor.staffEmail?{staffEmail:actor.staffEmail}:{})}}:{};
-  function snapshot(c,t,recipients,milestone,rows,records,attachments,message,actor){return {...requester(actor),...(message?{additionalMessage:message}:{}),attachments,deliveryMode:api.emailThreadMode(t),newMessage:t.message_id.startsWith('new:'),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
+  function snapshot(c,t,recipients,milestone,rows,records,attachments,message,actor){return {...requester(actor),...(message||{}),attachments,deliveryMode:api.emailThreadMode(t),newMessage:t.message_id.startsWith('new:'),threadId:t.thread_id,rfcMessageId:t.rfc_message_id,references:JSON.parse(t.references_json),subject:t.subject,recipients,milestone,details:api.coProDetails(rows,records)};}
   function queued(env,c,bindingVersion,milestone,snap,conditional='1',args=[]){
     const now=Date.now();return statement(env,"INSERT OR IGNORE INTO email_outbox(id,event_key,campaign_id,binding_version,snapshot_json,status,created_at,updated_at) SELECT ?,?,?,?,?,'queued',?,? WHERE "+conditional,crypto.randomUUID(),c.id+':'+c.month+':'+milestone,c.id,bindingVersion,JSON.stringify(snap),now,now,...args);
   }

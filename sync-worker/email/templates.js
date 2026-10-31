@@ -35,10 +35,9 @@
         // Extend / shorten / cancel repeat the announcement's details so the mail stands on its own.
         if(lifecycle[snapshot.milestone]){lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));lines.push('เงื่อนไข: '+String(b.condition||'-'));}
       }
-      if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
+      noteAfter(lines,snapshot);
       if(lifecycle[snapshot.milestone]&&snapshot.attachments!==undefined)lines.push('ไฟล์แนบ: '+(snapshot.attachments.map(file=>file.name).join(', ')||'ไม่มี'));
-      requester(lines,snapshot);
-      return html(lines);
+      return html(lines,snapshot);
     }
     const lines=[snapshot.milestone==='promotion_edited'?'แจ้งแก้ไขโปรโมชั่น / Promotion updated':snapshot.milestone==='submitted'?(snapshot.notificationOnly?'แจ้งรายละเอียดโปรโมชั่น':'แจ้งรายละเอียดขึ้นปุ่ม Co-Promotion'):'แจ้งสถานะขึ้นปุ่ม และ Interface เรียบร้อย',
       'ชื่อแคมเปญ: '+String(d.campaign||'-'), 'วันที่เริ่ม - วันที่สิ้นสุด: '+String(d.start||'-')+' - '+String(d.end||'-')];
@@ -54,26 +53,41 @@
       lines.push('รายละเอียดโปรฯ: '+String(b.promotionDetail||'-'));
       lines.push('เงื่อนไข: '+String(b.condition||'-'));
     }
-    if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
+    noteAfter(lines,snapshot);
     lines.push('ไฟล์แนบ: '+((snapshot.attachments||[]).map(file=>file.name).join(', ')||'ไม่มี'));
-    requester(lines,snapshot);
-    return html(lines);
+    return html(lines,snapshot);
   };
-  // Mail always leaves from the central it@rocks-foods.com (never a staff mailbox); name who entered the job.
-  const FOOTER='เมลนี้ส่งจากระบบ Promotion Management ผ่าน it@rocks-foods.com แทนผู้ทำรายการ';
-  function requester(lines,snapshot){
-    const by=snapshot.requestedBy;if(!by?.staffName)return;
-    lines.push((['it_done','it_interface_complete'].includes(snapshot.milestone)?'ดำเนินการโดย (IT): ':'แจ้งโดย: ')+by.staffName+(by.staffEmail?' ('+by.staffEmail+')':''));
-    lines.push('',FOOTER);
+  // The sender's own note (text + pasted images) goes after the details by default, or before them on request.
+  const imageLabel=i=>'[รูปภาพ '+(i+1)+']';
+  const IMAGE=/^\[รูปภาพ (\d+)\]$/;
+  function note(snapshot){return [...(snapshot.additionalMessage?[snapshot.additionalMessage]:[]),...(snapshot.images||[]).map((_,i)=>imageLabel(i))];}
+  function noteAfter(lines,snapshot){
+    if(snapshot.messagePosition==='before')return;
+    if(snapshot.additionalMessage)lines.push('ข้อความเพิ่มเติม / Additional message: '+snapshot.additionalMessage);
+    (snapshot.images||[]).forEach((_,i)=>lines.push(imageLabel(i)));
   }
-  function html(lines){
-    const text=lines.join('\n');
+  api.emailImageCid=i=>'pc-img-'+(i+1)+'@rocks-foods.com';
+  // Mail always leaves from the central it@rocks-foods.com (never a staff mailbox); the signature names who entered the job.
+  const FOOTER='อีเมลนี้ส่งจากระบบ Promotion Management โดยใช้อีเมลกลาง it@rocks-foods.com แทนผู้แจ้งด้านบน · หากมีคำถาม กรุณาติดต่อผู้แจ้งโดยตรง';
+  function signature(snapshot){
+    const by=snapshot.requestedBy;if(!by?.staffName)return null;
+    return {role:['it_done','it_interface_complete'].includes(snapshot.milestone)?'ดำเนินการโดย (IT)':'แจ้งโดย',name:by.staffName,email:by.staffEmail||''};
+  }
+  function html(lines,snapshot){
+    const pre=snapshot.messagePosition==='before'?note(snapshot):[],sig=signature(snapshot);
+    const all=[...pre,...(pre.length?['']:[]),...lines];
+    const text=[...all,...(sig?['','--',sig.role,sig.name,...(sig.email?[sig.email]:[]),FOOTER]:[])].join('\n');
     const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|วันที่สิ้นสุดเดิม → ใหม่|สถานะ|เหตุผลการยกเลิก|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ|แจ้งโดย|ดำเนินการโดย \(IT\)):/;
-    return {text,html:'<!doctype html><meta charset="utf-8"><div>'+lines.map((x,i)=>{
-      const match=x.match(label);
-      const content=i===0?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);
-      return '<p style="white-space:pre-wrap'+(x.startsWith(FOOTER)?';color:#6b7280;font-size:12px':'')+'">'+content+'</p>';
-    }).join('')+'</div>'};
+    const label=/^(ชื่อแคมเปญ|วันที่เริ่ม - วันที่สิ้นสุด|วันที่สิ้นสุดเดิม → ใหม่|สถานะ|เหตุผลการยกเลิก|Type Promotion|Code Promotion|ผลตรวจสอบโค้ด|หมายเหตุ|ชื่อปุ่ม|รายละเอียดโปรฯ|เงื่อนไข|ข้อความเพิ่มเติม \/ Additional message|ไฟล์แนบ):/;
+    const title=pre.length?pre.length+1:0;
+    const body=all.map((x,i)=>{
+      const image=x.match(IMAGE);
+      if(image&&snapshot.images?.[image[1]-1])return '<p><img src="cid:'+api.emailImageCid(image[1]-1)+'" alt="รูปภาพ '+image[1]+'" style="max-width:100%;height:auto;border:1px solid #e5e7eb;border-radius:6px"></p>';
+      const match=i<pre.length?null:x.match(label);
+      const content=i===title?'<strong>'+escape(x)+'</strong>':match?'<strong>'+escape(match[0])+'</strong>'+escape(x.slice(match[0].length)):escape(x);
+      return '<p style="white-space:pre-wrap">'+content+'</p>';
+    }).join('');
+    const foot=sig?'<div style="margin-top:20px;padding-top:12px;border-top:1px solid #d1d5db;font-size:13px;line-height:1.5"><div style="color:#6b7280;font-size:12px">'+escape(sig.role)+'</div><div style="font-weight:700;color:#111827">'+escape(sig.name)+'</div>'+(sig.email?'<div><a href="mailto:'+escape(sig.email)+'" style="color:#1b6a3c">'+escape(sig.email)+'</a></div>':'')+'<div style="color:#6b7280;font-size:12px;margin-top:6px">'+escape(FOOTER)+'</div></div>':'';
+    return {text,html:'<!doctype html><meta charset="utf-8"><div>'+body+foot+'</div>'};
   }
 })(globalThis);

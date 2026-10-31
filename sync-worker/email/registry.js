@@ -13,10 +13,13 @@
     if(!['test','production'].includes(mode)||typeof query!=='string'||query.length>200||(mode==='production'&&!query.trim()))throw Error('email_invalid_query');
     const token=await api.gmailAccess(env,deps),params=new URLSearchParams({q:mode==='test'?'subject:"'+TEST_SUBJECT+'" '+query:query,maxResults:'20'});
     if(pageToken){if(typeof pageToken!=='string'||pageToken.length>2048)throw Error('email_invalid_query');params.set('pageToken',pageToken);}
-    const result=await api.gmailGet('messages?'+params,token,deps),items=[];
+    const result=await api.gmailGet('messages?'+params,token,deps),items=[],threads=new Set();
+    // Gmail lists newest first: keep only the latest message of each loop.
     for(const hit of(result.messages||[]).slice(0,20)){
-      const m=await api.gmailMessage(hit.id,token,deps);if(!m.headers.subject||(mode==='test'&&m.headers.subject!==TEST_SUBJECT))continue;
-      items.push({messageId:m.messageId,subject:m.headers.subject,from:m.headers.from||'',date:m.headers.date||'',to:m.headers.to||'',cc:m.headers.cc||''});
+      if(hit.threadId&&threads.has(hit.threadId))continue;
+      const m=await api.gmailMessage(hit.id,token,deps);if(!m.headers.subject||(mode==='test'&&m.headers.subject!==TEST_SUBJECT)||threads.has(m.threadId))continue;
+      threads.add(m.threadId);
+      items.push({messageId:m.messageId,threadId:m.threadId,subject:m.headers.subject,from:m.headers.from||'',date:m.headers.date||'',to:m.headers.to||'',cc:m.headers.cc||''});
     }
     return {items,nextPageToken:result.nextPageToken||null};
   };

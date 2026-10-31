@@ -83,7 +83,13 @@
     '.sm-actions button{min-height:44px;border-radius:9px;padding:9px 18px;font-weight:700;cursor:pointer}'+
     '.sm-btn{border:1.6px solid #b9cabe;background:#fff;color:#243b2d}.sm-btn-go{border:none;background:#1b6a3c;color:#fff}.sm-btn-go:disabled{opacity:.45;cursor:not-allowed}'+
     '.sm-muted{color:#6b7a70;font-size:.82rem;margin:6px 0 0}'+
-    '@media(max-width:860px){.sm-grid{grid-template-columns:1fr}.sm-preview{position:static}.sm-actions button{flex:1}}'+
+    '.sm-seg.sm-sm button{min-height:36px;padding:6px 8px;font-size:.84rem}.sm-msgbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px}.sm-msgbar .sm-lbl{margin:0}'+
+    '.sm-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.sm-img{position:relative;width:84px;height:84px;border:1px solid #dce4df;border-radius:8px;overflow:hidden;background:#f4f7f5}.sm-img img{width:100%;height:100%;object-fit:cover}'+
+    '.sm-img button{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:14px;line-height:24px;padding:0;cursor:pointer}'+
+    '.sm-add{display:inline-flex;gap:6px;align-items:center;border:1.5px dashed #9fb5a6;background:#fff;border-radius:8px;padding:6px 12px;font-size:.84rem;font-weight:600;color:#1b6a3c;cursor:pointer;min-height:36px}'+
+    '.sm-body img{display:block;max-width:100%;height:auto;border:1px solid #e5e7eb;border-radius:6px;margin:4px 0}'+
+    '.sm-sig{margin-top:14px;padding-top:10px;border-top:1px solid #d1d5db;font-size:.86rem;line-height:1.5}.sm-sig .r,.sm-sig .f{color:#6b7280;font-size:.78rem}.sm-sig .n{font-weight:700;color:#111827}.sm-sig .e{color:#1b6a3c}.sm-sig .f{margin-top:4px}'+
+    '@media(max-width:860px){.sm-grid{grid-template-columns:1fr}.sm-preview{position:static}.sm-body{max-height:none}.sm-actions button{flex:1}}'+
     '</style>';
 
   /* ประเภทงาน → ชื่อที่แสดง และ subjectKind ที่ server ใช้ตั้งหัวข้อ "ส่งเมลใหม่" (ต้องตรงกับ registry.js) */
@@ -91,7 +97,7 @@
   const subjectKind=job=>job.kind==='change'?(CHANGE[String(job.changeStatus||'').toUpperCase()]||'change'):job.kind;
   const SUBJECT={submitted:'แจ้งรายละเอียดโปร',copro:'แจ้งรายละเอียดโปร',edit:'แจ้งแก้ไขโปร',extended:'แจ้งขยายโปร',reduced:'แจ้งลดระยะเวลาโปร',cancelled:'แจ้งยกเลิกโปร',change:'แจ้งเปลี่ยนแปลงโปร'};
   const kindLabel=job=>job.kind==='change'?SUBJECT[subjectKind(job)]:(KIND[job.kind]||job.kind);
-  const ERRORS={email_policy_changed:'ลูปเมลหรือผู้รับเปลี่ยนระหว่างเตรียมเมล กรุณาลองอีกครั้ง',email_unapproved_recipients:'ผู้รับไม่ตรงกับที่เตรียมไว้ กรุณาลองอีกครั้ง',email_source_changed:'ข้อมูลโปรฯ เปลี่ยนระหว่างเตรียมเมล กรุณาโหลดหน้านี้ใหม่',email_version_conflict:'งานนี้ส่งเมลไปแล้ว หรือข้อมูลเปลี่ยน กรุณาโหลดหน้านี้ใหม่',email_reconnect_required:'บัญชี Gmail ผู้ส่งกลางยังไม่พร้อม กรุณาแจ้ง IT',email_request_failed:'ระบบอีเมลทำรายการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'};
+  const ERRORS={email_policy_changed:'ลูปเมลหรือผู้รับเปลี่ยนระหว่างเตรียมเมล กรุณาลองอีกครั้ง',email_unapproved_recipients:'ผู้รับไม่ตรงกับที่เตรียมไว้ กรุณาลองอีกครั้ง',email_source_changed:'ข้อมูลโปรฯ เปลี่ยนระหว่างเตรียมเมล กรุณาโหลดหน้านี้ใหม่',email_version_conflict:'งานนี้ส่งเมลไปแล้ว หรือข้อมูลเปลี่ยน กรุณาโหลดหน้านี้ใหม่',email_reconnect_required:'บัญชี Gmail ผู้ส่งกลางยังไม่พร้อม กรุณาแจ้ง IT',email_request_failed:'ระบบอีเมลทำรายการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',email_image_invalid:'ไฟล์รูปไม่ถูกต้อง กรุณาแนบใหม่',email_image_too_large:'รูปรวมกันใหญ่เกินไป กรุณาลดจำนวนรูป'};
   const errText=e=>ERRORS[e?.code]||String(e?.message||e);
   const EMAIL=/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i;
 
@@ -118,8 +124,26 @@
     renderJob(root,wrap,jobs,job);
   }
 
+  /* รูปที่แนบ/วาง → ย่อด้านยาวไม่เกิน 1600px ก่อนส่ง (ใช้ PNG ถ้าเล็กกว่า JPEG เช่นภาพหน้าจอ) */
+  async function shrink(file){
+    const url=URL.createObjectURL(file);
+    try{
+      const img=await new Promise((ok,fail)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=fail;i.src=url;});
+      let best=null;
+      for(const max of [1600,1200,900]){
+        const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(img.naturalWidth*k));c.height=Math.max(1,Math.round(img.naturalHeight*k));
+        const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+        const jpeg=c.toDataURL('image/jpeg',.85),png=file.type==='image/png'?c.toDataURL('image/png'):'';
+        best=png&&png.length<jpeg.length?png:jpeg;
+        if(best.length<450000)break;
+      }
+      const mime=best.slice(5,best.indexOf(';'));
+      return {id:Math.random().toString(36).slice(2),mime,base64:best.slice(best.indexOf(',')+1),url:best};
+    }finally{URL.revokeObjectURL(url);}
+  }
   function renderJob(root,wrap,jobs,job){
-    const st={delivery:'reply',loop:null,found:null,search:null,policy:null,policyKey:'',preview:null,previewKey:'',campaign:null,busy:false,seq:0,timer:0};
+    const st={position:'after',images:[],delivery:'reply',loop:null,found:null,search:null,policy:null,policyKey:'',preview:null,previewKey:'',campaign:null,busy:false,seq:0,timer:0};
     const newSubject=SUBJECT[subjectKind(job)]+' '+job.campaign;
     wrap.innerHTML=
       '<div class="sm-head"><div><h2><i class="fas fa-envelope me-2"></i>ส่งเมลโปรโมชั่น</h2><div class="sm-sub"><b>'+esc(job.campaign)+'</b> · '+esc(kindLabel(job))+(job.detail?' · '+esc(job.detail):'')+'</div></div>'+
@@ -128,17 +152,21 @@
       '<div class="sm-grid"><div class="sm-card">'+
         '<span class="sm-lbl" id="smModeL">ส่งแบบ</span><div class="sm-seg" role="group" aria-labelledby="smModeL"><button type="button" data-mode="reply" aria-pressed="true">ตอบกลับลูปเดิม</button><button type="button" data-mode="new" aria-pressed="false">ส่งเมลใหม่</button></div>'+
         '<div id="smLoop" class="sm-note" role="status">กำลังหาลูปเมลเดิมของโปรฯ นี้…</div>'+
-        '<div id="smSearch" hidden><div class="sm-field"><label for="smQ">ค้นหาลูปเดิมด้วยหัวข้อเมล <small>(ลูปที่มี it@rocks-foods.com ใน To/CC)</small></label><div style="display:flex;gap:8px"><input id="smQ" type="search" maxlength="200" placeholder="วางหัวข้อเมลเดิม หรือชื่อแคมเปญ"><button type="button" id="smFind" class="sm-btn" style="border-radius:8px;padding:0 16px;white-space:nowrap;min-height:42px">ค้นหา</button></div></div><div id="smResults" role="status"></div></div>'+
+        '<div id="smSearch" hidden><div class="sm-field"><label for="smQ">ค้นหาลูปเดิมด้วยหัวข้อเมล <small>(ลูปที่มี it@rocks-foods.com ใน To/CC)</small></label><div style="display:flex;gap:8px"><input id="smQ" type="search" maxlength="200" autocomplete="off" name="sm-q-'+Date.now()+'" placeholder="วางหัวข้อเมลเดิม หรือชื่อแคมเปญ"><button type="button" id="smFind" class="sm-btn" style="border-radius:8px;padding:0 16px;white-space:nowrap;min-height:42px">ค้นหา</button></div></div><div id="smResults" role="status"></div></div>'+
         '<div class="sm-field"><label for="smTo">ถึง (To)</label><textarea id="smTo" rows="1" placeholder="name@rocksgroup.com, ..."></textarea></div>'+
         '<div class="sm-field"><label for="smCc">สำเนา (CC) <small>· เว้นว่างได้</small></label><textarea id="smCc" rows="1"></textarea></div>'+
-        '<div class="sm-field"><label for="smMsg">ข้อความเพิ่มเติม <small>· เว้นว่างได้</small></label><textarea id="smMsg" rows="3" maxlength="4000" placeholder="จะแสดงต่อจากรายละเอียดโปรฯ"></textarea></div>'+
+        '<div class="sm-field"><div class="sm-msgbar"><label class="sm-lbl" for="smMsg">ข้อความเพิ่มเติม <small>· เว้นว่างได้</small></label><div class="sm-seg sm-sm" role="group" aria-label="ตำแหน่งข้อความ"><button type="button" data-pos="before" aria-pressed="false">ก่อนรายละเอียด</button><button type="button" data-pos="after" aria-pressed="true">หลังรายละเอียด</button></div></div>'+
+          '<textarea id="smMsg" rows="3" maxlength="4000" placeholder="พิมพ์ข้อความ หรือวางรูป (Ctrl/⌘+V) ได้ที่นี่"></textarea>'+
+          '<div class="sm-imgs" id="smImgs"></div><div style="margin-top:8px"><label class="sm-add" for="smFile"><i class="fas fa-image"></i> แนบรูป</label><input id="smFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden> <span class="sm-muted">สูงสุด 4 รูป · รูปจะแสดงในเนื้อเมลต่อจากข้อความ</span></div></div>'+
         '<p class="sm-muted">คั่นหลายอีเมลด้วย , · ไม่ต้องใส่ it@rocks-foods.com</p>'+
       '</div><div class="sm-preview"><div class="sm-card"><h3><i class="fas fa-eye me-2"></i>ตรวจเมลก่อนส่ง</h3><div id="smState" class="sm-state" role="status" aria-live="polite"></div><div id="smPreview"></div></div></div></div>'+
       '<div class="sm-actions"><button type="button" class="sm-btn" id="smLater">พักไว้ก่อน</button><button type="button" class="sm-btn" id="smSkip">ไม่ส่งเมล</button><button type="button" class="sm-btn-go" id="smSend" disabled>ยืนยันส่งเมล</button></div>';
     const $=id=>wrap.querySelector('#'+id);
     const h=H();
     const recipients=()=>({to:h.addresses($('smTo').value).map(x=>x.toLowerCase()),cc:h.addresses($('smCc').value).map(x=>x.toLowerCase())});
-    const draftKey=()=>JSON.stringify([st.delivery,st.delivery==='reply'?(st.search?'s:'+st.search.messageId:st.loop?.id||''):'new',recipients(),$('smMsg').value.trim()]);
+    const note=()=>({additionalMessage:$('smMsg').value.trim(),messagePosition:st.position,images:st.images.map(x=>({mime:x.mime,base64:x.base64}))});
+    const noteKey=()=>JSON.stringify([$('smMsg').value.trim(),st.position,st.images.map(x=>x.id)]);
+    const draftKey=()=>JSON.stringify([st.delivery,st.delivery==='reply'?(st.search?'s:'+st.search.messageId:st.loop?.id||''):'new',recipients(),noteKey()]);
     const state=(text,isErr)=>{$('smState').textContent=text||'';$('smState').classList.toggle('err',!!isErr);};
     const empty=text=>{$('smPreview').innerHTML='<div class="sm-empty">'+esc(text)+'</div>';};
     const markStale=()=>{$('smSend').disabled=!st.preview||st.previewKey!==draftKey()||st.busy;};
@@ -146,11 +174,34 @@
     /* ข้อมูลยังไม่ครบ → บอกสิ่งที่ขาด (ไม่เรียก server) */
     const missing=()=>{
       if(st.delivery==='reply'&&!st.search&&!st.loop)return 'เลือกลูปเมลเดิม (ค้นหาด้วยหัวข้อ) หรือกด "ส่งเมลใหม่"';
-      const rc=recipients();if(!rc.to.length)return 'ใส่อีเมลผู้รับ (To) แล้วตัวอย่างเมลจะขึ้นที่นี่';
+      const rc=recipients();if(!rc.to.length)return 'นี่คือเนื้อหาเมลจากข้อมูลในระบบ · ใส่ผู้รับ (To) เพื่อตรวจฉบับจริงและยืนยันส่ง';
       const bad=[...rc.to,...rc.cc].filter(x=>!EMAIL.test(x));if(bad.length)return 'อีเมลไม่ถูกต้อง: '+bad.join(', ');
       return '';
     };
-    const schedule=(ms=1000)=>{clearTimeout(st.timer);st.preview=null;markStale();const m=missing();if(m){st.seq++;state('');empty(m);return;}state('กำลังเตรียมตัวอย่าง…');st.timer=setTimeout(refresh,ms);};
+    const schedule=(ms=1000)=>{clearTimeout(st.timer);st.preview=null;markStale();const m=missing();if(m){st.seq++;state(m);st.timer=setTimeout(content,st.content?ms:0);return;}state('กำลังเตรียมตัวอย่าง…');st.timer=setTimeout(refresh,ms);};
+    const subjectNow=()=>st.delivery==='new'?newSubject:(st.search?.subject||st.loop?.subject||'(หัวข้อของลูปที่เลือก)');
+    /* เนื้อเมลจาก server → HTML: [รูปภาพ N] เป็นรูปที่แนบ, ส่วนท้าย "--" เป็นลายเซ็น */
+    function mailHtml(text){
+      const at=text.lastIndexOf('\n--\n'),body=at<0?text:text.slice(0,at),sig=at<0?[]:text.slice(at+4).split('\n');
+      const html=h.mailDetailsHtml(body).split('\n').map(line=>{const m=line.match(/^\[รูปภาพ (\d+)\]$/),img=m&&st.images[m[1]-1];return img?'<img src="'+img.url+'" alt="รูปภาพ '+m[1]+'">':line;}).join('\n').replace(/(<img [^>]+>)\n/g,'$1');
+      return html+(sig.length?'<div class="sm-sig"><div class="r">'+esc(sig[0])+'</div><div class="n">'+esc(sig[1]||'')+'</div>'+(sig.length>3?'<div class="e">'+esc(sig[2])+'</div>':'')+'<div class="f">'+esc(sig[sig.length-1])+'</div></div>':'');
+    }
+    function renderMail(subject,rc,files,text){
+      $('smPreview').innerHTML='<dl class="sm-meta"><dt>หัวข้อ</dt><dd>'+esc(subject)+'</dd><dt>ถึง</dt><dd>'+(rc.to.length?esc(rc.to.join(', ')):'<span style="color:#b02a37">ยังไม่ได้ใส่ผู้รับ</span>')+'</dd>'+(rc.cc.length?'<dt>CC</dt><dd>'+esc(rc.cc.join(', '))+'</dd>':'')+'<dt>ไฟล์แนบ</dt><dd>'+esc(files.join(', ')||'ไม่มี')+'</dd></dl>'+
+        '<div class="sm-body">'+mailHtml(text)+'</div>';
+    }
+    /* ยังไม่ครบ (เช่น ยังไม่ใส่ To) → แสดงเนื้อหาเมลจากข้อมูลในระบบไว้ก่อน (อ่านอย่างเดียว ยังส่งไม่ได้) */
+    async function content(){
+      const seq=st.seq,key=noteKey();
+      try{
+        if(st.content?.key!==key){
+          const r=await client().request('copro/content',{method:'POST',body:{kind:job.kind,campaignKey:keyOf(job.campaign),month:job.month||'',changeId:job.changeId||'',editId:job.editId||'',...note()},interactive:true});
+          st.content={key,text:r.text,files:(r.attachments||[]).map(a=>a.fileName||a.name)};
+        }
+        if(seq!==st.seq)return;
+        renderMail(subjectNow(),recipients(),st.content.files,st.content.text);
+      }catch(e){if(seq!==st.seq)return;empty('ยังแสดงเนื้อหาเมลไม่ได้');state(errText(e),true);}
+    }
     const setMode=mode=>{
       st.delivery=mode;wrap.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
       renderLoop();
@@ -162,15 +213,34 @@
     function renderLoop(){
       const box=$('smLoop'),search=$('smSearch');
       if(st.delivery==='new'){box.className='sm-note';box.innerHTML='หัวข้อเมล: <b>'+esc(newSubject)+'</b><br><span class="sm-muted" style="margin:0">เมลครั้งถัดไปของโปรฯ นี้ (รวมเมลแจ้งจาก IT) จะตอบกลับในเมลนี้</span>';search.hidden=true;return;}
-      if(st.search){box.className='sm-note ok';box.innerHTML='<i class="fas fa-circle-check" style="color:#1b6a3c"></i> ตอบกลับในลูป <b>'+esc(st.search.subject)+'</b> · <button type="button" class="sm-link" data-act="change">เปลี่ยน</button>';search.hidden=true;}
+      if(st.search){box.className='sm-note ok';box.innerHTML='<i class="fas fa-circle-check" style="color:#1b6a3c"></i> '+(st.search.auto?'พบลูปเมลเดิม · ตอบกลับต่อจากเมลล่าสุด':'ตอบกลับต่อจากเมลล่าสุดของลูป')+'<br><b>'+esc(st.search.subject)+'</b>'+(st.search.date||st.search.from?'<br><span class="sm-muted" style="margin:0">เมลล่าสุด: '+esc([st.search.date,st.search.from].filter(Boolean).join(' · '))+'</span>':'')+'<br><span class="sm-muted" style="margin:0">ดึงผู้รับมาใส่ให้แล้ว เพิ่มหรือลบได้</span> · <button type="button" class="sm-link" data-act="change">ใช้ลูปอื่น</button>';search.hidden=true;}
       else if(st.loop){box.className='sm-note ok';box.innerHTML='<i class="fas fa-circle-check" style="color:#1b6a3c"></i> ตอบกลับในลูปที่โปรฯ นี้เคยส่ง <b>'+esc(st.loop.subject)+'</b>'+(st.found?.lastMail?'<br><span class="sm-muted" style="margin:0">เมลล่าสุด: '+esc({queued:'รอส่ง',accepted:'ส่งสำเร็จ',failed:'ส่งไม่สำเร็จ',held:'ส่งไม่สำเร็จ',sending:'กำลังส่ง',retry:'กำลังลองใหม่'}[st.found.lastMail.status]||st.found.lastMail.status)+' · '+esc(new Date(st.found.lastMail.at).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'}))+'</span>':'')+' · <button type="button" class="sm-link" data-act="change">ใช้ลูปอื่น</button>';search.hidden=true;}
       else if(!st.found){box.className='sm-note';box.textContent='กำลังหาลูปเมลเดิมของโปรฯ นี้…';search.hidden=true;}
       else{box.className='sm-note warn';box.innerHTML=st.found.bound?'ลูปที่โปรฯ นี้เคยใช้ถูกปิดแล้ว ค้นหาลูปเดิมด้วยหัวข้อ หรือกด "ส่งเมลใหม่"':'โปรฯ นี้ยังไม่เคยส่งเมลจากระบบ ค้นหาลูปเดิมด้วยหัวข้อ หรือกด "ส่งเมลใหม่"';search.hidden=false;}
-      const ch=box.querySelector('[data-act=change]');if(ch)ch.addEventListener('click',()=>{search.hidden=false;$('smQ').focus();});
+      const ch=box.querySelector('[data-act=change]');if(ch)ch.addEventListener('click',()=>{$('smQ').value='';$('smResults').replaceChildren();search.hidden=false;$('smQ').focus();});
     }
     wrap.querySelectorAll('[data-job]').forEach(b=>b.addEventListener('click',()=>{try{localStorage.setItem(CURRENT,b.dataset.job);}catch(e){}renderJob(root,wrap,jobs,jobs.find(j=>j.id===b.dataset.job));}));
     wrap.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{if(st.delivery!==b.dataset.mode)setMode(b.dataset.mode);}));
     ['smTo','smCc','smMsg'].forEach(id=>$(id).addEventListener('input',()=>schedule()));
+    wrap.querySelectorAll('[data-pos]').forEach(b=>b.addEventListener('click',()=>{st.position=b.dataset.pos;wrap.querySelectorAll('[data-pos]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));schedule(0);}));
+    const renderImages=()=>{
+      $('smImgs').innerHTML=st.images.map((x,i)=>'<div class="sm-img"><img src="'+x.url+'" alt="รูปภาพ '+(i+1)+'"><button type="button" data-rm="'+i+'" aria-label="ลบรูปภาพ '+(i+1)+'">×</button></div>').join('');
+      $('smImgs').querySelectorAll('[data-rm]').forEach(b=>b.addEventListener('click',()=>{st.images.splice(Number(b.dataset.rm),1);renderImages();schedule(0);}));
+    };
+    async function addImages(files){
+      for(const file of files){
+        if(!/^image\/(png|jpeg|gif|webp)$/.test(file.type))continue;
+        if(st.images.length>=4){state('แนบรูปได้สูงสุด 4 รูป',true);break;}
+        try{
+          const img=await shrink(file),used=st.images.reduce((n,x)=>n+x.base64.length,0);
+          if(used+img.base64.length>900000){state('รูปรวมกันใหญ่เกินไป กรุณาลดจำนวนรูป',true);break;}
+          st.images.push(img);
+        }catch(e){state('อ่านรูปไม่ได้: '+(file.name||'รูปที่วาง'),true);}
+      }
+      renderImages();schedule(0);
+    }
+    $('smFile').addEventListener('change',e=>{addImages([...e.target.files]);e.target.value='';});
+    $('smMsg').addEventListener('paste',e=>{const files=[...(e.clipboardData?.items||[])].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile()).filter(Boolean);if(files.length){e.preventDefault();addImages(files);}});
 
     /* ระบบหาลูปเดิมของโปรฯ นี้ก่อน · ไม่เคยส่ง → เริ่มที่ "ส่งเมลใหม่" */
     const loopQuery=()=>'copro/loop?campaignKey='+encodeURIComponent(keyOf(job.campaign))+(job.month?'&month='+encodeURIComponent(job.month):'');
@@ -179,10 +249,23 @@
       try{
         const r=await client().request(loopQuery(),{interactive:true});st.found=r;
         if(r.bound&&r.usable&&r.loop){st.loop=r.loop;fill(r.loop.recipients);setMode('reply');}
-        else if(!r.bound)setMode('new');
-        else{renderLoop();schedule(0);}
+        else await autoFind();
       }catch(e){st.found={registered:false,bound:false};renderLoop();state('ตรวจลูปเดิมไม่สำเร็จ: '+errText(e),true);}
     })();
+    /* ยังไม่มีลูปที่ผูกไว้ → ค้นกล่องเมล it@rocks-foods.com ด้วยชื่อแคมเปญเอง เจอ = ใช้เมลล่าสุดของลูปนั้น ดึงผู้รับใส่ช่องให้ (แก้/เพิ่ม/ลบได้) */
+    async function autoFind(){
+      $('smLoop').className='sm-note';$('smLoop').textContent='กำลังค้นหาลูปเมลเดิมจากชื่อแคมเปญ…';
+      try{
+        const found=await client().request('threads/search?q='+encodeURIComponent('subject:"'+job.campaign.replace(/"/g,'')+'"')+'&mode=production',{interactive:true});
+        const item=found.items[0];
+        if(item){useSearch(item,true);return;}
+      }catch(e){}
+      setMode('new');
+    }
+    const useSearch=(item,auto)=>{
+      const rc=h.conversationRecipients(item);st.search={messageId:item.messageId,subject:item.subject,from:item.from||'',date:item.date||'',recipients:rc,auto:!!auto};
+      if(st.delivery!=='reply')setMode('reply');else{renderLoop();fill(rc);schedule(0);}
+    };
     /* ค้นด้วยหัวข้อ */
     const find=async()=>{
       const q=$('smQ').value.trim(),out=$('smResults');if(!q){out.innerHTML='<p class="sm-muted">กรุณากรอกหัวข้อเมล</p>';return;}
@@ -194,10 +277,7 @@
           const card=document.createElement('div');card.className='sm-result';
           card.innerHTML='<strong></strong><p></p><button type="button" class="sm-btn" style="border-radius:8px;padding:6px 14px;min-height:36px">เลือกลูปนี้</button>';
           card.querySelector('strong').textContent=item.subject;card.querySelector('p').textContent=[item.from,item.date,'To: '+item.to,'CC: '+item.cc].filter(Boolean).join('\n');
-          card.querySelector('button').addEventListener('click',()=>{
-            const rc=h.conversationRecipients(item);st.search={messageId:item.messageId,subject:item.subject,recipients:rc};out.replaceChildren();$('smQ').value='';
-            if(st.delivery!=='reply')setMode('reply');else{renderLoop();fill(rc);schedule(0);}
-          });
+          card.querySelector('button').addEventListener('click',()=>{out.replaceChildren();$('smQ').value='';useSearch(item,false);});
           out.append(card);
         }
       }catch(e){out.innerHTML='<p class="sm-muted" style="color:#b02a37">'+esc(errText(e))+'</p>';}
@@ -233,7 +313,7 @@
     /* body ของแต่ละประเภทงาน → endpoint preview / commit เดิมของ server */
     async function request(){
       await ensureRegistered();
-      const p=await policy(),message=$('smMsg').value.trim(),target={policyId:p.id,policyVersion:p.version,recipients:p.recipients,additionalMessage:message};
+      const p=await policy(),target={policyId:p.id,policyVersion:p.version,recipients:p.recipients,...note()};
       if(job.kind==='edit')return {preview:'copro/revision/preview',commit:'copro/revision',body:{campaignKey:keyOf(job.campaign),month:job.month,editId:job.editId,...target}};
       if(job.kind==='change')return {preview:'copro/change/preview',commit:'copro/change',body:{campaignKey:keyOf(job.campaign),changeId:job.changeId,...target}};
       const c=await emailCampaign();
@@ -247,9 +327,7 @@
         const req=await request(),preview=await client().request(req.preview,{method:'POST',body:req.body,interactive:true});
         if(seq!==st.seq)return;
         st.preview={req,preview};st.previewKey=key;
-        const files=(preview.attachments||[]).map(a=>a.fileName||a.name);
-        $('smPreview').innerHTML='<dl class="sm-meta"><dt>หัวข้อ</dt><dd>'+esc(preview.subject)+'</dd><dt>ถึง</dt><dd>'+esc(preview.recipients.to.join(', '))+'</dd>'+(preview.recipients.cc.length?'<dt>CC</dt><dd>'+esc(preview.recipients.cc.join(', '))+'</dd>':'')+'<dt>ไฟล์แนบ</dt><dd>'+esc(files.join(', ')||'ไม่มี')+'</dd></dl>'+
-          '<div class="sm-body">'+h.mailDetailsHtml(preview.text)+'</div>';
+        renderMail(preview.subject,preview.recipients,(preview.attachments||[]).map(a=>a.fileName||a.name),preview.text);
         state('ตรวจรายละเอียดให้ถูกต้อง แล้วกด "ยืนยันส่งเมล"');
       }catch(e){if(seq!==st.seq)return;st.preview=null;empty('ยังแสดงตัวอย่างไม่ได้');state(errText(e),true);}
       finally{if(seq===st.seq){st.busy=false;markStale();}}
