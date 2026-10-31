@@ -92,3 +92,22 @@ test('a chained SS swap saved earlier is repaired on the next IT save, and only 
   assert.deepEqual([...again.ssFixed], []);
   assert.deepEqual(JSON.parse(data.get('pc_mock_store_v28')).npd[0].items.map(it => it.formulas[0].ss), ['SS0177', 'SS0178']);
 });
+
+test('master-data settings kept per SS Code move to the new code, also in a chained swap', () => {
+  const { ctx, npd, data } = setup();
+  npd.subsets.push({ ssCode: 'SS0168', name: 'Second', name2: 'S2', powders: [{ cmpos: '1031009', eng: 'Cheese S2', code: '3097', desc: 'C', qty: '2', unit: 'g', seq: 1 }] });
+  data.set('pc_subset_price', JSON.stringify({ SS0167: 10, SS0168: 20 }));
+  data.set('pc_subset_edits', JSON.stringify({ SS0167: { short: 'TS' } }));
+  data.set('pc_subset_items', JSON.stringify({ SS0168: ['101777'] }));
+  data.set('pc_itemset_comp', JSON.stringify({ '101888': [{ code: 'SS0167', min: 1, max: 1 }] }));
+  ctx.PC_API.updateNpd(npd.id, JSON.parse(JSON.stringify(npd)));
+  const e = JSON.parse(data.get('pc_mock_store_v28')).npd[0];
+  e.subsets[0].ssCode = 'SS0168'; e.subsets[1].ssCode = 'SS0169'; e.items[0].formulas[0].ss = 'SS0168';
+  const r = ctx.PC_API.updateNpd(npd.id, e);
+  assert.equal(r.status, 'success', r.message);
+  assert.deepEqual(JSON.parse(data.get('pc_subset_price')), { SS0168: 10, SS0169: 20 });
+  assert.deepEqual(JSON.parse(data.get('pc_subset_edits')), { SS0168: { short: 'TS' } });
+  assert.deepEqual(JSON.parse(data.get('pc_subset_items')), { SS0169: ['101777'] });
+  assert.equal(JSON.parse(data.get('pc_itemset_comp'))['101888'][0].code, 'SS0168');
+  assert.deepEqual([...r.returnedSs], ['SS0167']);
+});

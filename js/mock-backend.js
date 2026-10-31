@@ -5515,6 +5515,7 @@
     npdNoFlavorSeq(next);
     const _ssFixed = npdRepairSsRefs(n, next);
     harvestRm(next);   // new RM from IT edits also flows into rm_master
+    npdMoveSsKeys(npdSsMoves(n, next));
     const _ssGone = npdGoneSsCodes(n, next);
     store.npd[idx] = next;
     npdUnregisterSs(_ssGone, next.id);
@@ -5947,6 +5948,36 @@
       gone.push(c);
     });
     return gone;
+  }
+  /* IT เปลี่ยน SS Code → ค่าที่หน้าข้อมูลหลักเก็บแยกตาม SS Code ต้องย้ายไปเลขใหม่ด้วย
+     (ชื่อ/สถานะ, ตัวย่อ, การแสดงในฟอร์ม, ผงในชุด, ราคากลุ่ม, สินค้าที่ผูก, Subset & Item List ที่ผูกเอง)
+     จับคู่เลขเดิม→เลขใหม่จาก CMPOS ของผงในชุด (Subset เดียวกันแม้เปลี่ยนเลข) · ย้ายพร้อมกันทั้งชุด จึงสลับเลขต่อกันได้ */
+  function npdSsMoves(prev, next) {
+    var map = {}, used = {};
+    (next && next.subsets || []).forEach(function (s) {
+      var to = npdSsOf(s); if (!to || s.existing) return;
+      var mine = {}; (s.powders || []).forEach(function (p) { var c = String(p.cmpos || "").trim(); if (c) mine[c] = 1; });
+      var from = (prev && prev.subsets || []).filter(function (o) { return !o.existing && (o.powders || []).some(function (p) { return mine[String(p.cmpos || "").trim()]; }); }).map(npdSsOf);
+      if (from.length === 1 && from[0] && from[0] !== to && !used[from[0]]) { map[from[0]] = to; used[from[0]] = 1; }
+    });
+    return map;
+  }
+  function npdMoveSsKeys(map) {
+    var olds = Object.keys(map || {}); if (!olds.length) return;
+    ["pc_subset_meta", "pc_subset_edits", "pc_subset_forms", "pc_subset_powders", "pc_subset_price", "pc_subset_items"].forEach(function (k) {
+      try {
+        var o = JSON.parse(localStorage.getItem(k) || "null"); if (!o || typeof o !== "object" || Array.isArray(o)) return;
+        var keep = {}, ch = false;
+        olds.forEach(function (c) { if (o[c] !== undefined) { keep[c] = o[c]; delete o[c]; ch = true; } });
+        olds.forEach(function (c) { if (keep[c] !== undefined && o[map[c]] === undefined) o[map[c]] = keep[c]; });
+        if (ch) localStorage.setItem(k, JSON.stringify(o));
+      } catch (e) {}
+    });
+    try {   // Subset & Item List ที่ผูกเองในหน้าแก้ไขสินค้า (แถวจาก NPD สร้างใหม่จากสูตรผงอยู่แล้ว)
+      var comp = JSON.parse(localStorage.getItem("pc_itemset_comp") || "{}") || {}, ch2 = false;
+      Object.keys(comp).forEach(function (code) { (comp[code] || []).forEach(function (r) { if (r && !r._npd && map[String(r.code || "").trim()]) { r.code = map[String(r.code).trim()]; ch2 = true; } }); });
+      if (ch2) localStorage.setItem("pc_itemset_comp", JSON.stringify(comp));
+    } catch (e) {}
   }
   function npdUnregisterSs(codes, id) {
     var src = "npd:" + id, g = {}; (codes || []).forEach(function (c) { g[c] = 1; });
