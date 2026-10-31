@@ -5217,6 +5217,12 @@
     return errors;
   }
 
+  function npdItemSeq(it, code) {
+    var v = String(it.seq != null && String(it.seq).trim() !== "" ? it.seq : (it.posSeq || "")).trim();
+    if (/^\d+$/.test(v)) return Number(v);
+    var cc = String(it.cateCode || (/^\d{6,}$/.test(code) ? code.slice(0, 3) : "")).trim();
+    return (cc && code.indexOf(cc) === 0 && /^\d+$/.test(code.slice(cc.length))) ? Number(code.slice(cc.length)) : "";
+  }
   /* NPD → product master: when IT completes an NPD button, create/refresh item rows + map prices per channel */
   function npdToProducts(n) {
     if (!n || !Array.isArray(n.items)) return;
@@ -5233,6 +5239,7 @@
         department: it.department || n.department || "Food", depCode: it.depCode || n.depCode || "100",
         itemType: it.itemType || "Single Item",
         priceTA: it.priceTakeaway || "", priceDLV: dlv,
+        posSeq: npdItemSeq(it, code),   /* Sequence ลำดับปุ่ม POS — IT กำหนด หรือรันจาก Item Code (129001 → 1) */
         priceGrab: ch("Grab"), priceLineman: ch("Lineman"), pricePanda: dlv,
         priceShopee: ch("ShopeeFood"), priceRobinhood: ch("Robinhood"), priceGokoo: ch("Gokoo"),
         prices: Object.assign({}, px), saleModes: (it.saleModes || []).slice(),

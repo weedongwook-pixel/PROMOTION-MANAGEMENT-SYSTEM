@@ -111,3 +111,12 @@ test('master-data settings kept per SS Code move to the new code, also in a chai
   assert.equal(JSON.parse(data.get('pc_itemset_comp'))['101888'][0].code, 'SS0168');
   assert.deepEqual([...r.returnedSs], ['SS0167']);
 });
+
+test('NPD item Sequence (POS order) runs from the item code within its category unless IT sets it', () => {
+  const { ctx, npd, data } = setup();
+  npd.items.push(Object.assign(JSON.parse(JSON.stringify(npd.items[0])), { code: '129002', cateCode: '129', category: 'Enoki', formulas: [] }));
+  npd.items.push(Object.assign(JSON.parse(JSON.stringify(npd.items[0])), { code: '129003', cateCode: '129', category: 'Enoki', formulas: [], seq: '7' }));
+  assert.equal(ctx.PC_API.updateNpd(npd.id, JSON.parse(JSON.stringify(npd))).status, 'success');
+  const seq = c => rows(data).find(p => p.itemCode === c).posSeq;
+  assert.equal(seq('101501'), 501); assert.equal(seq('129002'), 2); assert.equal(seq('129003'), 7, 'IT override wins');
+});

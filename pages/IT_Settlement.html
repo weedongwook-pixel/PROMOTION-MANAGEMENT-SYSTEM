@@ -573,10 +573,11 @@
       '<div class="px-3 py-2 fw-bold d-flex justify-content-between" style="background:var(--pc-yellow,#2e934a);border-bottom:2px solid #000"><span><i class="fas fa-box-open me-2"></i>ปุ่มสินค้า #' + (i + 1) + '</span><i class="fas fa-trash-alt text-danger" style="cursor:pointer" onclick="window.itDelItem(' + i + ')"></i></div>' +
       '<div class="p-3">' +
         '<div class="row g-2 mb-2">' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
+          '<div class="col-md-2"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" onchange="window.renderItEdit()" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span><button class="btn btn-link btn-sm p-0 ms-1 align-baseline" type="button" title="คัดลอก Item Name (EN)" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button></label><input class="form-control form-control-sm border-dark" maxlength="40" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span><button class="btn btn-link btn-sm p-0 ms-1 align-baseline" type="button" title="คัดลอก Item Name (TH)" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><select class="form-select form-select-sm border-dark" onchange="window.itItemCate(' + i + ',this.value)">' + itCateOpts(it) + '</select>' + (it._origCode && it._origCode !== it.code ? '<div class="small text-warning-emphasis" style="font-size:.72rem">เลขเดิม ' + itEsc(it._origCode) + ' คืนระบบเมื่อกดบันทึก</div>' : '') + '</div>' +
+          '<div class="col-md-2"><label class="small fw-bold text-uppercase">Category</label><select class="form-select form-select-sm border-dark" onchange="window.itItemCate(' + i + ',this.value)">' + itCateOpts(it) + '</select>' + (it._origCode && it._origCode !== it.code ? '<div class="small text-warning-emphasis" style="font-size:.72rem">เลขเดิม ' + itEsc(it._origCode) + ' คืนระบบเมื่อกดบันทึก</div>' : '') + '</div>' +
+          itSeqCol(it, i) +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode — ช่องทางขาย <span class="text-muted fw-normal text-none" style="text-transform:none">· กดป้ายเพื่อเพิ่ม/เอาออก</span></div><div class="mb-2">' + salePills + '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price</div>' + priceBlock +
@@ -599,6 +600,22 @@
     return out.sort(function (a, b) { return a.code.localeCompare(b.code); });
   }
   function itCateOf(it) { var e = window._itEdit || {}; return String(it.cateCode || e.cateCode || (/^\d{6,}$/.test(String(it.code || '')) ? String(it.code).slice(0, 3) : '')).trim(); }
+  /* Sequence (ลำดับปุ่มบน POS) = เลขรันใน Item Code ต่อจากรหัสหมวด เช่น หมวด 129: 129001 → 1, 129002 → 2 · หมวดอื่นใช้หลักเดียวกัน
+     IT แก้เองได้ (it.seq) · ว่าง = รันจาก Item Code ทุกครั้ง (เปลี่ยนหมวด/รหัสแล้วตามให้เอง) */
+  function itSeqAuto(it) { var cc = itCateOf(it), code = String(it.code || '').trim(); return (cc && code.indexOf(cc) === 0 && /^\d+$/.test(code.slice(cc.length))) ? String(Number(code.slice(cc.length))) : ''; }
+  function itCateCount(cc) {
+    var seen = {};
+    try { ((window.PC_API && PC_API.getMasterDataExtended && PC_API.getMasterDataExtended().items) || []).forEach(function (x) { var c = String(x.itemCode || '').trim(); if (c && String(x.cateCode || x.catCode || c.slice(0, 3)) === cc) seen[c] = 1; }); } catch (e) {}
+    ((window._itEdit || {}).items || []).forEach(function (x) { var c = String(x.code || '').trim(); if (c && itCateOf(x) === cc) seen[c] = 1; });
+    return Object.keys(seen).length;
+  }
+  function itSeqCol(it, i) {
+    var auto = itSeqAuto(it), cc = itCateOf(it), manual = it.seq != null && String(it.seq) !== '';
+    return '<div class="col-md-2"><label class="small fw-bold text-uppercase">Sequence <span class="text-muted fw-normal" style="font-size:.66rem;text-transform:none">ลำดับปุ่ม POS</span></label>' +
+      '<div class="input-group input-group-sm"><input type="number" min="1" class="form-control form-control-sm border-dark text-center fw-bold" value="' + itEsc(manual ? it.seq : auto) + '" placeholder="—" oninput="window.itItem(' + i + ',\'seq\',this.value)">' +
+      (manual && auto && String(it.seq) !== auto ? '<button class="btn btn-outline-secondary" type="button" title="กลับไปใช้เลขจาก Item Code (' + auto + ')" onclick="window.itItem(' + i + ',\'seq\',\'\');window.renderItEdit()"><i class="fas fa-rotate-left"></i></button>' : '') + '</div>' +
+      '<div class="text-muted" style="font-size:.72rem">' + (auto ? 'รันจาก Item Code ' + itEsc(it.code) + ' → ' + auto : 'ใส่ Item Code ก่อน ระบบรันให้') + (cc ? ' · หมวด ' + itEsc(cc) + ' มี ' + itCateCount(cc) + ' ปุ่ม' : '') + '</div></div>';
+  }
   function itCateOpts(it) {
     var cur = itCateOf(it), list = itCateList();
     if (cur && !list.some(function (c) { return c.code === cur; })) list.unshift({ code: cur, name: it.category || cur });
@@ -636,7 +653,7 @@
   }
   function itCleanEdit(e) {
     var c = JSON.parse(JSON.stringify(e));
-    (c.items || []).forEach(function (it) { delete it._origCode; delete it._origCate; });
+    (c.items || []).forEach(function (it) { delete it._origCode; delete it._origCate; var manual = it.seq != null && String(it.seq).trim() !== ''; it.posSeq = manual ? String(it.seq).trim() : itSeqAuto(it); });   // posSeq ไปข้อมูลหลักสินค้า · it.seq เก็บเฉพาะที่ IT แก้เอง
     return c;
   }
   /* ปุ่มคัดลอกข้างหัวช่อง (ชื่อสินค้า EN/TH) หรือค่าที่ผูกกับปุ่ม (data-copy เช่น SS Code ในสูตรผง) */
