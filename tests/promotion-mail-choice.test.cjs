@@ -1,11 +1,30 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-test('Item Set without E-Voucher asks CoPromo, then ordinary send/no-send without accounting intake',async()=>{
- for(const send of [false,true]){
-  let dialogs=0,mail=0,decisions=0;const c={Swal:{DismissReason:{cancel:'cancel'},fire:async()=>++dialogs===1?{isConfirmed:false,dismiss:'cancel'}:{isConfirmed:send}},PC_CLOUD:{saveMailDecision:async()=>decisions++},PC_CoProEmailUI:{save:async(record,options)=>{assert.equal(record.campaign,'Item Coupon campaign');assert.equal(options.notificationOnly,true);mail++;return {status:'success'};}}};c.window=c;vm.runInNewContext(fs.readFileSync('js/co-promo.js','utf8'),c);
-  const result=await c.PC_CoPromo.promptAfterSubmit(['Item Coupon campaign'],{source:'itemset',hasEVoucher:false});assert.equal(dialogs,2);assert.equal(mail,send?1:0);assert.equal(decisions,send?0:1);assert.equal(result.coPromo,false);
+function run(answers,extra={}){
+ const calls=[],titles=[];let i=0;
+ const c={Swal:{fire:async o=>{titles.push(o.title);const a=answers[i++];return a==='reply'?{isConfirmed:true}:a==='new'?{isConfirmed:false,isDenied:true}:{isConfirmed:false,dismiss:'cancel'};}},
+  PC_CLOUD:{saveMailDecision:async(name,kind)=>calls.push(['not_sent',name,kind])},
+  PC_CoPromoDrafts:{recordCoPromo:async(name,record,status)=>calls.push(['intake',name,status])},
+  PC_CoProEmailUI:{save:async(record,options)=>{calls.push(['mail',record.campaign,!!options.notificationOnly,options.delivery]);return options.notificationOnly?{status:'success'}:{mailStatus:'queued'};}},...extra};
+ c.window=c;vm.runInNewContext(fs.readFileSync('js/co-promo.js','utf8'),c);return {c,calls,titles};
+}
+test('every campaign is asked once: reply in old loop, new email, or no mail',async()=>{
+ for(const [answer,expect] of [['reply',['mail','Plain',true,'reply']],['new',['mail','Plain',true,'new']],['none',['not_sent','Plain','submitted']]]){
+  const {c,calls,titles}=run([answer]);const r=await c.PC_CoPromo.promptAfterSubmit(['Plain'],{coPromo:[]});
+  assert.deepEqual(titles,['ส่งเมลแจ้งโปรโมชั่นหรือไม่?']);assert.deepEqual(calls,[expect]);assert.equal(r.completed,true);assert.equal(r.coPromo,false);
  }
 });
-test('CoPromo Yes saves intake then opens mail directly without a partner form',async()=>{
- const calls=[];const c={Swal:{fire:async()=>({isConfirmed:true})},PC_CoPromoDrafts:{recordCoPromo:async(name,record,status)=>calls.push(['intake',name,status])},PC_CoProEmailUI:{save:async(record,options)=>{calls.push(['mail',record.campaign,options.notificationOnly]);return {mailStatus:'queued'};}}};c.window=c;vm.runInNewContext(fs.readFileSync('js/co-promo.js','utf8'),c);
- const result=await c.PC_CoPromo.promptAfterSubmit(['New partner']);assert.equal(result.completed,true);assert.deepEqual(calls,[['intake','New partner',undefined],['mail','New partner',undefined],['intake','New partner','queued']]);
+test('a ticked Co-Promotion always reaches the Co-Promotion page; mail is optional and uses the chosen delivery',async()=>{
+ let t=run(['new']);let r=await t.c.PC_CoPromo.promptAfterSubmit(['Partner'],{coPromo:['Partner']});
+ assert.deepEqual(t.calls,[['intake','Partner',undefined],['mail','Partner',false,'new'],['intake','Partner','queued']]);assert.equal(r.coPromo,true);assert.equal(r.completed,true);
+ t=run(['none']);r=await t.c.PC_CoPromo.promptAfterSubmit(['Partner'],{coPromo:['Partner']});
+ assert.deepEqual(t.calls,[['intake','Partner','not_sent']],'no mail: saved as an ordinary CoPromo record');assert.equal(r.completed,true);
+});
+test('mixed submission asks per campaign',async()=>{
+ const t=run(['reply','none']);await t.c.PC_CoPromo.promptAfterSubmit(['Partner','Plain'],{coPromo:['Partner']});
+ assert.equal(t.titles.length,2);assert.deepEqual(t.calls.map(x=>x[0]+':'+x[1]),['intake:Partner','mail:Partner','intake:Partner','not_sent:Plain']);
+});
+test('closing the mail composer stops and keeps the CoPromo as pending work',async()=>{
+ const t=run(['reply'],{});t.c.PC_CoProEmailUI.save=async()=>null;
+ const r=await t.c.PC_CoPromo.promptAfterSubmit(['Partner','Plain'],{coPromo:['Partner']});
+ assert.equal(t.titles.length,1);assert.equal(r.draftSaved,true);
 });

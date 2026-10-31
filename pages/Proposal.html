@@ -708,11 +708,12 @@
                     if (res === "SUCCESS") {
                         var _camps = Array.from(new Set(allData.map(d => d.campaign).filter(Boolean)));
                         var _hasEV = allData.some(d => /voucher/i.test(String(d.postCate || d.cate || d.cateRemark || '')));
+                        var _co = (window.PC_CoPromo && PC_CoPromo.flagged) ? PC_CoPromo.flagged('.camp-name') : undefined;
                         /* ⭐ ตรวจจากต้นทางว่าเข้าระบบจริง — เดิมขึ้นสำเร็จทั้งที่ข้อมูลอาจไม่เข้า */
                         if (_submissionPlan) {
                             PC_SubmissionLog.afterSave(_submissionPlan, {
                                 onDone: function (ok) { if (ok) window.resetForm(); },
-                                onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV }); }
+                                onAfter: function () { if (window.PC_CoPromo) return window.PC_CoPromo.promptAfterSubmit(_camps, { source: 'itemset', hasEVoucher: _hasEV, coPromo: _co }); }
                             });
                         }
                     } else {
@@ -831,6 +832,7 @@
             <div class="col-md-3">
               <label class="small fw-bold text-uppercase">ITEM SET Campaign Name *</label>
               <input type="text" class="form-control camp-name border-dark shadow-none" oninput="window.checkDuplicateCampaign(this)">
+              <label class="d-inline-flex align-items-center gap-2 mt-1 small fw-bold" style="cursor:pointer" title="โปรที่ร่วมกับพาร์ทเนอร์ เช่น Samsung, KTC, Grab, Central"><input type="checkbox" class="form-check-input pc-copro-flag m-0"> Co-Promotion (ร่วมกับพาร์ทเนอร์)</label>
             </div>
             <div class="col-md-2"><label class="small fw-bold text-uppercase">Start *</label><input type="date" class="form-control camp-start border-dark shadow-none" min="${(window.PCLock&&PCLock.minStartISO('createPromo'))||today}"></div>
             <div class="col-md-2"><label class="small fw-bold text-uppercase">End *</label><input type="date" class="form-control camp-end border-dark shadow-none" min="${today}"></div>

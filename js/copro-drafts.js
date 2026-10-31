@@ -12,6 +12,7 @@
   }
   function batch(rows){const ids=[...new Set(rows.map(r=>r.submissionBatchId).filter(Boolean))];if(ids.length!==1)throw Error('ยังระบุงานต้นฉบับไม่ได้ กรุณาตรวจประวัติการแจ้งโปรฯ');return ids[0];}
   function pageFor(rows){return ({'Item Set':'Proposal','Coupon':'Coupon','Item Coupon':'Coupon','Bill Discount':'BillDiscountProposal','Voucher':'VoucherProposal'})[rows[0].submissionForm]||'CreatePromotion';}
+  /* mailStatus 'not_sent' = CoPromo ที่เลือกไม่ส่งเมล → เก็บเป็นรายการ CoPromo ปกติ (ไม่ผูกลูปเมล) ทำ Interface ทางเดิมได้ */
   async function recordCoPromo(campaign,record={},mailStatus){
     const rows=await current(campaign),submissionId=batch(rows),user=owner();
     const store=await cloud().readCloudKey('pc_co_promotions'),items=store?JSON.parse(store.value):[];
@@ -24,13 +25,13 @@
       const selected=record.emailButtonId?record.emailButtonId===row.emailButtonId:(record.buttonName||record.cmposName)===row.shortName;
       const business={};if(selected)for(const field of fields)if(record[field]!==undefined)business[field]=String(record[field]);
       const now=new Date().toISOString(),item={...old,...business,
-        id:old?.id||'COI'+crypto.randomUUID().replace(/-/g,''),emailIntake:true,campaign,submissionId,
+        id:old?.id||'COI'+crypto.randomUUID().replace(/-/g,''),emailIntake:mailStatus!=='not_sent',campaign,submissionId,
         emailButtonId:row.emailButtonId||'',emailCampaignId:row.emailCampaignId||'',
         cmposName:row.shortName,buttonName:row.shortName,codePromotion:row.codePromotion||'',codeItemSet:row.codeItemSet||row.itemPromotion||'',
         type:'Co-Promotion',promoType:row.typePromotion||row.promoType||'',start:row.start||'',end:row.end||'',
         periodText:(row.start||'')+' → '+(row.end||''),detail:selected&&record.detail!==undefined?record.detail:old?.detail||row.detail||'',
-        emailPending:mailStatus==='queued'?false:old?.emailPending!==false,
-        mailStatus:mailStatus||old?.mailStatus||'not_queued',status:mailStatus==='queued'?'PENDING_INTERFACE':old?.status||'PENDING_EMAIL',
+        emailPending:mailStatus==='queued'||mailStatus==='not_sent'?false:old?.emailPending!==false,
+        mailStatus:mailStatus||old?.mailStatus||'not_queued',status:mailStatus==='queued'||mailStatus==='not_sent'?'PENDING_INTERFACE':old?.status||'PENDING_EMAIL',
         interfaceSetup:old?.interfaceSetup||0,createdAt:old?.createdAt||now,createdBy:old?.createdBy||user,updatedAt:now,updatedBy:user};
       if(old)items[items.indexOf(old)]=item;else items.push(item);
     }

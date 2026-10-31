@@ -23,7 +23,7 @@
     },
     async staffRequest(path,body){
       const r=await fetch('/email/staff/'+path,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
-      const data=await r.json();if(!r.ok){const messages={email_staff_pending:'ยืนยัน Microsoft แล้ว รอผู้ดูแลอนุมัติสิทธิ์ส่งเมลครั้งแรก',email_staff_signin_required:'บัญชีหรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้รับสิทธิ์ส่งเมล',email_staff_try_later:'ลองเข้าสู่ระบบหลายครั้ง กรุณารอ 10 นาทีแล้วลองใหม่'};const e=Error(messages[data.error]||'ยังยืนยันบัญชีพนักงานไม่ได้ กรุณาลองใหม่');e.code=data.error;throw e;}return data;
+      const data=await r.json();if(!r.ok){const messages={email_staff_pending:'ยืนยัน Microsoft แล้ว รอผู้ดูแลอนุมัติสิทธิ์ส่งเมลครั้งแรก',email_staff_signin_required:'ยังเข้าสู่ระบบส่งเมลไม่ได้ หรือบัญชีถูกปิดสิทธิ์ส่งเมล',email_staff_try_later:'ลองเข้าสู่ระบบหลายครั้ง กรุณารอ 10 นาทีแล้วลองใหม่'};const e=Error(messages[data.error]||'ยังยืนยันบัญชีพนักงานไม่ได้ กรุณาลองใหม่');e.code=data.error;throw e;}return data;
     },
     rememberStaff(session){
       if(!session.staff)return;
@@ -31,11 +31,14 @@
       const name=document.getElementById('who-name'),role=document.getElementById('who-role');if(name)name.textContent=session.staff.name;if(role)role.textContent=session.staff.role;
     },
     async signInStaff(){
-      const result=await Swal.fire({title:'เข้าสู่ระบบเพื่อส่งเมล',html:'<p>ใช้บัญชีพนักงานของคุณ ไม่ต้องลงชื่อเข้าบัญชีเมลกลาง</p><label for="mailStaffUsername">ชื่อผู้ใช้</label><input id="mailStaffUsername" class="swal2-input" autocomplete="username"><label for="mailStaffPassword">รหัสผ่าน</label><input id="mailStaffPassword" type="password" class="swal2-input" autocomplete="current-password">',showCancelButton:true,showDenyButton:true,confirmButtonText:'เข้าสู่ระบบ',denyButtonText:'ใช้ Microsoft',cancelButtonText:'กลับ',showLoaderOnConfirm:true,allowOutsideClick:()=>!Swal.isLoading(),preConfirm:async()=>{
-        try{return await this.staffRequest('login',{username:document.getElementById('mailStaffUsername').value,password:document.getElementById('mailStaffPassword').value});}catch(e){Swal.showValidationMessage(e.message);return false;}
+      // Signed in to the website with Microsoft → renew the mail session in the background, no prompt.
+      try{if(window.PC_StaffMicrosoftLogin)return await window.PC_StaffMicrosoftLogin({silent:true});}catch(_){}
+      // Microsoft is the only sign-in; mail always leaves from the central Gmail.
+      const result=await Swal.fire({title:'เข้าสู่ระบบเพื่อส่งเมล',html:'<p>ยืนยันตัวตนด้วยบัญชี Microsoft ของบริษัท เมลจะส่งออกจาก Potato Promotion Mail (it@rocks-foods.com)</p>',showCancelButton:true,confirmButtonText:'เข้าสู่ระบบด้วย Microsoft',cancelButtonText:'กลับ',showLoaderOnConfirm:true,allowOutsideClick:()=>!Swal.isLoading(),preConfirm:async()=>{
+        try{if(!window.PC_StaffMicrosoftLogin)throw Error('ระบบล็อกอิน Microsoft ยังไม่พร้อม กรุณาเปิดเว็บใหม่');return await window.PC_StaffMicrosoftLogin();}catch(e){Swal.showValidationMessage(e.message||'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่');return false;}
       }});
-      let session;if(result.isConfirmed)session=result.value;else if(result.isDenied&&window.PC_StaffMicrosoftLogin)session=await window.PC_StaffMicrosoftLogin();else throw Error('ยังไม่ได้เข้าสู่ระบบพนักงาน');
-      this.rememberStaff(session);return session;
+      if(!result.isConfirmed)throw Error('ยังไม่ได้เข้าสู่ระบบพนักงาน');
+      return result.value;
     },
     async connectHere({ownerOnly=false}={}){
       const result=await Swal.fire({icon:'info',title:'ยืนยันบัญชีผู้ส่งอีเมล',text:'ยืนยันบัญชีในหน้าต่างที่เปิดขึ้น แล้วระบบจะกลับมาทำรายการนี้ต่อ',confirmButtonText:'ยืนยันบัญชีและทำต่อ',showCancelButton:true,cancelButtonText:'กลับ',showLoaderOnConfirm:true,allowOutsideClick:()=>!Swal.isLoading(),

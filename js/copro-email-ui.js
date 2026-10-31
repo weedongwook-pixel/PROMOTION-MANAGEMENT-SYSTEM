@@ -77,11 +77,21 @@
     button.addEventListener('click',add);
     input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();add();}});
   }
+  /* ค้นลูปไม่เจอ: ระบบค้นได้เฉพาะในกล่องเมลผู้ส่งกลาง → บอกสาเหตุที่พบบ่อยและทางเลือกให้ชัด */
+  const NOT_FOUND_TEXT='ไม่พบเมลหัวข้อนี้ในกล่องเมล it@rocks-foods.com';
+  function notFoundHtml(query){
+    return '<div class="alert alert-warning text-start mb-2" role="alert"><strong>'+esc(NOT_FOUND_TEXT)+'</strong>'+
+      '<p class="mb-1 mt-2">ระบบค้นหาลูปได้เฉพาะเมลที่อยู่ในกล่องเมล <b>it@rocks-foods.com</b> เท่านั้น สาเหตุที่พบบ่อย:</p><ul class="mb-1">'+
+      '<li>ลูปเดิม<b>ไม่ได้ใส่ it@rocks-foods.com</b> ใน To หรือ CC จึงไม่มีเมลนี้ในกล่องเมลของระบบ</li>'+
+      '<li>หัวข้อที่วางไม่ตรงกับเมลจริง (ลองวางเฉพาะคำสำคัญ เช่น ชื่อแคมเปญ)</li></ul>'+
+      '<p class="mb-0">ทางแก้: ตอบกลับลูปเดิมจากเมลของคุณโดย <b>CC it@rocks-foods.com</b> 1 ครั้ง แล้วค้นหาใหม่ หรือกดปุ่ม <b>ส่งเมลใหม่แทน</b> ด้านล่าง</p>'+
+      (query?'<p class="small text-muted mb-0 mt-1">คำที่ค้นหา: '+esc(query)+'</p>':'')+'</div>';
+  }
   async function approveConversation(mode){
     let selected=null, generation=0;
     const result=await Swal.fire({title:'ค้นหาลูปเมลของโปรฯ',width:760,customClass:{popup:'pc-mail-popup'},
       html:mailDialogStyle+'<div style="text-align:left"><p class="pc-mail-steps">ค้นหาอีเมล → เลือกลูป → ตรวจผู้รับ</p><label for="coproFindSubject">หัวข้ออีเมลเดิมที่ต้องการตอบกลับ</label><input id="coproFindSubject" class="form-control" maxlength="200" aria-describedby="coproFindHelp" placeholder="คัดลอกหัวข้อจากอีเมลเดิมมาวางที่นี่"><p id="coproFindHelp" class="small mt-2">วางหัวข้อเมลเดิม กด “ค้นหาอีเมล” แล้วกด “เลือกลูปนี้” ระบบจะเติม To / CC ให้แก้ไขได้</p><button type="button" id="coproFind" class="btn btn-outline-success my-2">ค้นหาอีเมล</button><div id="coproFound" role="status"></div><p id="coproSelected"></p><label for="coproNewTo">To — ผู้รับที่ต้องการส่ง</label><textarea id="coproNewTo" class="form-control"></textarea>'+recipientAddControls('coproNewTo','To')+'<label for="coproNewCc">CC — เว้นว่างได้</label><textarea id="coproNewCc" class="form-control"></textarea>'+'<button type="button" id="coproRestoreCc" class="btn btn-outline-success my-2">ใช้ CC จากลูปเดิม</button>'+recipientAddControls('coproNewCc','CC')+'<p class="small">ตรวจผู้รับก่อนทำต่อ คุณจะได้ตรวจตัวอย่างเมลอีกครั้งก่อนส่ง</p></div>',
-      showCancelButton:true,confirmButtonText:'ใช้ลูปนี้และทำต่อ',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
+      showCancelButton:true,showDenyButton:true,confirmButtonText:'ใช้ลูปนี้และทำต่อ',denyButtonText:'ส่งเมลใหม่แทน',denyButtonColor:'#1b5e20',cancelButtonText:'กลับไปแก้ข้อมูล',showLoaderOnConfirm:true,
       didOpen(){
         document.getElementById('coproFindSubject').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.getElementById('coproFind').click();}});
         document.getElementById('coproRestoreCc').addEventListener('click',()=>{if(selected)document.getElementById('coproNewCc').value=conversationRecipients(selected).cc.join(', ');});
@@ -107,7 +117,7 @@
                 document.getElementById('coproNewCc').value=recipients.cc.join(', ');
               });card.append(subject,detail,button);results.append(card);
             }
-            if(!found.items.length)results.textContent='ไม่พบเมล กรุณาตรวจหัวข้อและบัญชีผู้ส่ง';
+            if(!found.items.length)results.innerHTML=notFoundHtml(query);
           }catch(e){if(n===generation&&results.isConnected)results.textContent=String(e.message||e);}
         });
       },
@@ -122,7 +132,7 @@
         }catch(e){Swal.showValidationMessage(String(e.message||e));return false;}
       }
     });
-    generation++;return result.isConfirmed?result.value:null;
+    generation++;return result.isConfirmed?result.value:result.isDenied?{switchToNew:true}:null;
   }
   window.PC_CoProEmailUI={
     async mountHistory(root,entries,options={}){
@@ -173,7 +183,7 @@
     },
     async save(record,options={}){
       if(window.PC_EmailAuth?.ownerSession&&(await client().capabilities()).authMode==='gmail_owner')await window.PC_EmailAuth.ownerSession({interactive:true});
-      if(record.id)throw Error(word('รุ่นทดสอบยังไม่ส่งเมลแก้ไขงานเดิม','Revision emails are not enabled in this pilot'));
+      if(record.id)throw Error(word('รายการ CoPromo ที่บันทึกไว้แล้ว ส่งเมลซ้ำจากตรงนี้ไม่ได้','A saved Co-Promotion record cannot be emailed again from here'));
       let campaigns=(await client().list()).filter(c=>c.key==='promo::c::'+encodeURIComponent(record.campaign));
       if(!campaigns.length){
         const caps=await client().capabilities();
@@ -191,13 +201,16 @@
         campaigns=(await client().list()).filter(c=>c.key===key);
         if(!campaigns.length)throw Error('ยังตรวจยืนยันการผูกงานไม่ได้ กรุณาเปิดงานเดิมอีกครั้ง ไม่ต้องส่งโปรฯ ซ้ำ');
       }
-      const delivery=await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแบบไหน?',text:record.campaign,showDenyButton:true,showCancelButton:true,confirmButtonText:'ตอบกลับลูปเดิม',denyButtonText:'ส่งเมลใหม่',cancelButtonText:'กลับ',allowOutsideClick:false});
+      // delivery ถูกเลือกมาแล้วตอนถามหลังบันทึก (reply/new) → ไม่ถามซ้ำ
+      const delivery=options.delivery==='reply'||options.delivery==='new'?{isConfirmed:options.delivery==='reply',isDenied:options.delivery==='new'}:await Swal.fire({icon:'question',title:'ต้องการส่งอีเมลแบบไหน?',text:record.campaign,showDenyButton:true,showCancelButton:true,confirmButtonText:'ตอบกลับลูปเดิม',denyButtonText:'ส่งเมลใหม่',cancelButtonText:'กลับ',allowOutsideClick:false});
       if(!delivery.isConfirmed&&!delivery.isDenied)return null;
-      const newMessage=delivery.isDenied;
-      let policies=newMessage?[{id:'new',version:0,newMessage:true,subject:'แจ้งรายละเอียด '+record.campaign,recipients:{to:[],cc:[]},mode:'production'}]:(await client().request('threads')).items.filter(p=>!p.newMessage&&(!options.mode||p.mode===options.mode));
+      let newMessage=delivery.isDenied;
+      const newPolicy=()=>({id:'new',version:0,newMessage:true,subject:'แจ้งรายละเอียด '+record.campaign,recipients:{to:[],cc:[]},mode:'production'});
+      let policies=newMessage?[newPolicy()]:(await client().request('threads')).items.filter(p=>!p.newMessage&&(!options.mode||p.mode===options.mode));
       if(!policies.length){
         const selected=await approveConversation(options.mode||'production');
-        if(!selected)return null;policies=[selected];
+        if(!selected)return null;
+        if(selected.switchToNew){newMessage=true;policies=[newPolicy()];}else policies=[selected];
       }
       const fields=[['brand','พาร์ทเนอร์ / Brand'],['detail','รายละเอียด CoPromo (ไม่ส่งเมล) / Internal CoPromo details'],['billingEntity','บริษัทเรียกเก็บ / Billing entity'],['paymentType','ประเภทชำระ / Payment type'],['soNo','SO number'],['quota','Quota'],['priceIncVat','ราคารวม VAT / Price incl. VAT'],['paymentCondition','เงื่อนไขชำระ / Payment condition'],['remark','หมายเหตุภายใน (ไม่ส่งเมล) / Internal remark'],['periodText','ช่วงเวลา / Period'],['promoType','ประเภทโปรฯ / Promotion type']];
       const stored=await window.PC_CLOUD.readCloudKey('pc_co_promotions');
@@ -237,7 +250,7 @@
           bindRecipientAdd('coproTestTo');bindRecipientAdd('coproTestCc');
           const field=document.getElementById('coproLoop');
           if(previousDraft){document.getElementById('coproCampaign').value=previousDraft.campaignId;field.value=previousDraft.policyId;}
-          const describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('รายชื่อที่ผู้ดูแลอนุมัติ: ','Administrator-approved recipients: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
+          const describe=()=>{const p=policies.find(x=>x.id===field.value);document.getElementById('coproApproved').textContent=word('ผู้รับเดิมของลูปนี้: ','Current recipients of this conversation: ')+[...p.recipients.to,...p.recipients.cc].join(', ');document.getElementById('coproTestTo').value=p.recipients.to.join(', ');document.getElementById('coproTestCc').value=p.recipients.cc.join(', ');};field.addEventListener('change',describe);describe();
           if(previousDraft){document.getElementById('coproTestTo').value=previousDraft.recipients.to.join(', ');document.getElementById('coproTestCc').value=previousDraft.recipients.cc.join(', ');document.getElementById('coproAdditionalMessage').value=previousDraft.additionalMessage;}
           document.getElementById('coproSearchLoop').addEventListener('click',()=>{
             previousDraft={campaignId:document.getElementById('coproCampaign').value,policyId:field.value,recipients:{to:addresses(document.getElementById('coproTestTo').value),cc:addresses(document.getElementById('coproTestCc').value)},additionalMessage:document.getElementById('coproAdditionalMessage').value};
@@ -263,7 +276,8 @@
       });
       if(searchRequested){
         const selected=await approveConversation(options.mode||'production');
-        if(selected){policies=policies.filter(p=>p.id!==selected.id).concat(selected);previousDraft.policyId=selected.id;previousDraft.recipients=selected.recipients;}
+        if(selected?.switchToNew){newMessage=true;policies=[newPolicy()];previousDraft.policyId='new';}
+        else if(selected){policies=policies.filter(p=>p.id!==selected.id).concat(selected);previousDraft.policyId=selected.id;previousDraft.recipients=selected.recipients;}
         continue;
       }
       if(!choose.isConfirmed)return null;
@@ -280,7 +294,7 @@
       if(!root)return;
       root.innerHTML='<h2 data-th="อีเมล Co-Promotion" data-en="Co-Promotion email">อีเมล Co-Promotion</h2>'+
         '<p data-th="เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที" data-en="Choose the real conversation for each promotion and confirm recipients. Connecting does not send email.">เลือกเธรดงานจริงให้ตรงกับโปรฯ และยืนยันผู้รับก่อนส่ง การเชื่อมต่อไม่ส่งเมลทันที</p>'+
-        '<p data-copro-note role="status" aria-live="polite"></p><button type="button" class="btn btn-outline-success mb-3" data-copro-enable>เปิดใช้อีเมลในแท็บนี้</button>'+
+        '<p data-copro-note role="status" aria-live="polite"></p>'+
         '<details><summary data-th="ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ" data-en="Administrator: approve conversation and recipients">ผู้ดูแล: อนุมัติลูปอีเมลและผู้รับ</summary>'+
         '<label class="d-block mt-3" for="coproMode">ประเภทลูป / Conversation type</label><select id="coproMode" class="form-select"><option value="production">งานจริง / Production</option><option value="test">ทดสอบ / Test</option></select><label class="d-block mt-3" for="coproSearch">Subject / หัวข้อเมล</label><input id="coproSearch" class="form-control" placeholder="หัวข้อเมลของโปรฯ" maxlength="200"><button type="button" class="btn btn-outline-success my-3" data-copro-search>ค้นหาอีเมล / Search email</button><div data-copro-results></div>'+
         '<label class="d-block" for="coproPublishTo">To — ผู้รับ / Recipients</label><textarea id="coproPublishTo" class="form-control mb-3" rows="2"></textarea><label for="coproPublishCc">CC</label><textarea id="coproPublishCc" class="form-control mb-3" rows="2"></textarea>'+
@@ -289,17 +303,12 @@
         '<button type="button" class="btn btn-outline-success my-3" data-copro-history>ตรวจคิวเมลของงาน / Check campaign mail status</button><div data-copro-history-list></div>';
       const get=name=>root.querySelector('[data-copro-'+name+']'),note=text=>{get('note').textContent=text;};let selected=null;
       root.querySelector('#coproMode').addEventListener('change',()=>{selected=null;get('publish').disabled=true;get('results').replaceChildren();});
-      const toggleLabel=()=>{get('enable').textContent=client().active()?word('ปิดใช้อีเมลในแท็บนี้','Disable email in this tab'):word('เปิดใช้อีเมลในแท็บนี้','Enable email in this tab');};toggleLabel();
       const action=(button,fn)=>button.addEventListener('click',async()=>{button.disabled=true;try{await fn();}catch(e){note(String(e.message||e));}finally{button.disabled=false;}});
-      action(get('enable'),async()=>{
-        if(client().active()){client().disable();toggleLabel();note(word('ปิดใช้อีเมลในแท็บนี้แล้ว','Pilot disabled in this tab'));return;}
-        await client().enable();toggleLabel();note(word('เปิดใช้อีเมลแล้ว ให้สร้างโปรฯ ใหม่ แล้วกรอก Co-Promotion ต่อเพื่อเลือกลูปและผู้รับ','Pilot enabled. Submit a new promotion, then complete its Co-Promotion form to choose a conversation and recipients.'));
-      });
       action(get('search'),async()=>{
         selected=null;get('publish').disabled=true;
         const result=await client().request('threads/search?q='+encodeURIComponent(root.querySelector('#coproSearch').value)+'&mode='+root.querySelector('#coproMode').value,{interactive:true});get('results').replaceChildren();
         for(const item of result.items){const b=document.createElement('button');b.type='button';b.className='btn btn-outline-success d-block mb-2';b.textContent=[item.subject,item.from,item.date,item.to,item.cc].join(' · ');b.style.whiteSpace='normal';b.addEventListener('click',()=>{selected={...item,mode:root.querySelector('#coproMode').value};get('publish').disabled=false;note(word('เลือกลูปแล้ว กรุณากรอก To/CC ที่ต้องการอนุมัติ','Conversation selected. Enter the To/CC to approve.'));});get('results').append(b);}
-        if(!result.items.length)note(word('ไม่พบลูปอีเมลใน Gmail นี้','No matching conversation found'));
+        if(!result.items.length){get('results').innerHTML=notFoundHtml(root.querySelector('#coproSearch').value.trim());note(word(NOT_FOUND_TEXT,'No matching conversation in it@rocks-foods.com'));}
       });
       action(get('publish'),async()=>{
         if(!selected)throw Error('Select a conversation');
@@ -314,9 +323,9 @@
       action(get('history'),async()=>{
         const campaigns=await client().list();get('history-list').replaceChildren();
         for(const c of campaigns){const p=document.createElement('p');p.textContent=c.key.replace('promo::c::','')+' / '+c.month+' — '+c.history.map(h=>h.event_key.split(':').at(-1)+': '+h.status).join(' · ');get('history-list').append(p);}
-        if(!campaigns.length)note(word('ยังไม่มีงานใหม่ในโหมดทดสอบ','No new pilot campaigns'));
+        if(!campaigns.length)note(word('ยังไม่มีงานที่ส่งเมล','No emailed campaigns yet'));
       });
-      client().capabilities().then(c=>{if(c.authMode==='gmail_owner'){root.querySelector('#coproAudience').hidden=true;root.querySelector('label[for="coproAudience"]').hidden=true;}get('enable').disabled=!c.coproEnabled&&!client().active();note(c.coproEnabled?(c.sendingEnabled?word('ส่งเข้าลูปงานจริงหลังเชื่อม Gmail และยืนยันผู้รับ','Production email requires connected Gmail and confirmed recipients'):c.testSendingEnabled?word('ผู้ดูแลเปิดส่งทดสอบแล้ว','Test dispatch enabled by administrator'):word('สร้างคิวได้ แต่ผู้ดูแลยังปิดการส่งจริง','Queueing available; actual test dispatch is disabled')):word('ผู้ดูแลยังไม่เปิด Co-Promotion email หรือการตั้งค่ายังไม่ครบ','Co-Promotion email is disabled or setup is incomplete'));}).catch(e=>note(String(e.message||e)));
+      client().capabilities().then(c=>{if(c.authMode==='gmail_owner'){root.querySelector('#coproAudience').hidden=true;root.querySelector('label[for="coproAudience"]').hidden=true;}note(c.coproEnabled?(c.sendingEnabled?word('ส่งเข้าลูปงานจริงหลังเชื่อม Gmail และยืนยันผู้รับ','Production email requires connected Gmail and confirmed recipients'):c.testSendingEnabled?word('ผู้ดูแลเปิดส่งทดสอบแล้ว','Test dispatch enabled by administrator'):word('สร้างคิวได้ แต่ผู้ดูแลยังปิดการส่งจริง','Queueing available; actual test dispatch is disabled')):word('ผู้ดูแลยังไม่เปิด Co-Promotion email หรือการตั้งค่ายังไม่ครบ','Co-Promotion email is disabled or setup is incomplete'));}).catch(e=>note(String(e.message||e)));
     }
   };
 })(window);

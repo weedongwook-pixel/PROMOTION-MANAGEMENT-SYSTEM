@@ -55,7 +55,14 @@ test('a prepared Outlook login opens the popup without waiting on the network, t
   await m.prepare();order.length=0;
   m.context.window.PC_CoProEmail.capabilities=async()=>{throw Error('must not be called on click');};
   await m.run();
-  assert.deepEqual(order.slice(0,4),['popup','logout','microsoft','after']);
+  assert.deepEqual(order.slice(0,3),['popup','logout','microsoft']);assert.deepEqual(m.calls.legacy,['u@rocksgroup.com'],'website access still comes from the user list');
+});
+test('a mail session never grants website access: unknown users are refused and the mail session is dropped',async()=>{
+  const calls=[];
+  const m=microsoft({loginPopup:async()=>({idToken:'t',account:{username:'new.person@rocksgroup.com'}}),
+    staffRequest:async path=>{calls.push(path);if(path==='microsoft/challenge')return {nonce:'n'};if(path==='microsoft')return {staff:{role:'MKT'}};return {};}});
+  await m.run();
+  assert.equal(m.calls.after,0);assert.match(m.error.innerText,/has no access yet/);assert.equal(calls.filter(p=>p==='logout').length,2);
 });
 test('a popup refused after preparing asks for one more click',async()=>{
   const m=microsoft({staffEnabled:false,loginPopup:async()=>{throw Object.assign(Error('popup'),{errorCode:'popup_window_error'});}});

@@ -679,11 +679,14 @@
       return {app, identity, email:localStorage.getItem('pc_userEmail') || ''};
     };
 
-    window.PC_StaffMicrosoftLogin = async function () {
+    /* silent: true = ใช้บัญชี Microsoft ที่ล็อกอินเว็บไว้ ยืนยันเบื้องหลังโดยไม่เปิดหน้าต่าง (ไม่ได้ = throw) */
+    window.PC_StaffMicrosoftLogin = async function (opts) {
       const app=getMsalApp();if(_msalReady)await _msalReady;
+      const silent=!!(opts&&opts.silent),hint=localStorage.getItem('pc_userEmail')||'';
+      if(silent&&!hint)throw Error('no_web_microsoft_account');
       await window.PC_EmailAuth.staffRequest('logout',{});
       const challenge=await window.PC_EmailAuth.staffRequest('microsoft/challenge',{});
-      const result=await app.loginPopup({scopes:['openid','profile'],nonce:challenge.nonce,prompt:'select_account'});
+      const result=silent?await app.ssoSilent({scopes:['openid','profile'],nonce:challenge.nonce,loginHint:hint}):await app.loginPopup({scopes:['openid','profile'],nonce:challenge.nonce,prompt:'select_account',...(hint?{loginHint:hint}:{})});
       return window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});
     };
 
@@ -729,22 +732,23 @@
         const result = await app.loginPopup({ scopes: ['User.Read'], prompt: 'select_account',...(challenge?{nonce:challenge.nonce}:{}) });
         stage('Checking access...');
         if(caps.staffEnabled)await window.PC_EmailAuth.staffRequest('logout',{});
+        // The mail session only lets this person send from the central Gmail; website access
+        // and role always come from the website user list below.
+        let mailSession=false;
         if(challenge){
-          try{const session=await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});window.PC_EmailAuth.rememberStaff(session);afterLogin();return;}
+          try{await window.PC_EmailAuth.staffRequest('microsoft',{nonce:challenge.nonce,idToken:result.idToken});mailSession=true;}
           catch(error){
-            // Not (yet) a mail staff account: continue with the website user list below,
-            // exactly like password login. This grants web access only, never mail rights.
             if(error.code!=='email_staff_pending' && error.code!=='email_staff_signin_required')throw error;
-            // A pending mail approval does not affect website access, so sign-in continues silently.
           }
         }
+        const dropMail=()=>{if(mailSession)window.PC_EmailAuth.staffRequest('logout',{}).catch(()=>{});};
         const acct = result.account || {};
         const claims = acct.idTokenClaims || {};
         const email = String(acct.username || claims.preferred_username || claims.email || '').trim().toLowerCase();
-        if (!email) { errMsg.innerText = '❌ The Microsoft account did not provide an email address.'; reset(); return; }
+        if (!email) { dropMail(); errMsg.innerText = '❌ The Microsoft account did not provide an email address.'; reset(); return; }
         let res;
         try { res = await pcLoginLookup('checkLoginByEmail', email); }
-        catch (lookupError) { errMsg.innerText = lookupError && lookupError.code === 'login_lookup_timeout' ? PC_LOGIN_CODE_MSG.login_lookup_timeout : '❌ Could not check your access. Please sign in again.'; reset(); return; }
+        catch (lookupError) { dropMail(); errMsg.innerText = lookupError && lookupError.code === 'login_lookup_timeout' ? PC_LOGIN_CODE_MSG.login_lookup_timeout : '❌ Could not check your access. Please sign in again.'; reset(); return; }
         {
           if (res && res.status === 'success') {
             localStorage.setItem('pc_session', 'active');
@@ -756,6 +760,7 @@
             try { sessionStorage.setItem('pc_email_staff_identity',JSON.stringify({tenantId:claims.tid,objectId:claims.oid})); } catch (_) {}
             afterLogin();
           } else {
+            dropMail();
             errMsg.innerText = '❌ ' + email + ' has no access yet. Please ask your administrator to add this email.';
             reset();
           }

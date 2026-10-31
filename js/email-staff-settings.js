@@ -3,7 +3,7 @@
   const root=document.querySelector('[data-email-staff-settings]');if(!root)return;
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let state={users:[],pending:[]};
-  root.innerHTML='<h2>สิทธิ์ใช้บัญชีส่งเมลกลาง</h2><p>ผู้ดูแลอนุมัติพนักงานครั้งแรก หลังจากนั้นพนักงานใช้บัญชีเว็บของตัวเองส่งเมลได้จากทุกเครื่อง ไม่ต้องเชื่อมบัญชีผู้ส่ง</p><button type="button" class="btn btn-outline-success" data-staff-load>โหลดรายชื่อพนักงาน</button><button type="button" class="btn btn-outline-secondary ms-2" data-staff-owner>ยืนยันเจ้าของเมลเพื่อจัดการสิทธิ์</button><button type="button" class="btn btn-success ms-2" data-staff-add hidden>เพิ่มบัญชีพนักงาน</button><p role="status" class="my-3" data-staff-note></p><div data-staff-list></div><div data-staff-pending></div>';
+  root.innerHTML='<h2>สิทธิ์ใช้บัญชีส่งเมลกลาง</h2><p>พนักงานที่ล็อกอินด้วย Microsoft ของบริษัทส่งเมลได้ทันทีจากทุกเครื่อง เมลออกจากบัญชีส่งเมลกลางเสมอ ผู้ดูแลปิดสิทธิ์ส่งเมลรายคนได้ที่รายการด้านล่าง</p><button type="button" class="btn btn-outline-success" data-staff-load>โหลดรายชื่อพนักงาน</button><button type="button" class="btn btn-outline-secondary ms-2" data-staff-owner>ยืนยันเจ้าของเมลเพื่อจัดการสิทธิ์</button><button type="button" class="btn btn-success ms-2" data-staff-add hidden>เพิ่มบัญชีพนักงาน</button><p role="status" class="my-3" data-staff-note></p><div data-staff-list></div><div data-staff-pending></div>';
   const q=s=>root.querySelector(s),note=s=>{q('[data-staff-note]').textContent=s;};
   async function request(body){
     const auth=await fetch('/email/staff/owner-session',{credentials:'same-origin',cache:'no-store'});

@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const api=root.PC_Email,COOKIE='__Host-pc_mail_staff',CHALLENGE='__Host-pc_mail_challenge',LIFETIME=8*60*60;
+  const api=root.PC_Email,COOKIE='__Host-pc_mail_staff',CHALLENGE='__Host-pc_mail_challenge',LIFETIME=30*24*60*60;  // matches the website login, which stays signed in until logout
   const TENANT='512d498e-05ac-402b-a2aa-d61d10c3bee8',AUDIENCE='8c0e2312-d9ae-4dff-accb-65fa3cb9815e';
   const OWNER={tenantId:'00000000-0000-4000-8000-000000000001',objectId:'00000000-0000-4000-8000-000000000002'};
   const stmt=(e,s,...v)=>e.DB.prepare(s).bind(...v),cookie=(r,k)=>(r.headers.get('Cookie')||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(k+'='))?.slice(k.length+1)||'';
@@ -128,8 +128,16 @@
       const identity=await api.verifyStaffMicrosoft(body.idToken,body.nonce);
       const user=await stmt(env,'SELECT * FROM email_staff WHERE ms_oid=? AND ms_tenant=?',identity.oid,identity.tenant).first();
       if(user){if(!user.enabled)deny();return session(user,env);}
-      await stmt(env,'INSERT INTO email_staff_requests VALUES(?,?,?,?,?) ON CONFLICT(ms_oid) DO UPDATE SET display_name=excluded.display_name,email_label=excluded.email_label,requested_at=excluded.requested_at',identity.oid,identity.tenant,identity.name,identity.email,Date.now()).run();
-      return json({error:'email_staff_pending'},403);
+      // Any verified company Microsoft account may send; mail always leaves from the central Gmail. Owner can still disable a person.
+      const label=identity.email.trim().toLowerCase(),taken=/^[a-z0-9@._+-]{3,160}$/.test(label)&&await stmt(env,'SELECT 1 FROM email_staff WHERE username=? COLLATE NOCASE',label).first();
+      const username=/^[a-z0-9@._+-]{3,160}$/.test(label)&&!taken?label:'ms-'+identity.oid,now=Date.now();
+      await env.DB.batch([
+        stmt(env,"INSERT INTO email_staff(id,username,name,site_role,ms_oid,ms_tenant,enabled,can_send,can_it,version,created_at,updated_at) VALUES(?,?,?,'MKT',?,?,1,1,1,1,?,?) ON CONFLICT DO NOTHING",crypto.randomUUID(),username,identity.name,identity.oid,identity.tenant,now,now),
+        stmt(env,'DELETE FROM email_staff_requests WHERE ms_oid=?',identity.oid),
+        stmt(env,'INSERT INTO email_audit(id,actor,event,details_json,created_at) VALUES(?,?,?,?,?)',crypto.randomUUID(),'microsoft-signin','staff_auto_enrolled',JSON.stringify({msOid:identity.oid}),now)
+      ]);
+      const created=await stmt(env,'SELECT * FROM email_staff WHERE ms_oid=? AND ms_tenant=?',identity.oid,identity.tenant).first();
+      if(!created?.enabled)deny();return session(created,env);
     }catch(e){const safe=['email_staff_signin_required','email_staff_try_later','email_staff_not_found','email_staff_invalid_account','email_staff_password_length','email_staff_credentials_required'];return json({error:safe.includes(e.message)?e.message:'email_staff_request_failed'},e.message==='email_staff_try_later'?429:e.message==='email_staff_signin_required'?401:403);}
   };
 })(globalThis);

@@ -30,14 +30,18 @@ test('Microsoft verifies signature, tenant, app audience and nonce; names never 
  const good=await token(claims);await assert.rejects(f.a.verifyStaffMicrosoft(good.slice(0,-10)+'AAAAAAAAAA','challenge',deps));
  assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_staff').get().n,0);f.DB.db.close();
 });
-test('verified Microsoft requires explicit approval, binds immutable identity and cannot replay challenge',async()=>{
- const f=fixture();f.a.verifyStaffMicrosoft=async()=>({oid:'33333333-3333-4333-8333-333333333333',tenant:'512d498e-05ac-402b-a2aa-d61d10c3bee8',name:'Verified person',email:'label@example.com'});
+test('verified company Microsoft sign-in enrolls the person as a sender at once, binds identity and cannot replay challenge',async()=>{
+ const f=fixture();f.a.verifyStaffMicrosoft=async()=>({oid:'33333333-3333-4333-8333-333333333333',tenant:'512d498e-05ac-402b-a2aa-d61d10c3bee8',name:'Verified person',email:'Label@example.com'});
  async function attempt(){const r=await f.a.routeStaff(req('microsoft/challenge',{}),f.env);return {nonce:(await r.json()).nonce,cookie:r.headers.get('set-cookie').split(';')[0]};}
- let ch=await attempt(),r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,403);assert.equal((await r.json()).error,'email_staff_pending');
+ f.DB.db.prepare('INSERT INTO email_staff_requests VALUES(?,?,?,?,?)').run('33333333-3333-4333-8333-333333333333','512d498e-05ac-402b-a2aa-d61d10c3bee8','Verified person','label@example.com',1);
+ let ch=await attempt(),r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,200);
+ const first=await r.json();assert.equal(first.staff.canSend,true);assert.equal(first.staff.canIT,true);assert.equal(first.staff.username,'label@example.com');
+ const cookie=r.headers.get('set-cookie').split(';')[0],actor=await f.a.verifyStaffSession(req('session',null,cookie),f.env);await f.a.requireStaffPermission(actor,'submit',f.env);await f.a.requireStaffPermission(actor,'it',f.env);
  r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,401);
- const pending=f.DB.db.prepare('SELECT * FROM email_staff_requests').get();const user=await f.a.saveStaffAccount({username:'person',name:'Person',microsoftRequest:pending.ms_oid,canSend:true},f.env);
- ch=await attempt();r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,200);assert.equal((await r.json()).staff.id,user.id);
- assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_staff_requests').get().n,0);f.DB.db.close();
+ ch=await attempt();r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,200);assert.equal((await r.json()).staff.id,first.staff.id);
+ assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_staff').get().n,1);assert.equal(f.DB.db.prepare('SELECT count(*) n FROM email_staff_requests').get().n,0);
+ await f.a.saveStaffAccount({id:first.staff.id,username:'label@example.com',name:'Verified person',canSend:false,canIT:false,enabled:false},f.env);
+ ch=await attempt();r=await f.a.routeStaff(req('microsoft',{nonce:ch.nonce,idToken:'verified'},ch.cookie),f.env);assert.equal(r.status,401,'owner can still switch a person off');f.DB.db.close();
 });
 test('mailbox owner browser alone no longer authorizes employee send when central access is enabled',async()=>{
  const f=fixture();f.a.verifyOwnerSession=async()=>({tenantId:'owner',objectId:'owner'});
