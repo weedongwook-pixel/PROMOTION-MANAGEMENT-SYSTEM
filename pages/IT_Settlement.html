@@ -561,9 +561,9 @@
       '<div class="p-3">' +
         '<div class="row g-2 mb-2">' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase text-info">Item Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="item" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(it.code || '') + '" oninput="window.itItem(' + i + ',\'code\',this.value)" placeholder="108005"><button class="btn btn-outline-info" type="button" title="คัดลอก Item Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤20</span></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/20</div></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (EN) <span class="text-muted" style="font-size:.66rem">บิลครัว ≤40</span></label><input class="form-control form-control-sm border-dark" maxlength="40" value="' + itEsc(it.name || '') + '" oninput="window.itItem(' + i + ',\'name\',this.value);window.itNameCount(this,40)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.name||'').length + '/40</div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
-          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><input class="form-control form-control-sm border-dark" value="' + itEsc(it.category || '') + '" oninput="window.itItem(' + i + ',\'category\',this.value)"></div>' +
+          '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><select class="form-select form-select-sm border-dark" onchange="window.itItemCate(' + i + ',this.value)">' + itCateOpts(it) + '</select>' + (it._origCode && it._origCode !== it.code ? '<div class="small text-warning-emphasis" style="font-size:.72rem">เลขเดิม ' + itEsc(it._origCode) + ' คืนระบบเมื่อกดบันทึก</div>' : '') + '</div>' +
         '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode</div><div class="mb-2">' + salePills + '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price</div>' + priceBlock +
@@ -574,6 +574,57 @@
         '<div class="p-2 rounded" style="background:#eef7f1;border:1px solid #bfe3cd">' + fml +
         '<button class="btn btn-sm btn-success fw-bold" onclick="window.itAddFml(' + i + ')"><i class="fas fa-plus me-1"></i>เพิ่มสูตรผง</button></div>' +
       '</div></div>';
+  }
+  /* ===== เปลี่ยนหมวดสินค้า (RD เลือกผิด) — Item Code = cateCode + running จึงต้องออกเลขใหม่ตามหมวดใหม่
+     เลขเดิมเก็บไว้ใน it._origCode แล้วคืนระบบตอนกดบันทึกสำเร็จเท่านั้น (ทิ้งข้อมูล = เลขเดิมยังเป็นของงานนี้) ===== */
+  function itCateList() {
+    var seen = {}, out = [];
+    var add = function (code, name) { code = String(code || '').trim(); name = String(name || '').trim(); if (!/^\d{3}$/.test(code) || seen[code]) return; seen[code] = 1; out.push({ code: code, name: name || code }); };
+    try { ((window.PC_API && PC_API.getMasterDataExtended && PC_API.getMasterDataExtended().items) || []).forEach(function (x) { add(x.cateCode || x.catCode, x.category); }); } catch (e) {}
+    (itNpdData || []).forEach(function (n) { add(n.cateCode, n.category); (n.items || []).forEach(function (x) { add(x.cateCode, x.category); }); });
+    [['101','Fries'],['104','Super Chicken Pop'],['108','Specialty Chicken'],['110','Small Bites'],['111','Seafood'],['115','SAUCE & TOPPING'],['201','Beverages']].forEach(function (c) { add(c[0], c[1]); });
+    return out.sort(function (a, b) { return a.code.localeCompare(b.code); });
+  }
+  function itCateOf(it) { var e = window._itEdit || {}; return String(it.cateCode || e.cateCode || (/^\d{6,}$/.test(String(it.code || '')) ? String(it.code).slice(0, 3) : '')).trim(); }
+  function itCateOpts(it) {
+    var cur = itCateOf(it), list = itCateList();
+    if (cur && !list.some(function (c) { return c.code === cur; })) list.unshift({ code: cur, name: it.category || cur });
+    return (cur ? '' : '<option value="">— เลือกหมวด —</option>') + list.map(function (c) { return '<option value="' + itEsc(c.code) + '"' + (c.code === cur ? ' selected' : '') + '>' + itEsc(c.code + ' · ' + c.name) + '</option>'; }).join('');
+  }
+  window.itItemCate = function (i, cc) {
+    var e = window._itEdit, it = e && e.items[i]; if (!it || !cc) return;
+    var from = itCateOf(it); if (cc === from) return;
+    var cat = itCateList().find(function (c) { return c.code === cc; }) || { code: cc, name: cc };
+    var code = String(it.code || '').trim();
+    if (!it._origCode && code) { it._origCode = code; it._origCate = from; }
+    if (code && code !== it._origCode) itReturnCode(code, 'item');   // เลขที่เพิ่งออกให้ในหน้านี้ (ยังไม่บันทึก) → คืนทันที
+    if (it._origCode && cc === it._origCate) { it.code = it._origCode; delete it._origCode; delete it._origCate; }
+    else {
+      var r = window.PC_COUNTER && PC_COUNTER.reserveCat ? PC_COUNTER.reserveCat(cc, { where: e.project || e.id || 'NPD', field: 'npd:' + e.id + ':item' + i }) : null;
+      if (!r) { Swal.fire('ออกเลขใหม่ไม่ได้', 'ระบบนับเลขยังไม่พร้อม กรุณารีเฟรชแล้วลองอีกครั้ง', 'error'); window.renderItEdit(); return; }
+      it.code = r.code;
+    }
+    it.category = cat.name; it.cateCode = cc;
+    var same = e.items.every(function (x) { return itCateOf(x) === cc; });
+    if (same) { e.category = cat.name; e.cateCode = cc; }
+    window.renderItEdit();
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', showConfirmButton: false, timer: 2600, title: 'เปลี่ยนหมวดเป็น ' + cc + ' · ' + cat.name,
+      text: it._origCode ? 'Item Code ใหม่ ' + it.code + ' · เลขเดิม ' + it._origCode + ' คืนระบบเมื่อกดบันทึก' : 'กลับมาใช้ Item Code เดิม ' + it.code });
+  };
+  /* หลังบันทึกสำเร็จ: ยืนยันเลขใหม่ + คืนเลขเดิมเข้าระบบ (งานที่ขึ้นปุ่มไปแล้ว เลขเดิมอยู่บน POS → ไม่แจกซ้ำ) */
+  function itSettleCateCodes(e, wasComplete) {
+    var back = [];
+    (e.items || []).forEach(function (it) {
+      if (!it._origCode) return;
+      try { if (window.PC_COUNTER) PC_COUNTER.confirm(it.code, 'item', { campaign: e.project || e.id }); } catch (x) {}
+      if (!wasComplete) { try { if (window.PC_COUNTER && PC_COUNTER.returnCode(it._origCode, 'item', 'IT NPD (เปลี่ยนหมวด — คืนเลขเดิม)', true)) back.push(it._origCode); } catch (x) {} }
+    });
+    return back;
+  }
+  function itCleanEdit(e) {
+    var c = JSON.parse(JSON.stringify(e));
+    (c.items || []).forEach(function (it) { delete it._origCode; delete it._origCate; });
+    return c;
   }
   window.itCopyCode = function (btn) {
     var inp = btn.parentElement.querySelector('input'); if (!inp) return;
@@ -628,11 +679,13 @@
     if (missSub) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก SS Code ให้ครบทุก Subset', 'warning'); return; }
     /* Backend จะล็อกเลขหลังเขียน Product Master และ Recipe RM สำเร็จเท่านั้น */
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    var wasComplete = ((itNpdData.find(function (x) { return x.id === id; }) || {}).itStatus || '') === 'COMPLETE';
     google.script.run.withSuccessHandler(function (res) {
       if (res && res.status && res.status !== 'success') { Swal.fire('บันทึกไม่สำเร็จ', res.message || 'ตรวจสอบข้อมูล Product Master และ Recipe RM', 'error'); return; }
+      var back = itSettleCateCodes(e, wasComplete);
       itClearDraft('npd', id);
-      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ', timer: 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
-    }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, e);
+      Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ' + (back.length ? ' · คืนเลขเดิม ' + back.join(', ') + ' เข้าระบบแล้ว' : ''), timer: back.length ? 2600 : 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
+    }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, itCleanEdit(e));
   };
 
   /* ===== IT opens a FLAVOR (add-powder) submission — fill CMPOS / SS Code — then COMPLETE ===== */
