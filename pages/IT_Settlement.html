@@ -498,15 +498,27 @@
   function itEditItem(it, i) {
     it.saleModes = it.saleModes || []; it.prices = it.prices || {}; it.formulas = it.formulas || [];
     var sm = it.saleModes;
-    var salePills = itChannels(sm).map(function (ch) {
+    /* ช่องทางขาย: แยกให้เห็นชัดว่าช่องไหน "ต้องทำ" (ขาย → IT ขึ้นปุ่ม + ราคา) กับ "ไม่ต้องทำ" (ไม่ขาย) · กดป้ายเพื่อสลับได้เหมือนเดิม */
+    var chPrice = function (ch) { var v = itIsTA(ch) ? it.priceTakeaway : ((it.prices[ch] != null && it.prices[ch] !== '') ? it.prices[ch] : it.priceDelivery); return (v === 0 || v) ? '฿' + itEsc(v) : 'ยังไม่มีราคา'; };
+    var chPill = function (ch) {
       var on = sm.indexOf(ch) !== -1, dlv = itIsDlv(ch);
-      return '<label class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 me-1 mb-1" style="cursor:pointer;border:1px solid ' + (on ? '#198754' : '#ccc') + ';background:' + (on ? '#e8f6ee' : '#fff') + ';font-size:.78rem"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="window.itSaleMode(' + i + ',\'' + ch + '\')">' + ch + (dlv ? ' <span class="text-muted">DLV</span>' : '') + '</label>';
-    }).join('');
+      return '<label class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded-2 me-1 mb-1" title="' + (on ? 'ขายช่องทางนี้ — IT ต้องขึ้นปุ่ม · กดเพื่อเอาออก' : 'ไม่ขายช่องทางนี้ — ไม่ต้องทำ · กดเพื่อเพิ่ม') + '" style="cursor:pointer;font-size:.8rem;' +
+        (on ? 'border:1.5px solid #198754;background:#e8f6ee;color:#0f5132;font-weight:700' : 'border:1px dashed #c4c8cc;background:#f6f7f8;color:#8a9097') + '">' +
+        '<input type="checkbox" class="d-none" ' + (on ? 'checked' : '') + ' onchange="window.itSaleMode(' + i + ',\'' + ch + '\')">' +
+        '<i class="fas ' + (on ? 'fa-circle-check text-success' : 'fa-circle-xmark') + '"></i>' +
+        (on ? itEsc(ch) : '<span style="text-decoration:line-through">' + itEsc(ch) + '</span>') + (dlv ? ' <span style="font-weight:400;opacity:.7">DLV</span>' : '') +
+        (on ? ' <span class="ms-1 px-1 rounded" style="background:#fff;border:1px solid #b7dcc5;font-weight:600' + (chPrice(ch) === 'ยังไม่มีราคา' ? ';color:#b02a37' : '') + '">' + chPrice(ch) + '</span>' : '') + '</label>';
+    };
+    var chOn = itChannels(sm).filter(function (ch) { return sm.indexOf(ch) !== -1; }), chOff = itChannels(sm).filter(function (ch) { return sm.indexOf(ch) === -1; });
+    var salePills =
+      '<div class="d-flex flex-wrap align-items-center mb-1"><span class="small fw-bold me-2" style="color:#0f5132;min-width:84px"><i class="fas fa-list-check me-1"></i>ต้องทำ (' + chOn.length + ')</span>' +
+        (chOn.length ? chOn.map(chPill).join('') : '<span class="small text-danger fw-bold">ยังไม่ได้เลือกช่องทางขาย — กดป้ายด้านล่างเพื่อเพิ่ม</span>') + '</div>' +
+      (chOff.length ? '<div class="d-flex flex-wrap align-items-center"><span class="small me-2 text-muted" style="min-width:84px"><i class="fas fa-ban me-1"></i>ไม่ต้องทำ</span>' + chOff.map(chPill).join('') + '</div>' : '');
     var rec = (it.recipes || []).map(function (r, ri) {
       r.channels = r.channels || [];
       var chCell = sm.length ? sm.map(function (ch) {
         var on = r.channels.indexOf(ch) !== -1;
-        return '<label class="badge me-1 mb-1" style="cursor:pointer;font-weight:500;background:' + (on ? '#0d6efd' : '#e9ecef') + ';color:' + (on ? '#fff' : '#666') + '"><input type="checkbox" class="d-none" ' + (on ? 'checked' : '') + ' onchange="window.itRecCh(' + i + ',' + ri + ',\'' + ch + '\')">' + ch + '</label>';
+        return '<label class="badge me-1 mb-1" title="' + (on ? 'ใช้ RM นี้ในช่องทางนี้' : 'ไม่ใช้ในช่องทางนี้') + '" style="cursor:pointer;font-weight:500;background:' + (on ? '#0d6efd' : '#f1f3f5') + ';color:' + (on ? '#fff' : '#8a9097') + (on ? '' : ';text-decoration:line-through') + '"><input type="checkbox" class="d-none" ' + (on ? 'checked' : '') + ' onchange="window.itRecCh(' + i + ',' + ri + ',\'' + ch + '\')">' + (on ? '✓ ' : '') + ch + '</label>';
       }).join('') : '<span class="text-muted small">— ติ๊ก Sale Mode —</span>';
       return '<tr><td class="text-center">' + (ri + 1) + '</td>' +
         '<td><div class="input-group input-group-sm" style="width:118px;flex-wrap:nowrap"><input class="form-control form-control-sm border-secondary mono" value="' + itEsc(r.code || '') + '" oninput="window.itRec(' + i + ',' + ri + ',\'code\',this.value)"><button class="btn btn-outline-info px-1" type="button" title="คัดลอกรหัสสินค้า" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></td>' +
@@ -518,12 +530,12 @@
     }).join('');
     // price block
     var priceInputs = '';
-    if (sm.some(itIsTA)) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Take Away</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceTakeaway || '') + '" oninput="window.itItem(' + i + ',\'priceTakeaway\',this.value)"></div></div>';
+    if (sm.some(itIsTA)) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Take Away</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceTakeaway || '') + '" oninput="window.itItem(' + i + ',\'priceTakeaway\',this.value)" onchange="window.renderItEdit()"></div></div>';
     var dlvCh = sm.filter(itIsDlv);
-    if (dlvCh.length) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Delivery</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceDelivery || '') + '" oninput="window.itItem(' + i + ',\'priceDelivery\',this.value)"></div></div>';
+    if (dlvCh.length) priceInputs += '<div style="min-width:170px"><label class="small fw-bold">Selling Price (฿) Delivery</label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-dark text-center fw-bold" value="' + itEsc(it.priceDelivery || '') + '" oninput="window.itItem(' + i + ',\'priceDelivery\',this.value)" onchange="window.renderItEdit()"></div></div>';
     var splitInputs = dlvCh.map(function (ch) {
       var val = (it.prices[ch] != null && it.prices[ch] !== '') ? it.prices[ch] : '';
-      return '<div style="min-width:118px"><label class="small fw-bold">' + ch + ' <span class="text-muted">DLV</span></label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-secondary text-center" placeholder="' + itEsc(it.priceDelivery || '') + '" value="' + itEsc(val) + '" oninput="window.itPrice(' + i + ',\'' + ch + '\',this.value)"></div></div>';
+      return '<div style="min-width:118px"><label class="small fw-bold">' + ch + ' <span class="text-muted">DLV</span></label><div class="input-group input-group-sm"><span class="input-group-text">฿</span><input type="number" class="form-control border-secondary text-center" placeholder="' + itEsc(it.priceDelivery || '') + '" value="' + itEsc(val) + '" oninput="window.itPrice(' + i + ',\'' + ch + '\',this.value)" onchange="window.renderItEdit()"></div></div>';
     }).join('');
     var priceBlock = sm.length ? ('<div class="d-flex flex-wrap gap-3 mb-1">' + priceInputs + '</div>' + (dlvCh.length ? '<div class="p-2 rounded mb-2" style="background:#f4f6f9;border:1px dashed #c2c8ce"><div class="small fw-bold mb-1"><i class="fas fa-truck me-1"></i>ราคาแยกราย Delivery (ไม่ใส่ = ใช้ราคา Delivery ด้านบน)</div><div class="d-flex flex-wrap gap-2">' + splitInputs + '</div></div>' : '')) : '<div class="text-muted small mb-2">— ติ๊ก Sale Mode ก่อน —</div>';
     // formulas
@@ -566,7 +578,7 @@
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Item Name (TH) <span class="text-muted" style="font-size:.66rem">ปุ่ม POS ≤20</span><button class="btn btn-link btn-sm p-0 ms-1 align-baseline" type="button" title="คัดลอก Item Name (TH)" onclick="window.itCopyField(this)"><i class="fas fa-copy"></i></button></label><input class="form-control form-control-sm border-dark" maxlength="20" value="' + itEsc(it.th || '') + '" oninput="window.itItem(' + i + ',\'th\',this.value);window.itNameCount(this,20)"><div class="char-count text-end text-muted" style="font-size:.72rem">' + (it.th||'').length + '/20</div></div>' +
           '<div class="col-md-3"><label class="small fw-bold text-uppercase">Category</label><select class="form-select form-select-sm border-dark" onchange="window.itItemCate(' + i + ',this.value)">' + itCateOpts(it) + '</select>' + (it._origCode && it._origCode !== it.code ? '<div class="small text-warning-emphasis" style="font-size:.72rem">เลขเดิม ' + itEsc(it._origCode) + ' คืนระบบเมื่อกดบันทึก</div>' : '') + '</div>' +
         '</div>' +
-        '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode</div><div class="mb-2">' + salePills + '</div>' +
+        '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-truck me-1 text-warning"></i>Sale Mode — ช่องทางขาย <span class="text-muted fw-normal text-none" style="text-transform:none">· กดป้ายเพื่อเพิ่ม/เอาออก</span></div><div class="mb-2">' + salePills + '</div>' +
         '<div class="fw-bold small text-uppercase mb-1"><i class="fas fa-tag me-1 text-success"></i>Selling Price</div>' + priceBlock +
         '<div class="fw-bold small text-uppercase mt-1 mb-1"><i class="fas fa-list-ol me-1 text-success"></i>Raw Material — ผูกกับช่องทางขาย</div>' +
         '<table class="table table-sm border mb-1" style="font-size:.8rem"><thead class="table-light"><tr><th class="text-center" style="width:36px">No</th><th>Item Code</th><th>Description</th><th class="text-center">Qty</th><th class="text-center">Unit</th><th>ช่องทาง</th><th style="width:30px"></th></tr></thead><tbody>' + rec + '</tbody></table>' +
