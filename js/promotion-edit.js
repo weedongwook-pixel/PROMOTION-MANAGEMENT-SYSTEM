@@ -13,8 +13,8 @@
     if(opening)return;opening=true;const gen=window.__pageGen||0;
     try{
       if(!window.PC_CLOUD||!PC_CLOUD.loadCampaignEdit)throw Error('ระบบแก้ไขยังโหลดไม่ครบ กรุณารีเฟรช');
-      const actor=String(localStorage.getItem('pc_userName')||'').trim();
-      const context=await PC_CLOUD.loadCampaignEdit(campaign,month,actor);
+      const actor=String(localStorage.getItem('pc_userName')||'').trim(),role=String(localStorage.getItem('pc_role')||'').trim();
+      const context=await PC_CLOUD.loadCampaignEdit(campaign,month,actor,role);
       if((window.__pageGen||0)!==gen)return;
       active=context;localStorage.setItem('pc_createpromo_sub',context.form.form);
       window.loadPage('CreatePromotion',document.getElementById('nav-CreatePromotion'));
@@ -167,7 +167,7 @@
     document.getElementById('promotionEditReasonPanel')?.remove();
     const banner=document.createElement('div');banner.id='promotionEditBanner';banner.className='alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2';banner.setAttribute('role','status');
     const message=document.createElement('div');message.textContent='กำลังแก้ไขรายการเดิม: '+context.campaign+' — คงผู้ส่งเดิม · เปลี่ยนเป็น Item Coupon จะใช้รหัส IC · บันทึกแทนงานเดิมบน Cloud';
-    const policy=M().policy(context.original,context.actor,context.month);
+    const policy=M().policy(context.original,context.actor,context.month,{role:context.role});
     if(policy.requiresReason){
       const reasonBox=document.createElement('div');reasonBox.id='promotionEditReasonPanel';reasonBox.className='w-100 text-start my-3';
       const label=document.createElement('label');label.htmlFor='promotionEditReason';label.className='form-label fw-bold';label.textContent='เหตุผลและรายละเอียดที่แก้ไข';
@@ -240,7 +240,7 @@
     M().applyRevision(active.original,form,{...active,editId:'validation-only',validateOnly:true});return form;
   }
   async function save(){
-    if(active&&!active.saving&&M().policy(active.original,active.actor,active.month).requiresReason){
+    if(active&&!active.saving&&M().policy(active.original,active.actor,active.month,{role:active.role}).requiresReason){
       const reason=document.getElementById('promotionEditReason');
       if(reason&&!reason.value.trim()){
         reason.classList.add('is-invalid');reason.setAttribute('aria-invalid','true');reason.setAttribute('aria-describedby','promotionEditReasonError promotionEditReasonHelp');
@@ -252,7 +252,7 @@
       if(/เหตุผล/.test(e.message||'')){const reason=document.getElementById('promotionEditReason');if(reason){reason.scrollIntoView({block:'center'});reason.focus({preventScroll:true});}}
       return;
     }
-    const ask=await Swal.fire({title:'ยืนยันบันทึกการแก้ไขรายการนี้?',text:M().policy(active.original,active.actor,active.month).requiresReason?'บันทึกแล้วจะส่งกลับให้ IT ดำเนินการแก้ไข และให้ OP ตรวจซ้ำ โดยคงรหัสเดิม':'ข้อมูลจะอัปเดตในรายการเดิม ไม่สร้างงานใหม่',icon:'question',showCancelButton:true,confirmButtonText:'บันทึกการแก้ไข',cancelButtonText:'แก้ไขต่อ'});if(!ask.isConfirmed||!active)return;
+    const ask=await Swal.fire({title:'ยืนยันบันทึกการแก้ไขรายการนี้?',text:M().policy(active.original,active.actor,active.month,{role:active.role}).requiresReason?'บันทึกแล้วจะส่งกลับให้ IT ดำเนินการแก้ไข และให้ OP ตรวจซ้ำ โดยคงรหัสเดิม':'ข้อมูลจะอัปเดตในรายการเดิม ไม่สร้างงานใหม่',icon:'question',showCancelButton:true,confirmButtonText:'บันทึกการแก้ไข',cancelButtonText:'แก้ไขต่อ'});if(!ask.isConfirmed||!active)return;
     const context=active;context.saving=true;const button=document.getElementById('mainSubmitBtn');if(button)button.disabled=true;
     try{
       for(const [i,block] of all(context.mounted,'.pos-button-block').entries()){

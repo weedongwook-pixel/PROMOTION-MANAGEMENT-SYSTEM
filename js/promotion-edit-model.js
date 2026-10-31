@@ -6,12 +6,15 @@
   // Existing login identifies editors by display name. This is the built-in
   // username `mkt`, not a role-wide MKT exception. Keep IT locks above it.
   const isTestEditor=actor=>text(actor)==='MKT Team';
-  function policy(block,actor,month){
+  // IT and Admin edit any campaign through the same form as its submitter.
+  // Cancelled work stays locked for them too.
+  const isPrivilegedRole=role=>/^(IT|Admin)$/.test(text(role));
+  function policy(block,actor,month,options){
     const rows=block&&block.m&&block.m[month]||[];
     if(!rows.length)return {allowed:false,reason:'ไม่พบรายการเดือนที่เลือก'};
     if(rows.some(r=>/CANCELLED/i.test(String(r.changeStatus||'')+' '+String(r.itStatus||'')+' '+String(r.opStatus||''))))return {allowed:false,reason:'งานนี้ยกเลิกแล้ว ไม่สามารถแก้ไขผ่านฟอร์มนี้ได้'};
     const owners=new Set(rows.map(r=>text(r.submittedBy||r.reporter)));
-    if(!isTestEditor(actor)&&(!text(actor)||owners.size!==1||!owners.has(text(actor))))return {allowed:false,reason:'แก้ไขได้เฉพาะรายการที่คุณเป็นผู้ส่งงาน กรุณาติดต่อ IT หากไม่พบผู้ส่งเดิม'};
+    if(!isTestEditor(actor)&&!(isPrivilegedRole(options&&options.role)&&text(actor))&&(!text(actor)||owners.size!==1||!owners.has(text(actor))))return {allowed:false,reason:'แก้ไขได้เฉพาะรายการที่คุณเป็นผู้ส่งงาน กรุณาติดต่อ IT หากไม่พบผู้ส่งเดิม'};
     const requiresReason=rows.some(r=>r.revisionId||r.itSettlementSavedAt||r.itDoneDate||r.wentLive||r.codeBurned||r.rejectCount||r.opDoneDate||/^(COMPLETE|DONE)$/i.test(r.itStatus||'')||/^(CONFIRMED|REJECTED|APPROVED|COMPLETE)$/i.test(r.opStatus||''));
     return {allowed:true,reason:'',requiresReason};
   }
@@ -135,5 +138,5 @@
     });
     next._ts=Date.now();return next;
   }
-  return {policy,toForm,applyRevision,LOCK_MESSAGE,isTestEditor};
+  return {policy,toForm,applyRevision,LOCK_MESSAGE,isTestEditor,isPrivilegedRole};
 });

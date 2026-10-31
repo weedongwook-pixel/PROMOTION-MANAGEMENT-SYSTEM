@@ -502,24 +502,24 @@
     return check;
   }
 
-  async function loadCampaignEdit(campaign, month, actor) {
+  async function loadCampaignEdit(campaign, month, actor, role) {
     var model=window.PC_PromotionEditModel;
     if(!model)throw new Error('ระบบแก้ไขยังไม่พร้อม กรุณารีเฟรช');
     var record=await readCloudKey(campCloudKey(campaign));
     if(!record)throw new Error('ไม่พบแคมเปญบน Cloud');
     var block=JSON.parse(record.value), deleted=await readCloudKey(DEL_CLOUDKEY);
     if(deleted && Number(JSON.parse(deleted.value)[campaign]) >= (Number(block._ts)||0) && Number(JSON.parse(deleted.value)[campaign]))throw new Error('แคมเปญนี้ถูกลบแล้ว');
-    var policy=model.policy(block,actor,month);if(!policy.allowed)throw new Error(policy.reason);
+    var policy=model.policy(block,actor,month,{role:role});if(!policy.allowed)throw new Error(policy.reason);
     var structuralEdits=false;
     try{var caps=await api('/promo/edit-capabilities',{cache:'no-store'});if(caps.ok)structuralEdits=(await caps.json()).structuralEdits===true;}catch(e){}
-    return {campaign:campaign,month:month,actor:actor,structuralEdits:structuralEdits,expectedUpdatedAt:Number(record.updatedAt),original:block,form:model.toForm(block,month)};
+    return {campaign:campaign,month:month,actor:actor,role:String(role||''),structuralEdits:structuralEdits,expectedUpdatedAt:Number(record.updatedAt),original:block,form:model.toForm(block,month)};
   }
   async function saveCampaignEdit(context, form) {
     if(!context || !context.original)throw new Error('ไม่พบข้อมูลอ้างอิงงานเดิม กรุณาเปิดแก้ไขใหม่');
     var serialized=JSON.stringify(form);
     if(context._editPayload!==serialized){context._editPayload=serialized;context._editId='edit-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);}
     var id=context._editId;
-    var body={editId:id,actor:context.actor,campaign:context.campaign,month:context.month,expectedUpdatedAt:context.expectedUpdatedAt,form:form};
+    var body={editId:id,actor:context.actor,actorRole:context.role||'',campaign:context.campaign,month:context.month,expectedUpdatedAt:context.expectedUpdatedAt,form:form};
     var response,ack;
     try { response=await api('/promo/campaign-edits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
     catch(e){var recovered=await submissionReceipt(id).catch(function(){return null;});if(recovered && recovered.kind==='CAMPAIGN_EDIT')return recovered;throw new Error('ยังยืนยันการแก้ไขไม่ได้ ข้อมูลยังอยู่ในฟอร์ม กรุณาลองบันทึกอีกครั้ง');}

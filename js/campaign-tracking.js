@@ -12,8 +12,11 @@
   let currentStoreCache = {}; 
   function ctProposalEditAction(camp) {
     const actor = String(localStorage.getItem('pc_userName') || '').trim();
-    const testEditor = window.PC_PromotionEditModel && PC_PromotionEditModel.isTestEditor(actor);
-    if (!actor || (!testEditor && String(camp.submittedBy || camp.reporter || '').trim() !== actor)) return '';
+    const model = window.PC_PromotionEditModel;
+    // IT / Admin open the same proposal edit form as the submitter (no separate admin editor).
+    const privileged = model && model.isPrivilegedRole && model.isPrivilegedRole(localStorage.getItem('pc_role'));
+    const testEditor = model && model.isTestEditor(actor);
+    if (!actor || (!testEditor && !privileged && String(camp.submittedBy || camp.reporter || '').trim() !== actor)) return '';
     if (camp.promotionEditPolicy && camp.promotionEditPolicy.allowed && !/CANCELLED/i.test(String(camp.changeStatus)+' '+String(camp.opStatus))) {
       return `<button type="button" class="btn btn-sm btn-outline-success text-nowrap" onclick="window.ctEditProposal(${Number(camp.rowIdx)})"><i class="fas fa-pen me-1" aria-hidden="true"></i>แก้ไข</button>`;
     }
@@ -490,7 +493,6 @@ window.openFile = function(url, name) {
             <div class="d-flex flex-wrap justify-content-center gap-1" style="min-width:200px">
               <button type="button" class="btn btn-sm btn-outline-dark text-nowrap" title="เปิดหน้ารายละเอียด" onclick="window.ctOpenDetail(${camp.rowIdx})"><i class="fas fa-eye me-1" aria-hidden="true"></i>ดูรายละเอียด</button>
               ${ctProposalEditAction(camp)}
-              <button class="btn-circle btn-light border shadow-sm text-dark mkt-admin-only" title="แก้ไขทุกช่องในแถวนี้ (แอดมิน)" aria-label="แก้ไขแถว (แอดมิน)" onclick="window.ctEditRow(${camp.rowIdx})" ${isCancelled ? 'disabled' : ''}><i class="fas fa-pen"></i></button>
               <button class="btn-circle btn-light border shadow-sm text-primary" onclick="window.extendCampaignPopup('${camp.campaign}', '${camp.endDate}', '${camp.startDate}', '${String(camp.promoType||'').replace(/'/g,"\\'")}', '${String(camp.itemPromoCode||'').replace(/'/g,"\\'")}')" ${isCancelled ? 'disabled' : ''}><i class="fas fa-calendar-plus"></i></button>
               <button class="btn-circle btn-light border shadow-sm text-danger" onclick="window.cancelCampaignPopup('${String(camp.campaign||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" ${isCancelled ? 'disabled' : ''}><i class="fas fa-trash"></i></button>
             </div>
@@ -514,53 +516,6 @@ window.openFile = function(url, name) {
     });
     window.updatePaginationControls(filteredData.length, Math.ceil(filteredData.length / rowsPerPage));
     if (expandedRowIdx !== null) window.fetchItemsToRow(expandedRowIdx);
-  };
-
-  /* ===== แก้ไขทุกช่องระดับแคมเปญในตาราง MKT (แอดมิน) — inline row edit → updateCampaignMeta ===== */
-  function ctToISO(s){ var m=String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/); if(m) return m[3]+'-'+m[2]+'-'+m[1]; var t=Date.parse(s); if(!isNaN(t)){ var d=new Date(t); var mo=('0'+(d.getMonth()+1)).slice(-2), da=('0'+d.getDate()).slice(-2); return d.getFullYear()+'-'+mo+'-'+da; } return ''; }
-  function ctOpts(list, cur){ return list.map(function(v){ return '<option value="'+v+'"'+(String(cur||'').toUpperCase()===v?' selected':'')+'>'+v+'</option>'; }).join(''); }
-  window.ctEditRow = function(rowIdx){
-    if(!IS_ADMIN){ return; }
-    var table=document.getElementById('mainTrackingTable');if(table)table.classList.add('ct-table-expanded');
-    var tbody = document.getElementById('trackingTableBody'); if(!tbody) return;
-    var tr = tbody.querySelector('tr[data-rowidx="'+rowIdx+'"]'); if(!tr) return;
-    var camp = allCampaigns.find(function(x){ return String(x.rowIdx)===String(rowIdx); }); if(!camp) return;
-    // ตัวเลือก promoType จากค่าที่มีในระบบ + ค่ามาตรฐาน
-    var types = [].concat(['Price Promotion','Item Set','Item Coupon','Bill Discount','Voucher','E-Voucher','Item coupon Online','Bill discount Online','Voucher Online'],
-      allCampaigns.map(function(c){ return c.promoType; })).filter(Boolean);
-    types = Array.from(new Set(types));
-    var dlId = 'ctmType-'+rowIdx;
-    var dl = '<datalist id="'+dlId+'">'+types.map(function(t){ return '<option value="'+ctEsc(t)+'">'; }).join('')+'</datalist>';
-    var inSt = 'form-control form-control-sm ctm-f';
-    tr.classList.add('ctm-editing');
-    tr.innerHTML =
-      '<td class="text-center"><i class="fas fa-pen text-warning" title="กำลังแก้ไข"></i></td>'+
-      '<td class="ps-2"><input class="'+inSt+'" data-f="campaign" value="'+ctEsc(camp.campaign||'')+'">'+dl+'</td>'+
-      '<td class="ps-2"><input class="'+inSt+'" data-f="promoType" list="'+dlId+'" value="'+ctEsc(camp.promoType||'')+'"></td>'+
-      '<td><input type="date" class="'+inSt+'" data-f="start" value="'+ctToISO(camp.startDate)+'"></td>'+
-      '<td><input type="date" class="'+inSt+'" data-f="end" value="'+ctToISO(camp.endDate)+'"></td>'+
-      '<td><input class="'+inSt+'" data-f="saleMode" style="text-align:left" value="'+ctEsc(camp.channel||'')+'"></td>'+
-      '<td><select class="form-select form-select-sm ctm-f" data-f="itStatus">'+ctOpts(['PENDING','COMPLETE','CANCELLED'], camp.itStatus)+'</select></td>'+
-      '<td><select class="form-select form-select-sm ctm-f" data-f="opStatus">'+ctOpts(['WAITING','CONFIRMED','REJECTED','CANCELLED'], camp.opStatus)+'</select></td>'+
-      '<td class="small text-muted text-center">'+(camp.txnDate?ctEsc(new Date(camp.txnDate).toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric'})):'—')+'</td>'+
-      '<td class="small text-muted text-center">'+ctEsc(camp.reporter||camp.submittedBy||'—')+'</td>'+
-      '<td><div class="d-flex justify-content-center gap-1">'+
-        '<button class="btn-circle btn-success shadow-sm" title="บันทึก" onclick="window.ctSaveRow('+rowIdx+',\''+String(camp.campaign||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')"><i class="fas fa-check"></i></button>'+
-        '<button class="btn-circle btn-light border shadow-sm text-danger" title="ยกเลิก" onclick="window.renderTracking()"><i class="fas fa-times"></i></button>'+
-      '</div></td>';
-    var f = tr.querySelector('input[data-f="campaign"]'); if(f) f.focus();
-  };
-  window.ctSaveRow = function(rowIdx, oldName){
-    var tbody = document.getElementById('trackingTableBody'); if(!tbody) return;
-    var tr = tbody.querySelector('tr[data-rowidx="'+rowIdx+'"]'); if(!tr) return;
-    var patch = {};
-    tr.querySelectorAll('.ctm-f').forEach(function(el){ patch[el.getAttribute('data-f')] = el.value; });
-    if(!String(patch.campaign||'').trim()){ Swal.fire('','ชื่อแคมเปญห้ามว่าง','warning'); return; }
-    Swal.fire({ title:'กำลังบันทึก...', allowOutsideClick:false, didOpen:function(){ Swal.showLoading(); } });
-    google.script.run.withSuccessHandler(function(r){
-      if(r&&r.status==='success'){ Swal.fire({icon:'success',title:'บันทึกแล้ว',text:r.message,timer:1600,showConfirmButton:false}); window.loadTrackingData(); }
-      else Swal.fire('ผิดพลาด',(r&&r.message)||'ไม่สำเร็จ','error');
-    }).withFailureHandler(function(e){ Swal.fire('Error', String(e), 'error'); }).updateCampaignMeta(oldName, patch);
   };
 
   window.handleFileChange = function(rowIdx, hasExistingFile) {

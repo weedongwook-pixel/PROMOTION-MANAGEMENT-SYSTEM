@@ -4193,6 +4193,7 @@
       (block.m[month] || (block.m[month] = [])).push(r);
     }));
     const actor = localStorage.getItem('pc_userName') || '';
+    const actorRole = localStorage.getItem('pc_role') || '';
     return store.working.map((r, index) => ({
       rowIdx: index + 2, timestamp: fmtDate(r.timestamp), month: String(r.month || ""),
       campaign: String(r.campaign || "No Name"), promoType: String(r.promoType || ""),
@@ -4218,7 +4219,7 @@
       promotionEditPolicy: (() => {
         const key = JSON.stringify([r.campaign,r.month]);
         return editPolicies[key] || (editPolicies[key] = window.PC_PromotionEditModel
-          ? window.PC_PromotionEditModel.policy(editBlocks[String(r.campaign || '')],actor,String(r.month || ''))
+          ? window.PC_PromotionEditModel.policy(editBlocks[String(r.campaign || '')],actor,String(r.month || ''),{role:actorRole})
           : {allowed:false});
       })(),
       totalPrice: campGrossTotal(r.campaign, r.shortName),
@@ -4580,37 +4581,6 @@
     if (!count) return { status: "error", message: "ไม่พบแคมเปญ: " + oldName };
     persist();
     return { status: "success", message: `เปลี่ยนชื่อเป็น “${newName}” แล้ว (${count} รายการ)` };
-  };
-
-  /* ---- แก้ไขทุกช่องระดับแคมเปญในตาราง MKT (แอดมิน) — เขียนจริงลงทุก month row + working ----
-     patch อาจมี: campaign(เปลี่ยนชื่อ) · promoType · start · end · saleMode · itStatus · opStatus
-     อัปเดตทั้ง months และ working (บาง seed อยู่ working เท่านั้น) → persist → cloud sync ตาม workflow เดิม */
-  API.updateCampaignMeta = (oldName, patch) => {
-    oldName = String(oldName || "").trim();
-    patch = patch || {};
-    if (!oldName) return { status: "error", message: "ไม่พบแคมเปญ" };
-    const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
-    const newName = has("campaign") ? String(patch.campaign || "").trim() : oldName;
-    if (has("campaign") && !newName) return { status: "error", message: "ชื่อแคมเปญห้ามว่าง" };
-    const applyRow = (r) => {
-      if (String(r.campaign || "").trim() !== oldName) return false;
-      if (has("promoType")) { r.promoType = String(patch.promoType || ""); r.typePromotion = String(patch.promoType || ""); }
-      if (has("start")) r.start = String(patch.start || "");
-      if (has("end")) r.end = String(patch.end || "");
-      if (has("saleMode")) r.saleMode = String(patch.saleMode || "");
-      if (has("itStatus")) r.itStatus = String(patch.itStatus || "").toUpperCase();
-      if (has("opStatus")) r.opStatus = String(patch.opStatus || "").toUpperCase();
-      if (newName !== oldName) r.campaign = newName;
-      r.updatedDate = NOW();
-      return true;
-    };
-    let count = 0;
-    Object.keys(store.months).forEach(m => (store.months[m] || []).forEach(r => { if (applyRow(r)) count++; }));
-    (store.working || []).forEach(r => { if (applyRow(r)) count++; });
-    if (!count) return { status: "error", message: "ไม่พบแคมเปญ: " + oldName };
-    persist();
-    try { if (has("start") || has("end")) syncCoPromoDates(newName, { end: has("end") ? patch.end : undefined }); } catch (e) {}
-    return { status: "success", message: `บันทึกการแก้ไขแคมเปญแล้ว (${count} รายการ)` };
   };
 
   /* ---- group/merge campaigns (จัดกลุ่ม: ย้ายทุกปุ่มของแคมเปญที่เลือกไปรวมใต้ชื่อเดียว) ---- */
