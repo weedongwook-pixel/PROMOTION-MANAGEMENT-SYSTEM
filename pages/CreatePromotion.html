@@ -25,7 +25,7 @@
   #cp2-page .cp2-steps li::before{ content:counter(cp2); position:absolute; left:10px; top:8px; width:20px; height:20px; border-radius:50%; background:#2e934a; color:#fff; font-weight:800; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
   #cp2-page .cp2-steps li b{ display:block; color:#1a1d20; font-size:.84rem; }
   #cp2-page .pm-rail-item .sub{ display:block; font-size:.7rem; font-weight:500; color:#8a929c; line-height:1.3; margin-top:2px; }
-  #cp2-page .pm-rail-item.on .sub{ color:rgba(255,255,255,.8); }
+  #cp2-page .pm-rail-item.on .sub{ color:inherit; opacity:.8; }
   @media (max-width: 760px){ #cp2-page .pm-layout{ flex-direction:column; margin:12px; } #cp2-page .pm-rail{ width:100%; position:static; } #cp2-page .cp2-steps{ margin:12px 12px 0; } }
 </style>
 
@@ -34,13 +34,13 @@
     <div class="ic"><i class="fas fa-bullhorn"></i></div>
     <div>
       <h2 data-en="CREATE PROMOTION" data-th="แจ้งโปรโมชั่น">แจ้งโปรโมชั่น</h2>
-      <div class="cp2-crumb" id="cp2Crumb">เลือกประเภทโปรโมชั่นจากเมนูด้านซ้าย</div>
+      <div class="cp2-crumb" id="cp2Crumb">เลือกประเภทโปรโมชั่นจากเมนูประเภท</div>
     </div>
   </div>
   <details class="cp2-steps" id="cp2Steps">
     <summary><i class="fas fa-route"></i> ลำดับการแจ้งโปรโมชั่น <span class="hint">กดเพื่อย่อ/ขยาย</span></summary>
     <ol>
-      <li><b>เลือกประเภทโปรฯ</b>จากเมนูด้านซ้าย (ดูคำอธิบายใต้ชื่อแต่ละประเภท)</li>
+      <li><b>เลือกประเภทโปรฯ</b>จากเมนูประเภท (ดูคำอธิบายใต้ชื่อแต่ละประเภท)</li>
       <li><b>กรอกฟอร์ม</b>ติ๊ก <b style="display:inline">Co-Promotion</b> ใต้ชื่อแคมเปญ ถ้าเป็นโปรร่วมกับพาร์ทเนอร์ (ข้อมูลเข้าหน้า Co-Promotion)</li>
       <li><b>กดบันทึก</b>ระบบตรวจข้อมูลและจองโค้ดให้</li>
       <li><b>เลือกส่งเมล</b>ตอบกลับลูปเดิม / ส่งเมลใหม่ / ไม่ส่ง · ส่งจาก it@rocks-foods.com · ลูปเดิมต้องมี it@rocks-foods.com ใน To หรือ CC</li>
@@ -87,7 +87,7 @@
     var cur = ITEMS.find(function (x) { return x.pg === curSub; });
     var cr = document.getElementById('cp2Crumb');
     if (cr && cur) cr.innerHTML = 'แจ้งโปรโมชั่น » <b>' + (lang() === 'en' ? cur.en : cur.th) + '</b>';
-    else if (cr) cr.textContent = 'เลือกประเภทโปรโมชั่นจากเมนูด้านซ้าย';
+    else if (cr) cr.textContent = 'เลือกประเภทโปรโมชั่นจากเมนูประเภท';
   }
 
   window.cp2Go = function (pg) {
