@@ -56,10 +56,10 @@
       added.push('Truffle 2');
     }
     if (!s.powders.some(function (p) { return isNoFlavor(p.eng); })) {
-      s.powders.push({ seq: 99, cmpos: '', eng: 'No flavor', th: 'No flavor', code: '', desc: '', qty: '', unit: '', spoon: '', addon: '', noFlavor: true });
+      s.powders.push({ seq: 99999, cmpos: '', eng: 'No flavor', th: 'No flavor', code: '', desc: '', qty: '', unit: '', spoon: '', addon: '', noFlavor: true });
       added.push('No flavor');
     }
-    s.powders.forEach(function (p) { if (isNoFlavor(p.eng)) { p.noFlavor = true; p.seq = 99; } });
+    s.powders.forEach(function (p) { if (isNoFlavor(p.eng)) { p.noFlavor = true; p.seq = 99999; } });
     // Keep source order; the no-powder choice always appears last.
     s.powders = s.powders.filter(function (p) { return !p.noFlavor; }).concat(s.powders.filter(function (p) { return p.noFlavor; }));
     if (plan && added.length) issue(plan, 'warnings', 'STANDARD_FLAVORS', s.name + ': เติม ' + added.join(' และ ') + ' อัตโนมัติ — กรอกตัวย่อและตรวจปริมาณ / ขนาดช้อนก่อนส่ง');
@@ -85,7 +85,7 @@
         // The file has no Thai column; the POS button name follows the English flavor name,
         // as for standard flavors and powders added in the form.
         var powder = { seq: Number(r[2]), cmpos: text(r[3]), eng: text(r[4]), th: text(r[4]), code: text(r[5]), desc: text(r[6]), qty: text(r[7]), unit: unit(r[8]), spoon: text(r[9]), addon: '' };
-        if (isNoFlavor(powder.eng)) { powder.noFlavor = true; powder.seq = 99; }
+        if (isNoFlavor(powder.eng)) { powder.noFlavor = true; powder.seq = 99999; }
         var surcharge = powder.eng.match(/\+\s*(?:THB|฿)\s*(\d+(?:\.\d+)?)/i);
         if (surcharge) powder.addon = Number(surcharge[1]);
         var previous = group.powders.find(function (p) { return key(p.eng) === key(powder.eng); });

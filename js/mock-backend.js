@@ -5108,6 +5108,7 @@
     let submittedPayload;
     try { submittedPayload = JSON.parse(JSON.stringify(payload || {})); }
     catch (e) { return { status: "error", message: "ข้อมูล NPD ไม่อยู่ในรูปแบบที่บันทึกได้" }; }
+    npdNoFlavorSeq(submittedPayload);
     const dupIn = dupSubsetName(submittedPayload);
     if (dupIn) return dupError("ชื่อ Subset ซ้ำในฟอร์ม: \"" + dupIn + "\"");
     const _long = nameTooLong(submittedPayload);   /* FX-P87 */
@@ -5338,6 +5339,13 @@
 
   /* FX-P80 — ผงใน Subset ที่ RD กรอกมากับงาน NPD → สร้างเป็นสินค้าหมวด Flavors ผูก ssCode
      เดิมเก็บไว้ในใบงานเท่านั้น → หน้า Subset Manager ขึ้น "ยังไม่มีผงในชุดนี้" และ POS ไม่มีปุ่มผง */
+  /* No flavor = ปุ่มไม่เอาผง → ลำดับบน POS 99999 เสมอ (อยู่ท้ายสุดทุก SUBSET) */
+  var NPD_NO_FLAVOR_SEQ = 99999;
+  function npdIsNoFlavor(p) { return !!(p && (p.noFlavor || /^no\s*flavou?r(\s|$)/i.test(String(p.eng || "").trim()))); }
+  function npdNoFlavorSeq(n) {
+    (n && n.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { if (npdIsNoFlavor(p)) { p.noFlavor = true; p.seq = NPD_NO_FLAVOR_SEQ; } }); });
+    return n;
+  }
   function npdSubsetToProducts(n) {
     if (!n || !Array.isArray(n.subsets)) return 0;
     store.npdProducts = store.npdProducts || [];
@@ -5355,7 +5363,7 @@
           itemType: "Single Item", priceTA: price, priceDLV: price,
           status: "Active", core: (n.saleType === "seasonal") ? "ขายชั่วคราว" : "สินค้าหลักขายตลอด",
           showInForm: "Hide", sellStores: n.store || "ALL",
-          ssCode: ss, posSeq: Number(p.seq) || (pi + 1),
+          ssCode: ss, posSeq: npdIsNoFlavor(p) ? NPD_NO_FLAVOR_SEQ : (Number(p.seq) || (pi + 1)),
           fromDate: TODAY(), toDate: MASTER_NO_END, _fromNpd: n.id, updatedAt: NOW()
         };
         var i = store.npdProducts.findIndex(function (x) { return String(x.itemCode) === code; });
@@ -5498,8 +5506,11 @@
       const inputErrors = npdMasterInputErrors(next);
       if (inputErrors.length) return { status: "error", message: "ยังขึ้น Product Master ไม่ได้:\n• " + inputErrors.slice(0, 8).join("\n• ") };
     }
+    npdNoFlavorSeq(next);
     harvestRm(next);   // new RM from IT edits also flows into rm_master
+    const _ssGone = npdGoneSsCodes(n, next);
     store.npd[idx] = next;
+    npdUnregisterSs(_ssGone, next.id);
     if (syncMaster) {
       _stale = npdDropStaleItems(next);
       npdToProducts(next);
@@ -5516,7 +5527,8 @@
     }
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
     const returned = (syncMaster && _stale && _stale.length) ? npdReturnCodes(next, _stale) : [];
-    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version, returned: returned };
+    const returnedSs = npdReturnSsCodes(_ssGone);
+    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version, returned: returned, returnedSs: returnedSs };
   };
 
   function seedDemoNpd() {
@@ -5876,6 +5888,45 @@
    *  เลือกเป็น "เลือกสินค้าเป็นกลุ่ม" ไม่ได้ และ pc_itemset_comp จะชี้ไปที่ SS ที่ระบบไม่รู้จัก
    *  (เดิม pc_addon_subsets มีแต่เขียน ไม่มีใครอ่านกลับ → รีเฟรชทีเดียวหาย)
    * ========================================================================== */
+  /* IT เปลี่ยน SS Code ของ Subset ใหม่ในงานนี้ → เลขเดิมไม่ใช้แล้ว: ถอดออกจากทะเบียน Subset และคืนเลขเข้าคลังเสมอ (แม้เคยขึ้นปุ่มแล้ว)
+     ไม่แตะ Subset เดิมในระบบ (existing) และเลขที่งานอื่น/ทะเบียนอื่นยังใช้อยู่ */
+  function npdGoneSsCodes(prev, next) {
+    var id = String(next && next.id || ""), src = "npd:" + id, keep = {}, gone = [];
+    var ssOf = function (s) { return String(s && (s.ssCode || s.code) || "").trim(); };
+    (next && next.subsets || []).forEach(function (s) { var c = ssOf(s); if (c) keep[c] = 1; });
+    var usedOutside = function (ss) {
+      var same = function (v) { return String(v || "").trim() === ss; };
+      if ((store.npd || []).some(function (n) {
+        if (String(n.id || "") === id) return false;
+        return (n.subsets || []).some(function (s) { return same(ssOf(s)); }) || (n.groups || []).some(function (g) { return same(g.ssCode); }) ||
+          (n.items || []).some(function (it) { return same(it.ssCode) || (it.formulas || []).some(function (f) { return same(f.ss); }); });
+      })) return true;
+      try { if ((window.PC_SUBSET_MASTER || []).some(function (x) { return same(x.ssCode) && String(x._src || "") !== src; })) return true; } catch (e) {}
+      try {
+        var comp = JSON.parse(localStorage.getItem("pc_itemset_comp") || "{}") || {};
+        if (Object.keys(comp).some(function (k) { return (comp[k] || []).some(function (r) { return r && same(r.code) && String(r._npd || "") !== id; }); })) return true;
+      } catch (e) {}
+      return false;
+    };
+    (prev && prev.subsets || []).forEach(function (s) {
+      var c = ssOf(s); if (!/^SS\d/i.test(c) || s.existing || keep[c] || gone.indexOf(c) >= 0 || usedOutside(c)) return;
+      gone.push(c);
+    });
+    return gone;
+  }
+  function npdUnregisterSs(codes, id) {
+    var src = "npd:" + id, g = {}; (codes || []).forEach(function (c) { g[c] = 1; });
+    if (!codes || !codes.length) return;
+    try { var SM = window.PC_SUBSET_MASTER || []; for (var i = SM.length - 1; i >= 0; i--) if (g[String(SM[i].ssCode)] && String(SM[i]._src || "") === src) SM.splice(i, 1); } catch (e) {}
+    try { var reg = JSON.parse(localStorage.getItem("pc_addon_subsets") || "{}") || {}, ch = false; Object.keys(g).forEach(function (c) { if (reg[c] && String(reg[c]._src || "") === src) { delete reg[c]; ch = true; } }); if (ch) localStorage.setItem("pc_addon_subsets", JSON.stringify(reg)); } catch (e) {}
+    try { var cust = JSON.parse(localStorage.getItem("pc_subset_custom") || "[]") || []; var left = cust.filter(function (x) { return !g[String(x.ssCode)]; }); if (left.length !== cust.length) localStorage.setItem("pc_subset_custom", JSON.stringify(left)); } catch (e) {}
+  }
+  function npdReturnSsCodes(codes) {
+    var back = [];
+    try { var C = window.PC_COUNTER; if (!C || !C.returnCode) return back; (codes || []).forEach(function (c) { if (C.returnCode(c, "ss", "IT NPD (เปลี่ยน SS Code — คืนเลขเดิม)", true)) back.push(c); }); } catch (e) {}
+    return back;
+  }
+
   function subsetRegister(ss, name, short, src) {
     ss = String(ss || "").trim(); if (!/^SS\d/i.test(ss)) return false;
     name = String(name || ss).trim(); short = String(short || "").trim() || name;
@@ -5911,7 +5962,14 @@
       });
     } catch (e) {}
   })();
-  /* FX-P75 backfill — แถวสินค้าจาก NPD/ผง ที่ลงไว้ก่อนมีกฎนี้ ยังไม่มีช่องวันที่ → เติมให้ (เริ่ม = วันที่ IT ขึ้นปุ่ม · จบ = 31/12/2050) */
+  /* No flavor ที่ลงไว้เป็นลำดับ 99 (กฎเดิม) → 99999 ทั้งในใบงานและแถวผงใน Product Master */
+  (function backfillNoFlavorSeq() {
+    try {
+      (store.npd || []).forEach(npdNoFlavorSeq);
+      (store.npdProducts || []).forEach(function (p) { if (p && p.ssCode && /^no\s*flavou?r(\s|$)/i.test(String(p.itemNameEN || "").trim())) p.posSeq = NPD_NO_FLAVOR_SEQ; });
+    } catch (e) {}
+  })();
+  /* FX-P75 backfill —แถวสินค้าจาก NPD/ผง ที่ลงไว้ก่อนมีกฎนี้ ยังไม่มีช่องวันที่ → เติมให้ (เริ่ม = วันที่ IT ขึ้นปุ่ม · จบ = 31/12/2050) */
   (function backfillMasterDates() {
     try {
       var jobs = {};

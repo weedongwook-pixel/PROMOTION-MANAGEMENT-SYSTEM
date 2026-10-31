@@ -480,7 +480,7 @@
     }).join('');
     return '<div class="border rounded-3 p-2 mb-2" style="background:#fffdf4;border-color:#b9a44e!important">' +
       '<div class="row g-2 mb-1 align-items-end">' +
-      '<div class="col-md-2"><label class="small fw-bold text-info">SS Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="ss" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(s.ssCode || '') + '" oninput="window.itSub(' + si + ',\'ssCode\',this.value)" placeholder="SS0031"><button class="btn btn-outline-info" type="button" title="คัดลอก SS Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
+      '<div class="col-md-2"><label class="small fw-bold text-info">SS Code (IT)</label><div class="input-group input-group-sm"><input class="form-control form-control-sm border-info mono" data-cc-reserve="ss" data-cc-where="' + itCcWhere() + '" style="background:#eef7fb" value="' + itEsc(s.ssCode || '') + '" oninput="window.itSub(' + si + ',\'ssCode\',this.value)" onblur="window.itSubSsBlur(event)" placeholder="SS0031"><button class="btn btn-outline-info" type="button" title="คัดลอก SS Code (กันลืม)" onclick="window.itCopyCode(this)"><i class="fas fa-copy"></i></button></div></div>' +
       '<div class="col-md-5"><label class="small fw-bold">Subset Name</label><input class="form-control form-control-sm border-dark" value="' + itEsc(s.name || '') + '" oninput="window.itSub(' + si + ',\'name\',this.value)"></div>' +
       '<div class="col-md-4"><label class="small fw-bold">Subset Name 2 <span class="text-muted" style="font-size:.66rem">· ตัวย่อผงบน POS</span></label><input class="form-control form-control-sm border-dark" value="' + itEsc(s.name2 || '') + '" oninput="window.itSub(' + si + ',\'name2\',this.value)"></div>' +
       '<div class="col-md-1 d-flex align-items-end"><button class="btn btn-sm btn-outline-danger" onclick="window.itDelSub(' + si + ')"><i class="fas fa-trash"></i></button></div>' +
@@ -652,7 +652,28 @@
     window.renderItEdit();
   };
   /* subset pool handlers */
-  window.itSub = function (si, k, v) { window._itEdit.subsets[si][k] = v; if (k === 'name') window.renderItEdit(); };
+  window.itSub = function (si, k, v) {
+    var e = window._itEdit, s = e.subsets[si];
+    if (k === 'ssCode') itMoveSs(e, s, s.ssCode, v);
+    s[k] = v; if (k === 'name') window.renderItEdit();
+  };
+  /* IT แก้ SS Code → สูตรผงของทุกปุ่มที่อ้างรหัสเดิมย้ายตามทันที · ข้ามถ้ามี Subset อื่นในใบใช้รหัสเดิมเดียวกัน (แยกไม่ได้ว่าเป็นของชุดไหน)
+     เลขเดิมคืนระบบตอนกดบันทึก (backend) */
+  function itMoveSs(e, s, from, to) {
+    from = String(from || '').trim(); to = String(to || '').trim();
+    if (!from || from === to) return;
+    if ((e.subsets || []).some(function (x) { return x !== s && String(x.ssCode || '').trim() === from; })) return;
+    (e.items || []).forEach(function (it) {
+      (it.formulas || []).forEach(function (f) { if (String(f.ss || '').trim() === from) { f.ss = to; window._itSsMoved = true; } });
+      if (String(it.ssCode || '').trim() === from) { it.ssCode = to; window._itSsMoved = true; }
+    });
+  }
+  /* วาดสูตรผงใหม่หลังออกจากช่อง SS Code · ถ้ากำลังกดปุ่ม (เช่น บันทึก) ไม่วาดทับ ปุ่มจะได้ทำงาน */
+  window.itSubSsBlur = function (ev) {
+    if (!window._itSsMoved) return;
+    var t = ev && ev.relatedTarget; if (t && t.closest && t.closest('button')) return;
+    window._itSsMoved = false; window.renderItEdit();
+  };
   window.itPow = function (si, wi, k, v) { window._itEdit.subsets[si].powders[wi][k] = v; };
   window.itAddSubset = function () { (window._itEdit.subsets = window._itEdit.subsets || []).push({ ssCode: '', name: '', cat: '', powders: [] }); window.renderItEdit(); };
   /* return an auto-reserved code back to the counter when its row is deleted (RESERVED only —
@@ -683,6 +704,7 @@
       if (res && res.status && res.status !== 'success') { Swal.fire('บันทึกไม่สำเร็จ', res.message || 'ตรวจสอบข้อมูล Product Master และ Recipe RM', 'error'); return; }
       var back = itSettleCateCodes(e);
       ((res && res.returned) || []).forEach(function (c) { if (back.indexOf(c) < 0) back.push(c); });   // เลขเดิมที่ค้างใน Product Master (เปลี่ยนหมวดก่อนหน้านี้) → backend คืนให้แล้ว
+      ((res && res.returnedSs) || []).forEach(function (c) { if (back.indexOf(c) < 0) back.push(c); });  // SS Code เดิมที่ IT เปลี่ยน → backend คืนให้แล้ว
       itClearDraft('npd', id);
       Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ' + (back.length ? ' · คืนเลขเดิม ' + back.join(', ') + ' เข้าระบบแล้ว' : ''), timer: back.length ? 2600 : 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
     }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, itCleanEdit(e));

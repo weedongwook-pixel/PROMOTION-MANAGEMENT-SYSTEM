@@ -135,7 +135,7 @@ test('flavor import reuses matching pending subset recipes and rolls back confli
   assert.equal(c.RD.importWorkFlavors(g),0);
   const mala=x=>x.subsets[0].powders.find(w=>w.eng==='Mala ENF 1');
   assert.equal(mala(c.RD.workflowSnapshot()).cmpos,mala(first).cmpos);
-  assert.deepEqual([...first.subsets[0].powders.map(w=>w.seq+' '+w.eng)],['6 Truffle 2','9 Mala ENF 1','99 No flavor'],'standard order: new powders from 9');
+  assert.deepEqual([...first.subsets[0].powders.map(w=>w.seq+' '+w.eng)],['6 Truffle 2','9 Mala ENF 1','99999 No flavor'],'standard order: new powders from 9');
   const bad=JSON.parse(JSON.stringify(g));bad.subsets[0].powders[0].qty='9.72';
   assert.throws(()=>c.RD.importWorkFlavors(bad),/สูตรต่างกัน/);
   assert.equal(mala(c.RD.workflowSnapshot()).qty,'6.48');

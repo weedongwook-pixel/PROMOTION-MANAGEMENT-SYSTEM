@@ -90,8 +90,8 @@ async function addPowder(page,name,rm,desc){
     assert.equal(await page.locator('#productList .item-card').count(),6);
     await page.screenshot({path:shots+'/npd-imported-1440.png',fullPage:true});
     assert.deepEqual(enoki.products[0],manual);assert.equal(enoki.project,'Guided manual + import');
-    // New SUBSETs follow the standard POS order; new powders start at 9 and No flavor is 99.
-    assert.deepEqual(enoki.subsets[0].powders.map(w=>w.seq+' '+w.eng.replace(/\s+ENF 1$/,'')),['1 Cheese','2 BBQ','3 Sour Cream','4 Chilli BBQ','5 Truffle +THB10','6 Truffle 2','7 Sweet Corn','8 Salted','9 Mala','99 No flavor']);
+    // New SUBSETs follow the standard POS order; new powders start at 9 and No flavor is always 99999.
+    assert.deepEqual(enoki.subsets[0].powders.map(w=>w.seq+' '+w.eng.replace(/\s+ENF 1$/,'')),['1 Cheese','2 BBQ','3 Sour Cream','4 Chilli BBQ','5 Truffle +THB10','6 Truffle 2','7 Sweet Corn','8 Salted','9 Mala','99999 No flavor']);
     assert.equal(enoki.products.length,6);assert.deepEqual(enoki.subsets.map(s=>s.powders.length),[10,10]);
     await importSheet(page,'mala sauce','115');
     let d=await snap(page);

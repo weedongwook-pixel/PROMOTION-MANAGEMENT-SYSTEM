@@ -239,7 +239,7 @@ test('both import paths add only missing mandatory flavors, leaving quantities f
       assert.equal(s.powders.length,3);
       const truffle=s.powders.find(w=>w.eng==='Truffle 2');
       assert.equal(truffle.code,'3024');assert.equal(truffle.qty,'');
-      const nf=s.powders.at(-1);assert.equal(nf.eng,'No flavor');assert.equal(nf.seq,99);assert.equal(nf.noFlavor,true);
+      const nf=s.powders.at(-1);assert.equal(nf.eng,'No flavor');assert.equal(nf.seq,99999);assert.equal(nf.noFlavor,true);
     }
     assert.ok(p.warnings.some(w=>w.code==='STANDARD_FLAVORS'));
   }

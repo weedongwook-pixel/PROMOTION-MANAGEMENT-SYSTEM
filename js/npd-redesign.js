@@ -131,9 +131,10 @@
     { seq: 6,  eng: 'Truffle 2',      th: 'Truffle 2',      code: '3024', desc: 'ผงปรุงรส Truffle',           unit: 'g', spoon: 'ช้อน 5 ml * 1 ช้อน' },
     { seq: 7,  eng: 'Sweet Corn',     th: 'Sweet Corn',     code: '3101', desc: 'ผงปรุงรส sweet corn 500 G.', unit: 'g', spoon: 'ช้อน 5 ml * 2 ช้อน' },
     { seq: 8,  eng: 'Salted',         th: 'Salted',         code: '3022', desc: 'เกลือ',                       unit: 'g', spoon: '1 ช้อน pinch' },
-    { seq: 99, eng: 'No flavor',      th: 'No flavor',      code: '',     desc: '',                            unit: '',  noFlavor: true }
+    { seq: 99999, eng: 'No flavor',   th: 'No flavor',      code: '',     desc: '',                            unit: '',  noFlavor: true }
   ];
-  /* New SUBSETs keep the standard POS order: standard powders 1–8, new powders from 9, No flavor 99. */
+  /* New SUBSETs keep the standard POS order: standard powders 1–8, new powders from 9, No flavor always 99999 (last on POS). */
+  var NF_SEQ = 99999;
   var STD_KEYS = STD_POWDERS.filter(function (p) { return !p.noFlavor; }).map(function (p) { var k = [p.eng.toLowerCase().replace(/[^a-z0-9]/g, '')]; if (p.addon) k.push('truffle10', 'truffle10thb'); return { seq: p.seq, keys: k }; });
   function stdSeq(name, sub) {
     var n = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, ''), own = String(sub.name2 || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -151,6 +152,7 @@
     if (!sub) return;
     if (sub.name2) sub.name2 = oneSpace(sub.name2);
     (sub.powders || []).forEach(function (w) {
+      if (w.noFlavor) w.seq = NF_SEQ;
       w.eng = oneSpace(w.eng); w.th = oneSpace(w.th);
       if (TRUFFLE10.test(w.th)) w.th = w.th.replace(TRUFFLE10, 'Truffle 1');
     });
@@ -158,11 +160,11 @@
   function orderStdPowders(sub) {
     tidyPowderNames(sub);
     if (!sub || sub.existing) return;
-    var rank = function (w) { return w.noFlavor ? 99 : (stdSeq(w.eng, sub) || 50); };
+    var rank = function (w) { return w.noFlavor ? NF_SEQ : (stdSeq(w.eng, sub) || 50); };
     var list = sub.powders.map(function (w, i) { return { w: w, i: i, r: rank(w), seq: Number(w.seq) || 0 }; });
     list.sort(function (a, b) { return a.r - b.r || (a.r === 50 ? (a.seq - b.seq) || (a.i - b.i) : a.i - b.i); });
     var next = 9;
-    sub.powders = list.map(function (x) { x.w.seq = x.r === 99 ? 99 : x.r === 50 ? next++ : x.r; return x.w; });
+    sub.powders = list.map(function (x) { x.w.seq = x.r === NF_SEQ ? NF_SEQ : x.r === 50 ? next++ : x.r; return x.w; });
   }
   function stdPowders(formula) { var lang = npdLang(); return STD_POWDERS.map(function (p) { var w = mkPowder(p); w.cmpos = npdReserveCMPOS(); w.std = true; if (formula === 2 && !w.noFlavor && SPOON_F2[p.eng]) w.spoon = SPOON_F2[p.eng]; if (!w.noFlavor) { w.unit = convUnit(w.unit, lang); w.spoon = convSpoon(w.spoon, lang); } return w; }); }
   /* สูตร 2 — ค่าเริ่มต้น "ขนาดช้อน" ต่างจากสูตร 1 (ชื่อผง/ตัวย่อ/หน่วย เหมือนเดิม) */
@@ -253,8 +255,8 @@
     var rows = sub.powders.map(function (w, i) {
       var nf = !!w.noFlavor;
       var naCell = '<td><input class="form-control form-control-sm text-center" disabled value="—" title="ไม่ใช้ผง — เป็นปุ่มลูกค้าไม่เอาผง" style="background:#f1f3f5;min-width:90px"></td>';
-      var seqCell = '<td>' + (w.std
-        ? '<input type="number" class="form-control form-control-sm text-center fw-bold it-field" readonly title="ลำดับมาตรฐาน — แก้ไม่ได้" style="width:58px" value="' + esc(w.seq || (i + 1)) + '">'
+      var seqCell = '<td>' + (w.std || nf
+        ? '<input type="number" class="form-control form-control-sm text-center fw-bold it-field" readonly title="ลำดับมาตรฐาน — แก้ไม่ได้" style="width:' + (nf ? 72 : 58) + 'px" value="' + esc(w.seq || (i + 1)) + '">'
         : '<input type="number" min="1" class="form-control form-control-sm text-center fw-bold" style="width:58px" value="' + esc(w.seq || (i + 1)) + '" title="ลำดับแสดงบน POS" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'seq\',this.value)">') + '</td>';
       var cmposCell = '<td><input class="form-control form-control-sm mono it-field" readonly title="รันอัตโนมัติจากโค้ดกลาง (หมวดผง 103)" style="width:88px" value="' + esc(w.cmpos) + '" placeholder="' + (nf ? '—' : '— IT —') + '"></td>';
       var engCell = '<td><input class="form-control form-control-sm border-secondary" style="min-width:200px" value="' + esc(w.eng) + '" placeholder="Cheese" oninput="RD.setW(\'' + sub.id + '\',\'' + w.id + '\',\'eng\',this.value)"></td>';
@@ -754,10 +756,10 @@
   RD.addW = function (sid) {
     var s = Ssub(sid); if (!s) return;
     var w = mkPowder({ unit: 'g' }); w.cmpos = npdReserveCMPOS();
-    // ลำดับถัดไป = max seq ที่ไม่ใช่ 99 + 1 (ต่อท้ายผงเกลือ/ผงสุดท้าย)
-    var maxSeq = 0; (s.powders || []).forEach(function (p) { var n = parseInt(p.seq, 10); if (!isNaN(n) && n !== 99 && n > maxSeq) maxSeq = n; });
+    // ลำดับถัดไป = max seq ของผงที่ไม่ใช่ No flavor + 1 (ต่อท้ายผงเกลือ/ผงสุดท้าย)
+    var maxSeq = 0; (s.powders || []).forEach(function (p) { var n = parseInt(p.seq, 10); if (!p.noFlavor && !isNaN(n) && n !== 99 && n !== NF_SEQ && n > maxSeq) maxSeq = n; });
     w.seq = maxSeq + 1;
-    // แทรกก่อนแถว No flavor เพื่อให้ No flavor (99) อยู่ล่างสุดเสมอ
+    // แทรกก่อนแถว No flavor เพื่อให้ No flavor (99999) อยู่ล่างสุดเสมอ
     var nfIdx = -1; (s.powders || []).forEach(function (p, idx) { if (p.noFlavor && nfIdx < 0) nfIdx = idx; });
     if (nfIdx >= 0) s.powders.splice(nfIdx, 0, w); else s.powders.push(w);
     renderAll();
@@ -1358,7 +1360,7 @@
         }
         g.powders.forEach(function(w){
           if(w.cmpos)throw Error('ไฟล์ผงมี CMPOS แล้ว กรุณาเลือกข้อมูลเดิมในระบบ ไม่สร้างรหัสซ้ำ');
-          if(w.noFlavor){if(!sub)throw Error('ตรวจ No flavor ใน SUBSET เดิมก่อนเพิ่ม');if(!sub.powders.some(function(p){return p.noFlavor;})){var nf=mkPowder(w);nf.cmpos=npdReserveCMPOS();if(!nf.cmpos)throw Error('จองรหัสไม่สำเร็จ');allocated.push({type:'item',code:nf.cmpos});sub.powders.push(nf);}return;}
+          if(w.noFlavor){if(!sub)throw Error('ตรวจ No flavor ใน SUBSET เดิมก่อนเพิ่ม');if(!sub.powders.some(function(p){return p.noFlavor;})){var nf=mkPowder(w);nf.seq=NF_SEQ;nf.cmpos=npdReserveCMPOS();if(!nf.cmpos)throw Error('จองรหัสไม่สำเร็จ');allocated.push({type:'item',code:nf.cmpos});sub.powders.push(nf);}return;}
           var base=w.eng.replace(/\s+(?:ENF|FF|CK|CS|CNG|BFF|WVF|CSF|LTM)\s*\d*$/i,'').trim();
           var lib=RD.addWorkPowder({eng:base,code:w.code,desc:w.desc,unit:w.unit});
           var target=sub?sub.id:'db:'+master.ssCode;

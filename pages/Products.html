@@ -265,7 +265,7 @@
   function sizeOf(it){ var nm=String((it&&it.itemNameEN)||'').toUpperCase(); for(var i=0;i<PM_SIZES.length;i++){ if(new RegExp('\\b'+PM_SIZES[i]+'\\b').test(nm)) return PM_SIZES[i]; } return ''; }
   function sizeVal(it){ if(!it) return ''; var f=FLAGS[it.itemCode]||{}; return (f.size!=null&&f.size!=='')?f.size:sizeOf(it); }
   /* ลำดับปุ่มบน POS (posSeq) — FLAGS.seq (user ตั้ง) > it.posSeq (จาก NPD/ผง) > ลำดับมาตรฐานตามชื่อผง */
-  var STD_FLAV_SEQ=[['no flavor',99],['sour cream',3],['chilli bbq',4],['chili bbq',4],['sweet corn',7],['truffle 2',6],['truffle',5],['cheese',1],['bbq',2],['salted',8]];
+  var STD_FLAV_SEQ=[['no flavor',99999],['sour cream',3],['chilli bbq',4],['chili bbq',4],['sweet corn',7],['truffle 2',6],['truffle',5],['cheese',1],['bbq',2],['salted',8]];
   function stdFlavorSeq(it){ var nm=String((it&&it.itemNameEN)||'').toLowerCase(); for(var i=0;i<STD_FLAV_SEQ.length;i++){ if(nm.indexOf(STD_FLAV_SEQ[i][0])>=0) return STD_FLAV_SEQ[i][1]; } return ''; }
   function seqVal(it){ if(!it) return ''; var f=FLAGS[it.itemCode]||{}; if(f.seq!=null&&f.seq!=='') return f.seq; if(it.posSeq!=null&&it.posSeq!=='') return it.posSeq; return stdFlavorSeq(it); }
   window.__pmSeqVal=seqVal;
