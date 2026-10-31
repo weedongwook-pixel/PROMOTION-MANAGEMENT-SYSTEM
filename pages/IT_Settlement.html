@@ -611,13 +611,13 @@
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', showConfirmButton: false, timer: 2600, title: 'เปลี่ยนหมวดเป็น ' + cc + ' · ' + cat.name,
       text: it._origCode ? 'Item Code ใหม่ ' + it.code + ' · เลขเดิม ' + it._origCode + ' คืนระบบเมื่อกดบันทึก' : 'กลับมาใช้ Item Code เดิม ' + it.code });
   };
-  /* หลังบันทึกสำเร็จ: ยืนยันเลขใหม่ + คืนเลขเดิมเข้าระบบ (งานที่ขึ้นปุ่มไปแล้ว เลขเดิมอยู่บน POS → ไม่แจกซ้ำ) */
-  function itSettleCateCodes(e, wasComplete) {
+  /* หลังบันทึกสำเร็จ: ยืนยันเลขใหม่ + คืนเลขเดิมเข้าระบบเสมอ (รวมงานที่เคยบันทึก/ขึ้นปุ่มแล้ว — IT แก้หมวดแล้ว เลขเดิมไม่ใช้อีก) */
+  function itSettleCateCodes(e) {
     var back = [];
     (e.items || []).forEach(function (it) {
       if (!it._origCode) return;
       try { if (window.PC_COUNTER) PC_COUNTER.confirm(it.code, 'item', { campaign: e.project || e.id }); } catch (x) {}
-      if (!wasComplete) { try { if (window.PC_COUNTER && PC_COUNTER.returnCode(it._origCode, 'item', 'IT NPD (เปลี่ยนหมวด — คืนเลขเดิม)', true)) back.push(it._origCode); } catch (x) {} }
+      try { if (window.PC_COUNTER && PC_COUNTER.returnCode(it._origCode, 'item', 'IT NPD (เปลี่ยนหมวด — คืนเลขเดิม)', true)) back.push(it._origCode); } catch (x) {}
     });
     return back;
   }
@@ -679,10 +679,10 @@
     if (missSub) { Swal.fire('กรอกไม่ครบ', 'กรุณากรอก SS Code ให้ครบทุก Subset', 'warning'); return; }
     /* Backend จะล็อกเลขหลังเขียน Product Master และ Recipe RM สำเร็จเท่านั้น */
     Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
-    var wasComplete = ((itNpdData.find(function (x) { return x.id === id; }) || {}).itStatus || '') === 'COMPLETE';
     google.script.run.withSuccessHandler(function (res) {
       if (res && res.status && res.status !== 'success') { Swal.fire('บันทึกไม่สำเร็จ', res.message || 'ตรวจสอบข้อมูล Product Master และ Recipe RM', 'error'); return; }
-      var back = itSettleCateCodes(e, wasComplete);
+      var back = itSettleCateCodes(e);
+      ((res && res.returned) || []).forEach(function (c) { if (back.indexOf(c) < 0) back.push(c); });   // เลขเดิมที่ค้างใน Product Master (เปลี่ยนหมวดก่อนหน้านี้) → backend คืนให้แล้ว
       itClearDraft('npd', id);
       Swal.fire({ icon: 'success', title: 'ขึ้นปุ่มเสร็จ!', text: 'บันทึกการแก้ไข + ส่งต่อให้ OP ตรวจสอบ' + (back.length ? ' · คืนเลขเดิม ' + back.join(', ') + ' เข้าระบบแล้ว' : ''), timer: back.length ? 2600 : 1600, showConfirmButton: false }).then(function () { window.loadItNpd(); });
     }).withFailureHandler(function (err) { Swal.fire('Error', String(err), 'error'); }).updateNpd(id, itCleanEdit(e));

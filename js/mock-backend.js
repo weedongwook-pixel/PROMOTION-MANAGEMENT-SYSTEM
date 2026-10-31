@@ -5370,6 +5370,46 @@
      อาการที่เจอ: เลขสินค้า/ผงที่ใช้จริงไม่มีเรคคอร์ดในทะเบียนเลย (1031292-1031311 ของ NPD-2026001)
      → ตัวนับ/คลังเลขคืน (freed) มองว่าว่าง แล้วแจกซ้ำให้งานหลัง (Tamago ได้ชุดเดียวกัน)
      จึงลงทะเบียนเป็น CONFIRMED ทุกครั้งที่ขึ้นปุ่ม · เงียบ ไม่มี PC_COUNTER ก็ข้าม */
+  /* IT เปลี่ยนหมวด = Item Code ใหม่ → แถว Product Master / Recipe / Subset ของเลขเดิมที่งานนี้เคยเขียนไว้ต้องออก
+     ไม่งั้นตัวนับเห็นว่าเลขเดิมยังมีคนใช้ (codeInUse) แล้วตัดทิ้งจากคลังถาวร · ล้างย้อนหลังให้งานที่ค้างด้วย (เช่น 121021-121022)
+     แตะเฉพาะแถวสินค้าของงานนี้ (_fromNpd) ที่ไม่ใช่ผงใน Subset และไม่อยู่ในใบงานแล้ว */
+  function npdDropStaleItems(n) {
+    if (!n || !Array.isArray(store.npdProducts)) return [];
+    var keep = {}, id = String(n.id || "");
+    var mark = function (c) { c = String(c || "").trim(); if (c) keep[c] = 1; };
+    (n.items || []).forEach(function (it) { mark(it.code); mark(it.cmpos); });
+    (n.subsets || []).forEach(function (s) { (s.powders || []).forEach(function (p) { mark(p.cmpos); }); });
+    (n.groups || []).forEach(function (g) { (g.flavors || []).forEach(function (f) { mark(f.cmpos); }); });
+    var gone = store.npdProducts.filter(function (p) {
+      var c = String(p && p.itemCode || "").trim();
+      return c && String(p._fromNpd || "") === id && !p.ssCode && !keep[c];
+    }).map(function (p) { return String(p.itemCode).trim(); });
+    if (!gone.length) return [];
+    var g = {}; gone.forEach(function (c) { g[c] = 1; });
+    store.npdProducts = store.npdProducts.filter(function (p) { return !(String(p._fromNpd || "") === id && g[String(p.itemCode || "").trim()]); });
+    gone.forEach(function (c) { var r = (store.recipeCustom || {})[c]; if (r && String(r._fromNpd || "") === id) delete store.recipeCustom[c]; });
+    try {
+      var comp = JSON.parse(localStorage.getItem("pc_itemset_comp") || "{}"), ch = false;
+      gone.forEach(function (c) { var rows = comp && comp[c]; if (Array.isArray(rows) && rows.length && rows.every(function (r) { return r && String(r._npd || "") === id; })) { delete comp[c]; ch = true; } });
+      if (ch) localStorage.setItem("pc_itemset_comp", JSON.stringify(comp));
+    } catch (e) {}
+    return gone;
+  }
+  /* เลขเดิมที่ถอดออกแล้ว → คืนคลัง (บังคับ แม้เคย CONFIRMED) · แตะเฉพาะเรคคอร์ดของงานนี้ */
+  function npdReturnCodes(n, codes) {
+    var back = [];
+    try {
+      var C = window.PC_COUNTER; if (!C || !C.returnCode) return back;
+      var st = C.state ? C.state() : null, id = String(n.id || ""), proj = String(n.project || "");
+      var ours = function (w) { w = String(w || ""); return !!w && (w.indexOf(id) === 0 || (proj && w === proj)); };
+      (codes || []).forEach(function (c) {
+        var e = st && st.reservations && st.reservations["item::" + c];
+        if (!e || !(ours(e.where) || ours(e.campaign))) return;   // ไม่มีเรคคอร์ด/เป็นของงานอื่น → ไม่แตะ
+        if (C.returnCode(c, "item", "IT NPD (เปลี่ยนหมวด — คืนเลขเดิม)", true)) back.push(c);
+      });
+    } catch (e) {}
+    return back;
+  }
   function lockNpdCodes(n) {
     try {
       var C = window.PC_COUNTER; if (!C || !C.state || !C._save || !n) return 0;
@@ -5452,6 +5492,7 @@
       itStatus: "COMPLETE", itDoneDate: TODAY()
     }));
     const syncMaster = String(next.itStatus || "").toUpperCase() === "COMPLETE";
+    let _stale = [];
     if (syncMaster) {
       const inputErrors = npdMasterInputErrors(next);
       if (inputErrors.length) return { status: "error", message: "ยังขึ้น Product Master ไม่ได้:\n• " + inputErrors.slice(0, 8).join("\n• ") };
@@ -5459,6 +5500,7 @@
     harvestRm(next);   // new RM from IT edits also flows into rm_master
     store.npd[idx] = next;
     if (syncMaster) {
+      _stale = npdDropStaleItems(next);
       npdToProducts(next);
       npdSubsetToProducts(next);   /* FX-P80 — ผงใน Subset ของงานนี้ → สินค้าหมวด Flavors */
       const writeErrors = npdMasterWriteErrors(next);
@@ -5472,7 +5514,8 @@
       try { (store.npd[idx].subsets || []).forEach(s => subsetRegister(s.ssCode || s.code, s.name, s.name2 || s.short, "npd:" + store.npd[idx].id)); } catch (e) {}
     }
     if (!persist()) return { status: "error", message: "บันทึกไม่สำเร็จ — พื้นที่เก็บข้อมูลในเครื่องเต็ม — กดสำรองข้อมูล/รีเฟรช แล้วทำอีกครั้ง" };
-    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version };
+    const returned = (syncMaster && _stale && _stale.length) ? npdReturnCodes(next, _stale) : [];
+    return { status: "success", message: "บันทึก NPD เรียบร้อย", version: store.npd[idx].version, returned: returned };
   };
 
   function seedDemoNpd() {
